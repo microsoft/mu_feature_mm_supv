@@ -1,0 +1,239 @@
+## @file
+# This module provide an SMM CIS compliant implementation of SMM Core.
+#
+# Copyright (c) 2009 - 2021, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
+# Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
+# Copyright (C) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fd7b8d037fd5ce572bb2a4444e5adb26 | 2022-05-05T16-31-55 | c4d0d1130454b3e5051bb601c707234e3a91713a
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | e1d04656b23d9cafbe2c35de0f77fcf7 | 2022-05-20T19-21-22 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+# Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a6a02b861e6a50624bd8e9cf6eb01984 | 2022-05-20T19-26-48 | 1d76f25c33af475572ad8f4f5cc1460c4ab8c868
+# Non-Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a26023ade63eb3aabca910107656ab3a | 2022-05-20T19-16-17 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmSupervisorCore
+  FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
+  MODULE_TYPE                    = MM_CORE_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  ENTRY_POINT                    = MmSupervisorMain
+
+  #MmSupervisor driver version definition: version = Major.Minor
+  #Major: major version is one or two digits from 0 to 99
+  #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
+  #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
+  RELEASE_DRIVER_VERSION   = 1.0019
+  DEBUG_DRIVER_VERSION     = 1.0018
+  #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
+  #Major: major value is an UINT16 number in decimal from 0 to 65535
+  #Minor: minor value is an UINT16 number in decimal from 0 to 65535
+  #for example: Major=0 Minor=10, SPL=0x0000000A
+  MAJOR_PATCH_LEVEL              = 0
+  MINOR_PATCH_LEVEL              = 0
+
+#  VALID_ARCHITECTURES           = X64
+
+[Sources]
+  MmSupervisorCore.c
+  MmSupervisorCore.h
+
+  Dispatcher/Dependency.c
+  Dispatcher/Dispatcher.c
+  FwVol/FwVol.c
+  Hand/Handle.c
+  Hand/Locate.c
+  Hand/Notify.c
+  Handler/Mmi.c
+  Handler/SmiHandlerProfile.c
+  Mem/Cet.nasm
+  Mem/HeapGuard.c
+  Mem/HeapGuard.h
+  Mem/Mem.h
+  Mem/MemWrapper.c
+  Mem/Page.c
+  Mem/PageTbl.c
+  Mem/Pool.c
+  Mem/SmmCpuMemoryManagement.c
+  Mem/SmmProfile.c
+  Mem/SmmProfile.h
+  Mem/SmmProfileArch.c
+  Mem/SmmProfileArch.h
+  Mem/SmmProfileInternal.h
+  Misc/InstallConfigurationTable.c
+  Misc/MemoryAttributesTable.c
+  Misc/Semaphore.c
+  Misc/SmmFuncsArch.c
+
+  Relocate/Relocate.c
+  Relocate/Relocate.h
+  Relocate/SmiEntry.nasm
+  Relocate/SmiException.nasm
+  Relocate/SmmInit.nasm
+  Relocate/SmramSaveState.c
+
+  Services/CpuService/CpuService.c
+  Services/CpuService/CpuService.h
+  Services/MpService/MpService.c
+  Services/MpService/SyncTimer.c
+
+  Policy/GeneralPolicy.c
+  Policy/MemPolicy.c
+  Policy/Policy.h
+
+  PrivilegeMgmt/PrivilegeMgmt.h
+  PrivilegeMgmt/CallGateTransfer.c
+  PrivilegeMgmt/AsmCallGateTransfer.nasm
+  PrivilegeMgmt/SyscallSetup.c
+  PrivilegeMgmt/SyscallDispatcher.c
+  PrivilegeMgmt/SysCallEntry.nasm
+
+  Request/Request.h
+  Request/RequestDispatcher.c
+  Request/UnblockMemory.c
+  Request/FetchPolicy.c
+  Request/VersionInfo.c
+
+  Telemetry/Telemetry.c
+  Telemetry/Telemetry.h
+
+  Test/PagingAudit.c
+  Test/Test.c
+  Test/Test.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  CacheMaintenanceLib
+  DebugLib
+  ExtractGuidedSectionLib
+  FvLib
+  HobLib
+  MemoryAllocationLib
+  MemLib
+  PeCoffLib
+  ReportStatusCodeLib
+  StandaloneMmCoreEntryPoint
+  MtrrLib
+  LocalApicLib
+  SynchronizationLib
+  SmmCpuFeaturesLib
+  DebugAgentLib
+  SmmCpuPlatformHookLib
+  CpuExceptionHandlerLib
+  DevicePathLib
+  VmgExitLib
+  SortLib
+  HwResetSystemLib
+  SmmPolicyGateLib
+  MmMemoryProtectionHobLib ## MU_CHANGE
+  IhvSmmSaveStateSupervisionLib
+  SafeIntLib
+  TimerLib
+
+[Protocols]
+  gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
+  gEfiLoadedImageProtocolGuid                   ## PRODUCES
+  gEfiMmConfigurationProtocolGuid               ## CONSUMES
+
+  gEfiSmmReadyToLockProtocolGuid
+  gEfiSmmConfigurationProtocolGuid
+  gSmmExceptionTestProtocolGuid            ## PRODUCES ## MS_CHANGE
+
+  gEfiSmmSwDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
+  gEfiSmmSxDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
+  gEfiSmmPowerButtonDispatch2ProtocolGuid       ## SOMETIMES_CONSUMES
+  gEfiSmmStandbyButtonDispatch2ProtocolGuid     ## SOMETIMES_CONSUMES
+  gEfiSmmPeriodicTimerDispatch2ProtocolGuid     ## SOMETIMES_CONSUMES
+  gEfiSmmGpiDispatch2ProtocolGuid               ## SOMETIMES_CONSUMES
+  gEfiSmmIoTrapDispatch2ProtocolGuid            ## SOMETIMES_CONSUMES
+  gEfiSmmUsbDispatch2ProtocolGuid               ## SOMETIMES_CONSUMES
+  gEdkiiSmmMemoryAttributeProtocolGuid          ## CONSUMES
+  gEfiSmmSxDispatch2ProtocolGuid                ## SOMETIMES_CONSUMES
+  gEfiDxeMmReadyToLockProtocolGuid              ## CONSUMES
+
+[FeaturePcd]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmDebug                         ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmBlockStartupThisAp            ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmEnableBspElection             ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuHotPlugSupport                   ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackGuard                    ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
+
+[FixedPcd]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                   ## SOMETIMES_CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackSize                     ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmCodeAccessCheckEnable         ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmSyncMode                      ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmApSyncTimeout                 ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmShadowStackSize               ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdControlFlowEnforcementPropertyMask        ## CONSUMES
+  # MU_CHANGE START Remove memory protection PCD references
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPageType                   ## CONSUMES
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPoolType                   ## CONSUMES
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdHeapGuardPropertyMask               ## CONSUMES
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdNullPointerDetectionPropertyMask    ## CONSUMES
+  # MU_CHANGE END
+  gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionRebootInsteadOfHaltDefault   ## CONSUMES ## MS_CHANGE
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmMpTokenCountPerChunk               ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
+
+[FixedPcd.X64]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES
+
+[Guids]
+  gAprioriGuid                                  ## SOMETIMES_CONSUMES   ## File
+  gMmSupervisorDriverDispatchGuid               ## PRODUCES             ## GUID # SmiHandlerRegister
+  ## SOMETIMES_CONSUMES   ## GUID # Locate protocol
+  ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
+  gEdkiiMemoryProfileGuid
+  gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
+  gEfiSmmSmramMemoryGuid                        ## SOMETIMES_CONSUMES   ## GUID
+  gEfiHobListGuid
+  gMmCoreDataHobGuid
+  gMmFvDispatchGuid
+  gEfiEventLegacyBootGuid
+
+  gMmCoreMmProfileGuid
+  gMmCommonRegionHobGuid                        ## CONSUMES
+  gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
+  gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
+
+  ## SOMETIMES_PRODUCES   ## GUID # Install protocol
+  ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
+  gSmiHandlerProfileGuid
+
+  gMmSupervisorRequestHandlerGuid               ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
+  gMmSupervisorPolicyFileGuid                   ## CONSUMES
+  gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
+
+[BuildOptions.common]
+  #Subsystem version will be used as MmSupervisor driver version
+  #Image version will be used as MmSupervisor security patch level(SPL) value
+  MSFT:RELEASE_*_*_DLINK_FLAGS  = /DLL /SUBSYSTEM:CONSOLE,$(RELEASE_DRIVER_VERSION) /VERSION:$(MAJOR_PATCH_LEVEL).$(MINOR_PATCH_LEVEL)
+  MSFT:DEBUG_*_*_DLINK_FLAGS    = /DLL /SUBSYSTEM:CONSOLE,$(DEBUG_DRIVER_VERSION) /VERSION:$(MAJOR_PATCH_LEVEL).$(MINOR_PATCH_LEVEL)
+
+  GCC:RELEASE_*_*_OBJCOPY_FLAGS = --subsystem efi-bsd:$(RELEASE_DRIVER_VERSION)
+  GCC:DEBUG_*_*_OBJCOPY_FLAGS   = --subsystem efi-bsd:$(DEBUG_DRIVER_VERSION)
+  # GCC:*_*_*_DLINK_FLAGS         = -Wl,--major-image-version,$(MAJOR_PATCH_LEVEL),--minor-image-version,$(MINOR_PATCH_LEVEL)
+
+  *_*_*_GENFW_FLAGS        = --keepoptionalheader
+

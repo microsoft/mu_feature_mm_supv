@@ -1,0 +1,56 @@
+## @file MmPagingProtectionsTestApp.inf
+# This user-facing application requests that the underlying SMM memory
+# protection test infrastructure exercise a particular test.
+#
+##
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION         = 0x00010017
+  BASE_NAME           = MmPagingAuditApp
+  FILE_GUID           = C22C63AD-FEDF-4E64-9137-4A8336DD6C35
+  VERSION_STRING      = 1.0
+  MODULE_TYPE         = UEFI_APPLICATION
+  ENTRY_POINT         = MmPagingAuditAppEntryPoint
+
+
+[Sources]
+  MmPagingAuditApp.c
+  MmPagingAuditApp.h
+
+[Sources.X64]
+  X64/PagingAuditProcessor.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  ShellLib
+  UefiApplicationEntryPoint
+  PrintLib
+  DebugLib
+  UefiBootServicesTableLib
+  UefiLib
+  UefiCpuLib
+  DxeServicesTableLib
+  DevicePathLib
+  PeCoffGetEntryPointLib
+
+[Protocols]
+  gEfiBlockIoProtocolGuid
+  gEfiSmmCommunicationProtocolGuid
+  gHeapGuardDebugProtocolGuid
+  gMmSupervisorCommunicationProtocolGuid
+
+[Guids]
+  gEdkiiPiSmmCommunicationRegionTableGuid       ## SOMETIMES_CONSUMES ## GUID
+  gEfiDebugImageInfoTableGuid                   ## SOMETIMES_CONSUMES ## GUID
+  gEfiMemoryAttributesTableGuid
+  gMmSupervisorCommunicationRegionTableGuid
+  gMmPagingAuditMmiHandlerGuid

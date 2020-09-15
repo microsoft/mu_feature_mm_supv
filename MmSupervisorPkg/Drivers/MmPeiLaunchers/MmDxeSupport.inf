@@ -1,0 +1,80 @@
+## @file
+#  This module provide support of MM in DXE phase for systems that launch MM in PEI.
+#
+#  Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MmDxeSupport
+  FILE_GUID                      = F0825F4F-D6A2-4F61-A6C0-5F01A86C80FF
+  MODULE_TYPE                    = DXE_RUNTIME_DRIVER
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = MmDxeSupportEntry
+
+# Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 363e254ecb2e8334d7efdbe363172897 | 2022-05-13T05-08-11 | 1fe56ccdeb39aa2fb6b85a37f4fb3225f4fa2e2a
+# Non-Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-05-18T19-34-40 | 8b96b84846f46f16f96a44ac838c6a1c50f2d0b3
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  MmDxeSupport.c
+  Common/MmIplCommon.c
+  Common/MmIplCommon.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  BaseLib
+  BaseMemoryLib
+  HobLib
+  DebugLib
+  UefiBootServicesTableLib
+  UefiLib
+  UefiRuntimeLib
+  ReportStatusCodeLib
+  SafeIntLib  #MU_CHANGE: BZ3398
+
+[Protocols]
+  gEfiSmmBase2ProtocolGuid                      ## PRODUCES
+  gEfiSmmCommunicationProtocolGuid              ## PRODUCES
+  gEfiMmCommunication2ProtocolGuid              ## PRODUCES
+  gEfiSmmControl2ProtocolGuid                   ## CONSUMES
+  ## NOTIFY
+  ## SOMETIMES_CONSUMES
+  ## UNDEFINED # Used to do smm communication
+  gEfiDxeSmmReadyToLockProtocolGuid
+  gMmSupervisorCommunicationProtocolGuid        ## PRODUCES
+
+[Guids]
+  ## SOMETIMES_CONSUMES ## Event
+  ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
+  gEfiEventExitBootServicesGuid
+  ## SOMETIMES_CONSUMES ## Event
+  ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
+  gEfiEventReadyToBootGuid
+  gEfiEventVirtualAddressChangeGuid             ## CONSUMES             ## Event
+  gEfiEndOfDxeEventGroupGuid                    ## CONSUMES             ## Event
+  gMmCoreDataHobGuid                            ## CONSUMES
+  gMmCommonRegionHobGuid                        ## CONSUMES
+  gMmSupervisorRequestHandlerGuid               ## CONSUMES
+
+[Depex]
+  gEfiSmmControl2ProtocolGuid

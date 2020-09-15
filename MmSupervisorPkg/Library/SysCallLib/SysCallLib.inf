@@ -1,0 +1,41 @@
+## @file
+#  Base Library implementation.
+#
+#  Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
+#  Copyright (c) 2007 - 2019, Intel Corporation. All rights reserved.<BR>
+#  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+#  Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
+#  Copyright (C) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SysCallLib
+  FILE_GUID                      = CD92C436-85A6-4387-918D-BE0AB6FB2600
+  MODULE_TYPE                    = DXE_SMM_DRIVER
+  VERSION_STRING                 = 0.1
+  LIBRARY_CLASS                  = SysCallLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  NeedSysCallLib.c
+
+[Sources.X64]
+  X64/SysCallLibx64.nasm
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseLib
+
+[BuildOptions]
+#  DEBUG_*_*_CC_FLAGS  = /FAcs

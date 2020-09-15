@@ -1,0 +1,109 @@
+##
+# CI configuration for MmSupervisorPkg
+#
+# Copyright (c) Microsoft Corporation
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+{
+    ## options defined ci/Plugin/CompilerPlugin
+    "CompilerPlugin": {
+        "DscPath": "MmSupervisorPkg.dsc"
+    },
+
+    ## options defined ci/Plugin/CharEncodingCheck
+    "CharEncodingCheck": {
+        "IgnoreFiles": []
+    },
+
+    ## options defined ci/Plugin/DependencyCheck
+    "DependencyCheck": {
+        "AcceptableDependencies": [
+            "MdePkg/MdePkg.dec",
+            "MdeModulePkg/MdeModulePkg.dec",
+            "StandaloneMmPkg/StandaloneMmPkg.dec",
+            "UefiCpuPkg/UefiCpuPkg.dec",
+            "MsWheaPkg/MsWheaPkg.dec",
+            "MmSupervisorPkg/MmSupervisorPkg.dec"
+        ],
+        "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
+        ],
+        "AcceptableDependencies-UEFI_APPLICATION": [
+            "ShellPkg/ShellPkg.dec"
+        ],
+        "IgnoreInf": []
+    },
+
+    ## options defined ci/Plugin/DscCompleteCheck
+    "DscCompleteCheck": {
+        "IgnoreInf": [],
+        "DscPath": "MmSupervisorPkg.dsc"
+    },
+
+    ## options defined ci/Plugin/GuidCheck
+    "GuidCheck": {
+        "IgnoreGuidName": [],
+        "IgnoreGuidValue": [],
+        "IgnoreFoldersAndFiles": [],
+        "IgnoreDuplicates": []
+    },
+
+    ## options defined ci/Plugin/LibraryClassCheck
+    "LibraryClassCheck": {
+        "IgnoreLibraryClass": [],
+        "IgnoreHeaderFile": []
+    },
+
+    ## options defined ci/Plugin/SpellCheck
+    "SpellCheck": {
+        "AuditOnly": False,           # Fails test but run in AuditOnly mode to collect log
+        "IgnoreFiles": [              # Ignore most spell checks on code originally from EDK2
+            "Library/BaseCpuLibSysCall/**/*.*",
+            "Library/BaseIoLibIntrinsicSysCall/**/*.*",
+            "Library/BaseLibSysCall/**/*.*",
+            "Core/Relocate/**/*.nasm",
+            "Drivers/MmPeiLaunchers/**/*.nasm",
+        ],
+        "IgnoreStandardPaths": [],    # Standard Plugin defined paths that should be ignore
+        "AdditionalIncludePaths": [], # Additional paths to spell check (wildcards supported)
+        "ExtendWords": [
+            "schedulability",
+            "schedulable",
+            "FWVOL",
+            "MSCHANGE",
+            "PDPTE",
+            "lfanew",
+            "BTINT",
+            "DEBUGCTLA",
+            "RDMSR",
+            "WRMSR",
+            "LSTAR",
+            "UNRECOVERED",
+            "WBINVD",
+            "RFLAG",
+            "Rebased",
+            "SHSTK",
+            "retfq",
+            "sysret",
+            "INCSSP",
+            "Befores",
+            "SMMREVID",
+            "IOMISC",
+            "IOMEMADDR",
+            "ACPITABLE",
+            "BASECORE",
+            "MMRAM",
+            "SAVESSP",
+            "RESTORESSP",
+            "CLEARSSBUSY",
+            "OBJCOPY",
+            "keepoptionalheader",
+            "pdata",
+            "SAFESEH",
+            "SAVESTATE",
+            "swapgs",
+            "codebases",
+            "Thunking",
+            "MTRRCAP",
+        ]
+    }
+}

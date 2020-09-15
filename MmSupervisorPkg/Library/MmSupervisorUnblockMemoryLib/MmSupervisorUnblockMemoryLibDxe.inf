@@ -1,0 +1,39 @@
+## @file
+# Instance of MM Unblock Page Library Implementation.
+#
+#  This library provides an abstraction layer of requesting certain page access to be unblocked
+#  by MM supervisor through MmSupervisorUnblockMemoryProtocol.
+#
+#  Copyright (c), Microsoft Corporation.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = MmSupervisorUnblockMemoryLibDxe
+  FILE_GUID                      = 22807895-5CA2-456D-9288-23433E9F06F5
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MmUnblockMemoryLib|DXE_DRIVER DXE_RUNTIME_DRIVER
+
+#
+#  VALID_ARCHITECTURES           = X64
+#
+
+[Sources]
+  MmSupervisorUnblockMemoryLibDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  DebugLib
+
+[Protocols]
+  gMmSupervisorUnblockMemoryProtocolGuid            ## CONSUMES
+
+[Depex]
+  gMmSupervisorUnblockMemoryProtocolGuid

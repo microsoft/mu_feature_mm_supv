@@ -1,0 +1,73 @@
+#/** @file
+#
+#  Standalone MM Ring 3 Broker driver for X64 Platforms
+#
+#  Copyright (c), Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#**/
+
+# This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fd7b8d037fd5ce572bb2a4444e5adb26 | 2022-05-05T17-50-16 | c4d0d1130454b3e5051bb601c707234e3a91713a
+# Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a6a02b861e6a50624bd8e9cf6eb01984 | 2022-05-20T19-26-48 | 1d76f25c33af475572ad8f4f5cc1460c4ab8c868
+# Non-Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a26023ade63eb3aabca910107656ab3a | 2022-05-20T19-16-17 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmSupervisorRing3Broker
+  FILE_GUID                      = BB3D60C4-210B-4076-B596-3DD298AFEA49
+  MODULE_TYPE                    = MM_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  ENTRY_POINT                    = MmSupervisorRing3BrokerEntry
+
+[Sources]
+  Handler/AsmStandaloneRing3JumpPointer.nasm
+  Handler/MmHandlerProfileBroker.c
+  Handler/MmHandlerProfileBroker.h
+  Mem/Mem.h
+  Mem/Pool.c
+  MmCpu/SyscallMmCpuRing3Broker.c
+  MmCpu/SyscallMmCpuRing3Broker.h
+  ServiceTable/SyscallMmstRing3Broker.c
+  UserHand/Handle.c
+  UserHand/Locate.c
+  UserHand/Notify.c
+  MmSupervisorRing3Broker.c
+  MmSupervisorRing3Broker.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  StandaloneMmDriverEntryPoint
+  SafeIntLib
+  MmMemoryProtectionHobLib
+
+[Protocols]
+  gEfiMmCpuProtocolGuid                   # PRODUCES
+  gMmRing3HandlerReadyProtocol            # PRODUCES
+
+  gEfiDxeMmReadyToLockProtocolGuid        # PRODUCES
+  gEfiMmReadyToLockProtocolGuid           # PRODUCES
+  gEfiMmEndOfDxeProtocolGuid              # PRODUCES
+
+[Guids]
+  gEfiEndOfDxeEventGroupGuid              # PRODUCES
+  gEfiEventExitBootServicesGuid
+  gEfiEventReadyToBootGuid
+  gSmiHandlerProfileGuid                  # PRODUCES
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask
+
+[Depex]
+  TRUE

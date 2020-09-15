@@ -1,0 +1,43 @@
+## @file
+#  Instance of CPU Library for various architecture.
+#
+#  CPU Library implemented using ASM functions for IA32, X64, ARM, AARCH64,
+#  PAL CALLs for IPF, and empty functions for EBC.
+#
+#  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+#  Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
+#  Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 1fea1e4684efa0b09e98b8e59f02588a | 2022-03-17T00-27-09 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BaseCpuLib
+  MODULE_UNI_FILE                = BaseCpuLib.uni
+  FILE_GUID                      = DF932F17-55C8-4648-942A-5A91E95B6902
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = CpuLib
+
+
+#
+#  VALID_ARCHITECTURES           = X64
+#
+
+[Sources.X64]
+  X64/CpuFlushTlb.nasm
+  X64/CpuSleep.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  SysCallLib

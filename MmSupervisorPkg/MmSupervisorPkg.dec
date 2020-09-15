@@ -1,0 +1,78 @@
+## @file
+# This package is a common package that provide MM core and user module/library
+# required by MM supervisor/user isolation model.
+#
+# Copyright (c) 2016-2018, ARM Ltd. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+
+[Defines]
+  DEC_SPECIFICATION              = 0x0001001A
+  PACKAGE_NAME                   = MmSupervisorPkg
+  PACKAGE_GUID                   = 2DCA2E5C-4696-4613-943F-DFE5F6941C34
+  PACKAGE_VERSION                = 1.0
+
+[Includes]
+  Include
+
+[Includes.Common.Private]
+  Private
+
+[LibraryClasses]
+  ## @libraryclass Provides the definition of syscall index and interface for invoking syscall operations
+  #
+  SysCallLib|Include/Library/SysCallLib.h
+  SmmPolicyGateLib|Include/Library/SmmPolicyGateLib.h
+  IhvSmmSaveStateSupervisionLib|Include/Library/IhvSmmSaveStateSupervisionLib.h
+
+[Guids]
+  gMmCommonRegionHobGuid                          = { 0xd4ffc718, 0xfb82, 0x4274, { 0x9a, 0xfc, 0xaa, 0x8b, 0x1e, 0xef, 0x52, 0x93 } }
+  gMmSupervisorCommunicationRegionTableGuid       = { 0xa07259e8, 0x6c1, 0x495e, { 0x99, 0x89, 0xdc, 0x69, 0x2d, 0x72, 0x2e, 0x65 } }
+  gMmSupervisorPkgTokenSpaceGuid                  = { 0xda46bbdf, 0xdae8, 0x4351, { 0xac, 0xc5, 0x4a, 0xfc, 0xfc, 0x8b, 0xc7, 0xee } }
+  gMmCoreMmProfileGuid                            = { 0xf34014c5, 0xbcec, 0x4f36, { 0xad, 0xa7, 0x49, 0xff, 0xf5, 0xdd, 0x17, 0x9f }}
+  gMmProtectedRegionHobGuid                       = { 0x6c0792ac, 0x13d7, 0x431b, { 0xa4, 0x89, 0x3, 0x2f, 0x4a, 0xf9, 0x73, 0x80 } }
+  gMmSupervisorPolicyFileGuid                     = { 0x81ff0793, 0x3e18, 0x489b, { 0x9a, 0x8, 0xa1, 0xeb, 0x71, 0xb2, 0x3d, 0x20 } }
+  gMmSupervisorDriverDispatchGuid                 = { 0x2e135da6, 0xade0, 0x4b96, { 0x9b, 0x40, 0xb2, 0xf3, 0x67, 0xe9, 0xf7, 0xf7 } }
+
+[Guids.common.Private]
+  gMmSupervisorRequestHandlerGuid                 = { 0x8c633b23, 0x1260, 0x4ea6, { 0x83, 0xf, 0x7d, 0xdc, 0x97, 0x38, 0x21, 0x11 } }
+  gMmUnblockRegionHobGuid                         = { 0x3def51c5, 0x228f, 0x481d, { 0x82, 0x1b, 0x32, 0xec, 0x4d, 0xf7, 0xd9, 0xc7 } }
+  gMmPagingAuditMmiHandlerGuid                    = { 0x59b149, 0x1117, 0x47dc, { 0x80, 0xbb, 0x11, 0x25, 0xe9, 0x8b, 0x41, 0x8c } }
+
+[Ppis]
+  gMmCommunicationBufferReadyPpiGuid              = { 0x36991c6c, 0xd139, 0x48a5, { 0x97, 0xc8, 0x58, 0xb8, 0x16, 0x7, 0x1c, 0x9f } }
+  gPeiMmSupervisorCommunicationPpiGuid            = { 0x610d9e7d, 0xfb2c, 0x4e67, { 0x93, 0xc1, 0x11, 0xa4, 0x6c, 0xdd, 0x5d, 0x7f } }
+
+[Protocols]
+  gMmSupervisorCommunicationProtocolGuid          = { 0x495b267c, 0xfc7f, 0x4f03, { 0xad, 0x1f, 0xd8, 0x67, 0x69, 0xe3, 0x25, 0xb5 } }
+  gMmScratchPageAllocationProtocolGuid            = { 0x3a5446ad, 0x2023, 0x45f9, { 0xad, 0xdf, 0xba, 0x48, 0xf3, 0xa6, 0xe2, 0xbc } }
+  gMmSupervisorUnblockMemoryProtocolGuid          = { 0x10b5eea9, 0xbe0d, 0x4f11, { 0x86, 0x36, 0x1c, 0xb7, 0xa, 0xa3, 0xba, 0x6d } }
+  gMmRing3HandlerReadyProtocol                    = { 0xd5920e08, 0x1cab, 0x4aad, { 0xb4, 0x7c, 0x8f, 0x83, 0x29, 0xb, 0x31, 0xcb }}
+
+[PcdsFeatureFlag]
+  ## Indicates if the core should initialize services to support test communication.<BR><BR>
+  ## Note: This feature should NEVER be enabled on production builds.<BR>
+  #   TRUE  - Supports test services for validation.<BR>
+  #   FALSE - Does not support test services.<BR>
+  # @Prompt Enable services for testing purpose.
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable|FALSE|BOOLEAN|0x00010001
+
+[PcdsFixedAtBuild]
+  ## Size of supervisor communication buffer in number of pages
+  gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages|16|UINT64|0x00000001
+
+  ## Size of user communication buffer in number of pages
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages|4|UINT64|0x00000002
+
+  ## FILE_GUID of MmIplPeiX64Relay module
+  #  This will be used by MmIplPei to look up driver location before switching to long mode.
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile|{ 0x61, 0xcb, 0x07, 0x29, 0xd4, 0xcd, 0x3c, 0x42, 0x85, 0x7a, 0x13, 0xa7, 0x9e, 0x24, 0x6a, 0x1d }|VOID*|0x00000005
+
+  ## The PCD is used to specify the stack size when MM IPL IA32 PEI transfers to long mode in PEI phase.
+  #  The default size is 32K. When changing the value of this PCD, the platform developer should
+  #  make sure the memory size is large enough to meet MM PEI requirement in MM foundation initialization path.
+  # @Prompt Stack size for MmIplPei transfer to long mode.
+  gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize|0x8000|UINT32|0x00000006

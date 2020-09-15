@@ -1,0 +1,114 @@
+## @file
+#  This module provide an SMM CIS compliant implementation of SMM IPL.
+#
+#  Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = PiSmmIpl
+  MODULE_UNI_FILE                = PiSmmIpl.uni
+  FILE_GUID                      = B09ACDC5-4655-46A5-B781-7A656C071266
+  MODULE_TYPE                    = DXE_RUNTIME_DRIVER
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = SmmIplEntry
+
+# Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 363e254ecb2e8334d7efdbe363172897 | 2022-05-13T05-08-11 | 1fe56ccdeb39aa2fb6b85a37f4fb3225f4fa2e2a
+# Non-Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-05-18T19-34-40 | 8b96b84846f46f16f96a44ac838c6a1c50f2d0b3
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  PiSmmIpl.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  BaseLib
+  BaseMemoryLib
+  PeCoffLib
+  CacheMaintenanceLib
+  MemoryAllocationLib
+  DebugLib
+  UefiBootServicesTableLib
+  DxeServicesTableLib
+  UefiLib
+  UefiRuntimeLib
+  DxeServicesLib
+  PcdLib
+  ReportStatusCodeLib
+  SafeIntLib  #MU_CHANGE: BZ3398
+  SecurityLockAuditLib  #MSCHANGE
+
+[Protocols]
+  gEfiSmmBase2ProtocolGuid                      ## PRODUCES
+  gEfiSmmCommunicationProtocolGuid              ## PRODUCES
+  gEfiMmCommunication2ProtocolGuid              ## PRODUCES
+  gEfiSmmAccess2ProtocolGuid                    ## CONSUMES
+  ## NOTIFY
+  ## CONSUMES
+  gEfiSmmConfigurationProtocolGuid
+  gEfiSmmControl2ProtocolGuid                   ## CONSUMES
+  ## NOTIFY
+  ## SOMETIMES_CONSUMES
+  ## UNDEFINED # Used to do smm communication
+  gEfiDxeSmmReadyToLockProtocolGuid
+  gEfiCpuArchProtocolGuid                       ## SOMETIMES_CONSUMES
+  gEfiSmmVariableProtocolGuid                   ## FAKE_PRODUCES TODO: This will be replaced by VariableMmDependency
+  gMmSupervisorCommunicationProtocolGuid        ## PRODUCES
+  gMmScratchPageAllocationProtocolGuid          ## PRODUCES
+
+[Guids]
+  ## CONSUMES           ## Event
+  ## PRODUCES           ## UNDEFINED # Used to do smm communication
+  gMmSupervisorDriverDispatchGuid
+  ## SOMETIMES_CONSUMES ## Event
+  ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
+  gEfiEventLegacyBootGuid
+  ## SOMETIMES_CONSUMES ## Event
+  ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
+  gEfiEventExitBootServicesGuid
+  ## SOMETIMES_CONSUMES ## Event
+  ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
+  gEfiEventReadyToBootGuid
+  gEfiEventVirtualAddressChangeGuid             ## CONSUMES             ## Event
+  gEfiEndOfDxeEventGroupGuid                    ## CONSUMES             ## Event
+  gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## SystemTable
+  gSmmVariableWriteGuid                         ## FAKE_PRODUCES TODO: This will be replaced by VariableMmDependency
+  gMmCoreDataHobGuid                            ## CONSUMES
+  gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
+  gMmSupervisorCommunicationRegionTableGuid     ## PRODUCES
+  gEdkiiPiSmmCommunicationRegionTableGuid       ## PRODUCES
+  gMmCommonRegionHobGuid                        ## PRODUCES
+  gMmSupervisorRequestHandlerGuid               ## CONSUMES
+
+[FeaturePcd]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable        ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
+
+[Depex]
+  gEfiSmmAccess2ProtocolGuid AND gEfiSmmControl2ProtocolGuid
+
+[UserExtensions.TianoCore."ExtraFiles"]
+  PiSmmIplExtra.uni

@@ -1,0 +1,14 @@
+
+#
+# This external dependency pulls MU_BASECORE for the Microsoft MM Supervisor feature package CI.
+# This should not be pulled when consuming this package as a dependency.
+#
+{
+  "scope": "feature-mm-supv-ci",
+  "type": "git",
+  "name": "MU_TIANO_PLUS",
+  "var_name": "MU_TIANO_PATH",
+  "source": "https://github.com/microsoft/mu_tiano_plus.git",
+  "version": "2c6559536e220ad796fb7588dcd896c2fb897adb", # release/202202
+  "flags": ["set_build_var"]
+}

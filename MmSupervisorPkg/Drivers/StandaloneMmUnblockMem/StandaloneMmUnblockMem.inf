@@ -1,0 +1,43 @@
+#/** @file
+#
+#  Standalone MM CPU driver for ARM Standard Platforms
+#
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#**/
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = StandaloneMmUnblockMem
+  FILE_GUID                      = E9BADBB6-0228-43FB-A367-5F3677CDC9E0
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = MmSupervisorUnblockMemProtocolInit
+
+[Sources]
+  StandaloneMmUnblockMem.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  HobLib
+  UefiDriverEntryPoint
+  PerformanceLib
+
+[Protocols]
+  gMmSupervisorUnblockMemoryProtocolGuid                 # PROTOCOL ALWAYS_PRODUCED
+  gMmSupervisorCommunicationProtocolGuid                 # CONSUMES
+  gEfiDxeSmmReadyToLockProtocolGuid                      # CONSUMES
+
+[Guids]
+  gMmSupervisorRequestHandlerGuid                        # CONSUMES
+
+[Depex]
+  TRUE

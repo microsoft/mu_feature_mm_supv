@@ -1,0 +1,42 @@
+## @file
+# Standalone MM Services Table Library.
+#
+# Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2018, Linaro, Ltd. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+#Override : 00000002 | MdePkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf | 39a3882c173b3129dab11bce2f000b47 | 2022-03-17T00-28-36 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = StandaloneMmServicesTableLib
+  MODULE_UNI_FILE                = StandaloneMmServicesTableLib.uni
+  FILE_GUID                      = 74E1E936-6286-4F24-AD66-19BD385B21AD
+  MODULE_TYPE                    = MM_STANDALONE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MmServicesTableLib|MM_STANDALONE
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  CONSTRUCTOR                    = StandaloneMmServicesTableLibConstructor
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 ARM AARCH64
+#
+
+[Sources]
+  StandaloneMmServicesTableLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  DebugLib
+
+
+[Depex]
+  gMmRing3HandlerReadyProtocol

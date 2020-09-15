@@ -1,0 +1,33 @@
+## @file
+#  Provides SMM policy verification.
+#
+#  Copyright (C) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = SmmPolicyGateLib
+  FILE_GUID                      = AA8E77C6-E0D8-4FCD-B5CA-BD48C9FC7AC0
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 0.1
+  LIBRARY_CLASS                  = SmmPolicyGateLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  SmmPolicyGateLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  DebugLib
+
+[BuildOptions]
+#  DEBUG_*_*_CC_FLAGS  = /FAcs

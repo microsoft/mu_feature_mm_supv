@@ -1,0 +1,130 @@
+<!-- File:        SmmIsolationPoliciesProduction.xml      -->
+<!--                                                      -->
+<!-- Description: SMM Policy file for RAM, IO and MSRs.   -->
+<!--                                                      -->
+<!-- Copyright (C) Microsoft Corporation.                 -->
+<!--                                                      -->
+<!-- SPDX-License-Identifier: BSD-2-Clause-Patent         -->
+<!--                                                      -->
+<SmmIslolationPolicy>
+  <SmmCategory name="IO">
+    <!-- All IO policy entries listed here are denied -->
+    <PolicyAccessAttribute Value="Deny"/>
+    <!-- IO Policies required for level 30 start -->
+    <PolicyEntry>
+        <!-- PCI IO configuration port -->
+        <StartAddress Value="0xCF8" /> <Size Value="0x4" /> <SecurityAttributes Value="Write | StrictWidth" />
+    </PolicyEntry>
+    <PolicyEntry>
+        <!-- PCI IO configuration port -->
+        <StartAddress Value="0xCFC" /> <Size Value="0x4" /> <SecurityAttributes Value="Write" />
+    </PolicyEntry>
+    <!-- IO Policies required for level 30 end -->
+  </SmmCategory>
+
+  <SmmCategory name="MSR">
+    <!-- All MSR policy entries listed here are denied -->
+    <PolicyAccessAttribute Value="Deny"/>
+    <!-- MSR Policies required for level 20 start -->
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 3.1.7, Extended Feature Enable. -->
+      <StartAddress Value="0xC0000080"/><Size Value="0x1"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 6.1.1, SYSCALL Target Address.  No R/W from user mode -->
+      <!-- 0xC0000081 - 0xC0000084 -->
+      <StartAddress Value="0xC0000081"/><Size Value="0x4"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 3.2.1, SYSCFG System Configuration Register -->
+      <StartAddress Value="0xC0010010"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 10.2.2, SMBASE Register MSR_SMBASE -->
+      <StartAddress Value="0xC0010111"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 13.1.1.6, Debug Control DBG_CTL_MSR -->
+      <StartAddress Value="0x000001D9"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 13.2.8, MSR_XSS -->
+      <StartAddress Value="0x00000DA0"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 6.7, MSR_U_CET -->
+      <StartAddress Value="0x000006A0"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+     <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 6.7, MSR_S_CET -->
+      <StartAddress Value="0x000006A2"/> <Size Value="0x1"/> <SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <PolicyEntry>
+      <!-- Please refer to 24593_3.36.pdf, section 6.7, MSR_PL0_SSP - MSR_PL3_SSP, MSR_IST_SSP_ADDR -->
+      <StartAddress Value="0x000006A4"/> <Size Value="0x5"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <!-- MSR Policies required for level 20 end -->
+    <!-- MSR Policies required for level 30 start -->
+    <PolicyEntry>
+      <!-- MSRC001_1010 (Core::X86::Msr::BT_CTL) -->
+      <StartAddress Value="0xC0011010"/> <Size Value="0x1"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <PolicyEntry>
+      <!-- MSRC001_1024 (Core::X86::Msr::DBG_CTL_MSR2) -->
+      <StartAddress Value="0xC0011024"/> <Size Value="0x1"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <PolicyEntry>
+      <!-- MSRC001_1018 (Core::X86::Msr::EXCP_BP_CTL) -->
+      <StartAddress Value="0xC0011018"/> <Size Value="0x1"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+    <!-- MSR Policies required for level 30 end -->
+    <PolicyEntry>
+      <!-- MSRC000_0101 (Core::X86::Msr::GS_BASE, KERNEL_GS_BASE) -->
+      <StartAddress Value="0xC0000101"/> <Size Value="0x2"/><SecurityAttributes Value="Read | Write | Execute" />
+    </PolicyEntry>
+  </SmmCategory>
+
+  <SmmCategory name="INSTRUCTION">
+    <!-- All Instruction policy entries listed here are allowed -->
+    <PolicyAccessAttribute Value="Allow"/>
+    <!-- Whitelist for allowed privileged instructions -->
+    <PolicyEntry>
+        <!-- Allow Disable Interrupts -->
+        <Instruction Value="CLI" /> <SecurityAttributes Value="Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+        <!-- Allow Write Back Invalidate -->
+        <Instruction Value="WBINVD" /> <SecurityAttributes Value="Execute" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+        <!-- Allow CPU Halt -->
+        <Instruction Value="HLT" /> <SecurityAttributes Value="Execute" />
+    </PolicyEntry>
+
+  </SmmCategory>
+
+  <SmmCategory name="SAVESTATE">
+    <!-- All save state policy entries listed here are allowed -->
+    <PolicyAccessAttribute Value="Allow"/>
+    <!-- Save state policies required for level 30s start -->
+    <PolicyEntry>
+        <!-- Allow read of RAX on a trapped IO port write -->
+        <SaveStateField Value="RAX" /> <SecurityAttributes Value="LimitedRead" /> <AccessCondition Value="IoWrite" />
+    </PolicyEntry>
+
+    <PolicyEntry>
+        <!-- Allow Read for IO_TRAP -->
+        <SaveStateField Value="IO_TRAP" /> <SecurityAttributes Value="Read" />
+    </PolicyEntry>
+    <!-- Note: Write of RAX is excluded as no existing platform requires it -->
+    <!-- Save state policies required for level 30s end -->
+  </SmmCategory>
+
+</SmmIslolationPolicy>

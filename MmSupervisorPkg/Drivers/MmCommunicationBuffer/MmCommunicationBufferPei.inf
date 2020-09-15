@@ -1,0 +1,53 @@
+## @file
+# A PEI module that initializes common MM communication buffer.
+#
+# Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
+# Copyright (c), Microsoft Corporation.  
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MmCommunicationBufferPei
+  FILE_GUID                      = A7290DBE-F769-40F2-8CC0-D4A6B37E8126
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = MmCommunicationBufferPeiEntry
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  MmCommunicationBufferPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  MemoryAllocationLib
+  DebugLib
+  HobLib
+  BaseMemoryLib
+  PeiServicesLib
+  PcdLib
+
+[Guids]
+  gMmCommonRegionHobGuid                        ## PRODUCES
+
+[Ppis]
+  gMmCommunicationBufferReadyPpiGuid            ## PRODUCES
+
+[Pcd]
+  gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages           ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages                 ## CONSUMES
+
+[Depex]
+  gEfiPeiMemoryDiscoveredPpiGuid

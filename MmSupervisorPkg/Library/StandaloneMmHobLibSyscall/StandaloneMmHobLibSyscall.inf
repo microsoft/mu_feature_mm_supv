@@ -1,0 +1,43 @@
+## @file
+# Instance of HOB Library for Standalone MM modules.
+#
+# Copyright (c) 2007 - 2014, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
+# Copyright (c) 2018, Linaro, Ltd. All rights reserved.<BR>
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+#Override : 00000002 | StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf | b16e123ca45bbc1d822a6e309462e884 | 2022-03-17T22-26-57 | b72ceb6c238b31902ff18e9b64c1506869862ff6
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = HobLib
+  FILE_GUID                      = AD713708-527D-4841-A6AF-943E0C978129
+  MODULE_TYPE                    = MM_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  LIBRARY_CLASS                  = HobLib|MM_STANDALONE
+  CONSTRUCTOR                    = HobLibConstructor
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 ARM AARCH64
+#
+
+[Sources]
+  StandaloneMmHobLibSyscall.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  SysCallLib
+
+[Guids]
+  gEfiHobListGuid                               ## CONSUMES  ## SystemTable
+  gEfiHobMemoryAllocModuleGuid                  ## CONSUMES

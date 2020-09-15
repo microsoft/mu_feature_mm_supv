@@ -1,0 +1,31 @@
+##
+#  Instance of Standalone MM SaveState supervision layer. This library provides
+#  supervision over SMM SaveState access
+#
+#  Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = IhvSmmSaveStateSupervisionLib
+  FILE_GUID                      = F6D71AC3-D907-45F8-9208-52EC725083DC
+  MODULE_TYPE                    = MM_CORE_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  LIBRARY_CLASS                  = IhvSmmSaveStateSupervisionLib
+
+[Sources]
+  IhvMmSaveStateSupervisionLib.c
+  IhvMmSaveStateSupervisionCoreSvcs.h
+
+[LibraryClasses]
+  DebugLib
+  BaseMemoryLib
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec

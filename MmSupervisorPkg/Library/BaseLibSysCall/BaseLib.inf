@@ -1,0 +1,210 @@
+## @file
+#  Base Library implementation.
+#
+#  Copyright (c) 2007 - 2021, Intel Corporation. All rights reserved.<BR>
+#  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+#  Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
+#  Copyright (c) 2020 - 2021, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+#Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | 910f14e67ca4202234a8c2b562fb0e67 | 2022-03-26T07-06-37 | 42bc9a3f2f7e2ec18d948888353c44138cc6e834
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BaseLib
+  MODULE_UNI_FILE                = BaseLib.uni
+  FILE_GUID                      = C15B2ECF-6498-4AB0-AF9F-5C49B1FE3B73
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.1
+  LIBRARY_CLASS                  = BaseLib
+
+#
+#  VALID_ARCHITECTURES           = X64
+#
+
+[Sources]
+  CheckSum.c
+  SwitchStack.c
+  SwapBytes64.c
+  SwapBytes32.c
+  SwapBytes16.c
+  LongJump.c
+  SetJump.c
+  QuickSort.c
+  RShiftU64.c
+  RRotU64.c
+  RRotU32.c
+  MultU64x64.c
+  MultU64x32.c
+  MultS64x64.c
+  ModU64x32.c
+  LShiftU64.c
+  LRotU64.c
+  LRotU32.c
+  LowBitSet64.c
+  LowBitSet32.c
+  HighBitSet64.c
+  HighBitSet32.c
+  GetPowerOfTwo64.c
+  GetPowerOfTwo32.c
+  DivU64x64Remainder.c
+  DivU64x32Remainder.c
+  DivU64x32.c
+  DivS64x64Remainder.c
+  ARShiftU64.c
+  BitField.c
+  CpuDeadLoop.c
+  Cpu.c
+  LinkedList.c
+  SafeString.c
+  String.c
+  FilePaths.c
+  BaseLibInternals.h
+
+[Sources.X64]
+  X64/Thunk16.nasm
+  X64/CpuIdEx.nasm
+  X64/CpuId.nasm
+  X64/LongJump.nasm
+  X64/SetJump.nasm
+  X64/SwitchStack.nasm
+  X64/EnableCache.nasm
+  X64/DisableCache.nasm
+  X64/WriteTr.nasm
+  X64/Lfence.nasm
+  CpuBreakAssert.nasm
+
+  X64/CpuBreakpoint.c | MSFT
+  X64/WriteMsr64.c | MSFT
+  X64/ReadMsr64.c | MSFT
+  X64/CpuPause.nasm| MSFT
+  X64/DisableInterrupts.c| MSFT
+  X64/EnableInterrupts.nasm| MSFT
+  X64/FlushCacheLine.nasm| MSFT
+  X64/Invd.nasm| MSFT
+  X64/Wbinvd.c| MSFT
+  X64/Mwait.nasm| MSFT
+  X64/Monitor.nasm| MSFT
+  X64/ReadPmc.nasm| MSFT
+  X64/ReadTsc.nasm| MSFT
+  X64/WriteMm7.nasm| MSFT
+  X64/WriteMm6.nasm| MSFT
+  X64/WriteMm5.nasm| MSFT
+  X64/WriteMm4.nasm| MSFT
+  X64/WriteMm3.nasm| MSFT
+  X64/WriteMm2.nasm| MSFT
+  X64/WriteMm1.nasm| MSFT
+  X64/WriteMm0.nasm| MSFT
+  X64/ReadMm7.nasm| MSFT
+  X64/ReadMm6.nasm| MSFT
+  X64/ReadMm5.nasm| MSFT
+  X64/ReadMm4.nasm| MSFT
+  X64/ReadMm3.nasm| MSFT
+  X64/ReadMm2.nasm| MSFT
+  X64/ReadMm1.nasm| MSFT
+  X64/ReadMm0.nasm| MSFT
+  X64/FxRestore.nasm| MSFT
+  X64/FxSave.nasm| MSFT
+  X64/WriteLdtr.nasm| MSFT
+  X64/ReadLdtr.nasm| MSFT
+  X64/WriteIdtr.nasm| MSFT
+  X64/ReadIdtr.nasm| MSFT
+  X64/WriteGdtr.nasm| MSFT
+  X64/ReadGdtr.nasm| MSFT
+  X64/ReadTr.nasm| MSFT
+  X64/ReadSs.nasm| MSFT
+  X64/ReadGs.nasm| MSFT
+  X64/ReadFs.nasm| MSFT
+  X64/ReadEs.nasm| MSFT
+  X64/ReadDs.nasm| MSFT
+  X64/ReadCs.nasm| MSFT
+  X64/WriteDr7.nasm| MSFT
+  X64/WriteDr6.nasm| MSFT
+  X64/WriteDr5.nasm| MSFT
+  X64/WriteDr4.nasm| MSFT
+  X64/WriteDr3.nasm| MSFT
+  X64/WriteDr2.nasm| MSFT
+  X64/WriteDr1.nasm| MSFT
+  X64/WriteDr0.nasm| MSFT
+  X64/ReadDr7.nasm| MSFT
+  X64/ReadDr6.nasm| MSFT
+  X64/ReadDr5.nasm| MSFT
+  X64/ReadDr4.nasm| MSFT
+  X64/ReadDr3.nasm| MSFT
+  X64/ReadDr2.nasm| MSFT
+  X64/ReadDr1.nasm| MSFT
+  X64/ReadDr0.nasm| MSFT
+  X64/WriteCr4.nasm| MSFT
+  X64/WriteCr3.nasm| MSFT
+  X64/WriteCr2.nasm| MSFT
+  X64/WriteCr0.nasm| MSFT
+  X64/ReadCr4.nasm| MSFT
+  X64/ReadCr3.nasm| MSFT
+  X64/ReadCr2.nasm| MSFT
+  X64/ReadCr0.nasm| MSFT
+  X64/ReadEflags.nasm| MSFT
+
+
+  X64/Non-existing.c
+  Math64.c
+  Unaligned.c
+  X86WriteIdtr.c
+  X86WriteGdtr.c
+  X86Thunk.c
+  X86ReadIdtr.c
+  X86ReadGdtr.c
+  X86Msr.c
+  X86MemoryFence.c | MSFT
+  X86GetInterruptState.c
+  X86FxSave.c
+  X86FxRestore.c
+  X86EnablePaging64.c
+  X86EnablePaging32.c
+  X86DisablePaging64.c
+  X86DisablePaging32.c
+  X86RdRand.c
+  X86PatchInstruction.c
+  X86SpeculationBarrier.c
+  X64/GccInline.c | GCC
+  X64/GccInlinePriv.c | GCC
+  X64/EnableDisableInterrupts.nasm
+  X64/DisablePaging64.nasm
+  X64/Pvalidate.nasm
+  X64/RdRand.nasm
+  X64/RmpAdjust.nasm
+  X64/XGetBv.nasm
+  X64/XSetBv.nasm
+  X64/VmgExit.nasm
+  ChkStkGcc.c  | GCC
+
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  PcdLib
+  DebugLib
+  BaseMemoryLib
+  SysCallLib
+
+[LibraryClasses.X64]
+  RegisterFilterLib
+
+[Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdMaximumLinkedListLength      ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdMaximumAsciiStringLength     ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdMaximumUnicodeStringLength   ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdControlFlowEnforcementPropertyMask   ## SOMETIMES_CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdSpeculationBarrierType       ## SOMETIMES_CONSUMES
+
+[FeaturePcd]
+  gEfiMdePkgTokenSpaceGuid.PcdVerifyNodeInList  ## CONSUMES
+
+[BuildOptions]
+#  DEBUG_*_*_CC_FLAGS  = /FAcs

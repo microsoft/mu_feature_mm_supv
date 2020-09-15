@@ -1,0 +1,97 @@
+## @file
+#  This module provide an MM CIS compliant implementation of MM IPL in PEI.
+#
+#  Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MmIplPei
+  FILE_GUID                      = E6D1F588-F107-41DE-9832-CEA334B33C1F
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = MmIplPeiEntry
+
+# Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 363e254ecb2e8334d7efdbe363172897 | 2022-05-13T05-08-11 | 1fe56ccdeb39aa2fb6b85a37f4fb3225f4fa2e2a
+# Non-Secure:
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-05-18T19-34-40 | 8b96b84846f46f16f96a44ac838c6a1c50f2d0b3
+
+#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | e7e3c4b486d8a74981a9d7ee313f942a | 2022-03-17T00-31-33 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  MmIplPei.c
+  Common/MmIplCommon.c
+  Common/MmIplCommon.h
+  Common/CommonHeader.h
+
+[Sources.IA32]
+  IA32/X64Loader.c
+  IA32/X64Loader.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  BaseLib
+  BaseMemoryLib
+  PeCoffLib
+  CacheMaintenanceLib
+  MemoryAllocationLib
+  DebugLib
+  PcdLib
+  ReportStatusCodeLib
+  SafeIntLib  #MU_CHANGE: BZ3398
+  SecurityLockAuditLib  #MSCHANGE
+  PeCoffGetEntryPointLib
+  MtrrLib  #MU_CHANGE: MM_SUPV: MMRAM region cachability during init
+  PerformanceLib  #MU_CHANGE: MM_SUPV: Added performance data points
+
+[Ppis]
+  gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
+  gEfiPeiMmAccessPpiGuid                        ## CONSUMES
+  gEfiPeiMmControlPpiGuid                       ## CONSUMES
+  gPeiMmSupervisorCommunicationPpiGuid          ## PRODUCES
+  gEfiPeiLoadFilePpiGuid                        ## CONSUMES
+  gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
+  gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
+
+[Guids]
+  # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
+  gMmCoreDataHobGuid                            ## CONSUMES
+  gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
+  gMmCommonRegionHobGuid                        ## PRODUCES
+  gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
+  gMmSupervisorRequestHandlerGuid               ## CONSUMES
+
+[FeaturePcd]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
+
+[Pcd]
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable        ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode              ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdUse1GPageTable                      ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPteMemoryEncryptionAddressOrMask    ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile                   ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize          ## CONSUMES
+
+[Depex]
+  gEfiPeiMmAccessPpiGuid AND gEfiPeiMmControlPpiGuid AND gMmCommunicationBufferReadyPpiGuid

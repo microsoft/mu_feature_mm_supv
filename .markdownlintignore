@@ -1,0 +1,9 @@
+# Ignore build directory
+/Build/
+
+# Ignore external dependencies
+*_extdep/
+
+# Ignore cloned dependencies
+/MU_BASECORE
+/Common/MU

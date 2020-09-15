@@ -1,0 +1,42 @@
+## @file
+# Instance of MM Unblock Page Library Implementation.
+#
+#  This library provides an abstraction layer of requesting certain page access to be unblocked
+#  by MM supervisor through MmSupervisorUnblockMemoryProtocol.
+#
+#  Copyright (c), Microsoft Corporation.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = MmSupervisorUnblockMemoryLibPei
+  FILE_GUID                      = EC8C4168-A5C4-40B4-AFB6-FF3062D6DB52
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MmUnblockMemoryLib|PEI_CORE PEIM SEC
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  MmSupervisorUnblockMemoryLibPei.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  HobLib
+  DebugLib
+  BaseMemoryLib
+  PeiServicesLib
+
+[Ppis]
+  gPeiMmSupervisorCommunicationPpiGuid
+
+[Guids]
+  gMmUnblockRegionHobGuid             ## CONSUMES

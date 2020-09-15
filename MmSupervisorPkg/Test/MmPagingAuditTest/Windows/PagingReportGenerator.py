@@ -1,0 +1,309 @@
+# Collects files from UEFI app, parses them, and generates a HTML report
+#
+# Copyright (C) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+import logging
+import operator
+import glob
+import json
+import datetime
+import os
+import sys
+import argparse
+from typing import Type
+
+#Add script dir to path for import
+sp = os.path.dirname(os.path.realpath(sys.argv[0]))
+sys.path.append(sp)
+
+from MemoryRangeObjects import *
+from BinaryParsing import *
+
+
+VERSION = "0.91"
+
+
+class ParsingTool(object):
+
+    def __init__(self, DatFolderPath, PlatformName, PlatformVersion):
+        self.Logger = logging.getLogger("ParsingTool")
+        self.MemoryAttributesTable = []
+        self.MemoryRangeInfo = []
+        self.PageDirectoryInfo = []
+        self.LoadedImageInfo = []
+        self.DatFolderPath = DatFolderPath
+        self.ErrorMsg = []
+        self.PlatformName = PlatformName
+        self.PlatformVersion = PlatformVersion
+        self.AddressBits = 0
+
+    def Parse(self):
+        #Get Info Files
+        InfoFileList =  glob.glob(os.path.join(self.DatFolderPath, "*MemoryInfo*.dat"))
+        Pte1gbFileList =  glob.glob(os.path.join(self.DatFolderPath, "*1G*.dat"))
+        Pte2mbFileList =  glob.glob(os.path.join(self.DatFolderPath, "*2M*.dat"))
+        Pte4kbFileList =  glob.glob(os.path.join(self.DatFolderPath, "*4K*.dat"))
+        MatFileList =  glob.glob(os.path.join(self.DatFolderPath, "*MAT*.dat"))
+        GuardPageFileList =  glob.glob(os.path.join(self.DatFolderPath, "*GuardPage*.dat"))
+
+        logging.debug("Found %d Info Files" % len(InfoFileList))
+        logging.debug("Found %d 1gb Page Files" % len(Pte1gbFileList))
+        logging.debug("Found %d 2mb Page Files" % len(Pte2mbFileList))
+        logging.debug("Found %d 4kb Page Files" % len(Pte4kbFileList))
+        logging.debug("Found %d MAT Files" % len(MatFileList))
+        logging.debug("Found %d GuardPage Files" % len(GuardPageFileList))
+
+
+        # Parse each file, keeping PTEs and "Memory Ranges" separate
+        # Memory ranges are either "memory descriptions" for memory map types and TSEG
+        # or "memory contents" for loaded image information or IDT/GDT
+        for info in InfoFileList:
+            self.MemoryRangeInfo.extend(ParseInfoFile(info))
+
+        # Figure out max bitwidth supported
+        for mr in self.MemoryRangeInfo:
+            if mr.AddressBitwidth is not None:
+                if self.AddressBits == 0:
+                    self.AddressBits = (1 << mr.AddressBitwidth) - 1
+                    self.MemoryRangeInfo.remove(mr)
+                elif self.AddressBits != (1 << mr.AddressBitwidth) - 1:
+                    self.ErrorMsg.append("Bitwidth discrepancy, %d and %d.  Should not proceed with mixed bitwidth files in the same folder", self.AddressBits, (1 << mr.AddressBitwidth) - 1)
+                    logging.error("Bitwidth discrepancy, %d and %d.  Should not proceed with mixed bitwidth files in the same folder", self.AddressBits, (1 << mr.AddressBitwidth) - 1)
+                else:
+                    self.MemoryRangeInfo.remove(mr)
+
+            # Also collect a list of loaded images for this interation
+            if mr.OwnerGuid is not None and mr.ImageName.endswith ('.pdb'):
+                self.LoadedImageInfo.append (mr)
+
+        if self.AddressBits == 0:
+            self.ErrorMsg.append("Did not find bitwidth from memory information file. Assuming 39 here and the results may not be accurate")
+            self.AddressBits = (1 << 39) - 1
+
+        for pte1g in Pte1gbFileList:
+            self.PageDirectoryInfo.extend(Parse1gPages(pte1g, self.AddressBits))
+
+        for pte2m in Pte2mbFileList:
+            self.PageDirectoryInfo.extend(Parse2mPages(pte2m, self.AddressBits))
+
+        for pte4k in Pte4kbFileList:
+            self.PageDirectoryInfo.extend(Parse4kPages(pte4k, self.AddressBits))
+
+        for guardpage in GuardPageFileList:
+            self.PageDirectoryInfo.extend(ParseInfoFile(guardpage))
+
+        for mat in MatFileList:
+            self.MemoryAttributesTable.extend(ParseInfoFile(mat))
+
+        if len(self.PageDirectoryInfo) == 0:
+            self.ErrorMsg.append("No Memory Range info found in PTE files")
+        else:
+            # Sort in descending order
+            self.PageDirectoryInfo.sort(key=operator.attrgetter('PhysicalStart'))
+            #check for Page Table Overlap - this is an error
+            index =0
+            maxindex = len(self.PageDirectoryInfo) -1
+            while index < maxindex:  #this will allow all comparisions to work
+                if(self.PageDirectoryInfo[index].overlap(self.PageDirectoryInfo[index+1])):
+                    self.ErrorMsg.append("Page Table Entry Overlap.  Index %d Overlapping %d at StartAddress 0x%X" %
+                    (index, index+1, self.PageDirectoryInfo[index].PhysicalStart))
+                    logging.error("PTE overlap index %d and %d.  Base Address = 0x%x", index, index+1, self.PageDirectoryInfo[index].PhysicalStart)
+                index += 1
+
+        if len(self.MemoryRangeInfo) == 0:
+            self.ErrorMsg.append("No Memory Range info found in Info files")
+
+        # Matching memory ranges up to page table entries
+        # use index based iteration so that page splitting
+        # is supported.
+        index = 0
+        while index < len(self.PageDirectoryInfo):
+            pte = self.PageDirectoryInfo[index]
+            for mr in self.MemoryRangeInfo:
+                if pte.overlap(mr):
+                    if mr.MemoryType is not None:
+                        if (pte.PhysicalStart < mr.PhysicalStart):
+                            next = pte.split(mr.PhysicalStart-1)
+                            self.PageDirectoryInfo.insert(index+1, next)
+                            #decrement the index so that we process this partial PTE again
+                            # since we are breaking from the MemoryRange Loop
+                            index -= 1
+                            break
+
+                        if (pte.PhysicalEnd > mr.PhysicalEnd):
+                            next = pte.split(mr.PhysicalEnd)
+                            self.PageDirectoryInfo.insert(index +1, next)
+
+                        if pte.MemoryType is None:
+                            pte.MemoryType = mr.MemoryType
+                        else:
+                            logging.error("Multiple memory types found for one region " + pte.pteDebugStr() +" " + mr.MemoryRangeToString())
+                            self.ErrorMsg.append("Multiple memory types found for one region.  Base: 0x%X.  EFI Memory Type: %d and %d"% (pte.PhysicalStart, pte.MemoryType,mr.MemoryType))
+
+                    if mr.ImageName is not None:
+                        if pte.ImageName is None:
+                            pte.ImageName = mr.ImageName
+                            pte.OwnerGuid = mr.OwnerGuid
+                        elif mr.ImageName == "UnblockedRegion":
+                            pte.ImageName = mr.ImageName + ' in ' + pte.ImageName
+                        elif pte.ImageName.startswith("UnblockedRegion"):
+                            pte.ImageName = pte.ImageName + ' for ' + mr.ImageName
+                        else:
+                            self.ErrorMsg.append("Multiple memory contents found for one region.  Base: 0x%X.  Memory Contents: %s and %s" % (pte.PhysicalStart, pte.ImageName, mr.ImageName ))
+                            logging.error("Multiple memory contents found for one region " +pte.pteDebugStr() + " " +  mr.LoadedImageEntryToString())
+
+                    if mr.SystemMemoryType is not None:
+                        if pte.SystemMemoryType is None:
+                            pte.SystemMemoryType = mr.SystemMemoryType
+                        elif pte.GetSystemMemoryType () == "GuardPage" and \
+                          mr.GetSystemMemoryType () == "TSEG":
+                            # It is legit for GuardPage to be in TSEG, as long as this is SMM mode
+                            logging.info("Do nothing")
+                        else:
+                            self.ErrorMsg.append("Multiple System Memory types found for one region.  Base: 0x%X.  EFI Memory Type: %s and %s."% (pte.PhysicalStart,pte.SystemMemoryType, mr.SystemMemoryType))
+                            logging.error("Multiple system memory types found for one region " +pte.pteDebugStr() + " " +  mr.LoadedImageEntryToString())
+
+            if pte.ImageName is not None and pte.ImageName.startswith ("UnblockedRegion"):
+                pte.ImageName = pte.ImageName + ' by ' + self.LookUpLoadedImages (pte)
+
+            for MatEntry in self.MemoryAttributesTable:
+                if pte.overlap(MatEntry):
+                    pte.Attribute = MatEntry.Attribute
+            index += 1
+
+        # Combining adjacent PTEs that have the same attributes.
+        index = 0
+        while index < (len(self.PageDirectoryInfo) - 1):
+            currentPte = self.PageDirectoryInfo[index]
+            nextPte = self.PageDirectoryInfo[index + 1]
+            if currentPte.sameAttributes(nextPte):
+                currentPte.grow(nextPte)
+                del self.PageDirectoryInfo[index + 1]
+            else:
+                index += 1
+
+        return 0
+
+    def LookUpLoadedImages(self, pte):
+        for image in self.LoadedImageInfo:
+            if pte.OwnerGuid == image.OwnerGuid:
+                return image.ImageName
+        # Fall back to OwnerGuid if no loaded image corelated
+        return pte.OwnerGuid
+
+    def AddErrorMsg(self, msg):
+        self.ErrorMsg.append(msg)
+
+    def OutputHtmlReport(self, ToolVersion, OutputFilePath):
+        # Create the dictionary to produce a JSON string.
+        json_dict = {
+            'ToolVersion': ToolVersion,
+            'PlatformVersion': self.PlatformVersion,
+            'PlatformName': self.PlatformName,
+            'DateCollected': datetime.datetime.strftime(datetime.datetime.now(), "%A, %B %d, %Y %I:%M%p" ),
+        }
+
+        # Process all of the Page Infos and add them to the JSON.
+        pde_infos = []
+        for pde in self.PageDirectoryInfo:
+            info_dict = pde.toDictionary()
+            # Check for errors.
+            if info_dict['Section Type'] == "ERROR":
+                self.AddErrorMsg("Page Descriptor at %s has an error parsing the Section Type." % info_dict['Start'])
+            pde_infos.append(info_dict)
+        json_dict['MemoryRanges'] = pde_infos
+
+        # Finally, add any errors and produce the JSON string.
+        json_dict['errors'] = self.ErrorMsg
+        js = json.dumps(json_dict)
+
+        #
+        # Open template and replace placeholder with json
+        #
+        f = open(OutputFilePath, "w")
+        template = open(os.path.join(sp, "SmmPaging_template.html"), "r")
+
+        for line in template.readlines():
+            if "%TO_BE_FILLED_IN_BY_PYTHON_SCRIPT%" in line:
+                line = line.replace("%TO_BE_FILLED_IN_BY_PYTHON_SCRIPT%", js)
+            f.write(line)
+        template.close()
+        f.close()
+        return 0
+
+#
+# Parse and Validate Args.  Then run the tool
+#
+def main():
+
+    parser = argparse.ArgumentParser(description='Parse Paging information and generate HTML report')
+    parser.add_argument('-i', "--InputFolderPath", dest="InputFolder", help="Path to folder containing the DAT files from the UEFI shell tool (default is CWD)", default=os.getcwd())
+    parser.add_argument('-o', "--OutputReport", dest="OutputReport", help="Path to output html report (default is report.html)", default=os.path.join(os.getcwd(), "report.html"))
+    parser.add_argument('-p', "--PlatformName", dest="PlatformName", help="Name of Platform.  Will show up on report", default="Test Platform")
+    parser.add_argument("--PlatformVersion", dest="PlatformVersion", help="Version of Platform.  Will show up report", default="1.0.0")
+
+    #Turn on dubug level logging
+    parser.add_argument("--debug", action="store_true", dest="debug", help="turn on debug logging level for file log",  default=False)
+    #Output debug log
+    parser.add_argument("-l", dest="OutputLog", help="Create an output log file: ie -l out.txt", default=None)
+
+    options = parser.parse_args()
+
+    #setup file based logging if outputReport specified
+    if(options.OutputLog):
+        if(len(options.OutputLog) < 2):
+            logging.critical("the output log file parameter is invalid")
+            return -2
+        else:
+            #setup file based logging
+            filelogger = logging.FileHandler(filename=options.OutputLog, mode='w')
+            if(options.debug):
+                filelogger.setLevel(logging.DEBUG)
+            else:
+                filelogger.setLevel(logging.INFO)
+
+            filelogger.setFormatter(formatter)
+            logging.getLogger('').addHandler(filelogger)
+
+    logging.info("Log Started: " + datetime.datetime.strftime(datetime.datetime.now(), "%A, %B %d, %Y %I:%M%p" ))
+
+    #Do parameter validation
+    if(options.InputFolder is None or not os.path.isdir(options.InputFolder)):
+        logging.critical("Invalid Input Folder Path to folder containing DAT files")
+        return -5
+
+    if(options.OutputReport is None):
+        logging.critical("No OutputReport Path")
+        return -6
+
+    logging.debug("Input Folder Path is: %s" % options.InputFolder)
+    logging.debug("Output Report is: %s" % options.OutputReport)
+
+    spt = ParsingTool(options.InputFolder, options.PlatformName, options.PlatformVersion)
+    spt.Parse()
+    return spt.OutputHtmlReport(VERSION, options.OutputReport)
+
+#--------------------------------
+# Control starts here
+#
+#--------------------------------
+if __name__ == '__main__':
+    #setup main console as logger
+    logger = logging.getLogger('')
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    console = logging.StreamHandler()
+    console.setLevel(logging.CRITICAL)
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+
+    #call main worker function
+    retcode = main()
+
+    if retcode != 0:
+        logging.critical("Failed.  Return Code: %i" % retcode)
+    #end logging
+    logging.shutdown()
+    sys.exit(retcode)
