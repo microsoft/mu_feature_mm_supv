@@ -176,6 +176,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable   ## CONSUMES
 
 [FixedPcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
@@ -195,6 +196,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionRebootInsteadOfHaltDefault   ## CONSUMES ## MS_CHANGE
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmMpTokenCountPerChunk               ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize       ## CONSUMES
 
 [FixedPcd.X64]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES

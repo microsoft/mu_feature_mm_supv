@@ -29,6 +29,128 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 EFI_MM_SYSTEM_TABLE  *gMmUserMmst = NULL;
 
+// Dictionary structure saving policy id and length
+struct Dict {
+  UINTN    id;
+  UINTN    width;
+};
+
+GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mMaxDictSize = (UINT8)FixedPcdGet8 (PcdMmSupervisorPrintPortsMaxSize);
+GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mMsrCurrSize = 0;
+GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mIoCurrSize  = 0;
+GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPcdCheck    = TRUE;
+GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPrintInfo   = FALSE;
+GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPrintEnabled;
+GLOBAL_REMOVE_IF_UNREFERENCED struct Dict  mMsrValues[MaxDictSize];
+GLOBAL_REMOVE_IF_UNREFERENCED struct Dict  mIoValues[MaxDictSize];
+
+VOID
+AddToDict (
+  UINTN    Id,
+  UINTN    Width,
+  BOOLEAN  IsMsr
+  );
+
+VOID
+PrintDict (
+  );
+
+/**
+  Adds an id/width entry to the one of the dictionary structures based on
+  the inputted identifier.  This is an internal function.
+
+  @param  Id          The address id of the used port.
+  @param  Width       The length of the used port.
+  @param  IsMsr       Boolean that is true if the function is given an MSR input
+                      and is false otherwise.
+
+**/
+VOID
+AddToDict (
+  UINTN    Id,
+  UINTN    Width,
+  BOOLEAN  IsMsr
+  )
+{
+  UINTN        Index;
+  UINT8        MaxSize;
+  UINT8        CurrSize;
+  struct Dict  Entry;
+
+  MaxSize = mMaxDictSize;
+
+  if (IsMsr) {
+    CurrSize = mMsrCurrSize;
+  } else {
+    CurrSize = mIoCurrSize;
+  }
+
+  for (Index = 0; Index < CurrSize; Index = Index + 1) {
+    if (IsMsr) {
+      if (mMsrValues[Index].id == Id) {
+        return;
+      }
+    } else {
+      if (mIoValues[Index].id == Id) {
+        return;
+      }
+    }
+  }
+
+  if (CurrSize >= MaxSize) {
+    DEBUG ((DEBUG_ERROR, "Dictionary is to large!\n"));
+    return;
+  }
+
+  Entry.id    = Id;
+  Entry.width = Width;
+  mPrintInfo  = TRUE;
+
+  if (IsMsr) {
+    mMsrValues[CurrSize] = Entry;
+    mMsrCurrSize         = mMsrCurrSize + 1;
+  } else {
+    mIoValues[CurrSize] = Entry;
+    mIoCurrSize         = mIoCurrSize + 1;
+  }
+
+  return;
+}
+
+/**
+  Prints out the two dictionaries containing the IO and MSR ports being used
+  by the currently specified policy.  This is an internal function.
+**/
+VOID
+PrintDict (
+  VOID
+  )
+{
+  UINTN  Index;
+
+  DEBUG ((DEBUG_INFO, "Printing MSR devices that are being used by the current policy:\n"));
+  for (Index = 0; Index < mMsrCurrSize; Index = Index + 1) {
+    DEBUG ((
+      DEBUG_INFO,
+      "Important info: Arg1: %lx, Arg2: %lx\n",
+      mMsrValues[Index].id,
+      mMsrValues[Index].width
+      ));
+  }
+
+  DEBUG ((DEBUG_INFO, "Printing IO devices that are being used by the current policy:\n"));
+  for (Index = 0; Index < mIoCurrSize; Index = Index + 1) {
+    DEBUG ((
+      DEBUG_INFO,
+      "Important info: Arg1: %lx, Arg2: %lx\n",
+      mIoValues[Index].id,
+      mIoValues[Index].width
+      ));
+  }
+
+  return;
+}
+
 VOID
 EFIAPI
 SyncMmEntryContextToCpl3 (
@@ -111,6 +233,11 @@ SyscallDispatcher (
   BOOLEAN     IsUserRange = FALSE;
   EFI_STATUS  Status      = EFI_SUCCESS;
 
+  if (PcdCheck) {
+    PrintEnabled = FeaturePcdGet (PcdMmSupervisorPrintPortsEnable);
+    PcdCheck     = FALSE;
+  }
+
   while (!AcquireSpinLockOrFail (mCpuToken)) {
     CpuPause ();
   }
@@ -144,6 +271,10 @@ SyscallDispatcher (
 
       Ret = AsmReadMsr64 ((UINT32)Arg1);
       DEBUG ((DEBUG_VERBOSE, "%a Read MSR %x got %x\n", __FUNCTION__, Arg1, Ret));
+      if (PrintEnabled) {
+        AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
+      }
+
       break;
     case SMM_SC_WRMSR:
       Status = IsMsrReadWriteAllowed (
@@ -158,6 +289,10 @@ SyscallDispatcher (
 
       AsmWriteMsr64 ((UINT32)Arg1, (UINT64)Arg2);
       DEBUG ((DEBUG_VERBOSE, "%a Write MSR %x with %x\n", __FUNCTION__, Arg1, Arg2));
+      if (PrintEnabled) {
+        AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
+      }
+
       break;
     case SMM_SC_CLI:
       Status = IsInstructionExecutionAllowed (
@@ -204,6 +339,10 @@ SyscallDispatcher (
       }
 
       DEBUG ((DEBUG_VERBOSE, "%x\n", Ret));
+      if (PrintEnabled) {
+        AddToDict ((UINT32)Arg1, (UINT32)Arg2, FALSE);
+      }
+
       break;
     case SMM_SC_IO_WRITE:
       if ((Arg2 != MM_IO_UINT8) && (Arg2 != MM_IO_UINT16) && (Arg2 != MM_IO_UINT32)) {
@@ -236,6 +375,10 @@ SyscallDispatcher (
       }
 
       DEBUG ((DEBUG_VERBOSE, "%a Write IO type %d at %x with %x\n", __FUNCTION__, Arg2, Arg1, Arg3));
+      if (PrintEnabled) {
+        AddToDict ((UINT32)Arg1, (UINT32)Arg2, FALSE);
+      }
+
       break;
     case SMM_SC_WBINVD:
       Status = IsInstructionExecutionAllowed (
@@ -462,6 +605,11 @@ SyscallDispatcher (
   }
 
 Exit:
+  if (mPrintInfo) {
+    PrintDict ();
+    mPrintInfo = FALSE;
+  }
+
   if (EFI_ERROR (Status)) {
     // Prepare the content and try to engage exception handler here
     // TODO: Do buffer preparation

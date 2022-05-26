@@ -60,6 +60,11 @@
   # @Prompt Enable services for testing purpose.
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable|FALSE|BOOLEAN|0x00010001
 
+  ## Indicates if MSR and IO port accesses should be printed out.\
+  #    TRUE  - Print out the MSR and IO ports being access during boot.
+  #    FALSE - Don't print out the MSR and IO ports as normal.
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable|FALSE|BOOLEAN|0x00010002
+
 [PcdsFixedAtBuild]
   ## Size of supervisor communication buffer in number of pages
   gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages|16|UINT64|0x00000001
@@ -76,3 +81,6 @@
   #  make sure the memory size is large enough to meet MM PEI requirement in MM foundation initialization path.
   # @Prompt Stack size for MmIplPei transfer to long mode.
   gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize|0x8000|UINT32|0x00000006
+
+  ## Max size of dictionary structs holding MPR and IO port information
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize|50|UINT8|0x00000007
