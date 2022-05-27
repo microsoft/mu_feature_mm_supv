@@ -101,4 +101,4 @@ definition can be found [here](TODO:TBD).
 
 ## OEM Integration Guide
 
-1. [**Integration:** MM Supervisor Integration Guides](PlatformIntegration/PlatformIntegrationOverview.md)
+1. [**Integration:** MM Supervisor Integration Guides](PlatformIntegration/PlatformIntegrationSteps.md)
