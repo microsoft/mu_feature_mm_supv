@@ -1,0 +1,49 @@
+## @file MmSupvRequestUnitTestApp.inf
+#
+# Tests for MM Supervisor request protocol.
+#
+# Copyright (C) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+[Defines]
+  INF_VERSION         = 0x00010005
+  BASE_NAME           = MmSupvRequestUnitTestApp
+  FILE_GUID           = 723FBD99-9D52-4EA0-9C04-4220D7D29AE8
+  VERSION_STRING      = 1.0
+  MODULE_TYPE         = UEFI_APPLICATION
+  ENTRY_POINT         = MmSupvRequestUnitTestAppEntryPoint
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+
+[Sources]
+  MmSupvRequestUnitTestApp.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  UefiApplicationEntryPoint
+  UnitTestLib
+  UnitTestPersistenceLib
+  PrintLib
+  MemoryAllocationLib
+  BaseLib
+  ShellLib
+  PcdLib
+  UefiLib
+
+[Protocols]
+  gMmSupervisorCommunicationProtocolGuid
+
+[Guids]
+  gMmSupervisorCommunicationRegionTableGuid
+  gMmSupervisorRequestHandlerGuid
