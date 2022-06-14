@@ -25,10 +25,15 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UnitTestLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/UefiCpuLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+
+#include "MmPolicyMeasurementLevels.h"
 
 #define UNIT_TEST_APP_NAME        "MM Supervisor Request Test Cases"
 #define UNIT_TEST_APP_VERSION     "1.0"
+
+#define UNDEFINED_LEVEL           MAX_UINT32
 
 MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication = NULL;
 VOID      *mMmSupvCommonCommBufferAddress = NULL;
@@ -41,6 +46,18 @@ UINTN     mMmSupvCommonCommBufferSize;
 ///
 ///================================================================================================
 ///================================================================================================
+
+/*
+  Helper function to check possible policy level on the MSR block
+*/
+EFI_STATUS
+EFIAPI
+VerifyMemPolicy (
+  IN  VOID        *MemPolicy,
+  IN  UINT32      MemPolicyCount,
+  IN  UINT32      AccessAttr,
+  OUT UINT32      *Level
+  );
 
 /**
   This helper function preps the shared CommBuffer for use by the test step.
@@ -123,6 +140,293 @@ MmSupvRequestDxeToMmCommunicate (
   }
 
   return ((MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data)->Result;
+}
+
+/*
+  Helper function to request policy from supervisor
+*/
+SMM_SUPV_SECURE_POLICY_DATA_V1_0*
+EFIAPI
+FetchSecurityPolicyFromSupv (
+  IN UNIT_TEST_CONTEXT           Context
+  )
+{
+  EFI_STATUS  Status;
+  MM_SUPERVISOR_REQUEST_HEADER *CommBuffer;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
+
+  SecurityPolicy = NULL;
+
+  // Grab the CommBuffer and fill it in for this test
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  if (EFI_ERROR (Status)) {
+    return NULL;
+  }
+
+  CommBuffer->Signature  = MM_SUPERVISOR_REQUEST_SIG;
+  CommBuffer->Revision   = MM_SUPERVISOR_REQUEST_REVISION;
+  CommBuffer->Request    = MM_SUPERVISOR_REQUEST_FETCH_POLICY;
+  CommBuffer->Result     = EFI_SUCCESS;
+
+  // This should cause the system to reboot.
+  Status = MmSupvRequestDxeToMmCommunicate ();
+
+  if (EFI_ERROR (Status)) {
+    // We encountered some errors on our way fetching policy.
+    UT_LOG_ERROR ("Supervisor did not successfully returned policy %r.", Status);
+  }
+  else {
+    SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0*) (CommBuffer + 1);
+    DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "");
+  }
+
+  return SecurityPolicy;
+}
+
+/*
+  Helper function to check possible policy level on the MSR block
+*/
+EFI_STATUS
+EFIAPI
+VerifyIoPolicy (
+  IN  VOID        *IoPolicy,
+  IN  UINT32      IoPolicyCount,
+  IN  UINT32      AccessAttr,
+  OUT UINT32      *Level
+  )
+{
+  SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0  *IoEntries;
+  UINTN Index1;
+  UINTN Index2;
+  CONST IO_ENTRY *ReferenceTable;
+  UINTN ReferenceTableSize;
+  IO_ENTRY Target;
+  BOOLEAN MatchFound;
+
+  if (IoPolicy == NULL || Level == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  IoEntries = (SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0*)IoPolicy;
+
+  // The method is very brute force...
+
+  // First set the level to at most 10, failing everything here
+  // will not make it below that value
+  *Level = SMM_POLICY_LEVEL_10;
+
+  // Check level 20
+  ReferenceTable = SCPC_LVL20_IO;
+  ReferenceTableSize = sizeof (SCPC_LVL20_IO) / sizeof (SCPC_LVL20_IO[0]);
+
+  // Level 20 is a deny list
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
+    Target = ReferenceTable[Index1];
+    MatchFound = FALSE;
+    for (Index2 = 0; Index2 < IoPolicyCount; Index2 ++) {
+      if (IoEntries[Index2].Attributes & SECURE_POLICY_RESOURCE_ATTR_STRICT_WIDTH) {
+        if (IoEntries[Index2].IoAddress == Target.IoPortNumber &&
+            IoEntries[Index2].LengthOrWidth == Target.IoWidth) {
+          MatchFound = TRUE;
+          break;
+        }
+      } else if (IoEntries[Index2].IoAddress <= Target.IoPortNumber &&
+                 (IoEntries[Index2].IoAddress + IoEntries[Index2].LengthOrWidth >= 
+                  Target.IoPortNumber + Target.IoWidth)) {
+        MatchFound = TRUE;
+        break;
+      }
+    }
+
+    if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+      goto Done;
+    } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
+      // If it is found in a deny list but the attribute does not block, bail as well
+      if ((IoEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
+          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+        goto Done;
+      }
+    }
+  }
+
+  // So level 20 passed, set it to at least level 20
+  *Level = SMM_POLICY_LEVEL_20;
+
+  // At this point, IO will not prevent the measurement level to be the highest
+  *Level = MAX_SUPPORTED_LEVEL;
+
+Done:
+  return EFI_SUCCESS;
+}
+
+/*
+  Helper function to check possible policy level on the MSR block
+*/
+EFI_STATUS
+EFIAPI
+VerifyMsrPolicy (
+  IN  VOID        *MsrPolicy,
+  IN  UINT32      MsrPolicyCount,
+  IN  UINT32      AccessAttr,
+  OUT UINT32      *Level
+  )
+{
+  SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0  *MsrEntries;
+  UINTN Index1;
+  UINTN Index2;
+  CONST UINT64 *ReferenceTable;
+  UINTN ReferenceTableSize;
+  UINT64 Target;
+  BOOLEAN MatchFound;
+
+  if (MsrPolicy == NULL || Level == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  MsrEntries = (SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0*)MsrPolicy;
+
+  // The method is very brute force...
+
+  // First set the level to at most 10, failing everything here
+  // will not make it below that value
+  *Level = SMM_POLICY_LEVEL_10;
+
+  // Check level 20
+  if (StandardSignatureIsAuthenticAMD ()) {
+    ReferenceTable = SCPC_LVL20_MSR_AMD;
+    ReferenceTableSize = sizeof (SCPC_LVL20_MSR_AMD) / sizeof (SCPC_LVL20_MSR_AMD[0]);
+  } else {
+    ReferenceTable = SCPC_LVL20_MSR_INTEL;
+    ReferenceTableSize = sizeof (SCPC_LVL20_MSR_INTEL) / sizeof (SCPC_LVL20_MSR_INTEL[0]);
+  }
+
+  // Level 20 is a deny list
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
+    Target = ReferenceTable[Index1];
+    MatchFound = FALSE;
+    for (Index2 = 0; Index2 < MsrPolicyCount; Index2 ++) {
+      if (MsrEntries[Index2].MsrAddress <= Target &&
+          MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target) {
+        MatchFound = TRUE;
+        break;
+      }
+    }
+
+    if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+      goto Done;
+    } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
+      // If it is found in a deny list but the attribute does not block, bail as well
+      if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
+          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+        goto Done;
+      }
+    }
+  }
+
+  // So level 20 passed, set it to at least level 20
+  *Level = SMM_POLICY_LEVEL_20;
+
+  if (StandardSignatureIsAuthenticAMD ()) {
+    ReferenceTable = SCPC_LVL30_MSR_AMD;
+    ReferenceTableSize = sizeof (SCPC_LVL30_MSR_AMD) / sizeof (SCPC_LVL30_MSR_AMD[0]);
+  } else {
+    ReferenceTable = SCPC_LVL30_MSR_INTEL;
+    ReferenceTableSize = sizeof (SCPC_LVL30_MSR_INTEL) / sizeof (SCPC_LVL30_MSR_INTEL[0]);
+  }
+
+  // Level 30 is also a deny list
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
+    Target = ReferenceTable[Index1];
+    MatchFound = FALSE;
+    for (Index2 = 0; Index2 < MsrPolicyCount; Index2 ++) {
+      if (MsrEntries[Index2].MsrAddress <= Target &&
+          MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target) {
+        MatchFound = TRUE;
+        break;
+      }
+    }
+
+    if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+      goto Done;
+    } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
+      // If it is found in a deny list but the attribute does not block, bail as well
+      if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
+          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+        goto Done;
+      }
+    }
+  }
+
+  // And level 30 passed, set it to at least level 30
+  *Level = SMM_POLICY_LEVEL_30;
+
+  // At this point, MSR will not prevent the measurement level to be the highest
+  *Level = MAX_SUPPORTED_LEVEL;
+
+Done:
+  return EFI_SUCCESS;
+}
+
+/*
+  Helper function to check possible policy level on the Save State block
+*/
+EFI_STATUS
+EFIAPI
+VerifySvstPolicy (
+  IN  VOID        *SvstPolicy,
+  IN  UINT32      SvstPolicyCount,
+  IN  UINT32      AccessAttr,
+  OUT UINT32      *Level
+  )
+{
+  SMM_SUPV_SECURE_POLICY_SAVE_STATE_DESCRIPTOR_V1_0  *SvstEntries;
+  UINTN Index;
+
+  if (SvstPolicy == NULL || Level == NULL || AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  SvstEntries = (SMM_SUPV_SECURE_POLICY_SAVE_STATE_DESCRIPTOR_V1_0*)SvstPolicy;
+
+  // The method is very brute force...
+
+  // First set the level to at most 20, failing everything here
+  // will not make it below that value
+  *Level = SMM_POLICY_LEVEL_20;
+
+  // Level 20 is a deny list
+  for (Index = 0; Index < SvstPolicyCount; Index ++) {
+    if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_IO_TRAP) &&
+      ((SvstEntries[Index].Attributes & ~SECURE_POLICY_SVST_UNCONDITIONAL) == 0)) {
+      continue;
+    }
+
+    if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
+        (SvstEntries[Index].Attributes == SECURE_POLICY_SVST_CONDITION_IO_RD) &&
+        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_WR)) {
+      continue;
+    }
+
+    if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
+        (SvstEntries[Index].Attributes == SECURE_POLICY_SVST_CONDITION_IO_WR) &&
+        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_RD)) {
+      continue;
+    }
+
+    goto Done;
+  }
+
+  // So level 30 passed, set it to at least level 30
+  *Level = SMM_POLICY_LEVEL_30;
+
+  // At this point, IO will not prevent the measurement level to be the highest
+  *Level = MAX_SUPPORTED_LEVEL;
+
+Done:
+  return EFI_SUCCESS;
 }
 
 ///================================================================================================
@@ -278,32 +582,119 @@ RequestSecurityPolicy (
   IN UNIT_TEST_CONTEXT           Context
   )
 {
-  EFI_STATUS  Status;
-  MM_SUPERVISOR_REQUEST_HEADER *CommBuffer;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
 
-  // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
-  UT_ASSERT_NOT_EFI_ERROR (Status);
+  SecurityPolicy = FetchSecurityPolicyFromSupv (Context);
 
-  CommBuffer->Signature  = MM_SUPERVISOR_REQUEST_SIG;
-  CommBuffer->Revision   = MM_SUPERVISOR_REQUEST_REVISION;
-  CommBuffer->Request    = MM_SUPERVISOR_REQUEST_FETCH_POLICY;
-  CommBuffer->Result     = EFI_SUCCESS;
+  UT_ASSERT_NOT_NULL (SecurityPolicy);
 
-  // This should cause the system to reboot.
-  Status = MmSupvRequestDxeToMmCommunicate ();
+  return UNIT_TEST_PASSED;
+}
 
-  if (EFI_ERROR (Status)) {
-    // We encountered some errors on our way fetching policy.
-    UT_LOG_ERROR ("Supervisor did not successfully returned policy %r.", Status);
+/*
+  Test case to inspect requested policy
+*/
+UNIT_TEST_STATUS
+EFIAPI
+InspectSecurityPolicy (
+  IN UNIT_TEST_CONTEXT           Context
+  )
+{
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
+  SMM_SUPV_POLICY_ROOT_V1                             *PolicyRoot;
+  EFI_STATUS  Status;
+  UINTN       Index0;
+  UINT32      MsrLevel;
+  UINT32      IoLevel;
+  UINT32      MemLevel;
+  UINT32      SvstLevel;
+  UINT32      FinalLevel;
+
+  MsrLevel = UNDEFINED_LEVEL;
+  IoLevel = UNDEFINED_LEVEL;
+  MemLevel = UNDEFINED_LEVEL;
+  SvstLevel = UNDEFINED_LEVEL;
+  FinalLevel = 0;
+
+  SecurityPolicy = FetchSecurityPolicyFromSupv (Context);
+
+  UT_ASSERT_NOT_NULL (SecurityPolicy);
+
+  UT_ASSERT_EQUAL (SecurityPolicy->VersionMajor, 0x0001);
+
+  PolicyRoot = (SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SecurityPolicy + SecurityPolicy->PolicyRootOffset);
+  for (Index0 = 0; Index0 < SecurityPolicy->PolicyRootCount; Index0++) {
+
+    if ((PolicyRoot->AccessAttr != SMM_SUPV_ACCESS_ATTR_ALLOW) &&
+        (PolicyRoot->AccessAttr != SMM_SUPV_ACCESS_ATTR_DENY)) {
+      continue;
+    }
+
+    switch (PolicyRoot->Type) {
+      case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO:
+        if (IoLevel != UNDEFINED_LEVEL) {
+          Status = EFI_ALREADY_STARTED;
+          break;
+        }
+        Status = VerifyIoPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &IoLevel);
+        break;
+      case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR:
+        if (MsrLevel != UNDEFINED_LEVEL) {
+          Status = EFI_ALREADY_STARTED;
+          break;
+        }
+        Status = VerifyMsrPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MsrLevel);
+        break;
+      case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM:
+        if (MemLevel != UNDEFINED_LEVEL) {
+          Status = EFI_ALREADY_STARTED;
+          break;
+        }
+        Status = VerifyMemPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MemLevel);
+        break;
+      case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE:
+        if (SvstLevel != UNDEFINED_LEVEL) {
+          Status = EFI_ALREADY_STARTED;
+          break;
+        }
+        Status = VerifySvstPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &SvstLevel);
+        break;
+      default:
+        // Do nothing
+        break;
+    }
+
+    if (EFI_ERROR (Status)) {
+      // Should not happen, if so, bail the test
+      UT_ASSERT_NOT_EFI_ERROR (Status);
+      break;
+    }
   }
-  else {
-    SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0*) (CommBuffer + 1);
-    DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "");
-  }
 
-  UT_ASSERT_NOT_EFI_ERROR (Status);
+  if (MemLevel == UNDEFINED_LEVEL) {
+    // Without specifying above, at most get level 0
+    goto Done;
+  }
+  FinalLevel = MemLevel;
+
+  if (IoLevel == UNDEFINED_LEVEL || MsrLevel == UNDEFINED_LEVEL) {
+    // Without specifying above, at most get level 10
+    FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_10);
+    goto Done;
+  }
+  FinalLevel = MIN (FinalLevel, IoLevel);
+  FinalLevel = MIN (FinalLevel, MsrLevel);
+
+  if (SvstLevel == UNDEFINED_LEVEL) {
+    // Without specifying above, at most get level 20
+    FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_20);
+    goto Done;
+  }
+  FinalLevel = MIN (FinalLevel, SvstLevel);
+
+Done:
+  DEBUG ((DEBUG_INFO, "The fetch policy is at level %d", FinalLevel));
+  UT_LOG_INFO ("The fetch policy is at level %d", FinalLevel);
 
   return UNIT_TEST_PASSED;
 }
@@ -363,6 +754,8 @@ MmSupvRequestUnitTestAppEntryPoint (
               RequestUnblockRegion, LocateMmCommonCommBuffer, NULL, NULL );
   AddTestCase(Misc, "Policy request test", "MmSupv.Miscellaneous.MmSupvReqestPolicy",
               RequestSecurityPolicy, LocateMmCommonCommBuffer, NULL, NULL );
+  AddTestCase(Misc, "Policy security inspection", "MmSupv.Miscellaneous.MmSupvPolicyInspection",
+              InspectSecurityPolicy, LocateMmCommonCommBuffer, NULL, NULL );
 
   //
   // Execute the tests.

@@ -22,11 +22,17 @@
 
 
 [Sources]
+  Acpi.c
+  Acpi.h
   MmSupvRequestUnitTestApp.c
+  MmSupvMemPolicyUnitTest.c
+  MmPolicyMeasurementLevels.h
+  IVRS.h
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
 
 [LibraryClasses]
@@ -40,6 +46,7 @@
   ShellLib
   PcdLib
   UefiLib
+  UefiCpuLib
 
 [Protocols]
   gMmSupervisorCommunicationProtocolGuid
