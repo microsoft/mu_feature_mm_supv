@@ -56,10 +56,10 @@ jobs:
       run: pip install -r pip-requirements.txt --upgrade
       
     - name: 'update'
-      run: stuart_update -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCCC5 
+      run: stuart_update -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCC5
       
     - name: 'build'
-      run: stuart_ci_build -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCCC5 
+      run: stuart_ci_build -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCC5
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
