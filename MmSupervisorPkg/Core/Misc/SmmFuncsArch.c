@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/SafeIntLib.h>
 
 #include "Mem/Mem.h"
 #include "Relocate/Relocate.h"
@@ -123,12 +124,22 @@ GetProtectedModeCS (
   IA32_DESCRIPTOR          GdtrDesc;
   IA32_SEGMENT_DESCRIPTOR  *GdtEntry;
   UINTN                    GdtEntryCount;
+  UINT16                   GdtCountUint16;
   UINT16                   Index;
+  EFI_STATUS               Status;
 
   AsmReadGdtr (&GdtrDesc);
   GdtEntryCount = (GdtrDesc.Limit + 1) / sizeof (IA32_SEGMENT_DESCRIPTOR);
+
+  Status = SafeUintnToUint16 (GdtEntryCount, &GdtCountUint16);
+  if (EFI_ERROR (Status)) {
+    // Should not happen
+    ASSERT (FALSE);
+    return 0;
+  }
+
   GdtEntry      = (IA32_SEGMENT_DESCRIPTOR *)GdtrDesc.Base;
-  for (Index = 0; Index < GdtEntryCount; Index++) {
+  for (Index = 0; Index < GdtCountUint16; Index++) {
     if (GdtEntry->Bits.L == 0) {
       if ((GdtEntry->Bits.Type > 8) && (GdtEntry->Bits.DB == 1)) {
         break;
@@ -138,7 +149,7 @@ GetProtectedModeCS (
     GdtEntry++;
   }
 
-  ASSERT (Index != GdtEntryCount);
+  ASSERT (Index != GdtCountUint16);
   return Index * 8;
 }
 
