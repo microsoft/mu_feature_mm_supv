@@ -127,6 +127,10 @@
   UefiHiiServicesLib|MdeModulePkg/Library/UefiHiiServicesLib/UefiHiiServicesLib.inf
   ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
 
+  UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
+  UnitTestPersistenceLib|UnitTestFrameworkPkg/Library/UnitTestPersistenceLibNull/UnitTestPersistenceLibNull.inf
+  UnitTestResultReportLib|UnitTestFrameworkPkg/Library/UnitTestResultReportLib/UnitTestResultReportLibDebugLib.inf
+
 [Components.IA32]
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
 
@@ -159,6 +163,7 @@
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf
 
   MmSupervisorPkg/Test/MmPagingAuditTest/UEFI/MmPagingAuditApp.inf
+  MmSupervisorPkg/Test/MmSupvRequestUnitTestApp/MmSupvRequestUnitTestApp.inf
 
 [BuildOptions.common.EDKII.DXE_SMM_DRIVER]
   *_*_*_CC_FLAGS = -D DISABLE_NEW_DEPRECATED_INTERFACES

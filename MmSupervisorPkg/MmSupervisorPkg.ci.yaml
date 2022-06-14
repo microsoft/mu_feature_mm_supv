@@ -28,7 +28,8 @@
         "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
         ],
         "AcceptableDependencies-UEFI_APPLICATION": [
-            "ShellPkg/ShellPkg.dec"
+            "ShellPkg/ShellPkg.dec",
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
         ],
         "IgnoreInf": []
     },
