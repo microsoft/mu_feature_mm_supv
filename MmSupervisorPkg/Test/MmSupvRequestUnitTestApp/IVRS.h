@@ -89,7 +89,7 @@ typedef PACKED union {
     UINT32    HtAtsResv : 1;     // bit 22: ATS response address translation range reserved.
     UINT32    Reserved2 : 9;     // bit 31-23: Must be zero.
   } Bits;
-} IVRS_IVINFO;
+} IVRS_IV_INFO;
 
 typedef PACKED struct {
   UINT8              Type;
@@ -109,7 +109,7 @@ typedef PACKED struct {
   /**
     I/O virtualization information common to all IOMMU units in a system.
   **/
-  IVRS_IVINFO                    IVRSIVInfo;
+  IVRS_IV_INFO                   IVRSIvInfo;
   UINT8                          Reserved[8];
 } EFI_ACPI_IVRS_HEADER;
 
