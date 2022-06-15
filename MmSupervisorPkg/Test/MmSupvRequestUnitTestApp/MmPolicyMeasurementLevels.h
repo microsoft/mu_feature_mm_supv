@@ -127,10 +127,30 @@ typedef struct {
   UINT16  IoWidth;
 } IO_ENTRY;
 
+/*
+IO:
+  Write access must be denied to the configuration space address (0xCF8) I/O port
+  Write access must be denied to the configuration space data (0xCFC) I/O port
+*/
 CONST IO_ENTRY  SCPC_LVL20_IO[] = {
   {0xCF8, 4}, // CONFIG_ADDRESS - 4 bytes wide.
   {0xCFC, 4}  // CONFIG_DATA - 4 bytes wide.
 };
+
+/*
+Memory:
+  Deny write access to TXT Private/Public Space
+  Deny write access to TXT Heap/DPR region
+*/
+#define TXT_DEVICE_BASE         0xFED20000
+#define TXT_PRIVATE_BASE        TXT_DEVICE_BASE
+#define TXT_DEVICE_SIZE         0x30000
+
+#define TXT_HEAP_BASE_REG       TXT_PRIVATE_BASE + 0x300
+#define TXT_HEAP_SIZE_REG       TXT_PRIVATE_BASE + 0x308
+#define TXT_DPR_REG             TXT_PRIVATE_BASE + 0x330
+
+#define TXT_REGION_COUNT        3
 
 #define SMM_POLICY_LEVEL_10     10
 #define SMM_POLICY_LEVEL_20     20

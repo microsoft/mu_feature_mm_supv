@@ -28,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiCpuLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
+#include <Library/IoLib.h>
 
 #include <IndustryStandard/DmaRemappingReportingTable.h>
 
@@ -68,6 +69,7 @@ GetIommuBaseIntel (
   UINTN                           VtdIndex;
 
   // First get DMAR table
+  AcpiDmarTable = NULL;
   Status = GetAcpiTable (EFI_ACPI_6_3_DMA_REMAPPING_TABLE_SIGNATURE, (VOID **)&AcpiDmarTable);
   if (EFI_ERROR (Status)) {
     goto Done;
@@ -140,6 +142,7 @@ GetIommuBaseAmd (
   UINTN                 IommuIndex;
 
   // First get IVRS table
+  AcpiIVRSTable = NULL;
   Status = GetAcpiTable (EFI_ACPI_6_3_IO_VIRTUALIZATION_REPORTING_STRUCTURE_SIGNATURE, (VOID **)&AcpiIVRSTable);
   if (EFI_ERROR (Status)) {
     goto Done;
@@ -201,6 +204,50 @@ Done:
 }
 
 /*
+  Helper function to get all TXT related regions for Intel processors
+*/
+EFI_STATUS
+GetTxtRegions (
+  OUT UINT64      **BaseAddress,
+  OUT UINT64      **Size,
+  OUT UINTN       *Count
+  )
+{
+  UINTN                 TxtIndex;
+  UINT32                Temp;
+
+  // TXT public and private regions + Heap + DPR
+  *BaseAddress = AllocatePool (TXT_REGION_COUNT * sizeof (UINT64));
+  if (BaseAddress == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  *Size = AllocatePool (TXT_REGION_COUNT * sizeof (UINT64));
+  if (Size == NULL) {
+    FreePool (*BaseAddress);
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  TxtIndex = 0;
+  (*Size)[TxtIndex] = TXT_DEVICE_SIZE;
+  (*BaseAddress)[TxtIndex] = TXT_DEVICE_BASE;
+
+  TxtIndex ++;
+  (*Size)[TxtIndex] = MmioRead32 (TXT_HEAP_SIZE_REG);
+  (*BaseAddress)[TxtIndex] = MmioRead32 (TXT_HEAP_BASE_REG);
+
+  TxtIndex ++;
+  Temp = MmioRead32 (TXT_DPR_REG);
+
+  (*Size)[TxtIndex] = (Temp & 0xFF0) << 16;
+  
+  (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
+
+  *Count = TxtIndex;
+  return EFI_SUCCESS;
+}
+
+/*
   Helper function to check possible policy level against IOMMU regions
 */
 STATIC
@@ -239,8 +286,8 @@ VerifyIommuMemoryWithPolicy (
     for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
       if (((IommuBases[Index1] <= MemDesc[Index2].BaseAddress &&
             IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress)) ||
-          (IommuBases[Index1] <= (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size) &&
-            IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) {
+          (IommuBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size) &&
+            IommuBases[Index1] + IommuSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) {
         // Shoot, found an overlap and we are an allow list...
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
@@ -254,6 +301,57 @@ Done:
   }
   if (IommuSizes != NULL) {
     FreePool (IommuSizes);
+  }
+  return Status;
+}
+
+/*
+  Helper function to check possible policy level against TXT regions
+*/
+STATIC
+EFI_STATUS
+VerifyTxtMemoryWithPolicy (
+  IN  VOID        *MemPolicy,
+  IN  UINT32      MemPolicyCount,
+  IN  UINT32      AccessAttr
+  )
+{
+  EFI_STATUS  Status;
+  UINT64      *TxtBases;
+  UINT64      *TxtSizes;
+  UINT64      Count;
+  UINTN       Index1;
+  UINTN       Index2;
+  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *MemDesc;
+
+  TxtBases = NULL;
+  TxtSizes = NULL;
+  MemDesc = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0*)MemPolicy;
+
+  Status = GetTxtRegions (&TxtBases, &TxtSizes, &Count);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  for (Index1 = 0; Index1 < Count; Index1 ++) {
+    for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
+      if (((TxtBases[Index1] <= MemDesc[Index2].BaseAddress &&
+            TxtBases[Index1] + TxtSizes[Index1] > MemDesc[Index2].BaseAddress)) ||
+          (TxtBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size) &&
+            TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) {
+        // Shoot, found an overlap and we are an allow list...
+        Status = EFI_SECURITY_VIOLATION;
+        goto Done;
+      }
+    }
+  }
+
+Done:
+  if (TxtBases != NULL) {
+    FreePool (TxtBases);
+  }
+  if (TxtSizes != NULL) {
+    FreePool (TxtSizes);
   }
   return Status;
 }
@@ -354,8 +452,14 @@ VerifyMemPolicy (
   *Level = SMM_POLICY_LEVEL_20;
 
   if (!StandardSignatureIsAuthenticAMD ()) {
-    //TODO: Still need to check overlap with TXT regions?
-    goto Done;
+    // Check overlap with TXT regions for Intel processors
+    Status = VerifyTxtMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against TXT regions - %r\n", __FUNCTION__, Status));
+      // This is not an error anymore, since it should at least get level 20 report
+      Status = EFI_SUCCESS;
+      goto Done;
+    }
   }
 
   // At this point, IO will not prevent the measurement level to be the highest
