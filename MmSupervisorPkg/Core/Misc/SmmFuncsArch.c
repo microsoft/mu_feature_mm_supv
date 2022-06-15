@@ -111,66 +111,6 @@ InitGdt (
 }
 
 /**
-  Get Protected mode code segment from current GDT table.
-
-  @return  Protected mode code segment value.
-**/
-UINT16
-GetProtectedModeCS (
-  VOID
-  )
-{
-  IA32_DESCRIPTOR          GdtrDesc;
-  IA32_SEGMENT_DESCRIPTOR  *GdtEntry;
-  UINTN                    GdtEntryCount;
-  UINT16                   Index;
-
-  AsmReadGdtr (&GdtrDesc);
-  GdtEntryCount = (GdtrDesc.Limit + 1) / sizeof (IA32_SEGMENT_DESCRIPTOR);
-  GdtEntry      = (IA32_SEGMENT_DESCRIPTOR *)GdtrDesc.Base;
-  for (Index = 0; Index < GdtEntryCount; Index++) {
-    if (GdtEntry->Bits.L == 0) {
-      if ((GdtEntry->Bits.Type > 8) && (GdtEntry->Bits.DB == 1)) {
-        break;
-      }
-    }
-
-    GdtEntry++;
-  }
-
-  ASSERT (Index != GdtEntryCount);
-  return Index * 8;
-}
-
-/**
-  Transfer AP to safe hlt-loop after it finished restore CPU features on S3 patch.
-
-  @param[in] ApHltLoopCode          The address of the safe hlt-loop function.
-  @param[in] TopOfStack             A pointer to the new stack to use for the ApHltLoopCode.
-  @param[in] NumberToFinishAddress  Address of Semaphore of APs finish count.
-
-**/
-VOID
-TransferApToSafeState (
-  IN UINTN  ApHltLoopCode,
-  IN UINTN  TopOfStack,
-  IN UINTN  NumberToFinishAddress
-  )
-{
-  AsmDisablePaging64 (
-    GetProtectedModeCS (),
-    (UINT32)ApHltLoopCode,
-    (UINT32)NumberToFinishAddress,
-    0,
-    (UINT32)TopOfStack
-    );
-  //
-  // It should never reach here
-  //
-  ASSERT (FALSE);
-}
-
-/**
   Initialize the shadow stack related data structure.
 
   @param CpuIndex     The index of CPU.
