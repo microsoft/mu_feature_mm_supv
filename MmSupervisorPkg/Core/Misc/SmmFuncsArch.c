@@ -10,7 +10,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
-#include <Library/SafeIntLib.h>
 
 #include "Mem/Mem.h"
 #include "Relocate/Relocate.h"
