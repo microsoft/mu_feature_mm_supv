@@ -30,22 +30,22 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmPolicyMeasurementLevels.h"
 
-#define UNIT_TEST_APP_NAME        "MM Supervisor Request Test Cases"
-#define UNIT_TEST_APP_VERSION     "1.0"
+#define UNIT_TEST_APP_NAME     "MM Supervisor Request Test Cases"
+#define UNIT_TEST_APP_VERSION  "1.0"
 
-#define UNDEFINED_LEVEL           MAX_UINT32
+#define UNDEFINED_LEVEL  MAX_UINT32
 
-MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication = NULL;
-VOID      *mMmSupvCommonCommBufferAddress = NULL;
-UINTN     mMmSupvCommonCommBufferSize;
+MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication              = NULL;
+VOID                                  *mMmSupvCommonCommBufferAddress = NULL;
+UINTN                                 mMmSupvCommonCommBufferSize;
 
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// HELPER FUNCTIONS
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
 /*
   Helper function to check possible policy level on the MSR block
@@ -53,10 +53,10 @@ UINTN     mMmSupvCommonCommBufferSize;
 EFI_STATUS
 EFIAPI
 VerifyMemPolicy (
-  IN  VOID        *MemPolicy,
-  IN  UINT32      MemPolicyCount,
-  IN  UINT32      AccessAttr,
-  OUT UINT32      *Level
+  IN  VOID    *MemPolicy,
+  IN  UINT32  MemPolicyCount,
+  IN  UINT32  AccessAttr,
+  OUT UINT32  *Level
   );
 
 /**
@@ -74,8 +74,8 @@ MmSupvRequestGetCommBuffer (
   OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer
   )
 {
-  EFI_MM_COMMUNICATE_HEADER               *CommHeader;
-  UINTN                                   CommBufferSize;
+  EFI_MM_COMMUNICATE_HEADER  *CommHeader;
+  UINTN                      CommBufferSize;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
     DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __FUNCTION__));
@@ -83,12 +83,13 @@ MmSupvRequestGetCommBuffer (
   }
 
   // First, let's zero the comm buffer. Couldn't hurt.
-  CommHeader = (EFI_MM_COMMUNICATE_HEADER*)mMmSupvCommonCommBufferAddress;
+  CommHeader     = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonCommBufferAddress;
   CommBufferSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
   if (CommBufferSize > mMmSupvCommonCommBufferSize) {
     DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer is too small!\n", __FUNCTION__));
     return EFI_ABORTED;
   }
+
   ZeroMem (CommHeader, CommBufferSize);
 
   // MM Communication Parameters
@@ -96,7 +97,7 @@ MmSupvRequestGetCommBuffer (
   CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
 
   // Return a pointer to the CommBuffer for the test to modify.
-  *CommBuffer = (MM_SUPERVISOR_REQUEST_HEADER*)CommHeader->Data;
+  *CommBuffer = (MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data;
 
   return EFI_SUCCESS;
 }
@@ -115,22 +116,22 @@ MmSupvRequestDxeToMmCommunicate (
   VOID
   )
 {
-  EFI_STATUS                                    Status = EFI_SUCCESS;
-  EFI_MM_COMMUNICATE_HEADER                     *CommHeader;
-  UINTN                                         CommBufferSize;
+  EFI_STATUS                 Status = EFI_SUCCESS;
+  EFI_MM_COMMUNICATE_HEADER  *CommHeader;
+  UINTN                      CommBufferSize;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
-    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n" , __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __FUNCTION__));
     return EFI_ABORTED;
   }
 
   // Grab the CommBuffer
-  CommHeader = (EFI_MM_COMMUNICATE_HEADER*)mMmSupvCommonCommBufferAddress;
+  CommHeader     = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonCommBufferAddress;
   CommBufferSize = mMmSupvCommonCommBufferSize;
 
   // Locate the protocol, if not done yet.
   if (!SupvCommunication) {
-    Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID**)&SupvCommunication);
+    Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&SupvCommunication);
   }
 
   // Signal MM.
@@ -145,15 +146,15 @@ MmSupvRequestDxeToMmCommunicate (
 /*
   Helper function to request policy from supervisor
 */
-SMM_SUPV_SECURE_POLICY_DATA_V1_0*
+SMM_SUPV_SECURE_POLICY_DATA_V1_0 *
 EFIAPI
 FetchSecurityPolicyFromSupv (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  EFI_STATUS  Status;
-  MM_SUPERVISOR_REQUEST_HEADER *CommBuffer;
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
+  EFI_STATUS                        Status;
+  MM_SUPERVISOR_REQUEST_HEADER      *CommBuffer;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SecurityPolicy;
 
   SecurityPolicy = NULL;
 
@@ -163,10 +164,10 @@ FetchSecurityPolicyFromSupv (
     return NULL;
   }
 
-  CommBuffer->Signature  = MM_SUPERVISOR_REQUEST_SIG;
-  CommBuffer->Revision   = MM_SUPERVISOR_REQUEST_REVISION;
-  CommBuffer->Request    = MM_SUPERVISOR_REQUEST_FETCH_POLICY;
-  CommBuffer->Result     = EFI_SUCCESS;
+  CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  CommBuffer->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  CommBuffer->Request   = MM_SUPERVISOR_REQUEST_FETCH_POLICY;
+  CommBuffer->Result    = EFI_SUCCESS;
 
   // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
@@ -174,9 +175,8 @@ FetchSecurityPolicyFromSupv (
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way fetching policy.
     UT_LOG_ERROR ("Supervisor did not successfully returned policy %r.", Status);
-  }
-  else {
-    SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0*) (CommBuffer + 1);
+  } else {
+    SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(CommBuffer + 1);
     DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "");
   }
 
@@ -189,25 +189,25 @@ FetchSecurityPolicyFromSupv (
 EFI_STATUS
 EFIAPI
 VerifyIoPolicy (
-  IN  VOID        *IoPolicy,
-  IN  UINT32      IoPolicyCount,
-  IN  UINT32      AccessAttr,
-  OUT UINT32      *Level
+  IN  VOID    *IoPolicy,
+  IN  UINT32  IoPolicyCount,
+  IN  UINT32  AccessAttr,
+  OUT UINT32  *Level
   )
 {
   SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0  *IoEntries;
-  UINTN Index1;
-  UINTN Index2;
-  CONST IO_ENTRY *ReferenceTable;
-  UINTN ReferenceTableSize;
-  IO_ENTRY Target;
-  BOOLEAN MatchFound;
+  UINTN                                      Index1;
+  UINTN                                      Index2;
+  CONST IO_ENTRY                             *ReferenceTable;
+  UINTN                                      ReferenceTableSize;
+  IO_ENTRY                                   Target;
+  BOOLEAN                                    MatchFound;
 
-  if (IoPolicy == NULL || Level == NULL) {
+  if ((IoPolicy == NULL) || (Level == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  IoEntries = (SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0*)IoPolicy;
+  IoEntries = (SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0 *)IoPolicy;
 
   // The method is very brute force...
 
@@ -216,30 +216,33 @@ VerifyIoPolicy (
   *Level = SMM_POLICY_LEVEL_10;
 
   // Check level 20
-  ReferenceTable = SCPC_LVL20_IO;
+  ReferenceTable     = SCPC_LVL20_IO;
   ReferenceTableSize = sizeof (SCPC_LVL20_IO) / sizeof (SCPC_LVL20_IO[0]);
 
   // Level 20 is a deny list
-  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
-    Target = ReferenceTable[Index1];
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1++) {
+    Target     = ReferenceTable[Index1];
     MatchFound = FALSE;
-    for (Index2 = 0; Index2 < IoPolicyCount; Index2 ++) {
+    for (Index2 = 0; Index2 < IoPolicyCount; Index2++) {
       if (IoEntries[Index2].Attributes & SECURE_POLICY_RESOURCE_ATTR_STRICT_WIDTH) {
-        if (IoEntries[Index2].IoAddress == Target.IoPortNumber &&
-            IoEntries[Index2].LengthOrWidth == Target.IoWidth) {
+        if ((IoEntries[Index2].IoAddress == Target.IoPortNumber) &&
+            (IoEntries[Index2].LengthOrWidth == Target.IoWidth))
+        {
           MatchFound = TRUE;
           break;
         }
-      } else if (IoEntries[Index2].IoAddress <= Target.IoPortNumber &&
-                 (IoEntries[Index2].IoAddress + IoEntries[Index2].LengthOrWidth >= 
-                  Target.IoPortNumber + Target.IoWidth)) {
+      } else if ((IoEntries[Index2].IoAddress <= Target.IoPortNumber) &&
+                 (IoEntries[Index2].IoAddress + IoEntries[Index2].LengthOrWidth >=
+                  Target.IoPortNumber + Target.IoWidth))
+      {
         MatchFound = TRUE;
         break;
       }
     }
 
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
-        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
+    {
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
@@ -265,25 +268,25 @@ Done:
 EFI_STATUS
 EFIAPI
 VerifyMsrPolicy (
-  IN  VOID        *MsrPolicy,
-  IN  UINT32      MsrPolicyCount,
-  IN  UINT32      AccessAttr,
-  OUT UINT32      *Level
+  IN  VOID    *MsrPolicy,
+  IN  UINT32  MsrPolicyCount,
+  IN  UINT32  AccessAttr,
+  OUT UINT32  *Level
   )
 {
   SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0  *MsrEntries;
-  UINTN Index1;
-  UINTN Index2;
-  CONST UINT64 *ReferenceTable;
-  UINTN ReferenceTableSize;
-  UINT64 Target;
-  BOOLEAN MatchFound;
+  UINTN                                       Index1;
+  UINTN                                       Index2;
+  CONST UINT64                                *ReferenceTable;
+  UINTN                                       ReferenceTableSize;
+  UINT64                                      Target;
+  BOOLEAN                                     MatchFound;
 
-  if (MsrPolicy == NULL || Level == NULL) {
+  if ((MsrPolicy == NULL) || (Level == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  MsrEntries = (SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0*)MsrPolicy;
+  MsrEntries = (SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0 *)MsrPolicy;
 
   // The method is very brute force...
 
@@ -293,32 +296,35 @@ VerifyMsrPolicy (
 
   // Check level 20
   if (StandardSignatureIsAuthenticAMD ()) {
-    ReferenceTable = SCPC_LVL20_MSR_AMD;
+    ReferenceTable     = SCPC_LVL20_MSR_AMD;
     ReferenceTableSize = sizeof (SCPC_LVL20_MSR_AMD) / sizeof (SCPC_LVL20_MSR_AMD[0]);
   } else {
-    ReferenceTable = SCPC_LVL20_MSR_INTEL;
+    ReferenceTable     = SCPC_LVL20_MSR_INTEL;
     ReferenceTableSize = sizeof (SCPC_LVL20_MSR_INTEL) / sizeof (SCPC_LVL20_MSR_INTEL[0]);
   }
 
   // Level 20 is a deny list
-  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
-    Target = ReferenceTable[Index1];
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1++) {
+    Target     = ReferenceTable[Index1];
     MatchFound = FALSE;
-    for (Index2 = 0; Index2 < MsrPolicyCount; Index2 ++) {
-      if (MsrEntries[Index2].MsrAddress <= Target &&
-          MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target) {
+    for (Index2 = 0; Index2 < MsrPolicyCount; Index2++) {
+      if ((MsrEntries[Index2].MsrAddress <= Target) &&
+          (MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target))
+      {
         MatchFound = TRUE;
         break;
       }
     }
 
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
-        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
+    {
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
       if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
-          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE))
+      {
         goto Done;
       }
     }
@@ -328,32 +334,35 @@ VerifyMsrPolicy (
   *Level = SMM_POLICY_LEVEL_20;
 
   if (StandardSignatureIsAuthenticAMD ()) {
-    ReferenceTable = SCPC_LVL30_MSR_AMD;
+    ReferenceTable     = SCPC_LVL30_MSR_AMD;
     ReferenceTableSize = sizeof (SCPC_LVL30_MSR_AMD) / sizeof (SCPC_LVL30_MSR_AMD[0]);
   } else {
-    ReferenceTable = SCPC_LVL30_MSR_INTEL;
+    ReferenceTable     = SCPC_LVL30_MSR_INTEL;
     ReferenceTableSize = sizeof (SCPC_LVL30_MSR_INTEL) / sizeof (SCPC_LVL30_MSR_INTEL[0]);
   }
 
   // Level 30 is also a deny list
-  for (Index1 = 0; Index1 < ReferenceTableSize; Index1 ++) {
-    Target = ReferenceTable[Index1];
+  for (Index1 = 0; Index1 < ReferenceTableSize; Index1++) {
+    Target     = ReferenceTable[Index1];
     MatchFound = FALSE;
-    for (Index2 = 0; Index2 < MsrPolicyCount; Index2 ++) {
-      if (MsrEntries[Index2].MsrAddress <= Target &&
-          MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target) {
+    for (Index2 = 0; Index2 < MsrPolicyCount; Index2++) {
+      if ((MsrEntries[Index2].MsrAddress <= Target) &&
+          (MsrEntries[Index2].MsrAddress + MsrEntries[Index2].Length > Target))
+      {
         MatchFound = TRUE;
         break;
       }
     }
 
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
-        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY))) {
+        (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
+    {
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
       if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
-          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE))
+      {
         goto Done;
       }
     }
@@ -375,20 +384,20 @@ Done:
 EFI_STATUS
 EFIAPI
 VerifySvstPolicy (
-  IN  VOID        *SvstPolicy,
-  IN  UINT32      SvstPolicyCount,
-  IN  UINT32      AccessAttr,
-  OUT UINT32      *Level
+  IN  VOID    *SvstPolicy,
+  IN  UINT32  SvstPolicyCount,
+  IN  UINT32  AccessAttr,
+  OUT UINT32  *Level
   )
 {
   SMM_SUPV_SECURE_POLICY_SAVE_STATE_DESCRIPTOR_V1_0  *SvstEntries;
-  UINTN Index;
+  UINTN                                              Index;
 
-  if (SvstPolicy == NULL || Level == NULL || AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY) {
+  if ((SvstPolicy == NULL) || (Level == NULL) || (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  SvstEntries = (SMM_SUPV_SECURE_POLICY_SAVE_STATE_DESCRIPTOR_V1_0*)SvstPolicy;
+  SvstEntries = (SMM_SUPV_SECURE_POLICY_SAVE_STATE_DESCRIPTOR_V1_0 *)SvstPolicy;
 
   // The method is very brute force...
 
@@ -397,21 +406,24 @@ VerifySvstPolicy (
   *Level = SMM_POLICY_LEVEL_20;
 
   // Level 20 is a deny list
-  for (Index = 0; Index < SvstPolicyCount; Index ++) {
+  for (Index = 0; Index < SvstPolicyCount; Index++) {
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_IO_TRAP) &&
-        (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_READ)) {
+        (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_READ))
+    {
       continue;
     }
 
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
         (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_COND_READ) &&
-        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_WR)) {
+        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_WR))
+    {
       continue;
     }
 
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
         (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_COND_WRITE) &&
-        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_RD)) {
+        (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_RD))
+    {
       continue;
     }
 
@@ -428,55 +440,53 @@ Done:
   return EFI_SUCCESS;
 }
 
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// PRE REQ FUNCTIONS
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
 UNIT_TEST_STATUS
 EFIAPI
 LocateMmCommonCommBuffer (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  EFI_STATUS                                Status;
+  EFI_STATUS  Status;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
     // Locate the communication buffer, if not done yet.
     if (!SupvCommunication) {
-      Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID**)&SupvCommunication);
+      Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&SupvCommunication);
     }
 
     UT_ASSERT_NOT_EFI_ERROR (Status);
 
     // Use virtual start will be identical to physical start till translate event
-    mMmSupvCommonCommBufferAddress = (VOID*)SupvCommunication->CommunicationRegion.VirtualStart;
-    mMmSupvCommonCommBufferSize = EFI_PAGES_TO_SIZE (SupvCommunication->CommunicationRegion.NumberOfPages);
+    mMmSupvCommonCommBufferAddress = (VOID *)SupvCommunication->CommunicationRegion.VirtualStart;
+    mMmSupvCommonCommBufferSize    = EFI_PAGES_TO_SIZE (SupvCommunication->CommunicationRegion.NumberOfPages);
   }
 
   return UNIT_TEST_PASSED;
 } // LocateMmCommonCommBuffer()
 
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// CLEANUP FUNCTIONS
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
-
-
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// TEST CASES
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
 /*
   Test case to request version information from supervisor
@@ -484,21 +494,21 @@ LocateMmCommonCommBuffer (
 UNIT_TEST_STATUS
 EFIAPI
 RequestVersionInfo (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  EFI_STATUS  Status;
-  MM_SUPERVISOR_REQUEST_HEADER *CommBuffer;
-  MM_SUPERVISOR_VERSION_INFO_BUFFER *VersionInfo;
+  EFI_STATUS                         Status;
+  MM_SUPERVISOR_REQUEST_HEADER       *CommBuffer;
+  MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo;
 
   // Grab the CommBuffer and fill it in for this test
   Status = MmSupvRequestGetCommBuffer (&CommBuffer);
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
-  CommBuffer->Signature  = MM_SUPERVISOR_REQUEST_SIG;
-  CommBuffer->Revision   = MM_SUPERVISOR_REQUEST_REVISION;
-  CommBuffer->Request    = MM_SUPERVISOR_REQUEST_VERSION_INFO;
-  CommBuffer->Result     = EFI_SUCCESS;
+  CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  CommBuffer->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  CommBuffer->Request   = MM_SUPERVISOR_REQUEST_VERSION_INFO;
+  CommBuffer->Result    = EFI_SUCCESS;
 
   // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
@@ -513,6 +523,7 @@ RequestVersionInfo (
   if ((UINTN)CommBuffer->Result != 0) {
     Status = ENCODE_ERROR ((UINTN)CommBuffer->Result);
   }
+
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   VersionInfo = (MM_SUPERVISOR_VERSION_INFO_BUFFER *)(CommBuffer + 1);
@@ -529,13 +540,13 @@ RequestVersionInfo (
 UNIT_TEST_STATUS
 EFIAPI
 RequestUnblockRegion (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS                    Status;
   MM_SUPERVISOR_REQUEST_HEADER  *CommBuffer;
   EFI_MEMORY_DESCRIPTOR         *MemDesc;
-  VOID  *TargetPage;
+  VOID                          *TargetPage;
 
   TargetPage = AllocatePages (1);
   if (TargetPage == NULL) {
@@ -547,15 +558,15 @@ RequestUnblockRegion (
   Status = MmSupvRequestGetCommBuffer (&CommBuffer);
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
-  CommBuffer->Signature  = MM_SUPERVISOR_REQUEST_SIG;
-  CommBuffer->Revision   = MM_SUPERVISOR_REQUEST_REVISION;
-  CommBuffer->Request    = MM_SUPERVISOR_REQUEST_UNBLOCK_MEM;
-  CommBuffer->Result     = EFI_SUCCESS;
+  CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  CommBuffer->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  CommBuffer->Request   = MM_SUPERVISOR_REQUEST_UNBLOCK_MEM;
+  CommBuffer->Result    = EFI_SUCCESS;
 
-  MemDesc = (EFI_MEMORY_DESCRIPTOR*)(CommBuffer + 1);
+  MemDesc                = (EFI_MEMORY_DESCRIPTOR *)(CommBuffer + 1);
   MemDesc->NumberOfPages = 1;
   MemDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)TargetPage;
-  MemDesc->Attribute = 0;
+  MemDesc->Attribute     = 0;
 
   // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
@@ -578,10 +589,10 @@ RequestUnblockRegion (
 UNIT_TEST_STATUS
 EFIAPI
 RequestSecurityPolicy (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SecurityPolicy;
 
   SecurityPolicy = FetchSecurityPolicyFromSupv (Context);
 
@@ -596,23 +607,23 @@ RequestSecurityPolicy (
 UNIT_TEST_STATUS
 EFIAPI
 InspectSecurityPolicy (
-  IN UNIT_TEST_CONTEXT           Context
+  IN UNIT_TEST_CONTEXT  Context
   )
 {
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *SecurityPolicy;
-  SMM_SUPV_POLICY_ROOT_V1                             *PolicyRoot;
-  EFI_STATUS  Status;
-  UINTN       Index0;
-  UINT32      MsrLevel;
-  UINT32      IoLevel;
-  UINT32      MemLevel;
-  UINT32      SvstLevel;
-  UINT32      FinalLevel;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SecurityPolicy;
+  SMM_SUPV_POLICY_ROOT_V1           *PolicyRoot;
+  EFI_STATUS                        Status;
+  UINTN                             Index0;
+  UINT32                            MsrLevel;
+  UINT32                            IoLevel;
+  UINT32                            MemLevel;
+  UINT32                            SvstLevel;
+  UINT32                            FinalLevel;
 
-  MsrLevel = UNDEFINED_LEVEL;
-  IoLevel = UNDEFINED_LEVEL;
-  MemLevel = UNDEFINED_LEVEL;
-  SvstLevel = UNDEFINED_LEVEL;
+  MsrLevel   = UNDEFINED_LEVEL;
+  IoLevel    = UNDEFINED_LEVEL;
+  MemLevel   = UNDEFINED_LEVEL;
+  SvstLevel  = UNDEFINED_LEVEL;
   FinalLevel = 0;
 
   SecurityPolicy = FetchSecurityPolicyFromSupv (Context);
@@ -623,9 +634,9 @@ InspectSecurityPolicy (
 
   PolicyRoot = (SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SecurityPolicy + SecurityPolicy->PolicyRootOffset);
   for (Index0 = 0; Index0 < SecurityPolicy->PolicyRootCount; Index0++) {
-
     if ((PolicyRoot[Index0].AccessAttr != SMM_SUPV_ACCESS_ATTR_ALLOW) &&
-        (PolicyRoot[Index0].AccessAttr != SMM_SUPV_ACCESS_ATTR_DENY)) {
+        (PolicyRoot[Index0].AccessAttr != SMM_SUPV_ACCESS_ATTR_DENY))
+    {
       continue;
     }
 
@@ -635,28 +646,32 @@ InspectSecurityPolicy (
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyIoPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &IoLevel);
+
+        Status = VerifyIoPolicy ((UINT8 *)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &IoLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR:
         if (MsrLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyMsrPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MsrLevel);
+
+        Status = VerifyMsrPolicy ((UINT8 *)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MsrLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM:
         if (MemLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyMemPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MemLevel);
+
+        Status = VerifyMemPolicy ((UINT8 *)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MemLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE:
         if (SvstLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifySvstPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &SvstLevel);
+
+        Status = VerifySvstPolicy ((UINT8 *)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &SvstLevel);
         break;
       default:
         // Do nothing
@@ -675,13 +690,15 @@ InspectSecurityPolicy (
     // Without specifying above, at most get level 0
     goto Done;
   }
+
   FinalLevel = MemLevel;
 
-  if (IoLevel == UNDEFINED_LEVEL || MsrLevel == UNDEFINED_LEVEL) {
+  if ((IoLevel == UNDEFINED_LEVEL) || (MsrLevel == UNDEFINED_LEVEL)) {
     // Without specifying above, at most get level 10
     FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_10);
     goto Done;
   }
+
   FinalLevel = MIN (FinalLevel, IoLevel);
   FinalLevel = MIN (FinalLevel, MsrLevel);
 
@@ -690,6 +707,7 @@ InspectSecurityPolicy (
     FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_20);
     goto Done;
   }
+
   FinalLevel = MIN (FinalLevel, SvstLevel);
 
 Done:
@@ -702,13 +720,13 @@ Done:
   return UNIT_TEST_PASSED;
 }
 
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// TEST ENGINE
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
 /**
   MmSupvRequestUnitTestAppEntryPoint
@@ -723,52 +741,81 @@ Done:
 EFI_STATUS
 EFIAPI
 MmSupvRequestUnitTestAppEntryPoint (
-  IN EFI_HANDLE                       ImageHandle,
-  IN EFI_SYSTEM_TABLE                 *SystemTable
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
   EFI_STATUS                  Status = EFI_ABORTED;
-  UNIT_TEST_FRAMEWORK_HANDLE  Fw = NULL;
-  UNIT_TEST_SUITE_HANDLE      Misc = NULL;
+  UNIT_TEST_FRAMEWORK_HANDLE  Fw     = NULL;
+  UNIT_TEST_SUITE_HANDLE      Misc   = NULL;
 
-  DEBUG((DEBUG_ERROR, "%a enter\n", __FUNCTION__));
+  DEBUG ((DEBUG_ERROR, "%a enter\n", __FUNCTION__));
 
-  DEBUG(( DEBUG_ERROR, "%a %a v%a\n", __FUNCTION__, UNIT_TEST_APP_NAME, UNIT_TEST_APP_VERSION ));
+  DEBUG ((DEBUG_ERROR, "%a %a v%a\n", __FUNCTION__, UNIT_TEST_APP_NAME, UNIT_TEST_APP_VERSION));
 
   // Start setting up the test framework for running the tests.
-  Status = InitUnitTestFramework( &Fw, UNIT_TEST_APP_NAME, gEfiCallerBaseName, UNIT_TEST_APP_VERSION );
-  if (EFI_ERROR(Status) != FALSE) {
-    DEBUG((DEBUG_ERROR, "%a Failed in InitUnitTestFramework. Status = %r\n", __FUNCTION__, Status));
+  Status = InitUnitTestFramework (&Fw, UNIT_TEST_APP_NAME, gEfiCallerBaseName, UNIT_TEST_APP_VERSION);
+  if (EFI_ERROR (Status) != FALSE) {
+    DEBUG ((DEBUG_ERROR, "%a Failed in InitUnitTestFramework. Status = %r\n", __FUNCTION__, Status));
     goto Cleanup;
   }
 
   // Misc test suite for all tests.
-  CreateUnitTestSuite( &Misc, Fw, "MM Supervisor Request Test cases", "MmSupv.Miscellaneous", NULL, NULL);
+  CreateUnitTestSuite (&Misc, Fw, "MM Supervisor Request Test cases", "MmSupv.Miscellaneous", NULL, NULL);
 
   if (Misc == NULL) {
-    DEBUG((DEBUG_ERROR, "%a Failed in CreateUnitTestSuite for TestSuite\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed in CreateUnitTestSuite for TestSuite\n", __FUNCTION__));
     Status = EFI_OUT_OF_RESOURCES;
     goto Cleanup;
   }
 
-  AddTestCase(Misc, "Checksum calculation test", "MmSupv.Miscellaneous.MmSupvReqestVersion",
-              RequestVersionInfo, LocateMmCommonCommBuffer, NULL, NULL );
-  AddTestCase(Misc, "Memory unblock test", "MmSupv.Miscellaneous.MmSupvReqestUnblockMemory",
-              RequestUnblockRegion, LocateMmCommonCommBuffer, NULL, NULL );
-  AddTestCase(Misc, "Policy request test", "MmSupv.Miscellaneous.MmSupvReqestPolicy",
-              RequestSecurityPolicy, LocateMmCommonCommBuffer, NULL, NULL );
-  AddTestCase(Misc, "Policy security inspection", "MmSupv.Miscellaneous.MmSupvPolicyInspection",
-              InspectSecurityPolicy, LocateMmCommonCommBuffer, NULL, NULL );
+  AddTestCase (
+    Misc,
+    "Checksum calculation test",
+    "MmSupv.Miscellaneous.MmSupvReqestVersion",
+    RequestVersionInfo,
+    LocateMmCommonCommBuffer,
+    NULL,
+    NULL
+    );
+  AddTestCase (
+    Misc,
+    "Memory unblock test",
+    "MmSupv.Miscellaneous.MmSupvReqestUnblockMemory",
+    RequestUnblockRegion,
+    LocateMmCommonCommBuffer,
+    NULL,
+    NULL
+    );
+  AddTestCase (
+    Misc,
+    "Policy request test",
+    "MmSupv.Miscellaneous.MmSupvReqestPolicy",
+    RequestSecurityPolicy,
+    LocateMmCommonCommBuffer,
+    NULL,
+    NULL
+    );
+  AddTestCase (
+    Misc,
+    "Policy security inspection",
+    "MmSupv.Miscellaneous.MmSupvPolicyInspection",
+    InspectSecurityPolicy,
+    LocateMmCommonCommBuffer,
+    NULL,
+    NULL
+    );
 
   //
   // Execute the tests.
   //
-  Status = RunAllTestSuites(Fw);
+  Status = RunAllTestSuites (Fw);
 
 Cleanup:
   if (Fw != NULL) {
-    FreeUnitTestFramework(Fw);
+    FreeUnitTestFramework (Fw);
   }
-  DEBUG((DEBUG_ERROR, "%a exit\n", __FUNCTION__));
+
+  DEBUG ((DEBUG_ERROR, "%a exit\n", __FUNCTION__));
   return Status;
 } // MmSupvRequestUnitTestAppEntryPoint ()

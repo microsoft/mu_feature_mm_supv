@@ -36,31 +36,31 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "IVRS.h"
 #include "Acpi.h"
 
-#define UNIT_TEST_APP_NAME        "MM Supervisor Request Test Cases"
-#define UNIT_TEST_APP_VERSION     "1.0"
+#define UNIT_TEST_APP_NAME     "MM Supervisor Request Test Cases"
+#define UNIT_TEST_APP_VERSION  "1.0"
 
-#define UNDEFINED_LEVEL           MAX_UINT32
+#define UNDEFINED_LEVEL  MAX_UINT32
 
-MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication = NULL;
-VOID      *mMmSupvCommonCommBufferAddress = NULL;
-UINTN     mMmSupvCommonCommBufferSize;
+MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication              = NULL;
+VOID                                  *mMmSupvCommonCommBufferAddress = NULL;
+UINTN                                 mMmSupvCommonCommBufferSize;
 
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 ///
 /// HELPER FUNCTIONS
 ///
-///================================================================================================
-///================================================================================================
+/// ================================================================================================
+/// ================================================================================================
 
 /*
   Helper function to get all IOMMU controller regions from DMAR table
 */
 EFI_STATUS
 GetIommuBaseIntel (
-  OUT UINT64      **BaseAddress,
-  OUT UINT64      **Size,
-  OUT UINTN       *Count
+  OUT UINT64  **BaseAddress,
+  OUT UINT64  **Size,
+  OUT UINTN   *Count
   )
 {
   EFI_ACPI_DMAR_HEADER            *AcpiDmarTable;
@@ -70,13 +70,13 @@ GetIommuBaseIntel (
 
   // First get DMAR table
   AcpiDmarTable = NULL;
-  Status = GetAcpiTable (EFI_ACPI_6_3_DMA_REMAPPING_TABLE_SIGNATURE, (VOID **)&AcpiDmarTable);
+  Status        = GetAcpiTable (EFI_ACPI_6_3_DMA_REMAPPING_TABLE_SIGNATURE, (VOID **)&AcpiDmarTable);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
 
   // Then get through the table to get a count of VTds
-  VtdIndex = 0;
+  VtdIndex   = 0;
   DmarHeader = (EFI_ACPI_DMAR_STRUCTURE_HEADER *)((UINTN)(AcpiDmarTable + 1));
   while ((UINTN)DmarHeader < (UINTN)AcpiDmarTable + AcpiDmarTable->Header.Length) {
     switch (DmarHeader->Type) {
@@ -103,13 +103,13 @@ GetIommuBaseIntel (
 
   *Count = VtdIndex;
 
-  VtdIndex = 0;
+  VtdIndex   = 0;
   DmarHeader = (EFI_ACPI_DMAR_STRUCTURE_HEADER *)((UINTN)(AcpiDmarTable + 1));
   while ((UINTN)DmarHeader < (UINTN)AcpiDmarTable + AcpiDmarTable->Header.Length) {
     switch (DmarHeader->Type) {
       case EFI_ACPI_DMAR_TYPE_DRHD:
         (*BaseAddress)[VtdIndex] = ((EFI_ACPI_DMAR_DRHD_HEADER *)DmarHeader)->RegisterBaseAddress;
-        (*Size)[VtdIndex] = EFI_PAGE_SIZE;
+        (*Size)[VtdIndex]        = EFI_PAGE_SIZE;
         VtdIndex++;
         break;
 
@@ -131,9 +131,9 @@ Done:
 */
 EFI_STATUS
 GetIommuBaseAmd (
-  OUT UINT64      **BaseAddress,
-  OUT UINT64      **Size,
-  OUT UINTN       *Count
+  OUT UINT64  **BaseAddress,
+  OUT UINT64  **Size,
+  OUT UINTN   *Count
   )
 {
   EFI_ACPI_IVRS_HEADER  *AcpiIVRSTable;
@@ -143,7 +143,7 @@ GetIommuBaseAmd (
 
   // First get IVRS table
   AcpiIVRSTable = NULL;
-  Status = GetAcpiTable (EFI_ACPI_6_3_IO_VIRTUALIZATION_REPORTING_STRUCTURE_SIGNATURE, (VOID **)&AcpiIVRSTable);
+  Status        = GetAcpiTable (EFI_ACPI_6_3_IO_VIRTUALIZATION_REPORTING_STRUCTURE_SIGNATURE, (VOID **)&AcpiIVRSTable);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -186,7 +186,7 @@ GetIommuBaseAmd (
       case IVHD_TYPE_11H:
       case IVHD_TYPE_40H:
         (*BaseAddress)[IommuIndex] = IvhdHeader->IOMMUBaseAddress;
-        (*Size)[IommuIndex] = EFI_PAGE_SIZE;
+        (*Size)[IommuIndex]        = EFI_PAGE_SIZE;
         IommuIndex++;
         break;
 
@@ -208,13 +208,13 @@ Done:
 */
 EFI_STATUS
 GetTxtRegions (
-  OUT UINT64      **BaseAddress,
-  OUT UINT64      **Size,
-  OUT UINTN       *Count
+  OUT UINT64  **BaseAddress,
+  OUT UINT64  **Size,
+  OUT UINTN   *Count
   )
 {
-  UINTN                 TxtIndex;
-  UINT32                Temp;
+  UINTN   TxtIndex;
+  UINT32  Temp;
 
   // TXT public and private regions + Heap + DPR
   *BaseAddress = AllocatePool (TXT_REGION_COUNT * sizeof (UINT64));
@@ -228,19 +228,19 @@ GetTxtRegions (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  TxtIndex = 0;
-  (*Size)[TxtIndex] = TXT_DEVICE_SIZE;
+  TxtIndex                 = 0;
+  (*Size)[TxtIndex]        = TXT_DEVICE_SIZE;
   (*BaseAddress)[TxtIndex] = TXT_DEVICE_BASE;
 
-  TxtIndex ++;
-  (*Size)[TxtIndex] = MmioRead32 (TXT_HEAP_SIZE_REG);
+  TxtIndex++;
+  (*Size)[TxtIndex]        = MmioRead32 (TXT_HEAP_SIZE_REG);
   (*BaseAddress)[TxtIndex] = MmioRead32 (TXT_HEAP_BASE_REG);
 
-  TxtIndex ++;
+  TxtIndex++;
   Temp = MmioRead32 (TXT_DPR_REG);
 
   (*Size)[TxtIndex] = (Temp & 0xFF0) << 16;
-  
+
   (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
 
   *Count = TxtIndex;
@@ -253,22 +253,22 @@ GetTxtRegions (
 STATIC
 EFI_STATUS
 VerifyIommuMemoryWithPolicy (
-  IN  VOID        *MemPolicy,
-  IN  UINT32      MemPolicyCount,
-  IN  UINT32      AccessAttr
+  IN  VOID    *MemPolicy,
+  IN  UINT32  MemPolicyCount,
+  IN  UINT32  AccessAttr
   )
 {
-  EFI_STATUS  Status;
-  UINT64      *IommuBases;
-  UINT64      *IommuSizes;
-  UINT64      Count;
-  UINTN       Index1;
-  UINTN       Index2;
-  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *MemDesc;
+  EFI_STATUS                                  Status;
+  UINT64                                      *IommuBases;
+  UINT64                                      *IommuSizes;
+  UINT64                                      Count;
+  UINTN                                       Index1;
+  UINTN                                       Index2;
+  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemDesc;
 
   IommuBases = NULL;
   IommuSizes = NULL;
-  MemDesc = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0*)MemPolicy;
+  MemDesc    = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *)MemPolicy;
 
   if (!StandardSignatureIsAuthenticAMD ()) {
     // Intel processors
@@ -282,12 +282,13 @@ VerifyIommuMemoryWithPolicy (
     goto Done;
   }
 
-  for (Index1 = 0; Index1 < Count; Index1 ++) {
-    for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
-      if (((IommuBases[Index1] <= MemDesc[Index2].BaseAddress &&
-            IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress)) ||
-          (IommuBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size) &&
-            IommuBases[Index1] + IommuSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) {
+  for (Index1 = 0; Index1 < Count; Index1++) {
+    for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+      if ((((IommuBases[Index1] <= MemDesc[Index2].BaseAddress) &&
+            (IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
+          ((IommuBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) &&
+           (IommuBases[Index1] + IommuSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
+      {
         // Shoot, found an overlap and we are an allow list...
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
@@ -299,9 +300,11 @@ Done:
   if (IommuBases != NULL) {
     FreePool (IommuBases);
   }
+
   if (IommuSizes != NULL) {
     FreePool (IommuSizes);
   }
+
   return Status;
 }
 
@@ -311,34 +314,35 @@ Done:
 STATIC
 EFI_STATUS
 VerifyTxtMemoryWithPolicy (
-  IN  VOID        *MemPolicy,
-  IN  UINT32      MemPolicyCount,
-  IN  UINT32      AccessAttr
+  IN  VOID    *MemPolicy,
+  IN  UINT32  MemPolicyCount,
+  IN  UINT32  AccessAttr
   )
 {
-  EFI_STATUS  Status;
-  UINT64      *TxtBases;
-  UINT64      *TxtSizes;
-  UINT64      Count;
-  UINTN       Index1;
-  UINTN       Index2;
-  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *MemDesc;
+  EFI_STATUS                                  Status;
+  UINT64                                      *TxtBases;
+  UINT64                                      *TxtSizes;
+  UINT64                                      Count;
+  UINTN                                       Index1;
+  UINTN                                       Index2;
+  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemDesc;
 
   TxtBases = NULL;
   TxtSizes = NULL;
-  MemDesc = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0*)MemPolicy;
+  MemDesc  = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *)MemPolicy;
 
   Status = GetTxtRegions (&TxtBases, &TxtSizes, &Count);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
 
-  for (Index1 = 0; Index1 < Count; Index1 ++) {
-    for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
-      if (((TxtBases[Index1] <= MemDesc[Index2].BaseAddress &&
-            TxtBases[Index1] + TxtSizes[Index1] > MemDesc[Index2].BaseAddress)) ||
-          (TxtBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size) &&
-            TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) {
+  for (Index1 = 0; Index1 < Count; Index1++) {
+    for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+      if ((((TxtBases[Index1] <= MemDesc[Index2].BaseAddress) &&
+            (TxtBases[Index1] + TxtSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
+          ((TxtBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) &&
+           (TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
+      {
         // Shoot, found an overlap and we are an allow list...
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
@@ -350,9 +354,11 @@ Done:
   if (TxtBases != NULL) {
     FreePool (TxtBases);
   }
+
   if (TxtSizes != NULL) {
     FreePool (TxtSizes);
   }
+
   return Status;
 }
 
@@ -362,27 +368,27 @@ Done:
 EFI_STATUS
 EFIAPI
 VerifyMemPolicy (
-  IN  VOID        *MemPolicy,
-  IN  UINT32      MemPolicyCount,
-  IN  UINT32      AccessAttr,
-  OUT UINT32      *Level
+  IN  VOID    *MemPolicy,
+  IN  UINT32  MemPolicyCount,
+  IN  UINT32  AccessAttr,
+  OUT UINT32  *Level
   )
 {
   SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemEntries;
-  UINTN Index1;
-  UINTN Index2;
-  EFI_STATUS Status;
+  UINTN                                       Index1;
+  UINTN                                       Index2;
+  EFI_STATUS                                  Status;
 
   EFI_MEMORY_ATTRIBUTES_TABLE  *MatMap;
-  EFI_MEMORY_DESCRIPTOR  *MemoryMap;
-  UINTN                  MemoryMapEntryCount;
-  UINTN                  DescriptorSize;
+  EFI_MEMORY_DESCRIPTOR        *MemoryMap;
+  UINTN                        MemoryMapEntryCount;
+  UINTN                        DescriptorSize;
 
-  if (MemPolicy == NULL || Level == NULL || AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY) {
+  if ((MemPolicy == NULL) || (Level == NULL) || (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  MemEntries = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0*)MemPolicy;
+  MemEntries = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *)MemPolicy;
 
   // The method is very brute force...
 
@@ -408,11 +414,12 @@ VerifyMemPolicy (
     switch (MemoryMap->Type) {
       case EfiConventionalMemory:
       case EfiRuntimeServicesCode:
-        for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
-          if (((MemoryMap->PhysicalStart <= MemEntries[Index2].BaseAddress &&
-               MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) > MemEntries[Index2].BaseAddress)) ||
-              (MemoryMap->PhysicalStart < (MemEntries[Index2].BaseAddress + MemEntries[Index2].Size) &&
-               MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) >= MemEntries[Index2].BaseAddress + MemEntries[Index2].Size)) {
+        for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+          if ((((MemoryMap->PhysicalStart <= MemEntries[Index2].BaseAddress) &&
+                (MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) > MemEntries[Index2].BaseAddress))) ||
+              ((MemoryMap->PhysicalStart < (MemEntries[Index2].BaseAddress + MemEntries[Index2].Size)) &&
+               (MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) >= MemEntries[Index2].BaseAddress + MemEntries[Index2].Size)))
+          {
             // Shoot, found an overlap and we are an allow list...
             if ((MemoryMap->Attribute & EFI_MEMORY_XP) == 0) {
               // Check the paging attribute to see if this really is a code page
@@ -420,6 +427,7 @@ VerifyMemPolicy (
             }
           }
         }
+
         break;
     }
 
@@ -427,9 +435,10 @@ VerifyMemPolicy (
   }
 
   // 1.3 Do NOT have execute and write permissions for the same page
-  for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
+  for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
     if ((MemEntries[Index2].MemAttributes & (SECURE_POLICY_RESOURCE_ATTR_WRITE|SECURE_POLICY_RESOURCE_ATTR_EXECUTE)) ==
-        (SECURE_POLICY_RESOURCE_ATTR_WRITE|SECURE_POLICY_RESOURCE_ATTR_EXECUTE)) {
+        (SECURE_POLICY_RESOURCE_ATTR_WRITE|SECURE_POLICY_RESOURCE_ATTR_EXECUTE))
+    {
       // Shoot, found a W/EX region and we are an allow list...
       goto Done;
     }

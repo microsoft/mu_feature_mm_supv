@@ -47,6 +47,7 @@
   PcdLib
   UefiLib
   UefiCpuLib
+  IoLib
 
 [Protocols]
   gMmSupervisorCommunicationProtocolGuid

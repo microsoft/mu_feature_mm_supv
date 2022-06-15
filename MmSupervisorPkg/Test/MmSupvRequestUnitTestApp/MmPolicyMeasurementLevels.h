@@ -56,7 +56,7 @@ MSRs level 20
         - Core::X86::Msr::PL3Ssp
         - Core::X86::Msr::IstSspAddr
 */
-CONST UINT64 SCPC_LVL20_MSR_INTEL[] = {
+CONST UINT64  SCPC_LVL20_MSR_INTEL[] = {
   228,      // X86X_IA32_PMG_IO_CAPTURE_BASE
   1536,     // X86X_IA32_MSR_DS_AREA
   1618,     // X86X_IA32_MSR_PKG_HDC_CONFIG
@@ -82,7 +82,7 @@ CONST UINT64 SCPC_LVL20_MSR_INTEL[] = {
   1847      // X86X_IA32_MSR_UNC_CBO_3_PERF_CTR1
 };
 
-CONST UINT64 SCPC_LVL20_MSR_AMD[] = {
+CONST UINT64  SCPC_LVL20_MSR_AMD[] = {
   0x000001D9,   // Core::X86::Msr::DBG_CTL_MSR
   0xC0000080,   // Core::X86::Msr::EFER
   0xC0010010,   // Core::X86::Msr::SYS_CFG
@@ -112,19 +112,19 @@ MSRs level 30
         - Core::X86::Msr::DBG_CTL_MSR2
         - Core::X86::Msr::EXCP_BP_CTL
 */
-CONST UINT64 SCPC_LVL30_MSR_INTEL[] = {
+CONST UINT64  SCPC_LVL30_MSR_INTEL[] = {
   0x570     // IA32_RTIT_CTL
 };
 
-CONST UINT64 SCPC_LVL30_MSR_AMD[] = {
+CONST UINT64  SCPC_LVL30_MSR_AMD[] = {
   0xC0011010,   // Core::X86::Msr::BT_CTL
   0xC0011024,   // Core::X86::Msr::DBG_CTL_MSR2
   0xC0011018,   // Core::X86::Msr::EXCP_BP_CTL
 };
 
 typedef struct {
-  UINT16  IoPortNumber;
-  UINT16  IoWidth;
+  UINT16    IoPortNumber;
+  UINT16    IoWidth;
 } IO_ENTRY;
 
 /*
@@ -133,8 +133,8 @@ IO:
   Write access must be denied to the configuration space data (0xCFC) I/O port
 */
 CONST IO_ENTRY  SCPC_LVL20_IO[] = {
-  {0xCF8, 4}, // CONFIG_ADDRESS - 4 bytes wide.
-  {0xCFC, 4}  // CONFIG_DATA - 4 bytes wide.
+  { 0xCF8, 4 }, // CONFIG_ADDRESS - 4 bytes wide.
+  { 0xCFC, 4 }  // CONFIG_DATA - 4 bytes wide.
 };
 
 /*
@@ -142,20 +142,20 @@ Memory:
   Deny write access to TXT Private/Public Space
   Deny write access to TXT Heap/DPR region
 */
-#define TXT_DEVICE_BASE         0xFED20000
-#define TXT_PRIVATE_BASE        TXT_DEVICE_BASE
-#define TXT_DEVICE_SIZE         0x30000
+#define TXT_DEVICE_BASE   0xFED20000
+#define TXT_PRIVATE_BASE  TXT_DEVICE_BASE
+#define TXT_DEVICE_SIZE   0x30000
 
-#define TXT_HEAP_BASE_REG       TXT_PRIVATE_BASE + 0x300
-#define TXT_HEAP_SIZE_REG       TXT_PRIVATE_BASE + 0x308
-#define TXT_DPR_REG             TXT_PRIVATE_BASE + 0x330
+#define TXT_HEAP_BASE_REG  TXT_PRIVATE_BASE + 0x300
+#define TXT_HEAP_SIZE_REG  TXT_PRIVATE_BASE + 0x308
+#define TXT_DPR_REG        TXT_PRIVATE_BASE + 0x330
 
-#define TXT_REGION_COUNT        3
+#define TXT_REGION_COUNT  3
 
-#define SMM_POLICY_LEVEL_10     10
-#define SMM_POLICY_LEVEL_20     20
-#define SMM_POLICY_LEVEL_30     30
+#define SMM_POLICY_LEVEL_10  10
+#define SMM_POLICY_LEVEL_20  20
+#define SMM_POLICY_LEVEL_30  30
 
-#define MAX_SUPPORTED_LEVEL     30
+#define MAX_SUPPORTED_LEVEL  30
 
 #endif // MM_POLICY_MEASUREMENT_LEVELS_H_
