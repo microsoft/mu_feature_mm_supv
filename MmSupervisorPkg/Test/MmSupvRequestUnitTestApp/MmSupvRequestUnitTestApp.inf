@@ -54,3 +54,4 @@
 [Guids]
   gMmSupervisorCommunicationRegionTableGuid
   gMmSupervisorRequestHandlerGuid
+  gEfiMemoryAttributesTableGuid

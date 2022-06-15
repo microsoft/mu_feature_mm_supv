@@ -12,6 +12,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Guid/PiSmmCommunicationRegionTable.h>
 #include <Guid/MmSupervisorRequestData.h>
+#include <Guid/MemoryAttributesTable.h>
 
 #include <Protocol/MmCommunication.h>
 #include <Protocol/MmSupervisorCommunication.h>
@@ -218,6 +219,8 @@ VerifyIommuMemoryWithPolicy (
   UINTN       Index2;
   SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *MemDesc;
 
+  IommuBases = NULL;
+  IommuSizes = NULL;
   MemDesc = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0*)MemPolicy;
 
   if (!StandardSignatureIsAuthenticAMD ()) {
@@ -272,13 +275,10 @@ VerifyMemPolicy (
   UINTN Index2;
   EFI_STATUS Status;
 
-  UINTN                  MapKey;
-  UINTN                  MemoryMapSize;
+  EFI_MEMORY_ATTRIBUTES_TABLE  *MatMap;
   EFI_MEMORY_DESCRIPTOR  *MemoryMap;
-  EFI_MEMORY_DESCRIPTOR  *MemoryMapStart;
   UINTN                  MemoryMapEntryCount;
   UINTN                  DescriptorSize;
-  UINT32                 DescriptorVersion;
 
   if (MemPolicy == NULL || Level == NULL || AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY) {
     return EFI_INVALID_PARAMETER;
@@ -295,38 +295,17 @@ VerifyMemPolicy (
   // Grab the memory map from DXE core and verify the below:
   // 1.1 Do NOT contain any mappings to EfiConventionalMemory (e.g. no OS/VMM owned memory)
   // 1.2 Do NOT contain any mappings to code sections within EfiRuntimeServicesCode
-  MemoryMapSize = 0;
-  MemoryMap     = NULL;
-  Status        = gBS->GetMemoryMap (
-                         &MemoryMapSize,
-                         MemoryMap,
-                         &MapKey,
-                         &DescriptorSize,
-                         &DescriptorVersion
-                         );
-  ASSERT (Status == EFI_BUFFER_TOO_SMALL);
-
-  do {
-    Status = gBS->AllocatePool (EfiBootServicesData, MemoryMapSize, (VOID **)&MemoryMap);
-    ASSERT (MemoryMap != NULL);
-
-    Status = gBS->GetMemoryMap (
-                    &MemoryMapSize,
-                    MemoryMap,
-                    &MapKey,
-                    &DescriptorSize,
-                    &DescriptorVersion
-                    );
-    if (EFI_ERROR (Status)) {
-      gBS->FreePool (MemoryMap);
-    }
-  } while (Status == EFI_BUFFER_TOO_SMALL);
+  Status = EfiGetSystemConfigurationTable (&gEfiMemoryAttributesTableGuid, (VOID **)&MatMap);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
 
   //
   // Get Count
   //
-  MemoryMapEntryCount  = MemoryMapSize/DescriptorSize;
-  MemoryMapStart       = MemoryMap;
+  DescriptorSize      = MatMap->DescriptorSize;
+  MemoryMapEntryCount = MatMap->NumberOfEntries;
+  MemoryMap           = (VOID *)((UINT8 *)MatMap + sizeof (*MatMap));
   for (Index1 = 0; Index1 < MemoryMapEntryCount; Index1++) {
     switch (MemoryMap->Type) {
       case EfiConventionalMemory:
@@ -334,10 +313,13 @@ VerifyMemPolicy (
         for (Index2 = 0; Index2 < MemPolicyCount; Index2 ++) {
           if (((MemoryMap->PhysicalStart <= MemEntries[Index2].BaseAddress &&
                MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) > MemEntries[Index2].BaseAddress)) ||
-              (MemoryMap->PhysicalStart <= (MemEntries[Index2].BaseAddress + MemEntries[Index2].Size) &&
-               MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) > MemEntries[Index2].BaseAddress + MemEntries[Index2].Size)) {
-            // Shoot, found a match and we are an allow list...
-            goto Done;
+              (MemoryMap->PhysicalStart < (MemEntries[Index2].BaseAddress + MemEntries[Index2].Size) &&
+               MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE (MemoryMap->NumberOfPages) >= MemEntries[Index2].BaseAddress + MemEntries[Index2].Size)) {
+            // Shoot, found an overlap and we are an allow list...
+            if ((MemoryMap->Attribute & EFI_MEMORY_XP) == 0) {
+              // Check the paging attribute to see if this really is a code page
+              goto Done;
+            }
           }
         }
         break;
@@ -356,12 +338,15 @@ VerifyMemPolicy (
   }
 
   // So level 10 passed, set it to at least level 10
-  *Level = SMM_POLICY_LEVEL_20;
+  *Level = SMM_POLICY_LEVEL_10;
 
   // Level 20:
   // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
   Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
+    // This is not an error anymore, since it should at least get level 10 report
+    Status = EFI_SUCCESS;
     goto Done;
   }
 
@@ -369,7 +354,7 @@ VerifyMemPolicy (
   *Level = SMM_POLICY_LEVEL_20;
 
   if (!StandardSignatureIsAuthenticAMD ()) {
-    //TODO: Still need to check overlap with TXT regions
+    //TODO: Still need to check overlap with TXT regions?
     goto Done;
   }
 

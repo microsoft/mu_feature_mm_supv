@@ -243,8 +243,7 @@ VerifyIoPolicy (
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
-      if ((IoEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
-          (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+      if ((IoEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_WRITE)) == 0) {
         goto Done;
       }
     }
@@ -400,18 +399,18 @@ VerifySvstPolicy (
   // Level 20 is a deny list
   for (Index = 0; Index < SvstPolicyCount; Index ++) {
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_IO_TRAP) &&
-      ((SvstEntries[Index].Attributes & ~SECURE_POLICY_SVST_UNCONDITIONAL) == 0)) {
+        (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_READ)) {
       continue;
     }
 
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
-        (SvstEntries[Index].Attributes == SECURE_POLICY_SVST_CONDITION_IO_RD) &&
+        (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_COND_READ) &&
         (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_WR)) {
       continue;
     }
 
     if ((SvstEntries[Index].MapField == SECURE_POLICY_SVST_RAX) &&
-        (SvstEntries[Index].Attributes == SECURE_POLICY_SVST_CONDITION_IO_WR) &&
+        (SvstEntries[Index].Attributes == SECURE_POLICY_RESOURCE_ATTR_COND_WRITE) &&
         (SvstEntries[Index].AccessCondition == SECURE_POLICY_SVST_CONDITION_IO_RD)) {
       continue;
     }
@@ -625,39 +624,39 @@ InspectSecurityPolicy (
   PolicyRoot = (SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SecurityPolicy + SecurityPolicy->PolicyRootOffset);
   for (Index0 = 0; Index0 < SecurityPolicy->PolicyRootCount; Index0++) {
 
-    if ((PolicyRoot->AccessAttr != SMM_SUPV_ACCESS_ATTR_ALLOW) &&
-        (PolicyRoot->AccessAttr != SMM_SUPV_ACCESS_ATTR_DENY)) {
+    if ((PolicyRoot[Index0].AccessAttr != SMM_SUPV_ACCESS_ATTR_ALLOW) &&
+        (PolicyRoot[Index0].AccessAttr != SMM_SUPV_ACCESS_ATTR_DENY)) {
       continue;
     }
 
-    switch (PolicyRoot->Type) {
+    switch (PolicyRoot[Index0].Type) {
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO:
         if (IoLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyIoPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &IoLevel);
+        Status = VerifyIoPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &IoLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR:
         if (MsrLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyMsrPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MsrLevel);
+        Status = VerifyMsrPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MsrLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM:
         if (MemLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifyMemPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MemLevel);
+        Status = VerifyMemPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &MemLevel);
         break;
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE:
         if (SvstLevel != UNDEFINED_LEVEL) {
           Status = EFI_ALREADY_STARTED;
           break;
         }
-        Status = VerifySvstPolicy (SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &SvstLevel);
+        Status = VerifySvstPolicy ((UINT8*)SecurityPolicy + PolicyRoot[Index0].Offset, PolicyRoot[Index0].Count, PolicyRoot[Index0].AccessAttr, &SvstLevel);
         break;
       default:
         // Do nothing
@@ -666,6 +665,7 @@ InspectSecurityPolicy (
 
     if (EFI_ERROR (Status)) {
       // Should not happen, if so, bail the test
+      DEBUG ((DEBUG_ERROR, "%a Failed to verify %x type entries - %r\n", __FUNCTION__, PolicyRoot[Index0].Type, Status));
       UT_ASSERT_NOT_EFI_ERROR (Status);
       break;
     }
@@ -693,8 +693,11 @@ InspectSecurityPolicy (
   FinalLevel = MIN (FinalLevel, SvstLevel);
 
 Done:
-  DEBUG ((DEBUG_INFO, "The fetch policy is at level %d", FinalLevel));
+  DEBUG ((DEBUG_INFO, "The fetch policy is at level %d\n", FinalLevel));
   UT_LOG_INFO ("The fetch policy is at level %d", FinalLevel);
+
+  // If we can get policy but still get 0 mm measurement level, something is messed up...
+  UT_ASSERT_TRUE (FinalLevel > 0);
 
   return UNIT_TEST_PASSED;
 }
