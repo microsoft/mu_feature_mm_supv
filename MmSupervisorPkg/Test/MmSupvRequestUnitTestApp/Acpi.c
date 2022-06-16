@@ -179,7 +179,10 @@ GetAcpiTable (
     return EFI_NOT_FOUND;
   }
 
-  ASSERT (AcpiConfigurationTable != NULL);
+  if (AcpiConfigurationTable == NULL) {
+    ASSERT (FALSE);
+    return EFI_DEVICE_ERROR;
+  }
 
   *AcpiTable = FindAcpiPtr (
                  (EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER *)AcpiConfigurationTable,

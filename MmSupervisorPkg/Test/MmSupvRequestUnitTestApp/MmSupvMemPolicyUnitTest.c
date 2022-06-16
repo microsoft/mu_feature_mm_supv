@@ -228,22 +228,25 @@ GetTxtRegions (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  TxtIndex                 = 0;
-  (*Size)[TxtIndex]        = TXT_DEVICE_SIZE;
-  (*BaseAddress)[TxtIndex] = TXT_DEVICE_BASE;
+  for (TxtIndex = 0; TxtIndex < TXT_REGION_COUNT; TxtIndex++) {
+    switch (TxtIndex) {
+      case 0:
+        (*Size)[TxtIndex]        = TXT_DEVICE_SIZE;
+        (*BaseAddress)[TxtIndex] = TXT_DEVICE_BASE;
+        break;
+      case 1:
+        (*Size)[TxtIndex]        = MmioRead32 (TXT_HEAP_SIZE_REG);
+        (*BaseAddress)[TxtIndex] = MmioRead32 (TXT_HEAP_BASE_REG);
+        break;
+      case 2:
+        Temp = MmioRead32 (TXT_DPR_REG);
+        (*Size)[TxtIndex] = (Temp & 0xFF0) << 16;
+        (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
+        break;
+    }
+  }
 
-  TxtIndex++;
-  (*Size)[TxtIndex]        = MmioRead32 (TXT_HEAP_SIZE_REG);
-  (*BaseAddress)[TxtIndex] = MmioRead32 (TXT_HEAP_BASE_REG);
-
-  TxtIndex++;
-  Temp = MmioRead32 (TXT_DPR_REG);
-
-  (*Size)[TxtIndex] = (Temp & 0xFF0) << 16;
-
-  (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
-
-  *Count = TxtIndex;
+  *Count = TXT_REGION_COUNT;
   return EFI_SUCCESS;
 }
 
