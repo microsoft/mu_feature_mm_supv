@@ -33,7 +33,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <IndustryStandard/DmaRemappingReportingTable.h>
 
 #include "MmPolicyMeasurementLevels.h"
-#include "IVRS.h"
+#include "IVRSTable.h"
 #include "Acpi.h"
 
 #define UNIT_TEST_APP_NAME     "MM Supervisor Request Test Cases"

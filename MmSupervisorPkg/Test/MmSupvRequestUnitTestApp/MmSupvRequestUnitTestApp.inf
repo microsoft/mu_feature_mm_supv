@@ -27,7 +27,7 @@
   MmSupvRequestUnitTestApp.c
   MmSupvMemPolicyUnitTest.c
   MmPolicyMeasurementLevels.h
-  IVRS.h
+  IVRSTable.h
 
 [Packages]
   MdePkg/MdePkg.dec

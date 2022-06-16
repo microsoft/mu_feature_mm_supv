@@ -10,6 +10,7 @@ for purpose of easy ACPI table parsing
 
 **/
 
+#include <Base.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PciSegmentLib.h>
@@ -120,7 +121,7 @@ FindAcpiPtr (
   //
   Rsdt = (RSDT_TABLE *)(UINTN)Rsdp->RsdtAddress;
   Xsdt = NULL;
-  if ((Rsdp->Revision >= 2) && (Rsdp->XsdtAddress < (UINT64)(UINTN)-1)) {
+  if ((Rsdp->Revision >= 2) && (Rsdp->XsdtAddress < MAX_UINT64)) {
     Xsdt = (XSDT_TABLE *)(UINTN)Rsdp->XsdtAddress;
   }
 
