@@ -1,4 +1,4 @@
-/** @file IVRS.h
+/** @file IVRSTable.h
 
 IVRS table constants and structures based on
 AMD I/O Virtualization Technology (IOMMU) Specification 48882—Rev 3.00
