@@ -28,7 +28,8 @@ for purpose of easy ACPI table parsing
 #include "Acpi.h"
 
 /**
-  This function scan ACPI table in RSDT.
+  This function scan ACPI table in RSDT and returns a pointer to the ACPI table
+  entry that matches the passed Signature.
 
   @param[in]  Rsdt      ACPI RSDT
   @param[in]  Signature ACPI table signature
@@ -60,7 +61,8 @@ ScanTableInRSDT (
 }
 
 /**
-  This function scan ACPI table in XSDT.
+  This function scan ACPI table in XSDT and returns a pointer to the ACPI table
+  entry that matches the passed Signature.
 
   @param[in]  Xsdt      ACPI XSDT
   @param[in]  Signature ACPI table signature
