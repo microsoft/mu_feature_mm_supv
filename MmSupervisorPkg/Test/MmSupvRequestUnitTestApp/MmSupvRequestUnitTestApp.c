@@ -640,6 +640,7 @@ InspectSecurityPolicy (
       continue;
     }
 
+    Status = EFI_SUCCESS;
     switch (PolicyRoot[Index0].Type) {
       case SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO:
         if (IoLevel != UNDEFINED_LEVEL) {
