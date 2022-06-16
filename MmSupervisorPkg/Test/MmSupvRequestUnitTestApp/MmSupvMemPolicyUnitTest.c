@@ -239,8 +239,8 @@ GetTxtRegions (
         (*BaseAddress)[TxtIndex] = MmioRead32 (TXT_HEAP_BASE_REG);
         break;
       case 2:
-        Temp = MmioRead32 (TXT_DPR_REG);
-        (*Size)[TxtIndex] = (Temp & 0xFF0) << 16;
+        Temp                     = MmioRead32 (TXT_DPR_REG);
+        (*Size)[TxtIndex]        = (Temp & 0xFF0) << 16;
         (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
         break;
     }
