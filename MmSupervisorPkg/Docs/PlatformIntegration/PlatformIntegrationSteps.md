@@ -453,3 +453,57 @@ Note: There might be other silicon specific drivers a platform will need for the
 per platform needs (an example can be found in [SupervisorPolicyTools folder](../../SupervisorPolicyTools/MmIsolationPoliciesExample.xml)).
 1. Place the created secure policy as a FREEFORM binary in the FDF file within the same FV as the MmSupervisor image.
 The file should be GUIDed as `gMmSupervisorPolicyFileGuid` so it can be discovered by the MM Supervisor.
+
+#### MM Policy XML File Schema
+
+An example can be found in [SupervisorPolicyTools folder](../../SupervisorPolicyTools/MmIsolationPoliciesExample.xml).
+
+1. All XML files should use the `<SmmIsolationPolicy>` as the root tag.
+1. Under the root, all supported protection categories should listed under `<SmmCategory>` nodes, with a `name` attribute
+denoting the specific category.
+
+    - Currently ony support 'MSR', 'IO', 'INSTRUCTION' and 'SAVESTATE'
+    - There should be only one `<SmmCategory>` node for each category in a single XML file.
+
+1. For each protection category group, a `<PolicyAccessAttribute>` must be included to indicate the corresponding policy
+entries belong to a deny list or allow list.
+1. In addition to policy attributes, multiple `<PolicyEntry>` nodes coud be included in a `<SmmCategory>` group. This will
+be an individual policy protection entry.
+
+- For `MSR` protection group, each entry should be described with the following 3 children nodes:
+
+```xml
+<StartAddress Value="0xC0000080"/> <!-- The starting base address of MSR -->
+<Size Value="0x2"/> <!-- The range of MSRs to be protected. In this example, MSR 0xC0000080 and 0xC0000081 will be
+protected. -->
+<SecurityAttributes Value="Read | Write" /> <!-- Indicate the intended MSR access type to be protected. Only Read, Write
+or their combination are accepted. -->
+```
+
+- For `IO` protection group, each entry should be described with the following 3 children nodes:
+
+```xml
+<StartAddress Value="0xCF8"/> <!-- The IO port to be protected -->
+<Size Value="0x4"/> <!-- The width of IO ports access to be protected. -->
+<SecurityAttributes Value="Read | Write | StrictWidth" /> <!-- Indicate the intended IO access type to be protected.
+Only Read, Write, StrictWidth or their combination are accepted. Note that when StrictWidth is indicated, only the access
+of StartAddress with specific Size width will be protected. Otherwise, it will be similar to MSR policy entry -->
+```
+
+- For `INSTRUCTION` protection group, each entry should be described with the following 3 children nodes:
+
+```xml
+<Instruction Value="HLT" /> <!-- The instruction name to be protected, only HLT, WBINVD and CLI are supported. -->
+<Size Value="0x4"/> <!-- The width of IO ports access to be protected. -->
+<SecurityAttributes Value="Execute" /> <!-- Only execute attribute is allowed here. -->
+```
+
+- For `SAVESTATE` protection group, each entry should be described with the following 3 children nodes:
+
+```xml
+<SaveStateField Value="IO_TRAP" /> <!-- The save state register name to be protected, only IO_TRAP and RAX are supported. -->
+<SecurityAttributes Value="Read" /> <!-- Indicate the intended save state access type to be protected. Only Read and
+LimitedRead are accepted. Note that when LimitedRead is indicated, the AccessCondition node must be supplied. -->
+<AccessCondition Value="IoWrite" /> <!-- Optional node to indicate what condition of LimitedRead can be accepted. Only
+IoWrite is accepted for RAX LimitedRead entry. -->
+```
