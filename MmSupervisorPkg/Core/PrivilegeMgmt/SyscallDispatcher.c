@@ -533,7 +533,7 @@ SyscallDispatcher (
 
       break;
     case SMM_UNREG_HNDL:
-      Status = MmiHandlerUnRegister ((EFI_HANDLE)Arg1);
+      Status = MmiHandlerUserUnRegister ((EFI_HANDLE)Arg1);
       break;
     case SMM_SET_CPL3_TBL:
       if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_MM_SYSTEM_TABLE), &IsUserRange)) || !IsUserRange) {

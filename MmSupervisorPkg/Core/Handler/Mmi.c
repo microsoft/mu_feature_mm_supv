@@ -341,9 +341,11 @@ MmiUserHandlerRegister (
 }
 
 /**
-  Unregister a handler in MM.
+  Unregister a handler in MM with specified ownership.
 
-  @param  DispatchHandle  The handle that was specified when the handler was registered.
+  @param  DispatchHandle        The handle that was specified when the handler was registered.
+  @param  IsSupervisorHandler   The flag to indicate this is intending to unregister user or
+                                supervisor handler.
 
   @retval EFI_SUCCESS           Handler function was successfully unregistered.
   @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle.
@@ -351,8 +353,9 @@ MmiUserHandlerRegister (
 **/
 EFI_STATUS
 EFIAPI
-MmiHandlerUnRegister (
-  IN EFI_HANDLE  DispatchHandle
+MmiHandlerUnRegisterEx (
+  IN EFI_HANDLE  DispatchHandle,
+  IN BOOLEAN     IsSupervisorHandler
   )
 {
   MMI_HANDLER  *MmiHandler;
@@ -394,7 +397,7 @@ MmiHandlerUnRegister (
     }
   }
 
-  if ((EFI_HANDLE)MmiHandler != DispatchHandle) {
+  if (((EFI_HANDLE)MmiHandler != DispatchHandle) || (MmiHandler->IsSupervisor != IsSupervisorHandler)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -420,4 +423,40 @@ MmiHandlerUnRegister (
   }
 
   return EFI_SUCCESS;
+}
+
+/**
+  Unregister a handler in MM owned by supervisor.
+
+  @param  DispatchHandle  The handle that was specified when the handler was registered.
+
+  @retval EFI_SUCCESS           Handler function was successfully unregistered.
+  @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle.
+
+**/
+EFI_STATUS
+EFIAPI
+MmiHandlerSupvUnRegister (
+  IN  EFI_HANDLE  DispatchHandle
+  )
+{
+  return MmiHandlerUnRegisterEx (DispatchHandle, TRUE);
+}
+
+/**
+  Unregister a handler in MM owned by users.
+
+  @param  DispatchHandle  The handle that was specified when the handler was registered.
+
+  @retval EFI_SUCCESS           Handler function was successfully unregistered.
+  @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle.
+
+**/
+EFI_STATUS
+EFIAPI
+MmiHandlerUserUnRegister (
+  IN  EFI_HANDLE  DispatchHandle
+  )
+{
+  return MmiHandlerUnRegisterEx (DispatchHandle, FALSE);
 }
