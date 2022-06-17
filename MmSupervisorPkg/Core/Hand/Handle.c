@@ -219,6 +219,7 @@ MmInstallProtocolInterfaceNotify (
   IHANDLE             *Handle;
   EFI_STATUS          Status;
   VOID                *ExistingInterface;
+  EFI_GUID            TempProtocolGuid;
 
   //
   // returns EFI_INVALID_PARAMETER if InterfaceType is invalid.
@@ -233,16 +234,21 @@ MmInstallProtocolInterfaceNotify (
   }
 
   //
+  // Capture the incoming GUID. This is necessary for mitigating TOCTOU issue.
+  //
+  CopyMem (&TempProtocolGuid, Protocol, sizeof (EFI_GUID));
+
+  //
   // Print debug message
   //
-  DEBUG ((DEBUG_LOAD | DEBUG_INFO, "MmInstallProtocolInterface: %g %p\n", Protocol, Interface));
+  DEBUG ((DEBUG_LOAD | DEBUG_INFO, "MmInstallProtocolInterface: %g %p\n", &TempProtocolGuid, Interface));
 
   Status = EFI_OUT_OF_RESOURCES;
   Prot   = NULL;
   Handle = NULL;
 
   if (*UserHandle != NULL) {
-    Status = MmHandleProtocol (*UserHandle, Protocol, (VOID **)&ExistingInterface);
+    Status = MmHandleProtocol (*UserHandle, &TempProtocolGuid, (VOID **)&ExistingInterface);
     if (!EFI_ERROR (Status)) {
       return EFI_INVALID_PARAMETER;
     }
@@ -251,7 +257,7 @@ MmInstallProtocolInterfaceNotify (
   //
   // Lookup the Protocol Entry for the requested protocol
   //
-  ProtEntry = MmFindProtocolEntry (Protocol, TRUE);
+  ProtEntry = MmFindProtocolEntry (&TempProtocolGuid, TRUE);
   if (ProtEntry == NULL) {
     goto Done;
   }
@@ -297,7 +303,11 @@ MmInstallProtocolInterfaceNotify (
   //
   // Each interface that is added must be unique
   //
-  ASSERT (MmFindProtocolInterface (Handle, Protocol, Interface) == NULL);
+  if (MmFindProtocolInterface (Handle, &TempProtocolGuid, Interface) != NULL) {
+    ASSERT (FALSE);
+    Status = EFI_ALREADY_STARTED;
+    goto Done;
+  }
 
   //
   // Initialize the protocol interface structure
