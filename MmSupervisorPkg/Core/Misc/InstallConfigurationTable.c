@@ -40,6 +40,7 @@ MmInstallConfigurationTable (
   )
 {
   UINTN                    Index;
+  UINTN                    TempSize;
   EFI_CONFIGURATION_TABLE  *ConfigurationTable;
   EFI_CONFIGURATION_TABLE  *OldTable;
 
@@ -105,14 +106,19 @@ MmInstallConfigurationTable (
       //
       // Allocate a table with one additional entry.
       //
-      mMmSystemTableAllocateSize += (CONFIG_TABLE_SIZE_INCREASED * sizeof (EFI_CONFIGURATION_TABLE));
-      ConfigurationTable          = AllocatePool (mMmSystemTableAllocateSize);
+      TempSize           = mMmSystemTableAllocateSize + (CONFIG_TABLE_SIZE_INCREASED * sizeof (EFI_CONFIGURATION_TABLE));
+      ConfigurationTable = AllocatePool (TempSize);
       if (ConfigurationTable == NULL) {
         //
         // If a new table could not be allocated, then return an error.
         //
         return EFI_OUT_OF_RESOURCES;
       }
+
+      //
+      // Only update the global after confirming the allocation is successful
+      //
+      mMmSystemTableAllocateSize = TempSize;
 
       if (gMmCoreMmst.MmConfigurationTable != NULL) {
         //
