@@ -214,7 +214,7 @@ AddImageStruct (
   IN UINT64            ImageSize,
   IN PHYSICAL_ADDRESS  EntryPoint,
   IN EFI_GUID          *Guid,
-  IN CHAR8             *PdbString
+  IN CHAR8             *PdbString OPTIONAL
   )
 {
   UINTN  PdbStringSize;
@@ -441,7 +441,11 @@ GetSmmLoadedImage (
 
     if (RealImageBase != 0) {
       PdbString = PeCoffLoaderGetPdbPointer ((VOID *)(UINTN)RealImageBase);
-      DEBUG ((DEBUG_INFO, "       pdb - %a\n", PdbString));
+      if (PdbString == NULL) {
+        DEBUG ((DEBUG_WARN, "       pdb has NULL string\n"));
+      } else {
+        DEBUG ((DEBUG_INFO, "       pdb - %a\n", PdbString));
+      }
     } else {
       PdbString = NULL;
     }
