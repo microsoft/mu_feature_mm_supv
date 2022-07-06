@@ -893,7 +893,10 @@ FvIsBeingProcessed (
   }
 
   KnownFwVol = AllocatePool (sizeof (KNOWN_FWVOL));
-  ASSERT (KnownFwVol != NULL);
+  if (KnownFwVol == NULL) {
+    ASSERT (FALSE);
+    return NULL;
+  }
 
   KnownFwVol->Signature   = KNOWN_FWVOL_SIGNATURE;
   KnownFwVol->FwVolHeader = FwVolHeader;
