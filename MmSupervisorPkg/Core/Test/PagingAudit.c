@@ -148,10 +148,14 @@ SmmLoadedImageTableDump (
       CommBuffer->SmmImage[DestinationIndex].ImageSize = (UINT64)LoadedImage->ImageSize;
 
       ImageName = PeCoffLoaderGetPdbPointer (LoadedImage->ImageBase);
+      if (ImageName == NULL) {
+        DEBUG ((DEBUG_WARN, "%a The image of interest (0x%p) does not have a name.\n", __FUNCTION__, LoadedImage->ImageBase));
+      }
+
       AsciiStrnCpyS (
         &CommBuffer->SmmImage[DestinationIndex].ImageName[0],
         MAX_IMAGE_NAME_SIZE,
-        ImageName,
+        ((ImageName == NULL) ? "NULL" : ImageName),
         MAX_IMAGE_NAME_SIZE-1
         );
       Status = FindFileNameFromDiscoveredList (
