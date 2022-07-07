@@ -1151,10 +1151,18 @@ AllocateTokenBuffer (
   // Separate the Spin_lock and Proc_token because the alignment requires by Spin_Lock.
   //
   SpinLockBuffer = AllocatePool (SpinLockSize * TokenCountPerChunk);
-  ASSERT (SpinLockBuffer != NULL);
+  if (SpinLockBuffer == NULL) {
+    DEBUG ((DEBUG_ERROR, "Failed to allocate memory for spin lock buffer\n"));
+    ASSERT (FALSE);
+    return NULL;
+  }
 
   ProcTokens = AllocatePool (sizeof (PROCEDURE_TOKEN) * TokenCountPerChunk);
-  ASSERT (ProcTokens != NULL);
+  if (ProcTokens == NULL) {
+    DEBUG ((DEBUG_ERROR, "Failed to allocate memory for procedure token buffer\n"));
+    ASSERT (FALSE);
+    return NULL;
+  }
 
   for (Index = 0; Index < TokenCountPerChunk; Index++) {
     SpinLock = (SPIN_LOCK *)(SpinLockBuffer + SpinLockSize * Index);
@@ -1530,7 +1538,12 @@ ProcedureWrapper (
     // If we can get here, it ought to be requested directly from Supervisor.
     Wrapper->Procedure (Wrapper->ProcedureArgument);
   } else {
-    SmmWhoAmI (NULL, &CpuIndex);
+    Status = SmmWhoAmI (NULL, &CpuIndex);
+    if (EFI_ERROR (Status)) {
+      ASSERT (FALSE);
+      goto Done;
+    }
+
     ASSERT (CpuIndex == Wrapper->CpuIndex);
     // TODO: This is a hack, since Procedure and Procedure2 has the same number of functional argument
     InvokeDemotedApProcedure (
