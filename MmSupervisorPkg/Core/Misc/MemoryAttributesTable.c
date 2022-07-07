@@ -1394,7 +1394,12 @@ CollectMemoryAttributesTable (
   do {
     DEBUG ((DEBUG_VERBOSE, "MemoryMapSize - 0x%x\n", MemoryMapSize));
     MemoryMap = AllocatePool (MemoryMapSize);
-    ASSERT (MemoryMap != NULL);
+    if (MemoryMap == NULL) {
+      DEBUG ((DEBUG_ERROR, "Failed to allocate memory for memory map (0x%x bytes)\n", MemoryMapSize));
+      Status = EFI_OUT_OF_RESOURCES;
+      break;
+    }
+
     DEBUG ((DEBUG_VERBOSE, "MemoryMap - 0x%x\n", MemoryMap));
 
     Status = SmmCoreGetMemoryMapMemoryAttributesTable (
