@@ -243,7 +243,7 @@ CalculateMaximumSupportAddress (
   @param[in] PageTable              Address of page table.
   @param[in] PhysicalAddressBits    The maximum physical address bits supported.
 **/
-VOID
+EFI_STATUS
 SetStaticPageTable (
   IN UINTN  PageTable,
   IN UINT8  PhysicalAddressBits
@@ -264,11 +264,18 @@ SetStaticPageTable (
   UINT64  *PageDirectory1GEntry;
   UINT64  *PageDirectoryEntry;
 
+  EFI_STATUS  Status;
+
   //
   // IA-32e paging translates 48-bit linear addresses to 52-bit physical addresses
   //  when 5-Level Paging is disabled.
   //
-  ASSERT (PhysicalAddressBits <= 52);
+  if (PhysicalAddressBits > 52) {
+    DEBUG ((DEBUG_ERROR, "%a Input PhysicalAddressBits (%d) > 52!!!\n", __FUNCTION__, PhysicalAddressBits));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
   if (!m5LevelPagingNeeded && (PhysicalAddressBits > 48)) {
     PhysicalAddressBits = 48;
   }
@@ -286,7 +293,12 @@ SetStaticPageTable (
   }
 
   NumberOfPdpEntriesNeeded = 1;
-  ASSERT (PhysicalAddressBits > 30);
+  if (PhysicalAddressBits <= 30) {
+    DEBUG ((DEBUG_ERROR, "%a Input PhysicalAddressBits (%d) <= 30!!!\n", __FUNCTION__, PhysicalAddressBits));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
   NumberOfPdpEntriesNeeded = (UINTN)LShiftU64 (1, PhysicalAddressBits - 30);
 
   //
@@ -294,8 +306,10 @@ SetStaticPageTable (
   //
   PageMap = (VOID *)PageTable;
 
-  PageMapLevel4Entry = PageMap;
-  PageMapLevel5Entry = NULL;
+  PageMapLevel4Entry        = PageMap;
+  PageMapLevel5Entry        = NULL;
+  PageDirectoryPointerEntry = NULL;
+  PageDirectoryEntry        = NULL;
   if (m5LevelPagingNeeded) {
     //
     // By architecture only one PageMapLevel5 exists - so lets allocate storage for it.
@@ -318,7 +332,12 @@ SetStaticPageTable (
       PageMapLevel4Entry = (UINT64 *)((*PageMapLevel5Entry) & ~mAddressEncMask & gPhyMask);
       if (PageMapLevel4Entry == NULL) {
         PageMapLevel4Entry = AllocatePageTableMemory (1);
-        ASSERT (PageMapLevel4Entry != NULL);
+        if (PageMapLevel4Entry == NULL) {
+          DEBUG ((DEBUG_ERROR, "%a Failed to allocate level 4 page entry!!!\n", __FUNCTION__));
+          Status = EFI_OUT_OF_RESOURCES;
+          goto Done;
+        }
+
         ZeroMem (PageMapLevel4Entry, EFI_PAGES_TO_SIZE (1));
 
         *PageMapLevel5Entry = (UINT64)(UINTN)PageMapLevel4Entry | mAddressEncMask | PAGE_ATTRIBUTE_BITS;
@@ -332,7 +351,12 @@ SetStaticPageTable (
       PageDirectoryPointerEntry = (UINT64 *)((*PageMapLevel4Entry) & ~mAddressEncMask & gPhyMask);
       if (PageDirectoryPointerEntry == NULL) {
         PageDirectoryPointerEntry = AllocatePageTableMemory (1);
-        ASSERT (PageDirectoryPointerEntry != NULL);
+        if (PageDirectoryPointerEntry == NULL) {
+          DEBUG ((DEBUG_ERROR, "%a Failed to allocate page directory pointer entry!!!\n", __FUNCTION__));
+          Status = EFI_OUT_OF_RESOURCES;
+          goto Done;
+        }
+
         ZeroMem (PageDirectoryPointerEntry, EFI_PAGES_TO_SIZE (1));
 
         *PageMapLevel4Entry = (UINT64)(UINTN)PageDirectoryPointerEntry | mAddressEncMask | PAGE_ATTRIBUTE_BITS;
@@ -370,7 +394,12 @@ SetStaticPageTable (
           PageDirectoryEntry = (UINT64 *)((*PageDirectoryPointerEntry) & ~mAddressEncMask & gPhyMask);
           if (PageDirectoryEntry == NULL) {
             PageDirectoryEntry = AllocatePageTableMemory (1);
-            ASSERT (PageDirectoryEntry != NULL);
+            if (PageDirectoryEntry == NULL) {
+              DEBUG ((DEBUG_ERROR, "%a Failed to allocate page directory entry!!!\n", __FUNCTION__));
+              Status = EFI_OUT_OF_RESOURCES;
+              goto Done;
+            }
+
             ZeroMem (PageDirectoryEntry, EFI_PAGES_TO_SIZE (1));
 
             //
@@ -389,6 +418,25 @@ SetStaticPageTable (
       }
     }
   }
+
+Done:
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    // Try to reclaim the allocated pages upon failure
+    if (m5LevelPagingNeeded && (PageMapLevel4Entry != NULL)) {
+      FreePages (PageMapLevel4Entry, 1);
+    }
+
+    if (PageDirectoryPointerEntry != NULL) {
+      FreePages (PageDirectoryPointerEntry, 1);
+    }
+
+    if (PageDirectoryEntry != NULL) {
+      FreePages (PageDirectoryEntry, 1);
+    }
+  }
+
+  return Status;
 }
 
 /**
@@ -410,6 +458,7 @@ SmmInitPageTable (
   IA32_IDT_GATE_DESCRIPTOR  *IdtEntry;
   UINT64                    *Pml4Entry;
   UINT64                    *Pml5Entry;
+  EFI_STATUS                Status;
 
   //
   // Initialize spin lock
@@ -452,11 +501,20 @@ SmmInitPageTable (
     PTEntry[Index] |= IA32_PG_PMNT;
   }
 
+  Pml4Entry = NULL;
+  Pml5Entry = NULL;
+  FreePage  = NULL;
+
   //
   // Fill Page-Table-Level4 (PML4) entry
   //
   Pml4Entry = (UINT64 *)AllocatePageTableMemory (1);
-  ASSERT (Pml4Entry != NULL);
+  if (Pml4Entry == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for Pml4Entry!!!\n", __FUNCTION__));
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Cleanup;
+  }
+
   *Pml4Entry = Pages | mAddressEncMask | PAGE_ATTRIBUTE_BITS;
   ZeroMem (Pml4Entry + 1, EFI_PAGE_SIZE - sizeof (*Pml4Entry));
 
@@ -471,7 +529,12 @@ SmmInitPageTable (
     // Fill PML5 entry
     //
     Pml5Entry = (UINT64 *)AllocatePageTableMemory (1);
-    ASSERT (Pml5Entry != NULL);
+    if (Pml5Entry == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for Pml5Entry!!!\n", __FUNCTION__));
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Cleanup;
+    }
+
     *Pml5Entry = (UINTN)Pml4Entry | mAddressEncMask | PAGE_ATTRIBUTE_BITS;
     ZeroMem (Pml5Entry + 1, EFI_PAGE_SIZE - sizeof (*Pml5Entry));
     //
@@ -486,13 +549,22 @@ SmmInitPageTable (
     // When access to non-SMRAM memory is restricted, create page table
     // that covers all memory space.
     //
-    SetStaticPageTable ((UINTN)PTEntry, mPhysicalAddressBits);
+    Status = SetStaticPageTable ((UINTN)PTEntry, mPhysicalAddressBits);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to set static page table - %r!!!\n", __FUNCTION__, Status));
+      goto Cleanup;
+    }
   } else {
     //
     // Add pages to page pool
     //
     FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES);
-    ASSERT (FreePage != NULL);
+    if (FreePage == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for FreePage!!!\n", __FUNCTION__));
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Cleanup;
+    }
+
     for (Index = 0; Index < PAGE_TABLE_PAGES; Index++) {
       InsertTailList (&mPagePool, FreePage);
       FreePage += EFI_PAGE_SIZE / sizeof (*FreePage);
@@ -535,10 +607,30 @@ SmmInitPageTable (
     InitializeIdtIst (EXCEPT_IA32_MACHINE_CHECK, 1);
   }
 
-  //
-  // Return the address of PML4/PML5 (to set CR3)
-  //
-  return (UINT32)(UINTN)PTEntry;
+  Status = EFI_SUCCESS;
+
+Cleanup:
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    if (Pml4Entry != NULL) {
+      FreePages (Pml4Entry, 1);
+    }
+
+    if (Pml5Entry != NULL) {
+      FreePages (Pml5Entry, 1);
+    }
+
+    if (FreePage != NULL) {
+      FreePages (FreePage, PAGE_TABLE_PAGES);
+    }
+
+    return 0;
+  } else {
+    //
+    // Return the address of PML4/PML5 (to set CR3)
+    //
+    return (UINT32)(UINTN)PTEntry;
+  }
 }
 
 /**
