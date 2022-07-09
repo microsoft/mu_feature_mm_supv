@@ -1154,20 +1154,37 @@ GetFullMmramRanges (
   //
   MaxCount = MmramRangeCount + 2 * MmramReservedCount;
 
+  *FullMmramRangeCount = 0;
+  FullMmramRanges      = NULL;
+
   Size                = MaxCount * sizeof (EFI_MM_RESERVED_MMRAM_REGION);
   MmramReservedRanges = (EFI_MM_RESERVED_MMRAM_REGION *)AllocatePool (Size);
-  ASSERT (MmramReservedRanges != NULL);
+  if (MmramReservedRanges == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramReservedRanges!!!\n", __FUNCTION__));
+    ASSERT (FALSE);
+    goto Cleanup;
+  }
+
   for (Index = 0; Index < MmramReservedCount; Index++) {
     CopyMem (&MmramReservedRanges[Index], &MmConfiguration->MmramReservedRegions[Index], sizeof (EFI_MM_RESERVED_MMRAM_REGION));
   }
 
   Size            = MaxCount * sizeof (EFI_MMRAM_DESCRIPTOR);
   TempMmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
-  ASSERT (TempMmramRanges != NULL);
+  if (TempMmramRanges == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for TempMmramRanges!!!\n", __FUNCTION__));
+    ASSERT (FALSE);
+    goto Cleanup;
+  }
+
   TempMmramRangeCount = 0;
 
   MmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
-  ASSERT (MmramRanges != NULL);
+  if (MmramRanges == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramRanges!!!\n", __FUNCTION__));
+    ASSERT (FALSE);
+    goto Cleanup;
+  }
 
   Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, MmramRanges);
   ASSERT_EFI_ERROR (Status);
@@ -1225,8 +1242,12 @@ GetFullMmramRanges (
   // Sort the entries
   //
   FullMmramRanges = AllocateZeroPool ((TempMmramRangeCount + AdditionMmramRangeCount) * sizeof (EFI_MMRAM_DESCRIPTOR));
-  ASSERT (FullMmramRanges != NULL);
-  *FullMmramRangeCount = 0;
+  if (FullMmramRanges == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for FullMmramRanges!!!\n", __FUNCTION__));
+    ASSERT (FALSE);
+    goto Cleanup;
+  }
+
   do {
     for (Index = 0; Index < TempMmramRangeCount; Index++) {
       if (TempMmramRanges[Index].PhysicalSize != 0) {
@@ -1249,9 +1270,18 @@ GetFullMmramRanges (
   ASSERT (*FullMmramRangeCount == TempMmramRangeCount);
   *FullMmramRangeCount += AdditionMmramRangeCount;
 
-  FreePool (MmramRanges);
-  FreePool (MmramReservedRanges);
-  FreePool (TempMmramRanges);
+Cleanup:
+  if (MmramRanges != NULL) {
+    FreePool (MmramRanges);
+  }
+
+  if (MmramReservedRanges != NULL) {
+    FreePool (MmramReservedRanges);
+  }
+
+  if (TempMmramRanges != NULL) {
+    FreePool (TempMmramRanges);
+  }
 
   return FullMmramRanges;
 }
