@@ -406,9 +406,11 @@ StrDecimalToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN  Result;
+  UINTN          Result;
+  RETURN_STATUS  Status;
 
-  StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result);
+  Status = StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -452,9 +454,11 @@ StrDecimalToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64  Result;
+  UINT64         Result;
+  RETURN_STATUS  Status;
 
-  StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result);
+  Status = StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -499,9 +503,11 @@ StrHexToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN  Result;
+  UINTN          Result;
+  RETURN_STATUS  Status;
 
-  StrHexToUintnS (String, (CHAR16 **)NULL, &Result);
+  Status = StrHexToUintnS (String, (CHAR16 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -546,9 +552,11 @@ StrHexToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64  Result;
+  UINT64         Result;
+  RETURN_STATUS  Status;
 
-  StrHexToUint64S (String, (CHAR16 **)NULL, &Result);
+  Status = StrHexToUint64S (String, (CHAR16 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -987,9 +995,11 @@ AsciiStrDecimalToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN  Result;
+  UINTN          Result;
+  RETURN_STATUS  Status;
 
-  AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result);
+  Status = AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -1029,9 +1039,11 @@ AsciiStrDecimalToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64  Result;
+  UINT64         Result;
+  RETURN_STATUS  Status;
 
-  AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result);
+  Status = AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -1075,9 +1087,11 @@ AsciiStrHexToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN  Result;
+  UINTN          Result;
+  RETURN_STATUS  Status;
 
-  AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result);
+  Status = AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
@@ -1121,9 +1135,11 @@ AsciiStrHexToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64  Result;
+  UINT64         Result;
+  RETURN_STATUS  Status;
 
-  AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result);
+  Status = AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result);
+  ASSERT_RETURN_ERROR (Status);
   return Result;
 }
 
