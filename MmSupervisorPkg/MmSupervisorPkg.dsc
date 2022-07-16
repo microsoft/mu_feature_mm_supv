@@ -164,6 +164,7 @@
 
   MmSupervisorPkg/Test/MmPagingAuditTest/UEFI/MmPagingAuditApp.inf
   MmSupervisorPkg/Test/MmSupvRequestUnitTestApp/MmSupvRequestUnitTestApp.inf
+  MmSupervisorPkg/Test/MmiHandlerProfileInfo/MmiHandlerProfileInfo.inf
 
 [BuildOptions.common.EDKII.DXE_SMM_DRIVER]
   *_*_*_CC_FLAGS = -D DISABLE_NEW_DEPRECATED_INTERFACES
