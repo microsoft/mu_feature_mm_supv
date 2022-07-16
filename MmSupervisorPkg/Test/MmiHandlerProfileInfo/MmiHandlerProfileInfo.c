@@ -2,6 +2,7 @@
   Shell application to dump SMI handler profile information.
 
 Copyright (c) 2017, Intel Corporation. All rights reserved.<BR>
+Copyright (c) Microsoft Corporation.
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -18,6 +19,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DevicePathLib.h>
 #include <Library/DxeServicesLib.h>
 #include <Protocol/SmmCommunication.h>
+#include <Protocol/MmSupervisorCommunication.h> // MU_CHANGE: MM_SUPV: Communicate to supervisor
 #include <Guid/PiSmmCommunicationRegionTable.h>
 
 #include <Guid/SmiHandlerProfile.h>
@@ -64,7 +66,7 @@ GetSmiHandlerProfileDatabase (
   EFI_SMM_COMMUNICATE_HEADER                        *CommHeader;
   SMI_HANDLER_PROFILE_PARAMETER_GET_INFO            *CommGetInfo;
   SMI_HANDLER_PROFILE_PARAMETER_GET_DATA_BY_OFFSET  *CommGetData;
-  EFI_SMM_COMMUNICATION_PROTOCOL                    *SmmCommunication;
+  MM_SUPERVISOR_COMMUNICATION_PROTOCOL              *SmmCommunication; // MU_CHANGE: MM_SUPV: Communicate to supervisor
   UINTN                                             MinimalSizeNeeded;
   EDKII_PI_SMM_COMMUNICATION_REGION_TABLE           *PiSmmCommunicationRegionTable;
   UINT32                                            Index;
@@ -73,7 +75,8 @@ GetSmiHandlerProfileDatabase (
   UINTN                                             Size;
   UINTN                                             Offset;
 
-  Status = gBS->LocateProtocol (&gEfiSmmCommunicationProtocolGuid, NULL, (VOID **)&SmmCommunication);
+  // MU_CHANGE: MM_SUPV: Communicate to supervisor
+  Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&SmmCommunication);
   if (EFI_ERROR (Status)) {
     Print (L"SmiHandlerProfile: Locate SmmCommunication protocol - %r\n", Status);
     return;
@@ -81,8 +84,9 @@ GetSmiHandlerProfileDatabase (
 
   MinimalSizeNeeded = EFI_PAGE_SIZE;
 
+  // MU_CHANGE: MM_SUPV: Communicate to supervisor
   Status = EfiGetSystemConfigurationTable (
-             &gEdkiiPiSmmCommunicationRegionTableGuid,
+             &gMmSupervisorCommunicationRegionTableGuid,
              (VOID **)&PiSmmCommunicationRegionTable
              );
   if (EFI_ERROR (Status)) {
@@ -657,7 +661,7 @@ DumpSmiHandler (
 **/
 EFI_STATUS
 EFIAPI
-SmiHandlerProfileInfoEntrypoint (
+MmiHandlerProfileInfoEntrypoint (
   IN EFI_HANDLE        ImageHandle,
   IN EFI_SYSTEM_TABLE  *SystemTable
   )

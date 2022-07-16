@@ -1,30 +1,33 @@
 ## @file
-#  Shell application to dump SMI handler profile information.
+#  Shell application to dump MMI handler profile information registered to MM supervisor.
 #
 # Note that if the feature is not enabled by setting PcdSmiHandlerProfilePropertyMask,
-# the application will not display SMI handler profile information.
+# the application will not display MMI handler profile information.
 #
 # Copyright (c) 2017, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
 
+#Override : 00000002 | MdeModulePkg/Application/SmiHandlerProfileInfo/SmiHandlerProfileInfo.inf | 6c2a904f34fb982b919d1d1999eb5c6b | 2022-07-15T23-43-10 | 58112c3f45a59892c2c3bdd15c6f1599358aaf2e
+
 [Defines]
   INF_VERSION                    = 0x00010005
   #BASE_NAME                      = SmiHandlerProfileInfo    ## MS_CHANGE - Rename app to be picked up by build scripts.
-  BASE_NAME                      = SmiHandlerProfileAuditTestApp
-  MODULE_UNI_FILE                = SmiHandlerProfileInfo.uni
-  FILE_GUID                      = 611EA796-8DF8-4BB6-91FE-6540ED70DC66
+  BASE_NAME                      = MmiHandlerProfileAuditTestApp
+  FILE_GUID                      = 87019115-75B7-4790-8996-3D2C7EC2AB48
   MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = SmiHandlerProfileInfoEntrypoint
+  ENTRY_POINT                    = MmiHandlerProfileInfoEntrypoint
 
 [Sources]
-  SmiHandlerProfileInfo.c
+  MmiHandlerProfileInfo.c
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec ## MU_CHANGE: MM_SUPV: Communicate to supervisor
 
 [LibraryClasses]
   UefiApplicationEntryPoint
@@ -40,7 +43,6 @@
   DxeServicesLib
 
 [Protocols]
-  gEfiSmmCommunicationProtocolGuid             ## CONSUMES
   gEfiSmmSwDispatch2ProtocolGuid               ## SOMETIMES_CONSUMES
   gEfiSmmSxDispatch2ProtocolGuid               ## SOMETIMES_CONSUMES
   gEfiSmmPowerButtonDispatch2ProtocolGuid      ## SOMETIMES_CONSUMES
@@ -49,11 +51,8 @@
   gEfiSmmGpiDispatch2ProtocolGuid              ## SOMETIMES_CONSUMES
   gEfiSmmIoTrapDispatch2ProtocolGuid           ## SOMETIMES_CONSUMES
   gEfiSmmUsbDispatch2ProtocolGuid              ## SOMETIMES_CONSUMES
+  gMmSupervisorCommunicationProtocolGuid       ## CONSUMES ## MU_CHANGE: MM_SUPV: Communicate to supervisor
 
 [Guids]
-  gEdkiiPiSmmCommunicationRegionTableGuid  ## CONSUMES  ## SystemTable
-  gSmiHandlerProfileGuid                   ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
-
-[UserExtensions.TianoCore."ExtraFiles"]
-  SmiHandlerProfileInfoExtra.uni
-
+  gMmSupervisorCommunicationRegionTableGuid ## CONSUMES  ## MU_CHANGE: MM_SUPV: Communicate to supervisor
+  gSmiHandlerProfileGuid                    ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
