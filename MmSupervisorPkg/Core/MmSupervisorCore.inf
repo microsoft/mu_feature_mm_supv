@@ -30,14 +30,14 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 1.0019
-  DEBUG_DRIVER_VERSION     = 1.0018
+  RELEASE_DRIVER_VERSION   = 6.0029
+  DEBUG_DRIVER_VERSION     = 6.0028
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
   #for example: Major=0 Minor=10, SPL=0x0000000A
-  MAJOR_PATCH_LEVEL              = 0
-  MINOR_PATCH_LEVEL              = 0
+  MAJOR_PATCH_LEVEL              = 1
+  MINOR_PATCH_LEVEL              = 1
 
 #  VALID_ARCHITECTURES           = X64
 
