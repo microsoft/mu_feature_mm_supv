@@ -1072,6 +1072,10 @@ MmFreePages (
   BOOLEAN     IsGuarded;
   BOOLEAN     IsSupervisorPage;
 
+  if (NumberOfPages > TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
   if (!InMemMap (Memory, NumberOfPages, &IsSupervisorPage)) {
     return EFI_NOT_FOUND;
   }

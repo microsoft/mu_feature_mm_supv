@@ -496,7 +496,11 @@ SyscallDispatcher (
 
       break;
     case SMM_FREE_PAGE:
-      if (!EFI_ERROR (InspectTargetRangeOwnership (Arg1, EFI_PAGES_TO_SIZE (Arg2), &IsUserRange)) && IsUserRange) {
+      // Making sure Arg2 does not overflow when supplying into inspector
+      // Then also making sure this entire range is owned by user
+      if ((Arg2 <= EFI_SIZE_TO_PAGES ((UINTN)-1)) &&
+          !EFI_ERROR (InspectTargetRangeOwnership (Arg1, EFI_PAGES_TO_SIZE (Arg2), &IsUserRange)) && IsUserRange)
+      {
         Status = MmFreePages ((EFI_PHYSICAL_ADDRESS)Arg1, Arg2);
       } else {
         Status = EFI_SECURITY_VIOLATION;
