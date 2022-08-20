@@ -1304,7 +1304,8 @@ ConvertSmiHandlerUsbContext (
   @param SwContextSize                The size of EFI_SMM_SW_REGISTER_CONTEXT in bytes
   @param SmiHandlerSwContextSize      The size of SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT in bytes
 
-  @return SmiHandlerSwContext   A pointer to SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT
+  @return SmiHandlerSwContext   A pointer to SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT,
+                                or NULL if any of the inputs are null pointers.
 **/
 SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT *
 ConvertSmiHandlerSwContext (
@@ -1315,7 +1316,18 @@ ConvertSmiHandlerSwContext (
 {
   SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT  *SmiHandlerSwContext;
 
-  ASSERT (SwContextSize == sizeof (EFI_SMM_SW_REGISTER_CONTEXT));
+  if ((SmiHandlerSwContextSize == NULL) ||
+      (SwContext == NULL))
+  {
+    // Should not happen...
+    return NULL;
+  }
+
+  if (SwContextSize != sizeof (EFI_SMM_SW_REGISTER_CONTEXT)) {
+    // Invalid parameter
+    *SmiHandlerSwContextSize = 0;
+    return NULL;
+  }
 
   SmiHandlerSwContext = AllocatePool (sizeof (SMI_HANDLER_PROFILE_SW_REGISTER_CONTEXT));
   if (SmiHandlerSwContext == NULL) {
