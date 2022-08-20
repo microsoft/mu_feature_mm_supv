@@ -505,6 +505,7 @@ SyscallDispatcher (
       break;
     case SMM_START_AP_PROC:
       if ((!EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (Arg1), &IsUserRange)) && IsUserRange) &&
+          (Arg2 < gMmCoreMmst.NumberOfCpus) &&
           ((Arg3 == 0) || (!EFI_ERROR (InspectTargetRangeOwnership (Arg3, 1, &IsUserRange)) && IsUserRange)))
       {
         // We only make sure the procedure is demoted, then the arguments access protection will be natural
