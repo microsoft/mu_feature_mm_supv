@@ -348,7 +348,8 @@ MmiUserHandlerRegister (
                                 supervisor handler.
 
   @retval EFI_SUCCESS           Handler function was successfully unregistered.
-  @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle.
+  @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle or the ownership
+                                of DispatchHandle mismatches with IsSupervisorHandler.
 
 **/
 EFI_STATUS
