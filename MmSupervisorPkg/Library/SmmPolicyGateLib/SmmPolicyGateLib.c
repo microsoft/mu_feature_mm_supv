@@ -95,7 +95,6 @@ IsIoReadWriteAllowed (
   // The MAX_UINT16 + 1 is because access 1 byte at 0xFFFF is still legit, if needed
   //
   if (IoAddress + IoSize > MAX_UINT16 + 1) {
-    // IO port 0xFFFF with width of
     DEBUG ((DEBUG_ERROR, "%a Invalid IO address range supplied - port: 0x%x, width: 0x%x.\n", __FUNCTION__, IoAddress, IoSize));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
