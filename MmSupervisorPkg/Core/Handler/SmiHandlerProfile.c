@@ -1594,6 +1594,8 @@ SmiHandlerProfileUnregisterHandler (
   if (SearchContext != NULL) {
     if (CompareGuid (HandlerGuid, &gEfiSmmUsbDispatch2ProtocolGuid)) {
       FreePool (SearchContext);
+    } else if (CompareGuid (HandlerGuid, &gEfiSmmSwDispatch2ProtocolGuid)) {
+      FreePool (SearchContext);
     }
   }
 
@@ -1655,6 +1657,7 @@ ProcessUserHandlerUnreg (
 {
   EFI_STATUS  Status = EFI_SUCCESS;
   BOOLEAN     IsUserRange;
+  EFI_GUID    TempGuid;
 
   if ((PcdGet8 (PcdSmiHandlerProfilePropertyMask) & 0x1) == 0) {
     Status = EFI_UNSUPPORTED;
@@ -1676,7 +1679,8 @@ ProcessUserHandlerUnreg (
         goto Exit;
       }
 
-      UserHandlerRegHolder.HandlerGuid      = HandlerGuid;
+      // Cache this GUID internally
+      CopyMem (&TempGuid, HandlerGuid, sizeof (EFI_GUID));
       UserHandlerRegHolder.Context          = (VOID *)Arg2;
       UserHandlerRegHolder.ContextSize      = Arg3;
       UserHandlerRegHolder.CompletedSyscall = SyscallIndex;
@@ -1698,7 +1702,7 @@ ProcessUserHandlerUnreg (
 
       Status = SmiHandlerProfileUnregisterHandler (
                  &mSmiHandlerProfile,
-                 UserHandlerRegHolder.HandlerGuid,
+                 &TempGuid,
                  UserHandlerRegHolder.Handler,
                  UserHandlerRegHolder.Context,
                  UserHandlerRegHolder.ContextSize
