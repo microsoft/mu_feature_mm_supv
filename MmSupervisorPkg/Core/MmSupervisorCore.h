@@ -685,7 +685,7 @@ MmiUserHandlerRegister (
   );
 
 /**
-  Unregister a handler in MM.
+  Unregister a handler in MM owned by supervisor.
 
   @param  DispatchHandle  The handle that was specified when the handler was registered.
 
@@ -695,7 +695,22 @@ MmiUserHandlerRegister (
 **/
 EFI_STATUS
 EFIAPI
-MmiHandlerUnRegister (
+MmiHandlerSupvUnRegister (
+  IN  EFI_HANDLE  DispatchHandle
+  );
+
+/**
+  Unregister a handler in MM owned by users.
+
+  @param  DispatchHandle  The handle that was specified when the handler was registered.
+
+  @retval EFI_SUCCESS           Handler function was successfully unregistered.
+  @retval EFI_INVALID_PARAMETER DispatchHandle does not refer to a valid handle.
+
+**/
+EFI_STATUS
+EFIAPI
+MmiHandlerUserUnRegister (
   IN  EFI_HANDLE  DispatchHandle
   );
 

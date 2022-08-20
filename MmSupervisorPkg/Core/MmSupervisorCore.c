@@ -97,7 +97,7 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
   MmLocateProtocol,
   MmiManage,
   MmiSupvHandlerRegister,
-  MmiHandlerUnRegister
+  MmiHandlerSupvUnRegister
 };
 
 EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
@@ -329,7 +329,7 @@ MmReadyToLockHandler (
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
     if (mMmCoreMmiHandlers[Index].UnRegister) {
-      Status = MmiHandlerUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
       if (EFI_ERROR (Status)) {
         DEBUG ((
           DEBUG_ERROR,
