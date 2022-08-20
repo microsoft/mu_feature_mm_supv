@@ -26,6 +26,7 @@
             "MmSupervisorPkg/MmSupervisorPkg.dec"
         ],
         "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
         ],
         "AcceptableDependencies-UEFI_APPLICATION": [
             "ShellPkg/ShellPkg.dec",
@@ -40,12 +41,23 @@
         "DscPath": "MmSupervisorPkg.dsc"
     },
 
+    ## options defined ci/Plugin/HostUnitTestCompilerPlugin
+    "HostUnitTestCompilerPlugin": {
+        "DscPath": "Test/MmSupervisorPkgHostTest.dsc"
+    },
+
     ## options defined ci/Plugin/GuidCheck
     "GuidCheck": {
         "IgnoreGuidName": [],
         "IgnoreGuidValue": [],
         "IgnoreFoldersAndFiles": [],
         "IgnoreDuplicates": []
+    },
+
+    ## options defined ci/Plugin/HostUnitTestDscCompleteCheck
+    "HostUnitTestDscCompleteCheck": {
+        "IgnoreInf": [""],
+        "DscPath": "Test/MmSupervisorPkgHostTest.dsc"
     },
 
     ## options defined ci/Plugin/LibraryClassCheck

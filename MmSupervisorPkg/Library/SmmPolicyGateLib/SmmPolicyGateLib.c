@@ -15,6 +15,7 @@
 #include <Library/DebugLib.h>
 #include <Library/SmmPolicyGateLib.h>
 #include <Library/SysCallLib.h>
+#include <Library/SafeIntLib.h>
 
 /**
   Given an IO port address and size, determine if the request is allowed by
@@ -50,6 +51,7 @@ IsIoReadWriteAllowed (
   UINT32                                     IoSize        = 0;
   UINT32                                     i;
   BOOLEAN                                    FoundMatch = FALSE;
+  UINT16                                     Dummy;
 
   //
   // Check to ensure that only one of SECURE_POLICY_RESOURCE_ATTR_READ
@@ -74,6 +76,26 @@ IsIoReadWriteAllowed (
     IoSize = sizeof (UINT32);
   } else {
     DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __FUNCTION__));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  //
+  // Check to ensure the starting IO port number is within the range of 16bit value
+  //
+  Status = SafeUint32ToUint16 (IoAddress, &Dummy);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Invalid IO address supplied - port: 0x%x.\n", __FUNCTION__, IoAddress));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  //
+  // Check to ensure the ending IO port number is within the range of 16bit value
+  // The MAX_UINT16 + 1 is because access 1 byte at 0xFFFF is still legit, if needed
+  //
+  if (IoAddress + IoSize > MAX_UINT16 + 1) {
+    DEBUG ((DEBUG_ERROR, "%a Invalid IO address range supplied - port: 0x%x, width: 0x%x.\n", __FUNCTION__, IoAddress, IoSize));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
