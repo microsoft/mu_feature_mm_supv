@@ -1,10 +1,22 @@
 ## @file
-# Azure Pipeline build file for a build using Windows and VS2019
+# Azure Pipeline build file for a build using Windows and Visual Studio
 #
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
+
+resources:
+  repositories:
+    - repository: mu_devops
+      type: github
+      endpoint: microsoft
+      name: microsoft/mu_devops
+      ref: main
+
 trigger:
+- main
+
+pr:
 - main
 
 schedules:
@@ -15,12 +27,13 @@ schedules:
     - main
   always: true          # Always build, even if no changes
 
-pr:
-- main
-
 jobs:
-- template: templates/pr-gate-build-job.yml
+- template: Jobs/PrGate.yml@mu_devops
   parameters:
-    tool_chain_tag: 'VS2022'
-    vm_image: 'windows-latest'
-    arch_list: "IA32,X64"
+    arch_list: IA32,X64
+    do_ci_build: true
+    do_ci_setup: false
+    packages: MmSupervisorPkg
+    target_list: DEBUG,RELEASE,NO-TARGET,NOOPT
+    tool_chain_tag: VS2022
+    vm_image: windows-latest
