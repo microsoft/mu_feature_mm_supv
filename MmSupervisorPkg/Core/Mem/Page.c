@@ -625,7 +625,7 @@ MmInternalAllocatePagesEx (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (NumberOfPages > TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
+  if (NumberOfPages >= TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1072,7 +1072,7 @@ MmFreePages (
   BOOLEAN     IsGuarded;
   BOOLEAN     IsSupervisorPage;
 
-  if (NumberOfPages > TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
+  if (NumberOfPages >= TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
     return EFI_OUT_OF_RESOURCES;
   }
 
