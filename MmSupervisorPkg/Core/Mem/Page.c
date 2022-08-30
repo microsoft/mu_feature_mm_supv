@@ -552,9 +552,10 @@ InternalAllocMaxAddress (
 
   @param  FreePageList           The free page node.
   @param  NumberOfPages          Number of pages to be allocated.
-  @param  MaxAddress             Request to allocate memory below this address.
+  @param  Address                Request to allocate new memory at this address.
 
-  @return Memory address of allocated pages.
+  @return Memory address of allocated pages. Any returned value that differs from
+          Address should be treated as EFI_NOT_FOUND.
 
 **/
 UINTN
@@ -625,7 +626,7 @@ MmInternalAllocatePagesEx (
     return EFI_INVALID_PARAMETER;
   }
 
-  if (NumberOfPages > TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
+  if (NumberOfPages >= TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -1072,7 +1073,7 @@ MmFreePages (
   BOOLEAN     IsGuarded;
   BOOLEAN     IsSupervisorPage;
 
-  if (NumberOfPages > TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
+  if (NumberOfPages >= TRUNCATE_TO_PAGES ((UINTN)-1) + 1) {
     return EFI_OUT_OF_RESOURCES;
   }
 
