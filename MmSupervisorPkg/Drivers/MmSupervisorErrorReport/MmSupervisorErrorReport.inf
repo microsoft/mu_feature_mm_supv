@@ -37,6 +37,9 @@
   MmSupervisorPkg/MmSupervisorPkg.dec
   MsWheaPkg/MsWheaPkg.dec
 
+[Guids]
+  gMuTelemetrySectionTypeGuid                   ## SOMETIMES_CONSUMES
+
 [LibraryClasses]
   BaseLib
   DebugLib

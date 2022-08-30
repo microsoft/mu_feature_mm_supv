@@ -9,9 +9,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <PiMm.h>
 #include <MmSupvTelemetryData.h>
 
-#include <Guid/MuTelemetryCperSection.h>
-#include <Guid/Cper.h>
-
 #include <Library/ResetSystemLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/SynchronizationLib.h>
@@ -28,91 +25,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 SPIN_LOCK  *mCpuExceptionToken       = NULL;
 UINT8      *mCpuExceptionCountBuffer = NULL;
-
-/**
-
-  Add Error Block to HEST table's Generic Errr
-
-  @param  ExceptionType         Exception type that triggered this exception handler routine.
-  @param  DriverGuid            GUID of the driver that tripped this exception.
-  @param  ExceptionRIP          Execution instruction pointer that triggered this exception.
-  @param  DriverLoadAddress     Driver loading address corresponding to the faulting instruction.
-
-  @return EFI_SUCCESS           If the data population is successful.
-  @return EFI_INVALID_PARAMETER If the data buffer is not initialized properly.
-  @return EFI_BUFFER_TOO_SMALL  If the data buffer is too small to fit in all error data.
-
-**/
-EFI_STATUS
-GenericErrorBlockAddErrorData (
-  IN EFI_EXCEPTION_TYPE     ExceptionType,
-  IN EFI_GUID               *DriverGuid,
-  IN EFI_PHYSICAL_ADDRESS   ExceptionRIP,
-  IN EFI_PHYSICAL_ADDRESS   DriverLoadAddress
-  )
-{
-  MU_TELEMETRY_CPER_SECTION_DATA                   *GenericErrorDataFollowEntry;
-  EFI_ACPI_6_4_ERROR_BLOCK_STATUS                  *BlockStatus;
-  EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE      *BlockHeader;
-  EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_STRUCTURE  *Entry;
-  UINTN                                            MaxBlockLength;
-
-
-  BlockHeader = (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE*)mMmSupervisorAccessBuffer[MM_GHES_BUFFER_T].PhysicalStart;
-  MaxBlockLength = EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_GHES_BUFFER_T].NumberOfPages);
-
-  if ((BlockHeader == NULL) || (MaxBlockLength == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a - %d: Invalid Param \n", __FUNCTION__, __LINE__));
-    return EFI_INVALID_PARAMETER;
-  }
-
-  // Setup GHES structures
-  ZeroMem (BlockHeader, MaxBlockLength);
-  BlockHeader->ErrorSeverity = EFI_ACPI_6_4_ERROR_SEVERITY_FATAL;
-  BlockStatus = &BlockHeader->BlockStatus;
-
-  // Calculate length of GHES error region (including new entry)
-  UINT32  ExpectedNewDataLength = BlockHeader->DataLength +
-                                  sizeof (EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_STRUCTURE) +
-                                  sizeof (MU_TELEMETRY_CPER_SECTION_DATA);
-
-  // Fail if we don't have room
-  if (sizeof (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE) + ExpectedNewDataLength > MaxBlockLength) {
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  // Set BlockStatus Correctable/Uncorrectable fields
-  if (BlockStatus->UncorrectableErrorValid == 0) {
-    BlockStatus->UncorrectableErrorValid = 1;
-  } else {
-    BlockStatus->MultipleUncorrectableErrors = 1;
-  }
-
-  // Setup Generic Error Data Entry with the values that were passed in
-  BlockStatus->ErrorDataEntryCount++;
-  Entry = (EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_STRUCTURE *)(((UINT8 *)BlockHeader) +
-                                                              sizeof (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE) +
-                                                              BlockHeader->DataLength);
-
-  // Setup Entry header
-  ZeroMem (Entry, sizeof (EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_STRUCTURE));
-  CopyMem (&Entry->SectionType, &gMuTelemetrySectionTypeGuid, sizeof (EFI_GUID));
-  Entry->ErrorSeverity   = EFI_GENERIC_ERROR_FATAL;
-  Entry->Revision        = EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_REVISION;
-  Entry->ErrorDataLength = sizeof (MU_TELEMETRY_CPER_SECTION_DATA);
-
-  // Copy data right after header
-  GenericErrorDataFollowEntry = (MU_TELEMETRY_CPER_SECTION_DATA *)(Entry + 1);
-  CopyMem (&GenericErrorDataFollowEntry->ComponentID, DriverGuid, sizeof (EFI_GUID));
-  GenericErrorDataFollowEntry->ErrorStatusValue = (EFI_SOFTWARE_SMM_DRIVER | (EFI_STATUS_CODE_VALUE)ExceptionType);
-  GenericErrorDataFollowEntry->AdditionalInfo1 = ExceptionRIP;
-  GenericErrorDataFollowEntry->AdditionalInfo2 = DriverLoadAddress;
-
-  // Setup the header with the new size
-  BlockHeader->DataLength = ExpectedNewDataLength;
-
-  return EFI_SUCCESS;
-}
 
 /**
   Routine for error reporting inside supervisor exception handlers.
@@ -192,13 +104,6 @@ PrepareNReportError (
   } else {
     TelemtryData->DriverLoadAddress = FaultRIP;
     ZeroMem (&TelemtryData->DriverId, sizeof (EFI_GUID));
-  }
-
-  // Try to populate the GHES information here as well.
-  Status = GenericErrorBlockAddErrorData (InterruptType, &TelemtryData->DriverId, TelemtryData->ExceptionRIP, TelemtryData->DriverLoadAddress);
-  if (EFI_ERROR (Status)) {
-    // This is not likely since this is only populating data in the allocated space...
-    DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __FUNCTION__, Status));
   }
 
   // Then figure out the CpuIndex
