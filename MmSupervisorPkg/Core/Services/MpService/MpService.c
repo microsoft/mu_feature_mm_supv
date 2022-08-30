@@ -624,7 +624,12 @@ BSPHandler (
   //
   // Invoke SMM Foundation EntryPoint with the processor information context.
   //
-  gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
+  if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+    gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
+  } else {
+    // Fail fast is invoked, we should have injected NMI, return to non-SMM
+    DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on BSP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+  }
 
   //
   // Make sure all APs have completed their pending none-block tasks
@@ -881,14 +886,20 @@ APHandler (
     //
     // Invoke the scheduled procedure
     //
-    if (mSmmMpSyncData->CpuData[CpuIndex].Procedure == ProcedureWrapper) {
-      ProcedureStatus = ProcedureWrapper ((VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter);
+    if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+      if (mSmmMpSyncData->CpuData[CpuIndex].Procedure == ProcedureWrapper) {
+        ProcedureStatus = ProcedureWrapper ((VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter);
+      } else {
+        ProcedureStatus = InvokeDemotedApProcedure (
+                            CpuIndex,
+                            mSmmMpSyncData->CpuData[CpuIndex].Procedure,
+                            (VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter
+                            );
+      }
     } else {
-      ProcedureStatus = InvokeDemotedApProcedure (
-                          CpuIndex,
-                          mSmmMpSyncData->CpuData[CpuIndex].Procedure,
-                          (VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter
-                          );
+      // Fail fast is invoked, we should have injected NMI, return to non-SMM
+      DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on AP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+      ProcedureStatus = EFI_ABORTED;
     }
 
     if (mSmmMpSyncData->CpuData[CpuIndex].Status != NULL) {
@@ -1876,21 +1887,9 @@ SmiRendezvous (
         //
         // BSP Handler is always called with a ValidSmi == TRUE
         //
-        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
-          BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
-        } else {
-          // Fail fast is invoked, we should have injected NMI, return to non-SMM
-          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on BSP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
-          goto Exit;
-        }
+        BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
       } else {
-        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
-          APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
-        } else {
-          // Fail fast is invoked, we should have injected NMI, return to non-SMM
-          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on AP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
-          goto Exit;
-        }
+        APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
       }
     }
 
