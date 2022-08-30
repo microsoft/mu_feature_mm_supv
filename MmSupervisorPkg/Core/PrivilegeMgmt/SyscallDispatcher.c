@@ -618,13 +618,13 @@ Exit:
   if (EFI_ERROR (Status)) {
     // Prepare the content and try to engage exception handler here
     // TODO: Do buffer preparation
-    ASSERT_EFI_ERROR (Status);
     if (mSmmRebootOnException) {
       DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __FUNCTION__));
       CpuBreakpoint ();
       ResetWarm ();
     }
 
+    ASSERT_EFI_ERROR (Status);
     CpuDeadLoop ();
   }
 

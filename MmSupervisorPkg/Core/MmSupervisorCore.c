@@ -207,7 +207,8 @@ PrepareCommonBuffers (
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages = CommRegionHob->MmCommonRegionPages;
       // But the memory itself is allocated under reserved..
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type = EfiRuntimeServicesData;
-      if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
+      if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T ||
+          CommRegionHob->MmCommonRegionType == MM_GHES_BUFFER_T) {
         mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
         Status                                                                 = MmAllocateSupervisorPages (
                                                                                    AllocateAnyPages,
@@ -486,12 +487,12 @@ MmEntryPoint (
       }
 
       SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize = BufferSize;
-      Status                                                     = MmiManage (
-                                                                     &CommunicateHeader->HeaderGuid,
-                                                                     NULL,
-                                                                     CommunicateHeader->Data,
-                                                                     (UINTN *)&(SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize)
-                                                                     );
+      Status = MmiManage (
+                 &CommunicateHeader->HeaderGuid,
+                 NULL,
+                 CommunicateHeader->Data,
+                 (UINTN *)&(SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize)
+                 );
       //
       // Update CommunicationBuffer, BufferSize and ReturnStatus
       // Communicate service finished, reset the pointer to CommBuffer to NULL

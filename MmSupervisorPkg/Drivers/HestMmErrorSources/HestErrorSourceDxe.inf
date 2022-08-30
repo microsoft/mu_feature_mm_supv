@@ -1,0 +1,47 @@
+## @file
+#  DXE driver to retrieve the error source descriptors from Standalone MM and append
+#  those to the HEST table.
+#
+#  Copyright (c) 2020, ARM Limited. All rights reserved.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = HestMmErrorSourceDxe
+  FILE_GUID                      = 9BF479E4-0F72-4388-BECF-69F8D7F8CFF2   # MU_CHANGE - CI Fixes
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = HestErrorSourceInitialize
+
+[Sources.common]
+  HestErrorSourceDxe.c
+
+[Packages]
+  ArmPkg/ArmPkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+  #StandaloneMmPkg/StandaloneMmPkg.dec    # MU_CHANGE
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  DxeServicesTableLib
+  UefiDriverEntryPoint
+  UefiLib
+  HobLib
+
+[Guids]
+  gMmHestGetErrorSourceInfoGuid                  ## PRODUCES
+  gMmCommonRegionHobGuid
+
+[Protocols]
+  gHestTableProtocolGuid                         ## CONSUMES
+  gEfiMmCommunication2ProtocolGuid
+
+[Pcd]
+  gMmSupervisorPkgTokenSpaceGuid.PcdGhesBufferPages                     ## CONSUMES
+
+[Depex]
+  gHestTableProtocolGuid AND gEfiMmCommunication2ProtocolGuid

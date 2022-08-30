@@ -20,8 +20,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/MmServicesTableLib.h>
 #include <Library/MsWheaEarlyStorageLib.h>
 
-#define MM_POLICY_SUBCLASS  0x00CE0000
-
 EFI_STATUS
 EFIAPI
 RegErrorReportJumpPointer (
@@ -55,7 +53,7 @@ MmSupvErrorReportWorker (
     if (NeedSysCall ()) {
       // Need to add the module name/guid and load address
       Status = MsWheaESAddRecordV0 (
-                 (EFI_STATUS_CODE_VALUE)(EFI_SOFTWARE | MM_POLICY_SUBCLASS | ErrorInfoBuffer->ExceptionType),
+                 (EFI_STATUS_CODE_VALUE)(EFI_SOFTWARE_SMM_DRIVER | ErrorInfoBuffer->ExceptionType),
                  ErrorInfoBuffer->ExceptionRIP,
                  ErrorInfoBuffer->DriverLoadAddress,
                  NULL,

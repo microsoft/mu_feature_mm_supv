@@ -58,6 +58,9 @@ MmCommunicationBufferDxeEntry (
       ConfTableGuid = &gEdkiiPiSmmCommunicationRegionTableGuid;
     } else if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
       ConfTableGuid = &gMmSupervisorCommunicationRegionTableGuid;
+    } else if (CommRegionHob->MmCommonRegionType == MM_GHES_BUFFER_T) {
+      // Do nothing for GHES region
+      goto SkipTableInstall;
     } else {
       // Unrecognized buffer type, do not proceed with comm buffer table installation
       DEBUG ((DEBUG_ERROR, "%a Unsupported communication region type discovered (0x%x), the communication buffer could be misconfigured!!!\n", __FUNCTION__, CommRegionHob->MmCommonRegionType));
@@ -136,6 +139,7 @@ MmCommunicationBufferDxeEntry (
 
     // MU_CHANGE Starts: MM_SUPV: Fetch allocated communication buffer from HOBs
     //                   And publish notification when the table is installed.
+SkipTableInstall:
     GuidHob.Guid = GET_NEXT_HOB (GuidHob);
     GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
   }

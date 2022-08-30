@@ -80,7 +80,12 @@ ReserveCommBuffer (
   //
   // Allocate and fill CommRegionHob
   //
-  CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateRuntimePages ((UINTN)PageSize);
+  if (Type == MM_SUPERVISOR_BUFFER_T || Type == MM_USER_BUFFER_T) {
+    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateRuntimePages ((UINTN)PageSize);
+  } else {
+    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)NULL;
+    Status = PeiServicesAllocatePages (EfiACPIMemoryNVS, (UINTN)PageSize, &CommRegionHob->MmCommonRegionAddr);
+  }
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __FUNCTION__, PageSize));
     ASSERT (FALSE);
@@ -126,6 +131,7 @@ MmCommunicationBufferPeiEntry (
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  SupvBufferAddr;
   EFI_PHYSICAL_ADDRESS  UserBufferAddr;
+  EFI_PHYSICAL_ADDRESS  GhesBufferAddr;
 
   Status = ReserveCommBuffer (MM_SUPERVISOR_BUFFER_T, PcdGet64 (PcdSupervisorCommBufferPages), &SupvBufferAddr);
   if (EFI_ERROR (Status)) {
@@ -136,6 +142,12 @@ MmCommunicationBufferPeiEntry (
   Status = ReserveCommBuffer (MM_USER_BUFFER_T, PcdGet64 (PcdUserCommBufferPages), &UserBufferAddr);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for user - %r!\n", __FUNCTION__, Status));
+    goto Done;
+  }
+
+  Status = ReserveCommBuffer (MM_GHES_BUFFER_T, PcdGet64 (PcdGhesBufferPages), &GhesBufferAddr);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for error reporting - %r!\n", __FUNCTION__, Status));
     goto Done;
   }
 
@@ -156,6 +168,11 @@ Done:
     if (NULL != (VOID *)(UINTN)UserBufferAddr) {
       // Clean user legacy if any
       FreePages ((VOID *)(UINTN)UserBufferAddr, (UINTN)PcdGet64 (PcdUserCommBufferPages));
+    }
+
+    if (NULL != (VOID *)(UINTN)GhesBufferAddr) {
+      // Clean user legacy if any
+      FreePages ((VOID *)(UINTN)GhesBufferAddr, (UINTN)PcdGet64 (PcdGhesBufferPages));
     }
   }
 

@@ -224,4 +224,10 @@ InitializeDataForMmMp (
   VOID
   );
 
+VOID
+EFIAPI
+TriggerFailFast (
+  UINTN         CpuIndex
+  );
+
 #endif //_MM_CORE_MP_H_

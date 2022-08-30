@@ -67,6 +67,8 @@ SPIN_LOCK                    *mPFLock = NULL;
 SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
 BOOLEAN                      mMachineCheckSupported = FALSE;
 MM_COMPLETION                mSmmStartupThisApToken;
+volatile BOOLEAN             mFailFastOccurred = FALSE;
+BASE_LIBRARY_JUMP_BUFFER     *mJumpBuffer = NULL;
 
 extern UINTN  mSmmShadowStackSize;
 
@@ -1690,6 +1692,30 @@ CpuSmmDebugExit (
   }
 }
 
+VOID
+EFIAPI
+TriggerFailFast (
+  UINTN         CpuIndex
+  )
+{
+  UINT32      ApicId;
+
+  DEBUG ((DEBUG_ERROR, "%a - Entry.\n", __FUNCTION__));
+
+  // Inject an NMI to the local APIC, which will take effect once we do RSM.
+  ApicId = GetApicId ();
+  SendFixedIpi (ApicId, EXCEPT_IA32_NMI);
+
+  DEBUG ((DEBUG_ERROR, "%a - NMI injected on APIC ID 0x%x.\n", __FUNCTION__, ApicId));
+
+  // Set the error flag, in case we are back in the MM again
+  mFailFastOccurred = TRUE;
+
+  // Resume to non-MM environment
+  DEBUG ((DEBUG_ERROR, "%a - Marked all following MMIs as invalid. Preparing to long jump.\n", __FUNCTION__));
+  LongJump (&mJumpBuffer[CpuIndex], 1);
+}
+
 /**
   C function for SMI entry, each processor comes here upon SMI trigger.
 
@@ -1729,6 +1755,13 @@ SmiRendezvous (
   // Perform CPU specific entry hooks
   //
   SmmCpuFeaturesRendezvousEntry (CpuIndex);
+
+  //
+  // Fail fast has occurred before, MMI should not function, meaning that MM is defeatured
+  //
+  if (mFailFastOccurred) {
+    goto Exit;
+  }
 
   //
   // Determine if this is a valid SMI
@@ -1843,9 +1876,21 @@ SmiRendezvous (
         //
         // BSP Handler is always called with a ValidSmi == TRUE
         //
-        BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
+        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+          BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
+        } else {
+          // Fail fast is invoked, we should have injected NMI, return to non-SMM
+          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on BSP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+          goto Exit;
+        }
       } else {
-        APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+          APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+        } else {
+          // Fail fast is invoked, we should have injected NMI, return to non-SMM
+          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on AP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+          goto Exit;
+        }
       }
     }
 
@@ -2084,6 +2129,11 @@ InitializeMpServiceData (
       gcSmiIdtr.Limit + 1,
       Cr3
       );
+  }
+
+  mJumpBuffer = AllocatePool (sizeof (BASE_LIBRARY_JUMP_BUFFER) * gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
+  if (mJumpBuffer == NULL) {
+    ASSERT (FALSE);
   }
 
   //
