@@ -552,9 +552,10 @@ InternalAllocMaxAddress (
 
   @param  FreePageList           The free page node.
   @param  NumberOfPages          Number of pages to be allocated.
-  @param  MaxAddress             Request to allocate memory below this address.
+  @param  Address                Request to allocate new memory at this address.
 
-  @return Memory address of allocated pages.
+  @return Memory address of allocated pages. Any returned value that differs from
+          Address should be treated as EFI_NOT_FOUND.
 
 **/
 UINTN
