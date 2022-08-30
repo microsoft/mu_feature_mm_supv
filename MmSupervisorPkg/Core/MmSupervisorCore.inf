@@ -114,7 +114,6 @@
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
-  MsWheaPkg/MsWheaPkg.dec
 
 [LibraryClasses]
   BaseLib

@@ -38,11 +38,14 @@
   MsWheaPkg/MsWheaPkg.dec
 
 [Guids]
+  gMmCommonRegionHobGuid                        ## CONSUMES
   gMuTelemetrySectionTypeGuid                   ## SOMETIMES_CONSUMES
 
 [LibraryClasses]
   BaseLib
   DebugLib
+  HobLib
+  BaseMemoryLib
   ReportStatusCodeLib
   StandaloneMmDriverEntryPoint
   SysCallLib

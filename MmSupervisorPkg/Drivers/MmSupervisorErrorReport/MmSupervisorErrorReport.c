@@ -13,15 +13,22 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <PiMm.h>
 #include <MmSupvTelemetryData.h>
 
-#include <Guid/MuTelemetryCperSection.h>
+#include <IndustryStandard/Acpi.h>
 #include <Guid/Cper.h>
+#include <Guid/MmCommonRegion.h>
+#include <Guid/MuTelemetryCperSection.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/SysCallLib.h>
 #include <Library/MuTelemetryHelperLib.h>
+#include <Library/HobLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/MsWheaEarlyStorageLib.h>
+
+EFI_PHYSICAL_ADDRESS  mGhesReportAddress = 0;
+UINTN                 mGhesReportNumberOfPages = 0;
 
 EFI_STATUS
 EFIAPI
@@ -59,9 +66,12 @@ GenericErrorBlockAddErrorData (
   EFI_ACPI_6_4_GENERIC_ERROR_DATA_ENTRY_STRUCTURE  *Entry;
   UINTN                                            MaxBlockLength;
 
+  if (((VOID*)(UINTN)mGhesReportAddress == NULL) || (mGhesReportNumberOfPages == 0)) {
+    return EFI_NOT_STARTED;
+  }
 
-  BlockHeader = (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE*)mMmSupervisorAccessBuffer[MM_GHES_BUFFER_T].PhysicalStart;
-  MaxBlockLength = EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_GHES_BUFFER_T].NumberOfPages);
+  BlockHeader = (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE*)mGhesReportAddress;
+  MaxBlockLength = EFI_PAGES_TO_SIZE (mGhesReportNumberOfPages);
 
   if ((BlockHeader == NULL) || (MaxBlockLength == 0)) {
     DEBUG ((DEBUG_ERROR, "%a - %d: Invalid Param \n", __FUNCTION__, __LINE__));
@@ -139,6 +149,18 @@ MmSupvErrorReportWorker (
       (ErrorInfoBuffer->Signature == MM_SUPV_TELEMETRY_SIGNATURE))
   {
     if (NeedSysCall ()) {
+      // Try to populate the GHES information here as well.
+      Status = GenericErrorBlockAddErrorData (
+                ErrorInfoBuffer->ExceptionType,
+                &ErrorInfoBuffer->DriverId,
+                ErrorInfoBuffer->ExceptionRIP,
+                ErrorInfoBuffer->DriverLoadAddress
+                );
+      if (EFI_ERROR (Status)) {
+        // This is not likely since this is only populating data in the allocated space...
+        DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __FUNCTION__, Status));
+      }
+
       // Need to add the module name/guid and load address
       Status = MsWheaESAddRecordV0 (
                  (EFI_STATUS_CODE_VALUE)(EFI_SOFTWARE_SMM_DRIVER | ErrorInfoBuffer->ExceptionType),
@@ -151,18 +173,6 @@ MmSupvErrorReportWorker (
       // Why are we even here?
       DEBUG ((DEBUG_ERROR, "%a: This should not happen...\n", __FUNCTION__));
       ASSERT (FALSE);
-    }
-
-    // Try to populate the GHES information here as well.
-    Status = GenericErrorBlockAddErrorData (
-               ErrorInfoBuffer->ExceptionType,
-               &ErrorInfoBuffer->DriverId,
-               ErrorInfoBuffer->ExceptionRIP,
-               ErrorInfoBuffer->DriverLoadAddress
-               );
-    if (EFI_ERROR (Status)) {
-      // This is not likely since this is only populating data in the allocated space...
-      DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __FUNCTION__, Status));
     }
   }
 
@@ -185,10 +195,31 @@ SmmSupvErrorReportEntry (
   IN EFI_MM_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS            Status;
+  EFI_PEI_HOB_POINTERS  GuidHob;
+  MM_COMM_REGION_HOB    *CommRegionHob;
 
   // Register with MM Core with handler jump point
   Status = SysCall (SMM_ERR_RPT_JMP, (UINTN)RegErrorReportJumpPointer, 0, 0);
+
+  // Locate the reserved area for GHES reporting
+  CommRegionHob = NULL;
+  GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
+  while (GuidHob.Guid != NULL) {
+    CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
+    if (CommRegionHob->MmCommonRegionType == MM_GHES_BUFFER_T) {
+      // This is what we need
+      break;
+    }
+
+    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
+    GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
+  }
+
+  if (CommRegionHob != NULL) {
+    mGhesReportAddress        = CommRegionHob->MmCommonRegionAddr;
+    mGhesReportNumberOfPages  = CommRegionHob->MmCommonRegionPages;
+  }
 
   DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __FUNCTION__, Status));
   return Status;
