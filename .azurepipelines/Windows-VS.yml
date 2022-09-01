@@ -33,6 +33,7 @@ jobs:
     arch_list: IA32,X64
     do_ci_build: true
     do_ci_setup: false
+    do_pr_eval: false
     packages: MmSupervisorPkg
     target_list: DEBUG,RELEASE,NO-TARGET,NOOPT
     tool_chain_tag: VS2022
