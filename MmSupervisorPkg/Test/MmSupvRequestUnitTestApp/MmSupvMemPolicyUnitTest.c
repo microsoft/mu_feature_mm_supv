@@ -41,10 +41,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define UNDEFINED_LEVEL  MAX_UINT32
 
-MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SupvCommunication              = NULL;
-VOID                                  *mMmSupvCommonCommBufferAddress = NULL;
-UINTN                                 mMmSupvCommonCommBufferSize;
-
 /// ================================================================================================
 /// ================================================================================================
 ///
