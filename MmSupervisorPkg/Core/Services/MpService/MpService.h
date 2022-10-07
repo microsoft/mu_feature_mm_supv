@@ -1,7 +1,7 @@
 /** @file
 SMM MP service implementation
 
-Copyright (c) 2009 - 2020, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -106,6 +106,7 @@ typedef struct {
   volatile SMM_CPU_SYNC_MODE    EffectiveSyncMode;
   volatile BOOLEAN              SwitchBsp;
   volatile BOOLEAN              *CandidateBsp;
+  volatile BOOLEAN              AllApArrivedWithException;
   EFI_AP_PROCEDURE              StartupProcedure;
   VOID                          *StartupProcArgs;
 } SMM_DISPATCHER_MP_SYNC_DATA;
@@ -221,6 +222,14 @@ IsSyncTimerTimeout (
 **/
 VOID
 InitializeDataForMmMp (
+  VOID
+  );
+
+/**
+  Insure when this function returns, no AP will execute normal mode code before entering SMM, except SMI disabled APs.
+**/
+VOID
+SmmWaitForApArrival (
   VOID
   );
 
