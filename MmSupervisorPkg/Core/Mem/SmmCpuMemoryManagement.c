@@ -62,6 +62,7 @@ typedef struct {
 } MEMORY_ADDRESS_POINT;
 
 UINTN                  mInternalCr3;
+BOOLEAN                mIsShadowStack = FALSE;
 EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
@@ -291,7 +292,7 @@ ConvertPageEntryAttribute (
   if ((Attributes & EFI_MEMORY_RO) != 0) {
     if (IsSet) {
       NewPageEntry &= ~(UINT64)IA32_PG_RW;
-      if (mInternalCr3 != 0) {
+      if (mIsShadowStack) {
         // Environment setup
         // ReadOnly page need set Dirty bit for shadow stack
         NewPageEntry |= IA32_PG_D;
@@ -914,10 +915,11 @@ SetShadowStack (
   EFI_STATUS  Status;
 
   SetPageTableBase (Cr3);
-
-  Status = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RO);
+  mIsShadowStack = TRUE;
+  Status         = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RO);
 
   SetPageTableBase (0);
+  mIsShadowStack = FALSE;
 
   return Status;
 }
