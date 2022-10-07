@@ -1057,6 +1057,9 @@ GetFullMmramRanges (
   UINTN                         MaxCount;
   BOOLEAN                       Rescan;
 
+  MmramRanges     = NULL;
+  TempMmramRanges = NULL;
+
   // MU_CHANGE: Changed to use MM PPI instead of protocol
   //
   // Get MM Configuration PPI if it is present.
