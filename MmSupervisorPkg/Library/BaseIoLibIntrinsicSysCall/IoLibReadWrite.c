@@ -8,6 +8,7 @@
 **/
 
 #include "BaseIoLibIntrinsicInternal.h"
+#include "IoLibTdx.h"
 #include <Uefi.h>
 #include <Library/SysCallLib.h>
 #include <Protocol/MmCpuIo.h>
