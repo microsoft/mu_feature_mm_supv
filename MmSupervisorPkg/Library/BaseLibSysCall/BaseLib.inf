@@ -149,6 +149,9 @@
   X64/ReadCr0.nasm| MSFT
   X64/ReadEflags.nasm| MSFT
 
+  X64/TdCall.nasm
+  X64/TdVmcall.nasm
+  X64/TdProbe.c
 
   X64/Non-existing.c
   Math64.c
