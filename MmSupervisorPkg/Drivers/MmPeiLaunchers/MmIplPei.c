@@ -1403,7 +1403,7 @@ MmIplPeiEntry (
   // Find the largest SMRAM range between 1MB and 4GB that is at least 256KB - 4K in size
   //
   mCurrentMmramRange = NULL;
-  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; Index < gMmCorePrivate->MmramRangeCount; Index++) {
+  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
     //
     // Skip any SMRAM region that is already allocated, needs testing, or needs ECC initialization
     //
