@@ -68,21 +68,6 @@ UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
 
 /**
-  Set the internal page table base address.
-  If it is non zero, further MemoryAttribute modification will be on this page table.
-  If it is zero, further MemoryAttribute modification will be on real page table.
-
-  @param Cr3 page table base.
-**/
-VOID
-SetPageTableBase (
-  IN UINTN  Cr3
-  )
-{
-  mInternalCr3 = Cr3;
-}
-
-/**
   Return length according to page attributes.
 
   @param[in]  PageAttributes   The page attribute of the page entry.
@@ -476,12 +461,14 @@ SplitPage (
 **/
 RETURN_STATUS
 ConvertMemoryPageAttributes (
-  IN  PHYSICAL_ADDRESS BaseAddress,
-  IN  UINT64 Length,
-  IN  UINT64 Attributes,
-  IN  BOOLEAN IsSet,
-  OUT BOOLEAN *IsSplitted, OPTIONAL
-  OUT BOOLEAN                           *IsModified   OPTIONAL
+  IN  UINTN             PageTableBase,
+  IN  BOOLEAN           EnablePML5Paging,
+  IN  PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64            Length,
+  IN  UINT64            Attributes,
+  IN  BOOLEAN           IsSet,
+  OUT BOOLEAN           *IsSplitted, OPTIONAL
+  OUT BOOLEAN           *IsModified   OPTIONAL
   )
 {
   UINT64                *PageEntry;
