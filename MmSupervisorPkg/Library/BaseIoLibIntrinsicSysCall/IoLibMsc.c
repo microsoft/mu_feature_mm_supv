@@ -16,6 +16,7 @@
 
 #include <Uefi.h>
 #include "BaseIoLibIntrinsicInternal.h"
+#include "IoLibTdx.h"
 
 //
 // Microsoft Visual Studio 7.1 Function Prototypes for I/O Intrinsics.
