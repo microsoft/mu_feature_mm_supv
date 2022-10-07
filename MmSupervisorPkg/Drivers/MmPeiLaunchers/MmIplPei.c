@@ -247,7 +247,7 @@ GetMmramCacheRange (
 
   do {
     FoundAdjacentRange = FALSE;
-    for (Index = 0; Index < gMmCorePrivate->MmramRangeCount; Index++) {
+    for (Index = 0; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
       RangeCpuStart     = MmramRanges[Index].CpuStart;
       RangePhysicalSize = MmramRanges[Index].PhysicalSize;
       if ((RangeCpuStart < *MmramCacheBase) && (*MmramCacheBase == (RangeCpuStart + RangePhysicalSize))) {
