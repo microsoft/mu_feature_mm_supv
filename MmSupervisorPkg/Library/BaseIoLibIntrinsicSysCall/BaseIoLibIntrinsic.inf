@@ -38,6 +38,8 @@
   BaseIoLibIntrinsicInternal.h
   IoHighLevel.c
   IoLibReadWrite.c
+  IoLibInternalTdxNull.c
+  IoLibTdx.h
 
 [Sources.X64]
   IoLibMsc.c    | MSFT
