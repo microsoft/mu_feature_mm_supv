@@ -226,6 +226,18 @@ SetPageTableAttributes (
   );
 
 /**
+  Get page table base address and the depth of the page table.
+
+  @param[out] Base        Page table base address.
+  @param[out] FiveLevels  TRUE means 5 level paging. FALSE means 4 level paging.
+**/
+VOID
+GetPageTable (
+  OUT UINTN    *Base,
+  OUT BOOLEAN  *FiveLevels OPTIONAL
+  );
+
+/**
   This function sets the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 

@@ -133,6 +133,36 @@ Is5LevelPagingNeeded (
 }
 
 /**
+  Get page table base address and the depth of the page table.
+
+  @param[out] Base        Page table base address.
+  @param[out] FiveLevels  TRUE means 5 level paging. FALSE means 4 level paging.
+**/
+VOID
+GetPageTable (
+  OUT UINTN    *Base,
+  OUT BOOLEAN  *FiveLevels OPTIONAL
+  )
+{
+  IA32_CR4  Cr4;
+
+  if (mSmmCr3 == 0) {
+    *Base = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
+    if (FiveLevels != NULL) {
+      Cr4.UintN   = AsmReadCr4 ();
+      *FiveLevels = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+    }
+
+    return;
+  }
+
+  *Base = mSmmCr3;
+  if (FiveLevels != NULL) {
+    *FiveLevels = m5LevelPagingNeeded;
+  }
+}
+
+/**
   Set sub-entries number in entry.
 
   @param[in, out] Entry        Pointer to entry
@@ -1349,7 +1379,6 @@ SetPageTableAttributes (
   BOOLEAN  PageTableSplitted;
   BOOLEAN  CetEnabled;
   BOOLEAN  Enable5LevelPaging;
-  IA32_CR4 Cr4;
   BOOLEAN  LockPageTableToReadOnly;
   UINTN    PageTableAttr;
   UINTN    CachedCr0;
@@ -1416,13 +1445,11 @@ SetPageTableAttributes (
     PageTableSplitted = FALSE;
     L5PageTable       = NULL;
 
-    PageTableBase      = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
-    Cr4.UintN          = AsmReadCr4 ();
-    Enable5LevelPaging = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+    GetPageTable (&PageTableBase, &Enable5LevelPaging);
 
     if (Enable5LevelPaging) {
       L5PageTable = (UINT64 *)PageTableBase;
-      SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)PageTableBase, SIZE_4KB, EFI_MEMORY_RO, &IsSplitted);
+      SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)PageTableBase, SIZE_4KB, PageTableAttr, &IsSplitted);
       PageTableSplitted = (PageTableSplitted || IsSplitted);
     }
 

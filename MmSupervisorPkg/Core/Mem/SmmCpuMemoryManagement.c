@@ -61,11 +61,26 @@ typedef struct {
   EFI_PHYSICAL_ADDRESS    Address;
 } MEMORY_ADDRESS_POINT;
 
+UINTN                  mInternalCr3;
 BOOLEAN                mIsShadowStack      = FALSE;
 BOOLEAN                m5LevelPagingNeeded = FALSE;
 EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
+
+/**
+  Set the internal page table base address.
+  If it is non zero, further MemoryAttribute modification will be on this page table.
+  If it is zero, further MemoryAttribute modification will be on real page table.
+  @param Cr3 page table base.
+**/
+VOID
+SetPageTableBase (
+  IN UINTN  Cr3
+  )
+{
+  mInternalCr3 = Cr3;
+}
 
 /**
   Return length according to page attributes.
@@ -277,7 +292,7 @@ ConvertPageEntryAttribute (
   if ((Attributes & EFI_MEMORY_RO) != 0) {
     if (IsSet) {
       NewPageEntry &= ~(UINT64)IA32_PG_RW;
-      if (mIsShadowStack) {
+      if (mInternalCr3 != 0 || mIsShadowStack) {
         // Environment setup
         // ReadOnly page need set Dirty bit for shadow stack
         NewPageEntry |= IA32_PG_D;
@@ -731,13 +746,10 @@ SmmSetMemoryAttributes (
   IN  UINT64                Attributes
   )
 {
-  IA32_CR4  Cr4;
   UINTN     PageTableBase;
   BOOLEAN   Enable5LevelPaging;
 
-  PageTableBase      = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
-  Cr4.UintN          = AsmReadCr4 ();
-  Enable5LevelPaging = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
   return SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
@@ -770,13 +782,10 @@ SmmClearMemoryAttributes (
   IN  UINT64                Attributes
   )
 {
-  IA32_CR4  Cr4;
   UINTN     PageTableBase;
   BOOLEAN   Enable5LevelPaging;
 
-  PageTableBase      = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
-  Cr4.UintN          = AsmReadCr4 ();
-  Enable5LevelPaging = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
   return SmmClearMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
@@ -807,6 +816,8 @@ SmmSetGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -819,7 +830,11 @@ SmmSetGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
+
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO | EFI_MEMORY_SP,
@@ -868,6 +883,8 @@ SmmClearGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -880,7 +897,10 @@ SmmClearGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO,
@@ -1373,7 +1393,6 @@ SmmGetMemoryAttributes (
   INT64                 Size;
   UINTN                 PageTableBase;
   BOOLEAN               EnablePML5Paging;
-  IA32_CR4              Cr4;
   EFI_STATUS            Status;   // MU_CHANGE: Avoid Length overflow for INT64
 
   if ((Length < SIZE_4KB) || (Attributes == NULL)) {
@@ -1391,9 +1410,7 @@ SmmGetMemoryAttributes (
   // MU_CHANGE Ends
   MemAttr = (UINT64)-1;
 
-  PageTableBase    = AsmReadCr3 () & PAGING_4K_ADDRESS_MASK_64;
-  Cr4.UintN        = AsmReadCr4 ();
-  EnablePML5Paging = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
 
   do {
     PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttr);
