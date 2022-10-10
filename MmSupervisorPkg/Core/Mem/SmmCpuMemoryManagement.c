@@ -146,16 +146,16 @@ GetPageTableEntry (
   OUT PAGE_ATTRIBUTE    *PageAttribute
   )
 {
-  UINTN    Index1;
-  UINTN    Index2;
-  UINTN    Index3;
-  UINTN    Index4;
-  UINTN    Index5;
-  UINT64   *L1PageTable;
-  UINT64   *L2PageTable;
-  UINT64   *L3PageTable;
-  UINT64   *L4PageTable;
-  UINT64   *L5PageTable;
+  UINTN   Index1;
+  UINTN   Index2;
+  UINTN   Index3;
+  UINTN   Index4;
+  UINTN   Index5;
+  UINT64  *L1PageTable;
+  UINT64  *L2PageTable;
+  UINT64  *L3PageTable;
+  UINT64  *L4PageTable;
+  UINT64  *L5PageTable;
 
   Index5 = ((UINTN)RShiftU64 (Address, 48)) & PAGING_PAE_INDEX_MASK;
   Index4 = ((UINTN)RShiftU64 (Address, 39)) & PAGING_PAE_INDEX_MASK;
@@ -292,7 +292,7 @@ ConvertPageEntryAttribute (
   if ((Attributes & EFI_MEMORY_RO) != 0) {
     if (IsSet) {
       NewPageEntry &= ~(UINT64)IA32_PG_RW;
-      if (mInternalCr3 != 0 || mIsShadowStack) {
+      if ((mInternalCr3 != 0) || mIsShadowStack) {
         // Environment setup
         // ReadOnly page need set Dirty bit for shadow stack
         NewPageEntry |= IA32_PG_D;
@@ -476,13 +476,13 @@ SplitPage (
 **/
 RETURN_STATUS
 ConvertMemoryPageAttributes (
-  IN  UINTN             PageTableBase,
-  IN  BOOLEAN           EnablePML5Paging,
-  IN  PHYSICAL_ADDRESS  BaseAddress,
-  IN  UINT64            Length,
-  IN  UINT64            Attributes,
-  IN  BOOLEAN           IsSet,
-  OUT BOOLEAN           *IsSplitted, OPTIONAL
+  IN  UINTN PageTableBase,
+  IN  BOOLEAN EnablePML5Paging,
+  IN  PHYSICAL_ADDRESS BaseAddress,
+  IN  UINT64 Length,
+  IN  UINT64 Attributes,
+  IN  BOOLEAN IsSet,
+  OUT BOOLEAN *IsSplitted, OPTIONAL
   OUT BOOLEAN           *IsModified   OPTIONAL
   )
 {
@@ -746,8 +746,8 @@ SmmSetMemoryAttributes (
   IN  UINT64                Attributes
   )
 {
-  UINTN     PageTableBase;
-  BOOLEAN   Enable5LevelPaging;
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
 
   GetPageTable (&PageTableBase, &Enable5LevelPaging);
   return SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
@@ -782,8 +782,8 @@ SmmClearMemoryAttributes (
   IN  UINT64                Attributes
   )
 {
-  UINTN     PageTableBase;
-  BOOLEAN   Enable5LevelPaging;
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
 
   GetPageTable (&PageTableBase, &Enable5LevelPaging);
   return SmmClearMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
