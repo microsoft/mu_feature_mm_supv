@@ -298,7 +298,6 @@ SmmSetMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributesEx (
   IN  UINTN                 PageTableBase,
   IN  BOOLEAN               EnablePML5Paging,
