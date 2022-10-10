@@ -13,7 +13,7 @@
   DEC_SPECIFICATION              = 0x0001001A
   PACKAGE_NAME                   = MmSupervisorPkg
   PACKAGE_GUID                   = 2DCA2E5C-4696-4613-943F-DFE5F6941C34
-  PACKAGE_VERSION                = 6.002
+  PACKAGE_VERSION                = 6.003
 
 [Includes]
   Include
