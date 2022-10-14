@@ -18,7 +18,7 @@
   ENTRY_POINT                    = MmIplPeiEntry
 
 # Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 3465387eab3d23fac8a92ac72271ded5 | 2022-10-14T19-16-56 | 3d2e34b693cb2eb6793c490c730019d0aab53323
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 363e254ecb2e8334d7efdbe363172897 | 2022-09-02T01-34-33 | 078e685aa7aa900ea15cdf41ffe4e42bc97474d2
 # Non-Secure:
 #Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-09-02T01-35-35 | 4d60e12bfa108cd4b20796dd3f6f859417223408
 
