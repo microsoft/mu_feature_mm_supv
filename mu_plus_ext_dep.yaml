@@ -9,6 +9,6 @@
   "name": "MU_PLUS",
   "var_name": "MU_PLUS_PATH",
   "source": "https://github.com/microsoft/mu_plus.git",
-  "version": "379bd43e71edc1de79710a6bb13ad0db20cfdd59", # release/202202
+  "version": "8b6f8ff254a660c43d4370e2596798d813583975", # release/202208
   "flags": ["set_build_var"]
 }

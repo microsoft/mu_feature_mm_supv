@@ -9,6 +9,6 @@
   "name": "MU_BASECORE",
   "var_name": "BASECORE_PATH",
   "source": "https://github.com/microsoft/mu_basecore.git",
-  "version": "661901f38f33606cc6cdbce7defccfc8b80a84af", # release/202202
+  "version": "02eafc210bd9df09f872116366eead2658044c31", # release/202208
   "flags": ["set_build_var"]
 }

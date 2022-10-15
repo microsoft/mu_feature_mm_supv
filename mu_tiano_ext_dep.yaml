@@ -9,6 +9,6 @@
   "name": "MU_TIANO_PLUS",
   "var_name": "MU_TIANO_PATH",
   "source": "https://github.com/microsoft/mu_tiano_plus.git",
-  "version": "9fcab92e5a20b8e668ce47008eda4f09f3a13d37", # release/202202
+  "version": "0ea3ed5ec5d655a4e533113f21387678932ff0fc", # release/202208
   "flags": ["set_build_var"]
 }

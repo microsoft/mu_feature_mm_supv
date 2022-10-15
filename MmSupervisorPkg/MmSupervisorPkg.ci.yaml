@@ -98,6 +98,7 @@
             "retfq",
             "sysret",
             "INCSSP",
+            "incsspq",
             "Befores",
             "SMMREVID",
             "IOMISC",

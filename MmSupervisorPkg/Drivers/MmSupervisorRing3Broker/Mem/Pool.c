@@ -502,13 +502,6 @@ MmInternalFreePool (
     return EFI_INVALID_PARAMETER;
   }
 
-  // MU_CHANGE: TCBZ3488: Inspect guard page against header + buffer.
-  // MemoryGuarded = IsHeapGuardEnabled () &&
-  //                 IsMemoryGuarded ((EFI_PHYSICAL_ADDRESS)(UINTN)Buffer);
-  // HasPoolTail   = !(MemoryGuarded &&
-  //                   ((PcdGet8 (PcdHeapGuardPropertyMask) & BIT7) == 0));
-  // MU_CHANGE Ends: TCBZ3488
-
   FreePoolHdr = (FREE_POOL_HEADER *)((POOL_HEADER *)Buffer - 1);
   ASSERT (FreePoolHdr->Header.Signature == POOL_HEAD_SIGNATURE);
   ASSERT (!FreePoolHdr->Header.Available);
@@ -516,7 +509,6 @@ MmInternalFreePool (
     return EFI_INVALID_PARAMETER;
   }
 
-  // MU_CHANGE: TCBZ3488: Inspect guard page against header + buffer.
   MemoryGuarded = IsPoolGuardEnabled ();// &&
   // MU_CHANGE: MM_SUPV: Whether memory is guarded should always follow pool guard configuration.
   // IsMemoryGuarded ((EFI_PHYSICAL_ADDRESS)(UINTN)FreePoolHdr);
@@ -525,7 +517,6 @@ MmInternalFreePool (
                   // ((PcdGet8 (PcdHeapGuardPropertyMask) & BIT7) == 0));
                   gMmMps.HeapGuardPolicy.Fields.Direction == HEAP_GUARD_ALIGNED_TO_TAIL);
   // MU_CHANGE END
-  // MU_CHANGE Ends: TCBZ3488
 
   if (HasPoolTail) {
     PoolTail = HEAD_TO_TAIL (&FreePoolHdr->Header);

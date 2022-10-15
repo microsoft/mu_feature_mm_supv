@@ -62,6 +62,8 @@ typedef struct {
 } MEMORY_ADDRESS_POINT;
 
 UINTN                  mInternalCr3;
+BOOLEAN                mIsShadowStack      = FALSE;
+BOOLEAN                m5LevelPagingNeeded = FALSE;
 EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
@@ -70,7 +72,6 @@ UINTN                  mInitMemoryMapSize  = 0;
   Set the internal page table base address.
   If it is non zero, further MemoryAttribute modification will be on this page table.
   If it is zero, further MemoryAttribute modification will be on real page table.
-
   @param Cr3 page table base.
 **/
 VOID
@@ -130,31 +131,31 @@ PageAttributeToMask (
 /**
   Return page table entry to match the address.
 
-  @param[in]   Address          The address to be checked.
-  @param[out]  PageAttributes   The page attribute of the page entry.
+  @param[in]   PageTableBase      The page table base.
+  @param[in]   Enable5LevelPaging If PML5 paging is enabled.
+  @param[in]   Address            The address to be checked.
+  @param[out]  PageAttributes     The page attribute of the page entry.
 
   @return The page entry.
 **/
 VOID *
 GetPageTableEntry (
+  IN  UINTN             PageTableBase,
+  IN  BOOLEAN           Enable5LevelPaging,
   IN  PHYSICAL_ADDRESS  Address,
   OUT PAGE_ATTRIBUTE    *PageAttribute
   )
 {
-  UINTN    Index1;
-  UINTN    Index2;
-  UINTN    Index3;
-  UINTN    Index4;
-  UINTN    Index5;
-  UINT64   *L1PageTable;
-  UINT64   *L2PageTable;
-  UINT64   *L3PageTable;
-  UINT64   *L4PageTable;
-  UINT64   *L5PageTable;
-  UINTN    PageTableBase;
-  BOOLEAN  Enable5LevelPaging;
-
-  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  UINTN   Index1;
+  UINTN   Index2;
+  UINTN   Index3;
+  UINTN   Index4;
+  UINTN   Index5;
+  UINT64  *L1PageTable;
+  UINT64  *L2PageTable;
+  UINT64  *L3PageTable;
+  UINT64  *L4PageTable;
+  UINT64  *L5PageTable;
 
   Index5 = ((UINTN)RShiftU64 (Address, 48)) & PAGING_PAE_INDEX_MASK;
   Index4 = ((UINTN)RShiftU64 (Address, 39)) & PAGING_PAE_INDEX_MASK;
@@ -291,7 +292,7 @@ ConvertPageEntryAttribute (
   if ((Attributes & EFI_MEMORY_RO) != 0) {
     if (IsSet) {
       NewPageEntry &= ~(UINT64)IA32_PG_RW;
-      if (mInternalCr3 != 0) {
+      if ((mInternalCr3 != 0) || mIsShadowStack) {
         // Environment setup
         // ReadOnly page need set Dirty bit for shadow stack
         NewPageEntry |= IA32_PG_D;
@@ -451,6 +452,8 @@ SplitPage (
 
   Caller should make sure BaseAddress and Length is at page boundary.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to modify for the memory region.
@@ -472,14 +475,15 @@ SplitPage (
                                    range specified by BaseAddress and Length.
 **/
 RETURN_STATUS
-EFIAPI
 ConvertMemoryPageAttributes (
+  IN  UINTN PageTableBase,
+  IN  BOOLEAN EnablePML5Paging,
   IN  PHYSICAL_ADDRESS BaseAddress,
   IN  UINT64 Length,
   IN  UINT64 Attributes,
   IN  BOOLEAN IsSet,
   OUT BOOLEAN *IsSplitted, OPTIONAL
-  OUT BOOLEAN                           *IsModified   OPTIONAL
+  OUT BOOLEAN           *IsModified   OPTIONAL
   )
 {
   UINT64                *PageEntry;
@@ -532,7 +536,7 @@ ConvertMemoryPageAttributes (
   // Below logic is to check 2M/4K page to make sure we do not waste memory.
   //
   while (Length != 0) {
-    PageEntry = GetPageTableEntry (BaseAddress, &PageAttribute);
+    PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttribute);
     if (PageEntry == NULL) {
       return RETURN_UNSUPPORTED;
     }
@@ -615,6 +619,8 @@ FlushTlbForAll (
   This function sets the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to set for the memory region.
@@ -635,8 +641,9 @@ FlushTlbForAll (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -646,7 +653,7 @@ SmmSetMemoryAttributesEx (
   EFI_STATUS  Status;
   BOOLEAN     IsModified;
 
-  Status = ConvertMemoryPageAttributes (BaseAddress, Length, Attributes, TRUE, IsSplitted, &IsModified);
+  Status = ConvertMemoryPageAttributes (PageTableBase, EnablePML5Paging, BaseAddress, Length, Attributes, TRUE, IsSplitted, &IsModified);
   if (!EFI_ERROR (Status)) {
     if (IsModified) {
       //
@@ -663,6 +670,8 @@ SmmSetMemoryAttributesEx (
   This function clears the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to clear for the memory region.
@@ -683,8 +692,9 @@ SmmSetMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -694,7 +704,7 @@ SmmClearMemoryAttributesEx (
   EFI_STATUS  Status;
   BOOLEAN     IsModified;
 
-  Status = ConvertMemoryPageAttributes (BaseAddress, Length, Attributes, FALSE, IsSplitted, &IsModified);
+  Status = ConvertMemoryPageAttributes (PageTableBase, EnablePML5Paging, BaseAddress, Length, Attributes, FALSE, IsSplitted, &IsModified);
   if (!EFI_ERROR (Status)) {
     if (IsModified) {
       //
@@ -730,14 +740,17 @@ SmmClearMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes
   )
 {
-  return SmmSetMemoryAttributesEx (BaseAddress, Length, Attributes, NULL);
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
+
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  return SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
 /**
@@ -763,14 +776,17 @@ SmmSetMemoryAttributes (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes
   )
 {
-  return SmmClearMemoryAttributesEx (BaseAddress, Length, Attributes, NULL);
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
+
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  return SmmClearMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
 /**
@@ -800,6 +816,8 @@ SmmSetGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -812,7 +830,11 @@ SmmSetGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
+
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO | EFI_MEMORY_SP,
@@ -861,6 +883,8 @@ SmmClearGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -873,7 +897,10 @@ SmmClearGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO,
@@ -913,11 +940,9 @@ SetShadowStack (
 {
   EFI_STATUS  Status;
 
-  SetPageTableBase (Cr3);
-
-  Status = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RO);
-
-  SetPageTableBase (0);
+  mIsShadowStack = TRUE;
+  Status         = SmmSetMemoryAttributesEx (Cr3, m5LevelPagingNeeded, BaseAddress, Length, EFI_MEMORY_RO, NULL);
+  mIsShadowStack = FALSE;
 
   return Status;
 }
@@ -940,12 +965,7 @@ SetNotPresentPage (
 {
   EFI_STATUS  Status;
 
-  SetPageTableBase (Cr3);
-
-  Status = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RP);
-
-  SetPageTableBase (0);
-
+  Status = SmmSetMemoryAttributesEx (Cr3, m5LevelPagingNeeded, BaseAddress, Length, EFI_MEMORY_RP, NULL);
   return Status;
 }
 
@@ -1371,6 +1391,8 @@ SmmGetMemoryAttributes (
   UINT64                MemAttr;
   PAGE_ATTRIBUTE        PageAttr;
   INT64                 Size;
+  UINTN                 PageTableBase;
+  BOOLEAN               EnablePML5Paging;
   EFI_STATUS            Status;   // MU_CHANGE: Avoid Length overflow for INT64
 
   if ((Length < SIZE_4KB) || (Attributes == NULL)) {
@@ -1388,8 +1410,10 @@ SmmGetMemoryAttributes (
   // MU_CHANGE Ends
   MemAttr = (UINT64)-1;
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
+
   do {
-    PageEntry = GetPageTableEntry (BaseAddress, &PageAttr);
+    PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttr);
     if ((PageEntry == NULL) || (PageAttr == PageNone)) {
       return EFI_UNSUPPORTED;
     }

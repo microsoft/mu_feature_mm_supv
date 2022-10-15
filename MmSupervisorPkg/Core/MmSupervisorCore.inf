@@ -1,7 +1,7 @@
 ## @file
 # This module provide an SMM CIS compliant implementation of SMM Core.
 #
-# Copyright (c) 2009 - 2021, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
 # Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 # Copyright (C) Microsoft Corporation.
@@ -11,11 +11,11 @@
 ##
 
 #Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fd7b8d037fd5ce572bb2a4444e5adb26 | 2022-05-05T16-31-55 | c4d0d1130454b3e5051bb601c707234e3a91713a
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | e1d04656b23d9cafbe2c35de0f77fcf7 | 2022-05-20T19-21-22 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | abeff9305d8d6cf791ad543e1faf3be4 | 2022-10-07T19-33-19 | 0d04a5e280c55eb742deaabcfa97da85a0afe7b2
 # Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a6a02b861e6a50624bd8e9cf6eb01984 | 2022-05-20T19-26-48 | 1d76f25c33af475572ad8f4f5cc1460c4ab8c868
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 3465387eab3d23fac8a92ac72271ded5 | 2022-10-14T19-16-56 | 3d2e34b693cb2eb6793c490c730019d0aab53323
 # Non-Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a26023ade63eb3aabca910107656ab3a | 2022-05-20T19-16-17 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 907a46c9a39eb3522c08e09ccf43e1ec | 2022-10-07T19-49-06 | 0d04a5e280c55eb742deaabcfa97da85a0afe7b2
 
 [Defines]
   INF_VERSION                    = 0x0001001A

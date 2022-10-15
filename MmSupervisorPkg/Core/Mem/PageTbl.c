@@ -36,7 +36,6 @@ extern UINTN  mSmmShadowStackSize;
 LIST_ENTRY                mPagePool           = INITIALIZE_LIST_HEAD_VARIABLE (mPagePool);
 BOOLEAN                   m1GPageTableSupport = FALSE;
 BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
-BOOLEAN                   m5LevelPagingNeeded;
 X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
 PAGE_TABLE_POOL           mPageTablePool;
 UINT8                     mPhysicalAddressBits;
@@ -1450,7 +1449,7 @@ SetPageTableAttributes (
 
     if (Enable5LevelPaging) {
       L5PageTable = (UINT64 *)PageTableBase;
-      SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)PageTableBase, SIZE_4KB, EFI_MEMORY_RO, &IsSplitted);
+      SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)PageTableBase, SIZE_4KB, PageTableAttr, &IsSplitted);
       PageTableSplitted = (PageTableSplitted || IsSplitted);
     }
 
@@ -1464,7 +1463,7 @@ SetPageTableAttributes (
         L4PageTable = (UINT64 *)PageTableBase;
       }
 
-      SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L4PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
+      SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)(UINTN)L4PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
       PageTableSplitted = (PageTableSplitted || IsSplitted);
 
       for (Index4 = 0; Index4 < SIZE_4KB/sizeof (UINT64); Index4++) {
@@ -1473,7 +1472,7 @@ SetPageTableAttributes (
           continue;
         }
 
-        SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L3PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
+        SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)(UINTN)L3PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
         PageTableSplitted = (PageTableSplitted || IsSplitted);
 
         for (Index3 = 0; Index3 < SIZE_4KB/sizeof (UINT64); Index3++) {
@@ -1487,7 +1486,7 @@ SetPageTableAttributes (
             continue;
           }
 
-          SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L2PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
+          SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)(UINTN)L2PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
           PageTableSplitted = (PageTableSplitted || IsSplitted);
 
           for (Index2 = 0; Index2 < SIZE_4KB/sizeof (UINT64); Index2++) {
@@ -1501,7 +1500,7 @@ SetPageTableAttributes (
               continue;
             }
 
-            SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L1PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
+            SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, (EFI_PHYSICAL_ADDRESS)(UINTN)L1PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
             PageTableSplitted = (PageTableSplitted || IsSplitted);
           }
         }

@@ -93,8 +93,7 @@ ASM_PFX(InvokeDemotedDriverEntryPoint):
     push    rcx                 ;prepare cs on the stack
     lea     rax, [.0]
     push    rax                 ;prepare return rip on the stack
-    DB      0x48                ;enforce a retfq
-    retf
+    retfq
 
 .0:
     ;Prepare for ds, es, fs, gs
@@ -120,8 +119,7 @@ ASM_PFX(InvokeDemotedDriverEntryPoint):
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
     shl     r15, 32                     ;Call gate on call far stack should be CS:rIP
-    DB      0x48                        ;enforce a retfq
-    retf
+    retfq
 
     ;2000 years later...
 
@@ -216,8 +214,7 @@ ASM_PFX(InvokeDemotedMmHandler):
     push    rcx                 ;prepare cs on the stack
     lea     rax, [.0]
     push    rax                 ;prepare return rip on the stack
-    DB      0x48                ;enforce a retfq
-    retf
+    retfq
 
 .0:
     ;Prepare for ds, es, fs, gs
@@ -250,8 +247,7 @@ RegisteredRing3JumpPointerAddr:
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
     shl     r15, 32                     ;Call gate on call far stack should be CS:rIP
-    DB      0x48                        ;enforce a retfq
-    retf
+    retfq
 
     ;2000 years later...
 
@@ -350,8 +346,7 @@ ASM_PFX(InvokeDemotedApProcedure):
     push    rcx                 ;prepare cs on the stack
     lea     rax, [.0]
     push    rax                 ;prepare return rip on the stack
-    DB      0x48                ;enforce a retfq
-    retf
+    retfq
 
 .0:
     ;Prepare for ds, es, fs, gs
@@ -379,8 +374,7 @@ RegApRing3JumpPointerAddr:
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
     shl     r15, 32                     ;Call gate on call far stack should be CS:rIP
-    DB      0x48                        ;enforce a retfq
-    retf
+    retfq
 
     ;2000 years later...
 
@@ -477,8 +471,7 @@ ASM_PFX(InvokeDemotedErrorReport):
     push    rcx                 ;prepare cs on the stack
     lea     rax, [.0]
     push    rax                 ;prepare return rip on the stack
-    DB      0x48                ;enforce a retfq
-    retf
+    retfq
 
 .0:
     ;Prepare for ds, es, fs, gs
@@ -506,8 +499,7 @@ RegErrorReportJumpPointerAddr:
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
     shl     r15, 32                     ;Call gate on call far stack should be CS:rIP
-    DB      0x48                        ;enforce a retfq
-    retf
+    retfq
 
     ;2000 years later...
 
