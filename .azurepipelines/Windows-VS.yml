@@ -14,10 +14,10 @@ resources:
       ref: main
 
 trigger:
-- main
+- release/202202
 
 pr:
-- main
+- release/202202
 
 schedules:
 - cron: "0 8 * * 0"   # Sun/Wed at 1AM Pacific

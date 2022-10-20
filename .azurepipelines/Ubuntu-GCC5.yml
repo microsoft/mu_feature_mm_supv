@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
 trigger:
-- main
+- release/202202
 
 schedules:
 - cron: "30 9 * * 0"  # Sun/Wed at 2:30AM Pacific
@@ -17,7 +17,7 @@ schedules:
   always: true          # Always build, even if no changes
 
 pr:
-- main
+- release/202202
 
 resources:
   repositories:
