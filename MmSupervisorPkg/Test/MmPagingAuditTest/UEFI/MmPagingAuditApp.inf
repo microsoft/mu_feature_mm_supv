@@ -45,7 +45,6 @@
 [Protocols]
   gEfiBlockIoProtocolGuid
   gEfiSmmCommunicationProtocolGuid
-  gHeapGuardDebugProtocolGuid
   gMmSupervisorCommunicationProtocolGuid
 
 [Guids]
