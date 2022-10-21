@@ -465,7 +465,7 @@ DumpMemPolicyEntry (
 
   DEBUG ((
     DEBUG_INFO,
-    "V1.0 MEM: [%lx-%lx] %s %s %s\n", \
+    "V1.0 MEM: [%lx-%lx] %a %a %a\n", \
     MemoryPolicy->BaseAddress, \
     MemoryPolicy->BaseAddress + MemoryPolicy->Size -1, \
     (MemoryPolicy->MemAttributes & SECURE_POLICY_RESOURCE_ATTR_READ) ? "R" : ".", \
