@@ -133,6 +133,7 @@ Done:
 **/
 STATIC
 VOID
+EFIAPI
 SmmSupervisorMiscExceptionHandler (
   IN EFI_EXCEPTION_TYPE  InterruptType,
   IN EFI_SYSTEM_CONTEXT  SystemContext
