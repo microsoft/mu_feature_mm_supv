@@ -426,7 +426,7 @@ DumpSmmPolicyData (
         IoPolicy = (SMM_SUPV_SECURE_POLICY_IO_DESCRIPTOR_V1_0 *)((UINTN)Data + PolicyRoot[i].Offset);
         DEBUG ((
           DEBUG_INFO,
-          "IO: [%lx-%lx] %s %s\n", \
+          "IO: [%lx-%lx] %a %a\n", \
           IoPolicy[j].IoAddress, \
           IoPolicy[j].IoAddress + IoPolicy[j].LengthOrWidth - 1, \
           (IoPolicy[j].Attributes & SECURE_POLICY_RESOURCE_ATTR_READ) ? "R" : ".", \
@@ -437,7 +437,7 @@ DumpSmmPolicyData (
         MsrPolicy = (SMM_SUPV_SECURE_POLICY_MSR_DESCRIPTOR_V1_0 *)((UINTN)Data + PolicyRoot[i].Offset);
         DEBUG ((
           DEBUG_INFO,
-          "MSR: [%lx-%lx] %s %s\n", \
+          "MSR: [%lx-%lx] %a %a\n", \
           MsrPolicy[j].MsrAddress, \
           MsrPolicy[j].MsrAddress + MsrPolicy[j].Length - 1, \
           (MsrPolicy[j].Attributes & SECURE_POLICY_RESOURCE_ATTR_READ) ? "R" : ".", \
@@ -448,7 +448,7 @@ DumpSmmPolicyData (
         InstructionPolicy = (SMM_SUPV_SECURE_POLICY_INSTRUCTION_DESCRIPTOR_V1_0 *)((UINTN)Data + PolicyRoot[i].Offset);
         DEBUG ((
           DEBUG_INFO,
-          "INSTRUCTION: [%lx] %s\n", \
+          "INSTRUCTION: [%lx] %a\n", \
           InstructionPolicy[j].InstructionIndex, \
           (InstructionPolicy[j].Attributes & SECURE_POLICY_RESOURCE_ATTR_EXECUTE) ? "X" : "."
           ));
