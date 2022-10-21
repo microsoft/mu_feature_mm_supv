@@ -13,28 +13,18 @@ resources:
       name: microsoft/mu_devops
       ref: main
 
-trigger:
-- main
-
-pr:
-- main
-
-schedules:
-- cron: "0 8 * * 0"   # Sun/Wed at 1AM Pacific
-  displayName: Sun Build
-  branches:
-    include:
-    - main
-  always: true          # Always build, even if no changes
+variables:
+- group: architectures-x86-64
+- group: tool-chain-windows-visual-studio-latest
 
 jobs:
 - template: Jobs/PrGate.yml@mu_devops
   parameters:
-    arch_list: IA32,X64
+    arch_list: $(arch_list)
     do_ci_build: true
     do_ci_setup: false
     do_pr_eval: false
     packages: MmSupervisorPkg
     target_list: DEBUG,RELEASE,NO-TARGET,NOOPT
-    tool_chain_tag: VS2022
-    vm_image: windows-latest
+    tool_chain_tag: $(tool_chain_tag)
+    vm_image: $(vm_image)
