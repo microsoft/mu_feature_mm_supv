@@ -397,8 +397,12 @@ QuerySupervisorVersion (
     ));
 
   if (VersionInfo->Version == 0) {
+ #ifdef __GNUC__
+    DEBUG ((DEBUG_WARN, "%a Unable to get supervisor version under GCC compiler!!\n", __FUNCTION__));
+ #else
     // This means the supervisor version is 0, something must be wrong...
     return EFI_SECURITY_VIOLATION;
+ #endif
   }
 
   return EFI_SUCCESS;
