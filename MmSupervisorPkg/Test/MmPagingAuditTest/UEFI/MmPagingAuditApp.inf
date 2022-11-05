@@ -29,6 +29,7 @@
   ShellPkg/ShellPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
+  UefiTestingPkg/UefiTestingPkg.dec
 
 [LibraryClasses]
   ShellLib
@@ -53,3 +54,6 @@
   gEfiMemoryAttributesTableGuid
   gMmSupervisorCommunicationRegionTableGuid
   gMmPagingAuditMmiHandlerGuid
+
+[FixedPcd]
+  gUefiTestingPkgTokenSpaceGuid.PcdPlatformSmrrUnsupported  ## SOMETIMES_CONSUMES

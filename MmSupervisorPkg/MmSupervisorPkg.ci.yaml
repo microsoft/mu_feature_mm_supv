@@ -30,7 +30,8 @@
         ],
         "AcceptableDependencies-UEFI_APPLICATION": [
             "ShellPkg/ShellPkg.dec",
-            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec",
+            "UefiTestingPkg/UefiTestingPkg.dec"
         ],
         "IgnoreInf": []
     },
