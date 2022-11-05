@@ -140,6 +140,7 @@
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
+  BaseBinSecurityLib
   MmMemoryProtectionHobLib ## MU_CHANGE
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
