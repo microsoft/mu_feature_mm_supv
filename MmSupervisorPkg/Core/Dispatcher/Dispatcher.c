@@ -292,8 +292,10 @@ MmLoadImage (
 {
   UINTN                         PageCount;
   EFI_STATUS                    Status;
+  EFI_STATUS                    StackCookieStatus;
   EFI_PHYSICAL_ADDRESS          DstBuffer;
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+  UINT64                        *SecurityCookieAddress;
 
   DEBUG ((DEBUG_INFO, "MmLoadImage - %g\n", &DriverEntry->FileName));
 
@@ -478,6 +480,12 @@ MmLoadImage (
   DEBUG ((DEBUG_INFO | DEBUG_LOAD, "\n"));
 
   DEBUG_CODE_END ();
+
+  StackCookieStatus = PeCoffLoaderGetSecurityCookieAddress (&ImageContext, &SecurityCookieAddress);
+  if (!EFI_ERROR (StackCookieStatus)) {
+    InitializeSecurityCookieAddress (SecurityCookieAddress);
+    DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Standalone MM SecurityCookie set to %lld\n", (*SecurityCookieAddress)));
+  }
 
   return Status;
 }
