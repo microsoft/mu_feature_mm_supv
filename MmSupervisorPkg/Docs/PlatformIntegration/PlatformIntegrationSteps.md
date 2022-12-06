@@ -21,8 +21,6 @@ defined data structures in addition to supervisor-specific data structures to be
 1. [MM Supervisor Code Integration](#mm-supervisor-code-integration) - How to best integrate the `MmSupervisorPkg`
 collateral into a platform firmware.
 
-1. [Known Issues](#known-issues) - Known issues that need to be taken into account.
-
 1. [Platform Security Goals](TODO/SUPERVISOR_SECURITY_OVERVIEW.md) - The MM Supervisor aims to improve security. It is
 important to understand the goals of the supervisor and how that aligns with the platform security goals.
 
