@@ -231,6 +231,10 @@ flash drivers, SW MMI dispatcher drivers, etc.
 ``` bash
 [PcdsFixedAtBuild]
   gEfiSecurityPkgTokenSpaceGuid.PcdUserPhysicalPresence               | FALSE
+  # MM environment only set up the exception handler for the upper 32 entries.
+  # The platform should set this to a non-conflicting exception number, otherwise
+  # it will be treated as one of the normal types of CPU faults.
+  gEfiMdePkgTokenSpaceGuid.PcdStackCookieExceptionVector              | 0x0F
 
 [LibraryClasses.IA32]
   MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
