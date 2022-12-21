@@ -43,6 +43,8 @@ MmCommunicationBufferDxeEntry (
   EFI_PEI_HOB_POINTERS  GuidHob;
   MM_COMM_REGION_HOB    *CommRegionHob;
 
+  PiSmmCommunicationRegionTable = NULL;
+
   GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
   if (GuidHob.Guid == NULL) {
     DEBUG ((DEBUG_ERROR, "%a Did not locate any published hob under %g to create communication buffer table!!!\n", __FUNCTION__, &gMmCommonRegionHobGuid));

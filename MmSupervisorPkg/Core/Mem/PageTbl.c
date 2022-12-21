@@ -265,6 +265,11 @@ SetStaticPageTable (
 
   EFI_STATUS  Status;
 
+  PageMapLevel4Entry        = NULL;
+  PageMapLevel5Entry        = NULL;
+  PageDirectoryPointerEntry = NULL;
+  PageDirectoryEntry        = NULL;
+
   //
   // IA-32e paging translates 48-bit linear addresses to 52-bit physical addresses
   //  when 5-Level Paging is disabled.
@@ -305,10 +310,7 @@ SetStaticPageTable (
   //
   PageMap = (VOID *)PageTable;
 
-  PageMapLevel4Entry        = PageMap;
-  PageMapLevel5Entry        = NULL;
-  PageDirectoryPointerEntry = NULL;
-  PageDirectoryEntry        = NULL;
+  PageMapLevel4Entry = PageMap;
   if (m5LevelPagingNeeded) {
     //
     // By architecture only one PageMapLevel5 exists - so lets allocate storage for it.
