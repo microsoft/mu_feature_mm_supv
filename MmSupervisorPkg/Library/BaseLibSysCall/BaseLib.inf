@@ -12,7 +12,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | dd377290e5da05e363eadfe0ebaa4b1c | 2022-10-07T19-25-54 | 0d04a5e280c55eb742deaabcfa97da85a0afe7b2
+#Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | 0b10a03fb8c421c246d850068d4b2b5e | 2023-01-10T00-35-23 | 8d5e7c09a6a140e012d9f3eb0ce92bca823c981f
 
 [Defines]
   INF_VERSION                    = 0x00010005

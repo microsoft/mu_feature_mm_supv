@@ -274,8 +274,8 @@ StrStr (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a decimal character.
-  @retval FALSE If the Char is not a decimal character.
+  @retval TRUE  If the Char is a decmial character.
+  @retval FALSE If the Char is not a decmial character.
 
 **/
 BOOLEAN
@@ -351,8 +351,8 @@ InternalHexCharToUintn (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a hexadecimal character.
-  @retval FALSE If the Char is not a hexadecimal character.
+  @retval TRUE  If the Char is a hexadecmial character.
+  @retval FALSE If the Char is not a hexadecmial character.
 
 **/
 BOOLEAN
@@ -410,7 +410,10 @@ StrDecimalToUintn (
   RETURN_STATUS  Status;
 
   Status = StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -458,7 +461,10 @@ StrDecimalToUint64 (
   RETURN_STATUS  Status;
 
   Status = StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -507,7 +513,10 @@ StrHexToUintn (
   RETURN_STATUS  Status;
 
   Status = StrHexToUintnS (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -556,7 +565,10 @@ StrHexToUint64 (
   RETURN_STATUS  Status;
 
   Status = StrHexToUint64S (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -569,8 +581,8 @@ StrHexToUint64 (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a decimal character.
-  @retval FALSE If the Char is not a decimal character.
+  @retval TRUE  If the Char is a decmial character.
+  @retval FALSE If the Char is not a decmial character.
 
 **/
 BOOLEAN
@@ -592,8 +604,8 @@ InternalAsciiIsDecimalDigitCharacter (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a hexadecimal character.
-  @retval FALSE If the Char is not a hexadecimal character.
+  @retval TRUE  If the Char is a hexadecmial character.
+  @retval FALSE If the Char is not a hexadecmial character.
 
 **/
 BOOLEAN
@@ -999,7 +1011,10 @@ AsciiStrDecimalToUintn (
   RETURN_STATUS  Status;
 
   Status = AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -1043,7 +1058,10 @@ AsciiStrDecimalToUint64 (
   RETURN_STATUS  Status;
 
   Status = AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -1091,7 +1109,10 @@ AsciiStrHexToUintn (
   RETURN_STATUS  Status;
 
   Status = AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
@@ -1139,7 +1160,10 @@ AsciiStrHexToUint64 (
   RETURN_STATUS  Status;
 
   Status = AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (Status == RETURN_INVALID_PARAMETER) {
+    Result = 0;
+  }
+
   return Result;
 }
 
