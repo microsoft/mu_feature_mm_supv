@@ -43,46 +43,77 @@ extern ASM_PFX(RegisteredRing3JumpPointer)
 extern ASM_PFX(RegApRing3JumpPointer)
 extern ASM_PFX(RegErrorReportJumpPointer)
 
+%macro DEC_N_CHECK_RAX    0
+    dec     rax
+    cmp     rax, 0
+    jz      .3
+%endmacro
+
 ;------------------------------------------------------------------------------
+; /**
+;   Invoke specified routine on specified core in CPL 3.
+; **/
 ; EFI_STATUS
 ; EFIAPI
-; InvokeDemotedDriverEntryPoint (
-;   IN MM_IMAGE_ENTRY_POINT     *EntryPoint,
-;   IN EFI_HANDLE               ImageHandle,
-;   IN EFI_MM_SYSTEM_TABLE      *MmSystemTable
+; InvokeDemotedRoutine (
+;   IN UINTN                 CpuIndex,
+;   IN EFI_PHYSICAL_ADDRESS  Cpl3Routine,
+;   IN UINTN                 ArgCount,
+;   ...
 ;   );
 ; Calling convention: Arg0 in RCX, Arg1 in RDX, Arg2 in R8, Arg3 in R9, more on the stack
 ;------------------------------------------------------------------------------
-global ASM_PFX(InvokeDemotedDriverEntryPoint)
-ASM_PFX(InvokeDemotedDriverEntryPoint):
-    ;Preserve all input parameters onto stack
-    push    rbx
+global ASM_PFX(InvokeDemotedRoutine)
+ASM_PFX(InvokeDemotedRoutine):
+    ;Preserve input parameters onto stack for later usage
+    jmp     $
+    push    r9
+    push    r8
+    push    rdx
+    push    rcx
+
+    ;Preserve nonvolatile registers, in case demoted routines mess with them
     push    rbp
+    mov     rbp, rsp
+    ;Clear the lowest 16 bit after saving rsp, to make sure the stack pointer 16byte aligned
+    and     rsp, -65536
+
+    push    rbx
     push    rdi
     push    rsi
     push    r12
     push    r13
     push    r14
-    push    rcx
-    push    rdx
-    push    r8
-    push    r9
     push    r15
 
-    ;Place holder on stack
-    sub     rsp, 0x20
+    ;Add place holder on stack
+    mov     rbx, r8
+    cmp     rbx, 2
+    jg      .0
+    mov     rbx, 2      ; make sure rbx is at least 2, to accomodate the space needed for C functions called below
+.0:
+    bt      rbx, 0
+    jc      .1
+    inc     rbx         ; make sure rbx is an odd number
+.1:
+    shl     rbx, 3      ; multiply by 8, so that we have stack holder we wanted to reserve
 
-    call    GetBspCpl3Stack
+    sub     rsp, 8
+    push    rcx
+    call    GetThisCpl3Stack
     mov     r15, rax
+    pop     rcx
+    add     rsp, 8
 
-    call    SetupBspCpl0MsrStar
+    ;rcx is CpuIndex, so no worries for this call
+    call    SetupCpl0MsrStar
 
-    ;Double-check call gate for return, failed to match call gate will cause GP#
-    lea     rcx, [EntryReturnPointer]
+    ;Setup call gate for return
+    lea     rcx, [.4]
     mov     rdx, 1
     call    SetupCallGate
 
-    ;Double-check SetupTssDescriptor for return, failed to match Tss will cause GP#
+    ;Setup SetupTssDescriptor for return
     mov     rcx, rsp
     mov     rdx, 1
     call    SetupTssDescriptor
@@ -91,11 +122,11 @@ ASM_PFX(InvokeDemotedDriverEntryPoint):
     xor     rcx, rcx
     mov     rcx, cs
     push    rcx                 ;prepare cs on the stack
-    lea     rax, [.0]
+    lea     rax, [.2]
     push    rax                 ;prepare return rip on the stack
     retfq
 
-.0:
+.2:
     ;Prepare for ds, es, fs, gs
     xor     rax, rax
     mov     ax, LONG_DS_R3
@@ -105,17 +136,30 @@ ASM_PFX(InvokeDemotedDriverEntryPoint):
     mov     gs, ax
 
     ;Prepare input arguments
-    mov     rcx, [rsp + 0x20 + 0x18]    ;ImageHandle from input argument
-    mov     rdx, [rsp + 0x20 + 0x10]    ;MmSystemTable from input argument
+    mov     rax, [rbp + 0x18]           ;Get ArgCount from stack
+    DEC_N_CHECK_RAX
+    mov     rcx, [rbp + 0x20]           ;First input argument for demoted routine
+    DEC_N_CHECK_RAX
+    mov     rdx, [rbp + 0x28]           ;Second input argument for demoted routine
+    DEC_N_CHECK_RAX
+    mov     r8, [rbp + 0x30]            ;Third input argument for demoted routine
+    DEC_N_CHECK_RAX
+    mov     r9, [rbp + 0x38]            ;Forth input argument for demoted routine
+    DEC_N_CHECK_RAX
+    int     3                           ;Although we can, we do not support demoted function with more than 4 input args...
 
+.3:
+    ;Preserve the updated rbp and rbx as we need them on return
+    push    rbp
+    push    rbx
     ;Demote to CPL3 by far return, it will take care of cs and ss
     ;Note: we did more pushes on the way, so need to compensate the calculation when grabbing earlier pushed values
     push    LONG_DS_R3                  ;prepare ss on the stack
     mov     rax, r15                    ;grab Cpl3StackPtr from r15
     push    rax                         ;prepare CPL3 stack pointer on the stack
     push    LONG_CS_R3                  ;prepare cs on the stack
-    mov     rax, [rsp + 0x20 + 0x38]    ;grab EntryPoint from stack
-    push    rax                         ;prepare EntryPoint on the stack
+    mov     rax, [rbp + 0x10]           ;grab routine pointer from stack
+    push    rax                         ;prepare routine pointer on the stack
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
     shl     r15, 32                     ;Call gate on call far stack should be CS:rIP
@@ -123,23 +167,27 @@ ASM_PFX(InvokeDemotedDriverEntryPoint):
 
     ;2000 years later...
 
-EntryReturnPointer:
-    ;Driver entry point is responsible for returning to this point by invoking call gate
-
-    ;First offset the return far related 4 pushes
+.4:
+    ;First offset the return far related 4 pushes (we have 0 count of arguments):
     ;PUSH.v old_SS // #SS on this or next pushes use SS.sel as error code
     ;PUSH.v old_RSP
     ;PUSH.v old_CS
     ;PUSH.v next_RIP
     add     rsp, 0x20
 
-    ;Return status should still be in rax, save it before calling other functions
-    push    rax
-    call    RestoreBspCpl0MsrStar
-    pop     rax
+    ;Driver entry point is responsible for returning to this point by invoking call gate
+    pop     rbx
+    pop     rbp
 
-    ;Then offset the stack place holder for function entry
-    add     rsp, 0x20
+    ;Populate the rcx for usage below
+    mov     rcx, [rbp + 0x08]
+
+    ;Return status should still be in rax, save it before calling other functions
+    sub     rsp, 8
+    push    rax
+    call    RestoreCpl0MsrStar
+    pop     rax
+    add     rsp, 8
 
     xor     rcx, rcx
     mov     cx, LONG_DS_R0
@@ -148,18 +196,21 @@ EntryReturnPointer:
     mov     fs, cx
     mov     gs, cx
 
+    ;Then offset the stack place holder for function entry
+    add     rsp, rbx
+
     pop     r15
-    pop     r9
-    pop     r8
-    pop     rdx
-    pop     rcx
     pop     r14
     pop     r13
     pop     r12
     pop     rsi
     pop     rdi
-    pop     rbp
     pop     rbx
+    mov     rsp, rbp
+    pop     rbp
+
+    ; Directly unwind the rest instead of using pops
+    add     rsp, 0x20
 
     ret
 

@@ -213,3 +213,23 @@ CallgateInit (
       );
   }
 }
+
+/**
+  Invoke MM driver in CPL 3.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedDriverEntryPoint (
+  IN MM_IMAGE_ENTRY_POINT  *EntryPoint,
+  IN EFI_HANDLE            ImageHandle,
+  IN EFI_MM_SYSTEM_TABLE   *MmSystemTable
+  )
+{
+  return InvokeDemotedRoutine (
+          mSmmMpSyncData->BspIndex,
+          (EFI_PHYSICAL_ADDRESS)(UINTN)EntryPoint,
+          2,
+          ImageHandle,
+          MmSystemTable
+        );
+}

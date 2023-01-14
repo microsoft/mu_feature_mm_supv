@@ -119,6 +119,18 @@ SyncMmEntryContextToCpl3 (
   );
 
 /**
+  Invoke specified routine on specified core in CPL 3.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedRoutine (
+  IN UINTN                 CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS  Cpl3Routine,
+  IN UINTN                 ArgCount,
+  ...
+  );
+
+/**
   Invoke MM driver in CPL 3.
 **/
 EFI_STATUS
