@@ -66,7 +66,6 @@ extern ASM_PFX(RegErrorReportJumpPointer)
 global ASM_PFX(InvokeDemotedRoutine)
 ASM_PFX(InvokeDemotedRoutine):
     ;Preserve input parameters onto stack for later usage
-    jmp     $
     push    r9
     push    r8
     push    rdx
@@ -76,7 +75,7 @@ ASM_PFX(InvokeDemotedRoutine):
     push    rbp
     mov     rbp, rsp
     ;Clear the lowest 16 bit after saving rsp, to make sure the stack pointer 16byte aligned
-    and     rsp, -65536
+    and     rsp, -16
 
     push    rbx
     push    rdi
@@ -89,12 +88,12 @@ ASM_PFX(InvokeDemotedRoutine):
     ;Add place holder on stack
     mov     rbx, r8
     cmp     rbx, 2
-    jg      .0
+    jge     .0
     mov     rbx, 2      ; make sure rbx is at least 2, to accomodate the space needed for C functions called below
 .0:
     bt      rbx, 0
-    jc      .1
-    inc     rbx         ; make sure rbx is an odd number
+    jnc     .1
+    inc     rbx         ; make sure rbx is an odd number to "even" the registers pushed above
 .1:
     shl     rbx, 3      ; multiply by 8, so that we have stack holder we wanted to reserve
 
