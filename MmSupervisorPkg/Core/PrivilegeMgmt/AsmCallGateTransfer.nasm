@@ -43,8 +43,7 @@ extern ASM_PFX(RegisteredRing3JumpPointer)
 extern ASM_PFX(RegApRing3JumpPointer)
 extern ASM_PFX(RegErrorReportJumpPointer)
 
-%macro DEC_N_CHECK_RAX    0
-    dec     rax
+%macro CHECK_RAX    0
     cmp     rax, 0
     jz      .3
 %endmacro
@@ -65,11 +64,11 @@ extern ASM_PFX(RegErrorReportJumpPointer)
 ;------------------------------------------------------------------------------
 global ASM_PFX(InvokeDemotedRoutine)
 ASM_PFX(InvokeDemotedRoutine):
-    ;Preserve input parameters onto stack for later usage
-    push    r9
-    push    r8
-    push    rdx
-    push    rcx
+    ;Preserve input parameters onto reg parameter stack area for later usage
+    mov     [rsp + 0x20], r9
+    mov     [rsp + 0x18], r8
+    mov     [rsp + 0x10], rdx
+    mov     [rsp + 0x08], rcx
 
     ;Preserve nonvolatile registers, in case demoted routines mess with them
     push    rbp
@@ -87,35 +86,45 @@ ASM_PFX(InvokeDemotedRoutine):
 
     ;Add place holder on stack
     mov     rbx, r8
-    cmp     rbx, 2
+    cmp     rbx, 4
     jge     .0
-    mov     rbx, 2      ; make sure rbx is at least 2, to accomodate the space needed for C functions called below
+    mov     rbx, 4      ; make sure rbx is at least 4, to accomodate the space needed for C functions called below
 .0:
     bt      rbx, 0
     jnc     .1
     inc     rbx         ; make sure rbx is an odd number to "even" the registers pushed above
 .1:
-    shl     rbx, 3      ; multiply by 8, so that we have stack holder we wanted to reserve
+    shl     rbx, 3      ; multiply by 8, so that we have stack holder we want to reserve
 
-    sub     rsp, 8
+    ;Preserve the updated rbp and rbx as we need them on return
+    push    rbp
+    push    rbx
+
+    sub     rsp, 0x18
     push    rcx
     call    GetThisCpl3Stack
     mov     r15, rax
     pop     rcx
-    add     rsp, 8
+    add     rsp, 0x18
 
     ;rcx is CpuIndex, so no worries for this call
+    sub     rsp, 0x20
     call    SetupCpl0MsrStar
+    add     rsp, 0x20
 
     ;Setup call gate for return
     lea     rcx, [.4]
     mov     rdx, 1
+    sub     rsp, 0x20
     call    SetupCallGate
+    add     rsp, 0x20
 
     ;Setup SetupTssDescriptor for return
     mov     rcx, rsp
     mov     rdx, 1
+    sub     rsp, 0x20
     call    SetupTssDescriptor
+    add     rsp, 0x20
 
     ;Same level far return to apply GDT change
     xor     rcx, rcx
@@ -135,29 +144,30 @@ ASM_PFX(InvokeDemotedRoutine):
     mov     gs, ax
 
     ;Prepare input arguments
-    mov     rax, [rbp + 0x18]           ;Get ArgCount from stack
-    DEC_N_CHECK_RAX
-    mov     rcx, [rbp + 0x20]           ;First input argument for demoted routine
-    DEC_N_CHECK_RAX
-    mov     rdx, [rbp + 0x28]           ;Second input argument for demoted routine
-    DEC_N_CHECK_RAX
-    mov     r8, [rbp + 0x30]            ;Third input argument for demoted routine
-    DEC_N_CHECK_RAX
-    mov     r9, [rbp + 0x38]            ;Forth input argument for demoted routine
-    DEC_N_CHECK_RAX
+    mov     rax, [rbp + 0x20]           ;Get ArgCount from stack
+    CHECK_RAX
+    mov     rcx, [rbp + 0x28]           ;First input argument for demoted routine
+    dec     rax
+    CHECK_RAX
+    mov     rdx, [rbp + 0x30]           ;Second input argument for demoted routine
+    dec     rax
+    CHECK_RAX
+    mov     r8, [rbp + 0x38]            ;Third input argument for demoted routine
+    dec     rax
+    CHECK_RAX
+    mov     r9, [rbp + 0x40]            ;Forth input argument for demoted routine
+    dec     rax
+    CHECK_RAX
     int     3                           ;Although we can, we do not support demoted function with more than 4 input args...
 
 .3:
-    ;Preserve the updated rbp and rbx as we need them on return
-    push    rbp
-    push    rbx
     ;Demote to CPL3 by far return, it will take care of cs and ss
     ;Note: we did more pushes on the way, so need to compensate the calculation when grabbing earlier pushed values
     push    LONG_DS_R3                  ;prepare ss on the stack
     mov     rax, r15                    ;grab Cpl3StackPtr from r15
     push    rax                         ;prepare CPL3 stack pointer on the stack
     push    LONG_CS_R3                  ;prepare cs on the stack
-    mov     rax, [rbp + 0x10]           ;grab routine pointer from stack
+    mov     rax, [rbp + 0x18]           ;grab routine pointer from stack
     push    rax                         ;prepare routine pointer on the stack
 
     mov     r15, CALL_GATE_OFFSET       ;This is our way to come back, do not mess it up
@@ -179,7 +189,7 @@ ASM_PFX(InvokeDemotedRoutine):
     pop     rbp
 
     ;Populate the rcx for usage below
-    mov     rcx, [rbp + 0x08]
+    mov     rcx, [rbp + 0x10]
 
     ;Return status should still be in rax, save it before calling other functions
     sub     rsp, 8
@@ -207,9 +217,6 @@ ASM_PFX(InvokeDemotedRoutine):
     pop     rbx
     mov     rsp, rbp
     pop     rbp
-
-    ; Directly unwind the rest instead of using pops
-    add     rsp, 0x20
 
     ret
 
