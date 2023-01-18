@@ -68,8 +68,6 @@ ASM_PFX(InvokeDemotedRoutine):
     mov     [rsp + 0x10], rdx
     mov     [rsp + 0x08], rcx
 
-    ; jmp     $
-
     ;Preserve nonvolatile registers, in case demoted routines mess with them
     push    rbp
     mov     rbp, rsp
@@ -218,7 +216,5 @@ ASM_PFX(InvokeDemotedRoutine):
     pop     rbx
     mov     rsp, rbp
     pop     rbp
-
-    ; jmp     $
 
     ret

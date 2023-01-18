@@ -228,12 +228,12 @@ InvokeDemotedDriverEntryPoint (
   }
 
   return InvokeDemotedRoutine (
-          mSmmMpSyncData->BspIndex,
-          (EFI_PHYSICAL_ADDRESS)(UINTN)EntryPoint,
-          2,
-          ImageHandle,
-          MmSystemTable
-        );
+           mSmmMpSyncData->BspIndex,
+           (EFI_PHYSICAL_ADDRESS)(UINTN)EntryPoint,
+           2,
+           ImageHandle,
+           MmSystemTable
+           );
 }
 
 /**
@@ -252,20 +252,20 @@ InvokeDemotedMmHandler (
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((VOID*)RegisteredRing3JumpPointer == NULL) {
+  if ((VOID *)RegisteredRing3JumpPointer == NULL) {
     return EFI_NOT_READY;
   }
 
   return InvokeDemotedRoutine (
-          mSmmMpSyncData->BspIndex,
-          (EFI_PHYSICAL_ADDRESS)RegisteredRing3JumpPointer,
-          5,
-          DispatchHandle,
-          Context,
-          CommBuffer,
-          CommBufferSize,
-          DispatchHandle->Handler
-        );
+           mSmmMpSyncData->BspIndex,
+           (EFI_PHYSICAL_ADDRESS)RegisteredRing3JumpPointer,
+           5,
+           DispatchHandle,
+           Context,
+           CommBuffer,
+           CommBufferSize,
+           DispatchHandle->Handler
+           );
 }
 
 /**
@@ -279,21 +279,21 @@ InvokeDemotedApProcedure (
   IN VOID               *ProcedureArgument
   )
 {
-  if (Procedure == NULL || ProcedureArgument == NULL) {
+  if ((Procedure == NULL) || (ProcedureArgument == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((VOID*)RegApRing3JumpPointer == NULL) {
+  if ((VOID *)RegApRing3JumpPointer == NULL) {
     return EFI_NOT_READY;
   }
 
   return InvokeDemotedRoutine (
-          CpuIndex,
-          (EFI_PHYSICAL_ADDRESS)RegApRing3JumpPointer,
-          2,
-          Procedure,
-          ProcedureArgument
-        );
+           CpuIndex,
+           (EFI_PHYSICAL_ADDRESS)RegApRing3JumpPointer,
+           2,
+           Procedure,
+           ProcedureArgument
+           );
 }
 
 /**
@@ -312,15 +312,15 @@ InvokeDemotedErrorReport (
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((VOID*)RegErrorReportJumpPointer == NULL) {
+  if ((VOID *)RegErrorReportJumpPointer == NULL) {
     return EFI_NOT_READY;
   }
 
   return InvokeDemotedRoutine (
-          CpuIndex,
-          (EFI_PHYSICAL_ADDRESS)RegErrorReportJumpPointer,
-          2,
-          CpuIndex,
-          ErrorInfoBuffer
-        );
+           CpuIndex,
+           (EFI_PHYSICAL_ADDRESS)RegErrorReportJumpPointer,
+           2,
+           CpuIndex,
+           ErrorInfoBuffer
+           );
 }
