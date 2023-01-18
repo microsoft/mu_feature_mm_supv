@@ -78,6 +78,9 @@ ASM_PFX(SyscallCenter):
     push    r14
     push    r15
 
+    mov     rbp, rsp
+    and     rsp, -16
+
     ;; FX_SAVE_STATE_X64 FxSaveState;
     sub rsp, 512
     mov rdi, rsp
@@ -112,6 +115,8 @@ ASM_PFX(SyscallCenter):
     mov rsi, rsp
     db 0xf, 0xae, 0xE ; fxrstor [rsi]
     add rsp, 512
+
+    mov     rsp, rbp
 
     ;restore registers from CPL3 stack
     pop     r15

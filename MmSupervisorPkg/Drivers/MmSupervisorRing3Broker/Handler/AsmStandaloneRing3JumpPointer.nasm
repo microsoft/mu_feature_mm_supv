@@ -12,10 +12,11 @@
 ; EFI_STATUS
 ; EFIAPI
 ; CentralRing3JumpPointer (
-;   IN EFI_HANDLE  *DispatchHandle,
-;   IN CONST VOID  *Context         OPTIONAL,
-;   IN OUT VOID    *CommBuffer      OPTIONAL,
-;   IN OUT UINTN   *CommBufferSize  OPTIONAL
+;   IN EFI_HANDLE                 *DispatchHandle,
+;   IN CONST VOID                 *Context         OPTIONAL,
+;   IN OUT VOID                   *CommBuffer      OPTIONAL,
+;   IN OUT UINTN                  *CommBufferSize  OPTIONAL,
+;   IN EFI_MM_HANDLER_ENTRY_POINT *Handler
 ;   )
 ; Calling convention: Arg0 in RCX, Arg1 in RDX, Arg2 in R8, Arg3 in R9, more on the stack
 ;------------------------------------------------------------------------------
@@ -24,8 +25,10 @@ ASM_PFX(CentralRing3JumpPointer):
     ;By the time we are here, it should be everything CPL3 already
 
     ;Note that top of stack at this moment is real jmp point
-    pop     rax
+    mov     rax, [rsp + 0x28]
 
+    ;Offset stack with 4 segments for stack parameter area
+    ;0x08 for the caller address
     sub     rsp, 0x28
 
     ;To boot strap this driver, we directly call the entry point worker
@@ -33,9 +36,6 @@ ASM_PFX(CentralRing3JumpPointer):
 
     ;Restore the stack pointer
     add     rsp, 0x28
-
-    ;Just to restore the stack to be a law-abiding citizen
-    push    rax
 
     ;Once returned, we will get returned status in rax, don't touch it, if you can help
     ;r15 contains call gate selector that was planned ahead
@@ -56,7 +56,9 @@ ASM_PFX(CentralRing3JumpPointer):
 global ASM_PFX(ApRing3JumpPointer)
 ASM_PFX(ApRing3JumpPointer):
     ;By the time we are here, it should be everything CPL3 already
-    sub     rsp, 0x18
+
+    ;leave space for the stack parameter area and align it to 16 bytes boundary
+    sub     rsp, 0x28
 
     mov     rax, rcx
     mov     rcx, rdx
@@ -65,7 +67,7 @@ ASM_PFX(ApRing3JumpPointer):
     call    rax
 
     ;Restore the stack pointer
-    add     rsp, 0x18
+    add     rsp, 0x28
 
     ;Once returned, we will get returned status in rax, don't touch it, if you can help
     ;r15 contains call gate selector that was planned ahead

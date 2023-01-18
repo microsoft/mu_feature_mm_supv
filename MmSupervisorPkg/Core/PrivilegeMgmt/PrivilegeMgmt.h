@@ -93,18 +93,6 @@ SyscallCenter (
   UINTN  CallerAddr
   );
 
-VOID
-EFIAPI
-PrivilegeMgmtFixupAddress (
-  VOID
-  );
-
-VOID
-EFIAPI
-ApHandlerReturnPointer (
-  VOID
-  );
-
 // Setup ring transition for AP procedure
 VOID
 EFIAPI
