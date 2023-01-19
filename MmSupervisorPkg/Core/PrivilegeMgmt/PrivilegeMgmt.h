@@ -108,6 +108,19 @@ SyncMmEntryContextToCpl3 (
 
 /**
   Invoke specified routine on specified core in CPL 3.
+
+  @param[in]      CpuIndex            CpuIndex value of intended core, cannot be
+                                      greater than mNumberOfCpus.
+  @param[in]      Cpl3Routine         Function pointer to demoted routine.
+  @param[in]      ArgCount            Number of arguments needed by Cpl3Routine.
+  @param          ...                 The variable argument list whose count is defined by
+                                      ArgCount. Its contented will be accessed and populated
+                                      to the registers and/or CPL3 stack areas per EFIAPI
+                                      calling convention.
+
+  @retval EFI_SUCCESS                 The demoted routine returns successfully.
+  @retval Others                      Errors caught by subroutines during ring transitioning
+                                      or error code returned from demoted routine.
 **/
 EFI_STATUS
 EFIAPI
