@@ -22,13 +22,13 @@ extern ASM_PFX(_ModuleEntryPointWorker)
 global ASM_PFX(_ModuleEntryPoint)
 ASM_PFX(_ModuleEntryPoint):
     ;By the time we are here, it should be everything CPL3 already
-    sub     rsp, 0x18
+    sub     rsp, 0x28
 
     ;To boot strap this driver, we directly call the entry point worker
     call    _ModuleEntryPointWorker
 
     ;Restore the stack pointer
-    add     rsp, 0x18
+    add     rsp, 0x28
 
     ;Once returned, we will get returned status in rax, don't touch it, if you can help
     ;r15 contains call gate selector that was planned ahead
