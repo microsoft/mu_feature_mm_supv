@@ -98,13 +98,13 @@ ASM_PFX(InvokeDemotedRoutine):
     ;Preserve the updated rbp as we need them on return
     push    rbp
 
-    sub     rsp, 0x18
     push    rcx
+    sub     rsp, 0x28
     call    GetThisCpl3Stack
+    add     rsp, 0x28
     mov     r15, rax
     and     r15, -16
     pop     rcx
-    add     rsp, 0x18
 
     ;rcx is CpuIndex, so no worries for this call
     sub     rsp, 0x20
@@ -205,11 +205,11 @@ ASM_PFX(InvokeDemotedRoutine):
     mov     rcx, [rbp + 0x10]
 
     ;Return status should still be in rax, save it before calling other functions
-    sub     rsp, 0x18
     push    rax
+    sub     rsp, 0x28
     call    RestoreCpl0MsrStar
+    add     rsp, 0x28
     pop     rax
-    add     rsp, 0x18
 
     xor     rcx, rcx
     mov     cx, LONG_DS_R0
