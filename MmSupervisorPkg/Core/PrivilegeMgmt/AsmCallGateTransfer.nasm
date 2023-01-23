@@ -102,9 +102,9 @@ ASM_PFX(InvokeDemotedRoutine):
     sub     rsp, 0x28
     call    GetThisCpl3Stack
     add     rsp, 0x28
+    pop     rcx
     mov     r15, rax
     and     r15, -16
-    pop     rcx
 
     ;rcx is CpuIndex, so no worries for this call
     sub     rsp, 0x20
