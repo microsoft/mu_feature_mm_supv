@@ -22,5 +22,6 @@ jobs:
   codeql-analysis:
     uses: microsoft/mu_devops/.github/workflows/CodeQl.yml@main
     with:
+      setup_command: stuart_ci_setup -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCC5
       update_command: stuart_update -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCC5
       build_command: stuart_ci_build -c .pytool/CISettings.py -p MmSupervisorPkg -t DEBUG -a IA32,X64 TOOL_CHAIN_TAG=GCC5
