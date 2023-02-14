@@ -9,7 +9,7 @@
 #**/
 
 # This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fd7b8d037fd5ce572bb2a4444e5adb26 | 2022-05-05T17-50-16 | c4d0d1130454b3e5051bb601c707234e3a91713a
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-02-14T23-02-36 | 45b2886c1f0d56d32b0b048494e4e9c2b4f88671
 # Secure:
 #Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 7721d55e11395e33c7cb64a82c67377d | 2022-11-23T23-04-43 | eabb7a913ef8928d4a413fc7f41c38108989a5f0
 # Non-Secure:
