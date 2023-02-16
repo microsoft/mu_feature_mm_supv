@@ -331,7 +331,10 @@ TSEGDumpHandler (
     }
 
     EFI_PHYSICAL_ADDRESS  *TempBuffer = AllocatePool (NumberOfTseg * sizeof (EFI_PHYSICAL_ADDRESS));
-    ASSERT (TempBuffer != NULL);
+    if (TempBuffer == NULL) {
+      ASSERT (TempBuffer != NULL);
+      return EFI_OUT_OF_RESOURCES;
+    }
 
     RecordIndex             = 0;
     TempBuffer[RecordIndex] = SmrrBase;
