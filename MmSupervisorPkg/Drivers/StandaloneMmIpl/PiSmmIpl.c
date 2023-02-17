@@ -1773,7 +1773,7 @@ Exit:
   if (SmramReservedRanges != NULL) {
     FreePool (SmramReservedRanges);
   }
-  if (TempSmramRanges) {
+  if (TempSmramRanges != NULL) {
     FreePool (TempSmramRanges);
   }
 
