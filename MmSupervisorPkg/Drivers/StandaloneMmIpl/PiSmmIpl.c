@@ -1669,6 +1669,7 @@ GetFullSmramRanges (
     ASSERT (SmramReservedRanges != NULL);
     goto Exit;
   }
+
   for (Index = 0; Index < SmramReservedCount; Index++) {
     CopyMem (&SmramReservedRanges[Index], &SmmConfiguration->SmramReservedRegions[Index], sizeof (EFI_SMM_RESERVED_SMRAM_REGION));
   }
@@ -1679,6 +1680,7 @@ GetFullSmramRanges (
     ASSERT (TempSmramRanges != NULL);
     goto Exit;
   }
+
   TempMmramRangeCount = 0;
 
   SmramRanges = (EFI_SMRAM_DESCRIPTOR *)AllocatePool (Size);
@@ -1686,6 +1688,7 @@ GetFullSmramRanges (
     ASSERT (SmramRanges != NULL);
     goto Exit;
   }
+
   Status = mSmmAccess->GetCapabilities (mSmmAccess, &Size, SmramRanges);
   ASSERT_EFI_ERROR (Status);
 
@@ -1770,9 +1773,11 @@ Exit:
   if (SmramRanges != NULL) {
     FreePool (SmramRanges);
   }
+
   if (SmramReservedRanges != NULL) {
     FreePool (SmramReservedRanges);
   }
+
   if (TempSmramRanges != NULL) {
     FreePool (TempSmramRanges);
   }

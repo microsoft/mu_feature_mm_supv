@@ -1930,6 +1930,7 @@ InitializeSmmCpuSemaphores (
     ASSERT (SemaphoreBlock != NULL);
     return;
   }
+
   ZeroMem (SemaphoreBlock, TotalSize);
 
   SemaphoreAddr                                   = (UINTN)SemaphoreBlock;
