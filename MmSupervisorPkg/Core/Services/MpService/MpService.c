@@ -1926,7 +1926,11 @@ InitializeSmmCpuSemaphores (
   DEBUG ((DEBUG_INFO, "Total Semaphores Size = 0x%x\n", TotalSize));
   Pages          = EFI_SIZE_TO_PAGES (TotalSize);
   SemaphoreBlock = AllocatePages (Pages);
-  ASSERT (SemaphoreBlock != NULL);
+  if (SemaphoreBlock == NULL) {
+    ASSERT (SemaphoreBlock != NULL);
+    return;
+  }
+
   ZeroMem (SemaphoreBlock, TotalSize);
 
   SemaphoreAddr                                   = (UINTN)SemaphoreBlock;

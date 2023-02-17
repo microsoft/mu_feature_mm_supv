@@ -429,6 +429,11 @@ BuildGuidDataHob (
 
   HobData = BuildGuidHob (Guid, DataLength);
 
+  if (HobData == NULL) {
+    ASSERT (HobData != NULL);
+    return NULL;
+  }
+
   return CopyMem (HobData, Data, DataLength);
 }
 

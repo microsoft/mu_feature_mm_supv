@@ -618,7 +618,12 @@ DumpSmiHandler (
 
         Print (L">\n");
         ImageStruct = GetImageFromRef ((UINTN)SmiHandlerStruct->ImageRef);
-        NameString  = GetDriverNameString (ImageStruct);
+        if (ImageStruct == NULL) {
+          ASSERT (ImageStruct != NULL);
+          return;
+        }
+
+        NameString = GetDriverNameString (ImageStruct);
         Print (L"      <Module RefId=\"0x%x\" Name=\"%a\">\n", SmiHandlerStruct->ImageRef, NameString);
         if ((ImageStruct != NULL) && (ImageStruct->PdbStringOffset != 0)) {
           Print (L"      <Pdb>%a</Pdb>\n", (UINT8 *)ImageStruct + ImageStruct->PdbStringOffset);
