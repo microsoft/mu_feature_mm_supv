@@ -13,7 +13,7 @@
 # Secure:
 #Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 7721d55e11395e33c7cb64a82c67377d | 2022-11-23T23-04-43 | eabb7a913ef8928d4a413fc7f41c38108989a5f0
 # Non-Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 907a46c9a39eb3522c08e09ccf43e1ec | 2022-11-23T23-05-13 | f91446735a4e38a6cfaebbf755fa3194e3001a26
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 5312af1eb33ff2c78a48c98e1ebb07ba | 2023-02-22T20-11-00 | df29658d7524a836d7ef8ab4653bc0272d2c3fc0
 
 [Defines]
   INF_VERSION                    = 0x0001001A
