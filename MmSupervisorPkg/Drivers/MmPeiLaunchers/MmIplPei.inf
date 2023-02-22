@@ -22,7 +22,7 @@
 # Non-Secure:
 #Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-09-02T01-35-35 | 4d60e12bfa108cd4b20796dd3f6f859417223408
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 6ccb347bc8933623a7b1b6144379b4bb | 2022-09-02T01-33-52 | 4d60e12bfa108cd4b20796dd3f6f859417223408
+#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 8488ee3b214d278eb0623bf0c29f72d8 | 2023-02-22T20-13-39 | df29658d7524a836d7ef8ab4653bc0272d2c3fc0
 
 #
 # The following information is for reference only and not required by the build tools.
