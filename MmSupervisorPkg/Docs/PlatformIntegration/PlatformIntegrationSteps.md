@@ -292,7 +292,6 @@ flash drivers, SW MMI dispatcher drivers, etc.
 !endif
 
 [Components.X64]
-  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferDxe.inf
 !if $(PEI_MM_IPL_ENABLED) == TRUE
   # Note: MmIplX64Relay is a 64-bit PEI module.
   #       - Any libraries linked to this module should not make 32-bit PEI assumptions
@@ -399,7 +398,6 @@ Note: There might be other silicon specific drivers a platform will need for the
 !endif
   INF  MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   INF  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
-  INF  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferDxe.inf
 
   INF  MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterStandaloneMm.inf
   INF  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableSmm/FirmwarePerformanceStandaloneMm.inf
