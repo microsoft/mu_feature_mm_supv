@@ -10,6 +10,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #ifndef _MM_SUPV_REQUEST_DATA_H_
 #define _MM_SUPV_REQUEST_DATA_H_
 
+#include <Guid/MmCommonRegion.h>
+
 #define MM_SUPERVISOR_REQUEST_HANDLER_GUID \
   { 0x8c633b23, 0x1260, 0x4ea6, { 0x83, 0xf, 0x7d, 0xdc, 0x97, 0x38, 0x21, 0x11 } }
 
@@ -50,6 +52,16 @@ typedef struct _VERSION_INFO_BUFFER {
   UINT64    MaxSupervisorRequestLevel;
 } MM_SUPERVISOR_VERSION_INFO_BUFFER;
 
+/**
+  This structure is used to request supervisor to update communication buffer locations,
+  and core private data mailbox.
+
+**/
+typedef struct _COMM_UPDATE_BUFFER {
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS    NewMmCoreData;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS    NewCommBuffers[MM_OPEN_BUFFER_CNT];
+} MM_SUPERVISOR_COMM_UPDATE_BUFFER;
+
 #pragma pack(pop)
 
 /**
@@ -78,11 +90,18 @@ typedef struct _VERSION_INFO_BUFFER {
 #define   MM_SUPERVISOR_REQUEST_VERSION_INFO  0x0003
 
 /**
+  @retval EFI_INVALID_PARAMETER      If new communication buffer is NULL
+  @retval EFI_SECURITY_VIOLATION     If new communication buffers does not pertain the same memory attribute as existing ones
+  @retval EFI_ACCESS_DENIED          If request occurs after ready to lock or policy fetching
+ **/
+#define   MM_SUPERVISOR_REQUEST_COMM_UPDATE  0x0004
+
+/**
   Maximal request index supported by supervisor. When supported, the value of this definition
   will be populated in the MaxSupervisorRequestLevel of VERSION_INFO_BUFFER upon a successful query
   to supervisor.
 
  **/
-#define   MM_SUPERVISOR_REQUEST_MAX_SUPPORTED  MM_SUPERVISOR_REQUEST_VERSION_INFO
+#define   MM_SUPERVISOR_REQUEST_MAX_SUPPORTED  MM_SUPERVISOR_REQUEST_COMM_UPDATE
 
 #endif // _MM_SUPV_REQUEST_DATA_H_
