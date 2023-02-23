@@ -119,8 +119,12 @@ QuerySupervisorVersion (
 //
 // SMM IPL global variables
 //
+extern UINT64                     mMmSupvCommonBufferPages;
+extern UINT64                     mMmUserCommonBufferPages;
 extern VOID                       *mMmSupvCommonBuffer;
 extern VOID                       *mMmUserCommonBuffer;
+extern VOID                       *mMmSupvCommonBufferPhysical;
+extern VOID                       *mMmUserCommonBufferPhysical;
 extern EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader;
 
 extern MM_CORE_PRIVATE_DATA  *gMmCorePrivate;

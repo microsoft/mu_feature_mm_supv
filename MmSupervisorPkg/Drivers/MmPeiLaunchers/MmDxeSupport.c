@@ -18,6 +18,8 @@
 
 #include <Guid/EventGroup.h>
 #include <Guid/MmCoreData.h>
+#include <Guid/MmCommonRegion.h>
+#include <Guid/PiSmmCommunicationRegionTable.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
 
 #include <Library/BaseLib.h>
@@ -28,6 +30,7 @@
 #include <Library/UefiLib.h>
 #include <Library/UefiRuntimeLib.h>
 #include <Library/ReportStatusCodeLib.h>
+#include <Library/MemoryAllocationLib.h>
 
 #include "Common/MmIplCommon.h"
 
@@ -709,6 +712,281 @@ SmmIplSetVirtualAddressNotify (
   EfiConvertPointer (0x0, (VOID **)&mMmSupvCommunication.CommunicationRegion.VirtualStart);
 }
 
+// MM_SUPV: Update communicate buffer when entering DXE.
+
+/**
+  Communicate to MmSupervisor to update the buffer to runtime pages allocated in DXE.
+
+  @param[out] VersionInfo        Pointer to hold current version information from supervisor.
+  @param[out] UpdatedCommBuffer  Pointer to hold returned comm buffer information structure.
+
+  @retval EFI_SUCCESS            The version information was successfully queried.
+  @retval EFI_INVALID_PARAMETER  The VersionInfo was NULL.
+  @retval EFI_SECURITY_VIOLATION The Version returned by supervisor is invalid.
+  @retval Others                 Other error status returned during communication to supervisor.
+
+**/
+EFI_STATUS
+UpdateDxeCommunicateBuffer (
+  IN MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo,
+  OUT MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdatedCommBuffer
+  )
+{
+  UINTN                             Size;
+  EFI_STATUS                        Status;
+  MM_SUPERVISOR_REQUEST_HEADER      *RequestHeader;
+  MM_SUPERVISOR_COMM_UPDATE_BUFFER  *NewCommBuffer;
+  VOID                              *NewUserCommBuffer;
+  VOID                              *NewSupvCommBuffer;
+  VOID                              *NewMmCoreBuffer;
+
+  if ((VersionInfo == NULL) || (UpdatedCommBuffer == NULL)) {
+    ASSERT (VersionInfo != NULL);
+    ASSERT (UpdatedCommBuffer != NULL);
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (VersionInfo->MaxSupervisorRequestLevel < MM_SUPERVISOR_REQUEST_COMM_UPDATE) {
+    // This means the supervisor is too old, cannot do such operation
+    return EFI_UNSUPPORTED;
+  }
+
+  // Now we are in the real deal, start with allocating new buffers
+  NewUserCommBuffer = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
+  NewSupvCommBuffer = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
+  NewMmCoreBuffer   = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), EFI_PAGE_SIZE);
+
+  if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCoreBuffer == NULL)) {
+    ASSERT (NewUserCommBuffer != NULL);
+    ASSERT (NewSupvCommBuffer != NULL);
+    ASSERT (NewMmCoreBuffer != NULL);
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+
+  // The size of supervisor communication buffer should be much larger than this value below
+  Size = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) +
+         sizeof (MM_SUPERVISOR_REQUEST_HEADER) +
+         sizeof (MM_SUPERVISOR_COMM_UPDATE_BUFFER);
+
+  // Clear up the playground first
+  ZeroMem ((VOID *)(UINTN)mCommunicateHeader, Size);
+
+  CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorRequestHandlerGuid);
+  mCommunicateHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+
+  RequestHeader            = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
+  RequestHeader->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  RequestHeader->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  RequestHeader->Request   = MM_SUPERVISOR_REQUEST_COMM_UPDATE;
+
+  NewCommBuffer = (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(RequestHeader + 1);
+  CopyMem (&(NewCommBuffer->NewMmCoreData.IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCoreBuffer;
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCoreBuffer;
+
+  CopyMem (&(NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
+  NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.NumberOfPages = mMmSupvCommonBufferPages;
+  NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
+  NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
+
+  CopyMem (&(NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
+  NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages = mMmUserCommonBufferPages;
+  NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewUserCommBuffer;
+  NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewUserCommBuffer;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __FUNCTION__, Status));
+    Status = EFI_DEVICE_ERROR;
+    goto Done;
+  }
+
+  // Re-check the return status on the new buffers.
+  gMmCorePrivate = (MM_CORE_PRIVATE_DATA *)NewMmCoreBuffer;
+  if ((UINTN)gMmCorePrivate->ReturnStatus != 0) {
+    Status = gMmCorePrivate->ReturnStatus;
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM to switch core mailbox - %r!!\n", __FUNCTION__, Status));
+    Status = EFI_DEVICE_ERROR;
+    goto Done;
+  }
+
+  mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)NewSupvCommBuffer;
+  RequestHeader      = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
+  if ((UINTN)RequestHeader->Result != 0) {
+    Status = ENCODE_ERROR ((UINTN)RequestHeader->Result);
+    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r!!\n", __FUNCTION__, Status));
+    Status = EFI_DEVICE_ERROR;
+    goto Done;
+  }
+
+  // Populate the returned buffer
+  CopyMem (UpdatedCommBuffer, NewCommBuffer, sizeof (*UpdatedCommBuffer));
+
+  // Update the global variables
+  mMmUserCommonBuffer         = NewUserCommBuffer;
+  mMmSupvCommonBuffer         = NewSupvCommBuffer;
+  mMmUserCommonBufferPhysical = NewUserCommBuffer;
+  mMmSupvCommonBufferPhysical = NewSupvCommBuffer;
+
+  // Update supervisor communicate protocol communicate regions
+  mMmSupvCommunication.CommunicationRegion.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
+  mMmSupvCommunication.CommunicationRegion.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
+
+Done:
+  return Status;
+}
+
+/**
+  Publish EFI MM communication region tables for both user and supervisor with updated buffer
+  addresses.
+
+  @param[in] UpdatedCommBuffer  Pointer to hold the updated comm buffer information structure.
+
+  @retval EFI_SUCCESS
+  @return Others          Some error occurs.
+**/
+EFI_STATUS
+EFIAPI
+PublishMmCommunicationBuffer (
+  IN MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdatedCommBuffer
+  )
+{
+  EFI_STATUS                               Status = EFI_NOT_FOUND;
+  UINT32                                   DescriptorSize;
+  EDKII_PI_SMM_COMMUNICATION_REGION_TABLE  *PiSmmCommunicationRegionTable;
+  EFI_MEMORY_DESCRIPTOR                    *Entry;
+  // MU_CHANGE Starts: MM_SUPV: Fetch allocated communication buffer from HOBs.
+  EFI_GUID                          *ConfTableGuid;
+  EFI_PEI_HOB_POINTERS              GuidHob;
+  MM_COMM_REGION_HOB                *CommRegionHob;
+  MM_SUPERVISOR_COMM_UPDATE_BUFFER  TempCommBuffer;
+  UINTN                             Index;
+
+  PiSmmCommunicationRegionTable = NULL;
+
+  if (UpdatedCommBuffer != NULL) {
+    CopyMem (&TempCommBuffer, UpdatedCommBuffer, sizeof (*UpdatedCommBuffer));
+  } else {
+    ZeroMem (&TempCommBuffer, sizeof (TempCommBuffer));
+    GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
+    // Get the information from the HOBs as before
+    while (GuidHob.Guid != NULL) {
+      CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
+      if ((CommRegionHob->MmCommonRegionType >= MM_OPEN_BUFFER_CNT)) {
+        // Unrecognized buffer type, do not proceed with comm buffer table installation
+        DEBUG ((DEBUG_ERROR, "%a Unsupported communication region type discovered (0x%x), the communication buffer could be misconfigured!!!\n", __FUNCTION__, CommRegionHob->MmCommonRegionType));
+        Status = EFI_UNSUPPORTED;
+        ASSERT (FALSE);
+        goto Done;
+      }
+
+      TempCommBuffer.NewCommBuffers[CommRegionHob->MmCommonRegionType].MemoryDescriptor.NumberOfPages = CommRegionHob->MmCommonRegionPages;
+      TempCommBuffer.NewCommBuffers[CommRegionHob->MmCommonRegionType].MemoryDescriptor.PhysicalStart = CommRegionHob->MmCommonRegionAddr;
+
+      // MU_CHANGE Starts: MM_SUPV: Fetch allocated communication buffer from HOBs
+      //                   And publish notification when the table is installed.
+      GuidHob.Guid = GET_NEXT_HOB (GuidHob);
+      GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
+    }
+  }
+
+  for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
+    PiSmmCommunicationRegionTable = NULL;
+    if (Index == MM_USER_BUFFER_T) {
+      ConfTableGuid = &gEdkiiPiSmmCommunicationRegionTableGuid;
+    } else if (Index == MM_SUPERVISOR_BUFFER_T) {
+      ConfTableGuid = &gMmSupervisorCommunicationRegionTableGuid;
+    }
+
+    DescriptorSize = sizeof (EFI_MEMORY_DESCRIPTOR);
+    //
+    // Make sure Size != sizeof(EFI_MEMORY_DESCRIPTOR). This will
+    // prevent people from having pointer math bugs in their code.
+    // now you have to use *DescriptorSize to make things work.
+    //
+    DescriptorSize += sizeof (UINT64) - (DescriptorSize % sizeof (UINT64));
+
+    //
+    // Allocate and fill PiSmmCommunicationRegionTable
+    //
+    PiSmmCommunicationRegionTable = AllocateReservedPool (sizeof (EDKII_PI_SMM_COMMUNICATION_REGION_TABLE) + DescriptorSize);
+    ASSERT (PiSmmCommunicationRegionTable != NULL);
+    // MU_CHANGE: MM_SUPV: Exit loop if allocation failed.
+    if (PiSmmCommunicationRegionTable == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for communication buffer table!!!\n", __FUNCTION__));
+      Status = EFI_OUT_OF_RESOURCES;
+      goto Done;
+    }
+
+    ZeroMem (PiSmmCommunicationRegionTable, sizeof (EDKII_PI_SMM_COMMUNICATION_REGION_TABLE) + DescriptorSize);
+
+    PiSmmCommunicationRegionTable->Version         = EDKII_PI_SMM_COMMUNICATION_REGION_TABLE_VERSION;
+    PiSmmCommunicationRegionTable->NumberOfEntries = 1;
+    PiSmmCommunicationRegionTable->DescriptorSize  = DescriptorSize;
+    Entry                                          = (EFI_MEMORY_DESCRIPTOR *)(PiSmmCommunicationRegionTable + 1);
+    Entry->Type                                    = EfiConventionalMemory;
+    Entry->PhysicalStart                           = (EFI_PHYSICAL_ADDRESS)(UINTN)TempCommBuffer.NewCommBuffers[Index].MemoryDescriptor.PhysicalStart; // MU_CHANGE: MM_SUPV: BAR from HOB
+    ASSERT (Entry->PhysicalStart != 0);
+    // MU_CHANGE: MM_SUPV: Exit loop if PhysicalStart is null pointer.
+    if (Entry->PhysicalStart == 0) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "%a Target HOB does not contain valid communication buffer data: type: 0x%x, addr: 0x%p, pages: 0x%x!!!\n",
+        __FUNCTION__,
+        Index,
+        TempCommBuffer.NewCommBuffers[Index].MemoryDescriptor.PhysicalStart,
+        TempCommBuffer.NewCommBuffers[Index].MemoryDescriptor.NumberOfPages
+        ));
+      Status = EFI_NOT_STARTED;
+      goto Done;
+    }
+
+    Entry->VirtualStart  = 0;
+    Entry->NumberOfPages = TempCommBuffer.NewCommBuffers[Index].MemoryDescriptor.NumberOfPages; // MU_CHANGE: MM_SUPV: Buffer size from HOB
+    Entry->Attribute     = 0;
+
+    DEBUG ((DEBUG_INFO, "PiSmmCommunicationRegionTable:(0x%x)\n", PiSmmCommunicationRegionTable));
+    DEBUG ((DEBUG_INFO, "  Version         - 0x%x\n", PiSmmCommunicationRegionTable->Version));
+    DEBUG ((DEBUG_INFO, "  NumberOfEntries - 0x%x\n", PiSmmCommunicationRegionTable->NumberOfEntries));
+    DEBUG ((DEBUG_INFO, "  DescriptorSize  - 0x%x\n", PiSmmCommunicationRegionTable->DescriptorSize));
+    DEBUG ((DEBUG_INFO, "Entry:(0x%x)\n", Entry));
+    DEBUG ((DEBUG_INFO, "  Type            - 0x%x\n", Entry->Type));
+    DEBUG ((DEBUG_INFO, "  PhysicalStart   - 0x%lx\n", Entry->PhysicalStart));
+    DEBUG ((DEBUG_INFO, "  VirtualStart    - 0x%lx\n", Entry->VirtualStart));
+    DEBUG ((DEBUG_INFO, "  NumberOfPages   - 0x%lx\n", Entry->NumberOfPages));
+    DEBUG ((DEBUG_INFO, "  Attribute       - 0x%lx\n", Entry->Attribute));
+
+    //
+    // Publish this table, so that other driver can use the buffer.
+    //
+    Status = gBS->InstallConfigurationTable (ConfTableGuid, PiSmmCommunicationRegionTable);
+    if (EFI_ERROR (Status)) {
+      goto Done;
+    }
+  }
+
+Done:
+  if (EFI_ERROR (Status) && (PiSmmCommunicationRegionTable != NULL)) {
+    // We failed.. At least clean up the mass.
+    FreePool (PiSmmCommunicationRegionTable);
+  }
+
+  // MU_CHANGE Ends: MM_SUPV.
+  return Status;
+}
+
 /**
   The Entry Point for MM IPL in DXE
 
@@ -737,6 +1015,7 @@ MmDxeSupportEntry (
   EFI_PEI_HOB_POINTERS   HobPointer;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
+  MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
 
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
@@ -762,12 +1041,36 @@ MmDxeSupportEntry (
   //
   Status = gBS->LocateProtocol (&gEfiSmmControl2ProtocolGuid, NULL, (VOID **)&mSmmControl2);
   if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
   Status = QuerySupervisorVersion (&VersionInfo);
   if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
+  Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  Status = PublishMmCommunicationBuffer (&NewCommBuffer);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to publish communicate buffer configuration tables - %r\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  // Query it another time to make sure the change took effect
+  Status = QuerySupervisorVersion (&VersionInfo);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
