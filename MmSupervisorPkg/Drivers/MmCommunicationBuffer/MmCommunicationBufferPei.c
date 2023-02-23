@@ -80,7 +80,7 @@ ReserveCommBuffer (
   //
   // Allocate and fill CommRegionHob
   //
-  CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateRuntimePages ((UINTN)PageSize);
+  CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __FUNCTION__, PageSize));
     ASSERT (FALSE);
