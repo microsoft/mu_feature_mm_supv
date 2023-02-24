@@ -100,6 +100,7 @@
   Request/UnblockMemory.c
   Request/FetchPolicy.c
   Request/VersionInfo.c
+  Request/UpdateCommBuffer.c
 
   Telemetry/Telemetry.c
   Telemetry/Telemetry.h

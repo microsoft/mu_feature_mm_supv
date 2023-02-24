@@ -1,5 +1,5 @@
-/** @file
-  PI SMM MemoryAttributes support
+/** @file UnblockMemory.c
+  Handles requests to unblock memory regions outside if MMRAM.
 
 Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 Copyright (C) Microsoft Corporation.
@@ -254,6 +254,73 @@ VerifyUnblockRequest (
 Done:
   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
   return Status;
+}
+
+/**
+  Helper routine used to block requested region. The routine will loop through unblocked
+  entries and try to locate the entry that matches the input based on base address and
+  length. For the match entry, if the page is not already blocked, supervisor will issue
+  command to block access. Once successful, the corresponding entry will be removed from
+  unblocked list.
+
+  @param[in]  BlockMemDesc        Input unblock parameters conveyed from non-MM environment
+
+  @retval EFI_SUCCESS             The requested region properly unblocked.
+  @retval EFI_ACCESS_DENIED       The request was made post lock down event.
+  @retval EFI_INVALID_PARAMETER   UnblockMemParams or its ID GUID is null pointer.
+  @retval EFI_ALREADY_STARTED     The requested region has illegal page attributes.
+  @retval Others                  Page attribute setting/clearing routine has failed.
+
+**/
+EFI_STATUS
+ProcessBlockPages (
+  IN MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *BlockMemDesc
+  )
+{
+  UNBLOCKED_MEM_LIST                   *UnblockedListEntry;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockedMemEntry;
+  LIST_ENTRY                           *Node;
+  EFI_STATUS                           Status;
+
+  if (BlockMemDesc == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Status = EFI_NOT_FOUND;
+  BASE_LIST_FOR_EACH (Node, &mUnblockedMemoryList) {
+    UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
+    UnblockedMemEntry  = UnblockedListEntry->UnblockMemData;
+    if ((UnblockedMemEntry.MemoryDescriptor.PhysicalStart == BlockMemDesc->MemoryDescriptor.PhysicalStart) &&
+        (UnblockedMemEntry.MemoryDescriptor.NumberOfPages == BlockMemDesc->MemoryDescriptor.NumberOfPages))
+    {
+      Status = EFI_SUCCESS;
+      break;
+    }
+  }
+
+  // If not found, then bail...
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // Mark this region to be inaccessible
+  Status = SmmSetMemoryAttributes (
+             UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
+             EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages),
+             EFI_MEMORY_RP
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to SetMemAttr to unblock memory %r!\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  // For the record, instead of removing this region from the list,
+  // we will set the length to 0 and update the attribute.
+  RemoveEntryList (Node);
+  FreePool (UnblockedListEntry);
+
+  return EFI_SUCCESS;
 }
 
 /**

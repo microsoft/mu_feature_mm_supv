@@ -2053,6 +2053,7 @@ SetCommonBufferRegionAttribute (
   UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox;
   UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
   UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
   Status                                             = ProcessUnblockPages (&UnblockRegionParams);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __FUNCTION__, Status));
