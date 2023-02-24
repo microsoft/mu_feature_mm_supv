@@ -1342,7 +1342,7 @@ MmIplPeiEntry (
 
   // MU_CHANGE: MM_SUPV: Allocate designated runtime buffer for gMmCorePrivate, it will be unblocked with Supervisor access
   // Here we allocate the core private data and copy the data
-  gMmCorePrivate = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), SIZE_4KB);
+  gMmCorePrivate = AllocateAlignedPages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), SIZE_4KB);
   ASSERT (gMmCorePrivate != NULL);
   CopyMem (gMmCorePrivate, &mSmmCorePrivateData, sizeof (MM_CORE_PRIVATE_DATA));
 
