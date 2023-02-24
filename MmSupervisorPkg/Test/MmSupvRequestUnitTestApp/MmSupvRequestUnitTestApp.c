@@ -291,7 +291,6 @@ FetchSecurityPolicyFromSupv (
   CommBuffer->Request   = MM_SUPERVISOR_REQUEST_FETCH_POLICY;
   CommBuffer->Result    = EFI_SUCCESS;
 
-  // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
 
   if (EFI_ERROR (Status)) {
@@ -632,7 +631,6 @@ RequestVersionInfo (
   CommBuffer->Request   = MM_SUPERVISOR_REQUEST_VERSION_INFO;
   CommBuffer->Result    = EFI_SUCCESS;
 
-  // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
 
   if (EFI_ERROR (Status)) {
@@ -690,7 +688,6 @@ RequestUnblockRegion (
   MemDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)TargetPage;
   MemDesc->Attribute     = 0;
 
-  // This should cause the system to reboot.
   Status = MmSupvRequestDxeToMmCommunicate ();
 
   if (EFI_ERROR (Status)) {
@@ -843,6 +840,54 @@ Done:
   return UNIT_TEST_PASSED;
 }
 
+/*
+  Test case to request communication buffer update from supervisor
+*/
+UNIT_TEST_STATUS
+EFIAPI
+RequestUpdateCommBuffer (
+  IN UNIT_TEST_CONTEXT  Context
+  )
+{
+  EFI_STATUS                        Status;
+  MM_SUPERVISOR_REQUEST_HEADER      *CommBuffer;
+  MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer;
+
+  // Grab the CommBuffer and fill it in for this test
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  UT_ASSERT_NOT_EFI_ERROR (Status);
+
+  CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  CommBuffer->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  CommBuffer->Request   = MM_SUPERVISOR_REQUEST_COMM_UPDATE;
+  CommBuffer->Result    = EFI_SUCCESS;
+
+  // It really should not matter, but just in case...
+  // We intentionally set it to some bogus address so that it would fail
+  // catastrophically if the flow does not work.
+  UpdateCommBuffer                                                                        = (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(CommBuffer + 1);
+  UpdateCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart                          = 0xDEADBEEF;
+  UpdateCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart       = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
+  UpdateCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
+
+  Status = MmSupvRequestDxeToMmCommunicate ();
+
+  if (EFI_ERROR (Status)) {
+    // We encountered some errors on our way fetching version information.
+    UT_LOG_ERROR ("Supervisor did not successfully return from communication %r.", Status);
+    return UNIT_TEST_ERROR_TEST_FAILED;
+  }
+
+  // Get the real handler status code
+  if ((UINTN)CommBuffer->Result != 0) {
+    Status = ENCODE_ERROR ((UINTN)CommBuffer->Result);
+  }
+
+  UT_ASSERT_STATUS_EQUAL (Status, EFI_ACCESS_DENIED);
+
+  return UNIT_TEST_PASSED;
+}
+
 /// ================================================================================================
 /// ================================================================================================
 ///
@@ -924,6 +969,15 @@ MmSupvRequestUnitTestAppEntryPoint (
     "Policy security inspection",
     "MmSupv.Miscellaneous.MmSupvPolicyInspection",
     InspectSecurityPolicy,
+    LocateMmCommonCommBuffer,
+    NULL,
+    NULL
+    );
+  AddTestCase (
+    Misc,
+    "Communication Buffer Update Test",
+    "MmSupv.Miscellaneous.MmSupvUpdateCommBuff",
+    RequestUpdateCommBuffer,
     LocateMmCommonCommBuffer,
     NULL,
     NULL
