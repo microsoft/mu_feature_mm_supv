@@ -1,5 +1,5 @@
-/** @file
-  PI SMM MemoryAttributes support
+/** @file  RequestDispatcher.c
+  Dispatchs supervisor requests to specific handlers.
 
 Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 Copyright (C) Microsoft Corporation.
@@ -127,6 +127,24 @@ MmSupvRequestHandler (
 
       MmSupvRequestHeader->Result = ProcessVersionInfoRequest (
                                       (MM_SUPERVISOR_VERSION_INFO_BUFFER *)(MmSupvRequestHeader + 1)
+                                      );
+      break;
+
+    case MM_SUPERVISOR_REQUEST_COMM_UPDATE:
+      ExpectedSize += sizeof (MM_SUPERVISOR_COMM_UPDATE_BUFFER);
+      if (*CommBufferSize < ExpectedSize) {
+        DEBUG ((
+          DEBUG_ERROR,
+          "%a - Communication buffer update has bad buffer size! %d < %d\n",
+          __FUNCTION__,
+          *CommBufferSize,
+          ExpectedSize
+          ));
+        return EFI_INVALID_PARAMETER;
+      }
+
+      MmSupvRequestHeader->Result = ProcessUpdateCommBufferRequest (
+                                      (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(MmSupvRequestHeader + 1)
                                       );
       break;
 

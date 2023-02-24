@@ -206,23 +206,22 @@ PrepareCommonBuffers (
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart = CommRegionHob->MmCommonRegionAddr;
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages = CommRegionHob->MmCommonRegionPages;
       // But the memory itself is allocated under reserved..
-      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type = EfiRuntimeServicesData;
+      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type      = EfiRuntimeServicesData;
+      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
       if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
-        mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
-        Status                                                                 = MmAllocateSupervisorPages (
-                                                                                   AllocateAnyPages,
-                                                                                   EfiRuntimeServicesData,
-                                                                                   CommRegionHob->MmCommonRegionPages,
-                                                                                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                                                                                   );
+        Status = MmAllocateSupervisorPages (
+                   AllocateAnyPages,
+                   EfiRuntimeServicesData,
+                   CommRegionHob->MmCommonRegionPages,
+                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                   );
       } else {
-        mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP;
-        Status                                                                 = MmAllocatePages (
-                                                                                   AllocateAnyPages,
-                                                                                   EfiRuntimeServicesData,
-                                                                                   CommRegionHob->MmCommonRegionPages,
-                                                                                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                                                                                   );
+        Status = MmAllocatePages (
+                   AllocateAnyPages,
+                   EfiRuntimeServicesData,
+                   CommRegionHob->MmCommonRegionPages,
+                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                   );
       }
 
       ASSERT_EFI_ERROR (Status);
@@ -538,7 +537,7 @@ MmEntryPoint (
       //
       BufferSize = BufferSize + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
       if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-        CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
+        CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
       } else {
         // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
         DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));
