@@ -179,6 +179,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable   ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdEnableSyscallLogs              ## CONSUMES
 
 [FixedPcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
