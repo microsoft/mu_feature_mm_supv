@@ -244,7 +244,7 @@ SyscallDispatcher (
     }
 
     DEBUG ((
-      DEBUG_VERBOSE,
+      DEBUG_INFO,
       "%a Enter... CallIndex: %lx, Arg1: %lx, Arg2: %lx, Arg3: %lx, CallerAddr: %p, Ring3Stack %p\n",
       __FUNCTION__,
       CallIndex,
@@ -631,7 +631,7 @@ Exit:
   }
 
   if (FeaturePcdGet (PcdEnableSyscallLogs)) {
-    DEBUG ((DEBUG_VERBOSE, "%a Exit...\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Exit...\n", __FUNCTION__));
   }
   return Ret;
 }
