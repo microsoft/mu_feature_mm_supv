@@ -238,7 +238,7 @@ SyscallDispatcher (
     mPcdCheck     = FALSE;
   }
 
-  if (FixedPcdGetBool (PcdEnableSyscallLogs)) {
+  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
     while (!AcquireSpinLockOrFail (mCpuToken)) {
       CpuPause ();
     }
@@ -630,7 +630,7 @@ Exit:
     CpuDeadLoop ();
   }
 
-  if (FixedPcdGetBool (PcdEnableSyscallLogs)) {
+  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
     DEBUG ((DEBUG_VERBOSE, "%a Exit...\n", __FUNCTION__));
   }
   return Ret;
