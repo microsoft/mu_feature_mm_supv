@@ -633,5 +633,6 @@ Exit:
   if (FeaturePcdGet (PcdEnableSyscallLogs)) {
     DEBUG ((DEBUG_INFO, "%a Exit...\n", __FUNCTION__));
   }
+
   return Ret;
 }
