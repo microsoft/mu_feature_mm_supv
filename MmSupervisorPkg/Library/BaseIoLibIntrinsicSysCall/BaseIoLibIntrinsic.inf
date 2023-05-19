@@ -17,7 +17,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | f6a4533ef056482dde3219709c1cf81c | 2022-10-07T19-27-17 | 0d04a5e280c55eb742deaabcfa97da85a0afe7b2
+#Override : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 52c5b0f77fbc8736f06094345ff7a968 | 2023-05-19T22-00-00 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x00010005
