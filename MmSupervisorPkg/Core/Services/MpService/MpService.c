@@ -736,8 +736,9 @@ BSPHandler (
   //
   // Allow APs to check in from this point on
   //
-  *mSmmMpSyncData->Counter       = 0;
-  *mSmmMpSyncData->AllCpusInSync = FALSE;
+  *mSmmMpSyncData->Counter                  = 0;
+  *mSmmMpSyncData->AllCpusInSync            = FALSE;
+  mSmmMpSyncData->AllApArrivedWithException = FALSE;
 }
 
 /**
