@@ -134,7 +134,7 @@
   SmmCpuPlatformHookLib
   CpuExceptionHandlerLib
   DevicePathLib
-  VmgExitLib
+  CcExitLib
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
