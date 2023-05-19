@@ -1517,12 +1517,27 @@ SmmIsSmramOverlap (
   IN EFI_SMM_RESERVED_SMRAM_REGION  *ReservedRangeToCompare
   )
 {
-  UINT64  RangeToCompareEnd;
-  UINT64  ReservedRangeToCompareEnd;
+  UINT64   RangeToCompareEnd;
+  UINT64   ReservedRangeToCompareEnd;
+  BOOLEAN  IsOverUnderflow1;
+  BOOLEAN  IsOverUnderflow2;
 
-  if (EFI_ERROR (SafeUint64Add ((UINT64)RangeToCompare->CpuStart, RangeToCompare->PhysicalSize, &RangeToCompareEnd)) ||
-      EFI_ERROR (SafeUint64Add ((UINT64)ReservedRangeToCompare->SmramReservedStart, ReservedRangeToCompare->SmramReservedSize, &ReservedRangeToCompareEnd)))
-  {
+  // Check for over or underflow.
+  IsOverUnderflow1 = EFI_ERROR (
+                       SafeUint64Add (
+                         (UINT64)RangeToCompare->CpuStart,
+                         RangeToCompare->PhysicalSize,
+                         &RangeToCompareEnd
+                         )
+                       );
+  IsOverUnderflow2 = EFI_ERROR (
+                       SafeUint64Add (
+                         (UINT64)ReservedRangeToCompare->SmramReservedStart,
+                         ReservedRangeToCompare->SmramReservedSize,
+                         &ReservedRangeToCompareEnd
+                         )
+                       );
+  if (IsOverUnderflow1 || IsOverUnderflow2) {
     return TRUE;
   }
 
