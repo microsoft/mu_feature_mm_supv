@@ -124,8 +124,9 @@ Is5LevelPagingNeeded (
     ExtFeatureEcx.Bits.FiveLevelPage
     ));
 
-  if (VirPhyAddressSize.Bits.PhysicalAddressBits > 4 * 9 + 12) {
-    ASSERT (ExtFeatureEcx.Bits.FiveLevelPage == 1);
+  if ((VirPhyAddressSize.Bits.PhysicalAddressBits > 4 * 9 + 12) &&
+      (ExtFeatureEcx.Bits.FiveLevelPage == 1))
+  {
     return TRUE;
   } else {
     return FALSE;
