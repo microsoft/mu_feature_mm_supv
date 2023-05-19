@@ -383,16 +383,16 @@ InternalIsBufferOverlapped (
   IN UINTN  Size2
   )
 {
-  UINTN  End1;
-  UINTN  End2;
+  UINTN    End1;
+  UINTN    End2;
+  BOOLEAN  IsOverUnderflow1;
+  BOOLEAN  IsOverUnderflow2;
 
-  //
-  // If buff1's end is less than the start of buff2, then it's ok.
-  // Also, if buff1's start is beyond buff2's end, then it's ok.
-  //
-  if (EFI_ERROR (SafeUintnAdd ((UINTN)Buff1, Size1, &End1)) ||
-      EFI_ERROR (SafeUintnAdd ((UINTN)Buff2, Size2, &End2)))
-  {
+  // Check for over or underflow
+  IsOverUnderflow1 = EFI_ERROR (SafeUintnAdd ((UINTN)Buff1, Size1, &End1));
+  IsOverUnderflow2 = EFI_ERROR (SafeUintnAdd ((UINTN)Buff2, Size2, &End2));
+
+  if (IsOverUnderflow1 || IsOverUnderflow2) {
     return TRUE;
   }
 
