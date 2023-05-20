@@ -2294,3 +2294,185 @@ SetUnblockRegionAttribute (
   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
   return Status;
 }
+
+/**
+  Prevent the memory pages used for SMM page table from being overwritten.
+**/
+VOID
+EnablePageTableProtection (
+  VOID
+  )
+{
+  PAGE_TABLE_POOL       *HeadPool;
+  PAGE_TABLE_POOL       *Pool;
+  UINT64                PoolSize;
+  EFI_PHYSICAL_ADDRESS  Address;
+  UINTN                 PageTableBase;
+  BOOLEAN               LockPageTableToReadOnly;
+  UINTN                 PageTableAttr;
+
+  if (mPageTablePool == NULL) {
+    return;
+  }
+
+  GetPageTable (&PageTableBase, NULL);
+  LockPageTableToReadOnly = (AsmReadCr3 () == PageTableBase) ? TRUE : FALSE;
+  if (LockPageTableToReadOnly) {
+    PageTableAttr = EFI_MEMORY_RO | EFI_MEMORY_SP;
+  } else {
+    PageTableAttr = EFI_MEMORY_SP;
+  }
+
+  PageTableBase = PageTableBase & PAGING_4K_ADDRESS_MASK_64;
+
+  //
+  // ConvertMemoryPageAttributes might update mPageTablePool. It's safer to
+  // remember original one in advance.
+  //
+  HeadPool = mPageTablePool;
+  Pool     = HeadPool;
+  do {
+    Address  = (EFI_PHYSICAL_ADDRESS)(UINTN)Pool;
+    PoolSize = Pool->Offset + EFI_PAGES_TO_SIZE (Pool->FreePages);
+    //
+    // Set entire pool including header, used-memory and left free-memory as ReadOnly in SMM page table.
+    //
+    ConvertMemoryPageAttributes (PageTableBase, m5LevelPagingNeeded, Address, PoolSize, PageTableAttr, TRUE, NULL, NULL);
+    Pool = Pool->NextPool;
+  } while (Pool != HeadPool);
+}
+
+/**
+  Return whether memory used by SMM page table need to be set as Read Only.
+
+  @retval TRUE  Need to set SMM page table as Read Only.
+  @retval FALSE Do not set SMM page table as Read Only.
+**/
+BOOLEAN
+IfReadOnlyPageTableNeeded (
+  VOID
+  )
+{
+  //
+  // Don't mark page table memory as read-only if
+  //  - no restriction on access to non-SMRAM memory; or
+  //  - SMM heap guard feature enabled; or
+  //      BIT2: SMM page guard enabled
+  //      BIT3: SMM pool guard enabled
+  //  - SMM profile feature enabled
+  //
+
+  // MU_CHANGE START
+
+  /*if (!IsRestrictedMemoryAccess () ||
+      ((PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0) ||
+      FeaturePcdGet (PcdCpuSmmProfileEnable))
+  {*/
+  // MU_CHANGE END
+  if (!IsRestrictedMemoryAccess () ||
+      // MU_CHANGE: MM_SUPV: Update to remove exclusivity between static paging and heap guard
+      // ((gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0) ||
+      FeaturePcdGet (PcdCpuSmmProfileEnable))
+  {
+    // MU_CHANGE END
+    if (sizeof (UINTN) == sizeof (UINT64)) {
+      //
+      // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
+      //
+      // MU_CHANGE START
+
+      /*ASSERT (
+        !(IsRestrictedMemoryAccess () &&
+          (PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0)
+        ); */
+      ASSERT (
+        !(IsRestrictedMemoryAccess () &&
+          (gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0)
+        );
+      // MU_CHANGE END
+
+      //
+      // Restriction on access to non-SMRAM memory and SMM profile could not be enabled at the same time.
+      //
+      ASSERT (!(IsRestrictedMemoryAccess () && FeaturePcdGet (PcdCpuSmmProfileEnable)));
+    }
+
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
+  This function sets memory attribute for page table.
+**/
+VOID
+SetPageTableAttributes (
+  VOID
+  )
+{
+  BOOLEAN  CetEnabled;
+  UINTN    CachedCr0; // MU_CHANGE: MM_SUPV: Cache CR0
+
+  if (!IfReadOnlyPageTableNeeded ()) {
+    return;
+  }
+
+  DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
+
+  //
+  // Disable write protection, because we need mark page table to be write protected.
+  // We need *write* page table memory, to mark itself to be *read only*.
+  //
+  CetEnabled = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0) ? TRUE : FALSE;
+  if (CetEnabled) {
+    //
+    // CET must be disabled if WP is disabled.
+    //
+    DisableCet ();
+  }
+
+  // MU_CHANGE: MM_SUPV: Need to restore CR0 when this routine is executed before
+  // initialization complete.
+  CachedCr0 = AsmReadCr0 ();
+  AsmWriteCr0 (CachedCr0 & ~CR0_WP);
+
+  // Set memory used by page table as Read Only.
+  DEBUG ((DEBUG_INFO, "Start...\n"));
+  EnablePageTableProtection ();
+
+  //
+  // Enable write protection, after page table attribute updated.
+  //
+  // MU_CHANGE: MM_SUPV Starts: Need to restore CR0 when this routine is executed before
+  // initialization complete.
+  if (mCoreInitializationComplete) {
+    //
+    // Only enforce write protect in CR0 if initialization is complete
+    //
+    AsmWriteCr0 (CachedCr0 | CR0_WP);
+
+    //
+    // Flush TLB after mark all page table pool as read only.
+    //
+    FlushTlbForAll ();
+  } else {
+    //
+    // Otherwise restore the original value to avoid tampering non MM environment
+    //
+    AsmWriteCr0 (CachedCr0);
+  }
+
+  // MU_CHANGE: MM_SUPV Ends
+
+  mIsReadOnlyPageTable = TRUE;
+
+  if (CetEnabled) {
+    //
+    // re-enable CET.
+    //
+    EnableCet ();
+  }
+
+  return;
+}
