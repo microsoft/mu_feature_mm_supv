@@ -37,26 +37,8 @@ LIST_ENTRY                mPagePool           = INITIALIZE_LIST_HEAD_VARIABLE (m
 BOOLEAN                   m1GPageTableSupport = FALSE;
 BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
 X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
-PAGE_TABLE_POOL           mPageTablePool;
+PAGE_TABLE_POOL           mPageTablePoolEx;
 UINT8                     mPhysicalAddressBits;
-
-/**
-  Disable CET.
-**/
-VOID
-EFIAPI
-DisableCet (
-  VOID
-  );
-
-/**
-  Enable CET.
-**/
-VOID
-EFIAPI
-EnableCet (
-  VOID
-  );
 
 /**
   Check if 1-GByte pages is supported by processor or not.
@@ -473,15 +455,15 @@ SmmInitPageTable (
   // Allocate extension page table for split usage just in case, this data will have
   // supervisor page and xp attribute when MAT is applied
   //
-  ZeroMem (&mPageTablePool, sizeof (mPageTablePool));
-  mPageTablePool.PoolHeader = AllocateAlignedPages (PAGE_TABLE_POOL_UNIT_PAGES, EFI_PAGE_SIZE);
-  if (mPageTablePool.PoolHeader == NULL) {
+  ZeroMem (&mPageTablePoolEx, sizeof (mPageTablePoolEx));
+  mPageTablePoolEx.NextPool = AllocateAlignedPages (PAGE_TABLE_POOL_EX_UNIT_PAGES, EFI_PAGE_SIZE);
+  if (mPageTablePoolEx.NextPool == NULL) {
     DEBUG ((DEBUG_ERROR, "Failed to initialize page table pool!\n"));
     ASSERT (FALSE);
   }
 
-  DEBUG ((DEBUG_INFO, "Allcoated page table pool at %p\n", mPageTablePool.PoolHeader));
-  mPageTablePool.FreePages = PAGE_TABLE_POOL_UNIT_PAGES;
+  DEBUG ((DEBUG_INFO, "Allcoated page table pool at %p\n", mPageTablePoolEx.NextPool));
+  mPageTablePoolEx.FreePages = PAGE_TABLE_POOL_EX_UNIT_PAGES;
 
   mCpuSmmRestrictedMemoryAccess = PcdGetBool (PcdCpuSmmRestrictedMemoryAccess);
   m1GPageTableSupport           = Is1GPageSupport ();
@@ -1538,6 +1520,8 @@ SetPageTableAttributes (
     //
     EnableCet ();
   }
+
+  mIsReadOnlyPageTable = TRUE;
 
   return;
 }
