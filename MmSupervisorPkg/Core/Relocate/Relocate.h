@@ -277,6 +277,7 @@ X86_ASSEMBLY_PATCH_LABEL  gPatchSmmInitStack;
 X86_ASSEMBLY_PATCH_LABEL  mPatchCetSupported;
 extern BOOLEAN            mCetSupported;
 extern BOOLEAN            m5LevelPagingNeeded;
+extern BOOLEAN            mIsReadOnlyPageTable;
 
 /**
   Semaphore operation for all processor relocate SMMBase.
