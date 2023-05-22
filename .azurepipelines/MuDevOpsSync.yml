@@ -71,7 +71,6 @@ parameters:
 jobs:
 - template: Jobs/PrGate.yml@mu_devops
   parameters:
-    arch_list: $(arch_list)
     do_ci_build: ${{ parameters.do_ci_build }}
     do_ci_setup: ${{ parameters.do_ci_setup }}
     do_pr_eval: ${{ parameters.do_pr_eval }}

@@ -27,8 +27,10 @@ extends:
       TARGET_MM_SUPV:
         Pkgs: 'MmSupervisorPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)
         SelfHostAgent: false
       TARGET_MM_SUPV_ARM:
         Pkgs: 'MmSupervisorPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)
         SelfHostAgent: true
