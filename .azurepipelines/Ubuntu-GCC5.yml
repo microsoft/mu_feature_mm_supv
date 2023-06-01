@@ -17,7 +17,7 @@ resources:
       type: github
       endpoint: microsoft
       name: microsoft/mu_devops
-      ref: refs/tags/v2.2.0
+      ref: refs/tags/v3.0.0
 
 variables:
 - group: architectures-x86-64
@@ -35,3 +35,4 @@ jobs:
     tool_chain_tag: $(tool_chain_tag)
     vm_image: $(vm_image)
     container_build: true
+    linux_container_image: ghcr.io/microsoft/mu_devops/ubuntu-22-build:4a1f8d3

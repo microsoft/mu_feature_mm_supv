@@ -484,7 +484,7 @@ MmLoadImage (
   StackCookieStatus = PeCoffLoaderGetSecurityCookieAddress (&ImageContext, &SecurityCookieAddress);
   if (!EFI_ERROR (StackCookieStatus)) {
     InitializeSecurityCookieAddress (SecurityCookieAddress);
-    DEBUG ((DEBUG_INFO | DEBUG_LOAD, "Standalone MM SecurityCookie set to %lld\n", (*SecurityCookieAddress)));
+    DEBUG ((DEBUG_VERBOSE | DEBUG_LOAD, "Standalone MM SecurityCookie set to %lld\n", (*SecurityCookieAddress)));
   }
 
   return Status;
