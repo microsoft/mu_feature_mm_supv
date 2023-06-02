@@ -808,6 +808,7 @@ InspectSecurityPolicy (
 
   if (MemLevel == UNDEFINED_LEVEL) {
     // Without specifying above, at most get level 0
+    DEBUG ((DEBUG_INFO, "MemLevel failure!  Returning level 0.\n"));
     goto Done;
   }
 
@@ -816,6 +817,7 @@ InspectSecurityPolicy (
   if ((IoLevel == UNDEFINED_LEVEL) || (MsrLevel == UNDEFINED_LEVEL)) {
     // Without specifying above, at most get level 10
     FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_10);
+    DEBUG ((DEBUG_INFO, "IoLevel or MsrLevel failure!  Returning level 10. IoLevel: %d, MsrLevel %d.\n", IoLevel, MsrLevel));
     goto Done;
   }
 
@@ -825,10 +827,17 @@ InspectSecurityPolicy (
   if (SvstLevel == UNDEFINED_LEVEL) {
     // Without specifying above, at most get level 20
     FinalLevel = MIN (FinalLevel, SMM_POLICY_LEVEL_20);
+    DEBUG ((DEBUG_INFO, "SvstLevel failure!  Returning level 20.\n"));
     goto Done;
   }
 
   FinalLevel = MIN (FinalLevel, SvstLevel);
+
+  DEBUG ((DEBUG_INFO, "No Level failure!  Printing all relevant levels\n"));
+  DEBUG ((DEBUG_INFO, "MemLevel Policy: %d\n", MemLevel));
+  DEBUG ((DEBUG_INFO, "IoLevel Policy: %d\n", IoLevel));
+  DEBUG ((DEBUG_INFO, "MsrLevel Policy: %d\n", MsrLevel));
+  DEBUG ((DEBUG_INFO, "SvstLevel Policy: %d\n", SvstLevel));
 
 Done:
   DEBUG ((DEBUG_INFO, "The fetch policy is at level %d\n", FinalLevel));
