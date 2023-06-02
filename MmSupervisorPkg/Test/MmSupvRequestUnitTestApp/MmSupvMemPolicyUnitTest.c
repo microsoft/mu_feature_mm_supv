@@ -227,8 +227,8 @@ GetTxtRegions (
   for (TxtIndex = 0; TxtIndex < TXT_REGION_COUNT; TxtIndex++) {
     switch (TxtIndex) {
       case 0:
-        (*Size)[TxtIndex]        = TXT_PRIVATE_BASE;
-        (*BaseAddress)[TxtIndex] = TXT_PRIVATE_SIZE;
+        (*Size)[TxtIndex]        = TXT_PRIVATE_SIZE;
+        (*BaseAddress)[TxtIndex] = TXT_PRIVATE_BASE;
         break;
       case 1:
         (*Size)[TxtIndex]        = MmioRead32 (TXT_HEAP_SIZE_REG);
@@ -240,8 +240,8 @@ GetTxtRegions (
         (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
         break;
       case 3:
-        (*Size)[TxtIndex]        = TXT_PUBLIC_BASE;
-        (*BaseAddress)[TxtIndex] = TXT_PUBLIC_SIZE;
+        (*Size)[TxtIndex]        = TXT_PUBLIC_SIZE;
+        (*BaseAddress)[TxtIndex] = TXT_PUBLIC_BASE;
         break;
     }
   }
