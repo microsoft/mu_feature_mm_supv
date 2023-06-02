@@ -552,7 +552,7 @@ VerifySvstPolicy (
     {
       continue;
     }
-    DEBUG ((DEBUG_INFO, "SvstLevel error! Deny list item of index: %d is found but does not match any access conditions!\n", Index2));
+    DEBUG ((DEBUG_INFO, "SvstLevel error! Deny list item of index: %d is found but does not match any access conditions!\n", Index));
     goto Done;
   }
 
