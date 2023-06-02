@@ -11,28 +11,20 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
 
-resources:
-  repositories:
-    - repository: mu_devops
-      type: github
-      endpoint: microsoft
-      name: microsoft/mu_devops
-      ref: refs/tags/v3.0.0
-
 variables:
 - group: architectures-x86-64
 - group: tool-chain-ubuntu-gcc
 
-jobs:
-- template: Jobs/PrGate.yml@mu_devops
+extends:
+  template: MuDevOpsWrapper.yml
   parameters:
-    arch_list: $(arch_list)
-    do_ci_build: true
-    do_ci_setup: true
+    do_ci_build: true	
+    do_ci_setup: true	
     do_pr_eval: false
-    packages: MmSupervisorPkg
-    target_list: DEBUG,RELEASE,NO-TARGET,NOOPT
-    tool_chain_tag: $(tool_chain_tag)
-    vm_image: $(vm_image)
     container_build: true
-    linux_container_image: ghcr.io/microsoft/mu_devops/ubuntu-22-build:4a1f8d3
+    os_type: Linux
+    build_matrix:
+      TARGET_MM_SUPV:
+        Pkgs: 'MmSupervisorPkg'
+        Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)
