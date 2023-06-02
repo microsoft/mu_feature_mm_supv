@@ -644,6 +644,7 @@ RequestVersionInfo (
 
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way fetching version information.
+    UT_LOG_ERROR ("Supervisor did not successfully process version info request %r.", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
@@ -678,6 +679,7 @@ RequestUnblockRegion (
 
   TargetPage = AllocatePages (1);
   if (TargetPage == NULL) {
+    UT_LOG_ERROR ("Target memory allocation failed.");
     UT_ASSERT_NOT_NULL (TargetPage);
   }
 
@@ -699,6 +701,7 @@ RequestUnblockRegion (
 
   if (EFI_ERROR (Status)) {
     // We encountered some MM systematic errors on our way unblocking memory.
+    UT_LOG_ERROR ("Supervisor did not successfully process unblock request %r.", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
@@ -880,6 +883,7 @@ RequestUpdateCommBuffer (
 
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way updating communication buffer.
+    UT_LOG_ERROR ("Supervisor did not successfully process communication buffer update request %r.", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
