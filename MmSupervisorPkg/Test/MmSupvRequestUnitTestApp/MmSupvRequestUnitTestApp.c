@@ -364,6 +364,7 @@ VerifyIoPolicy (
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
         (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
     {
+      DEBUG ((DEBUG_INFO, "IoLevel error! Matchfound: %d at Index1: %d and Index2 %d\n", MatchFound, Index1, Index2));
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
@@ -440,12 +441,14 @@ VerifyMsrPolicy (
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
         (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
     {
+      DEBUG ((DEBUG_INFO, "MsrLevel 20 error! Matchfound: %d at Index1: %d and Index2 %d\n", MatchFound, Index1, Index2));
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
       if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
           (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE))
       {
+        DEBUG ((DEBUG_INFO, "MsrLevel error! Deny list item of index: %d is found but not blocked!\n", Index2));
         goto Done;
       }
     }
@@ -478,12 +481,14 @@ VerifyMsrPolicy (
     if ((MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW)) ||
         (!MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)))
     {
+      DEBUG ((DEBUG_INFO, "MsrLevel 30 error! Matchfound: %d at Index1: %d and Index2 %d\n", MatchFound, Index1, Index2));
       goto Done;
     } else if (MatchFound && (AccessAttr == SMM_SUPV_ACCESS_ATTR_DENY)) {
       // If it is found in a deny list but the attribute does not block, bail as well
       if ((MsrEntries[Index2].Attributes & (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE)) !=
           (SECURE_POLICY_RESOURCE_ATTR_READ | SECURE_POLICY_RESOURCE_ATTR_WRITE))
       {
+        DEBUG ((DEBUG_INFO, "MsrLevel error! Deny list item of index: %d is found but not blocked!\n", Index2));
         goto Done;
       }
     }
@@ -547,7 +552,7 @@ VerifySvstPolicy (
     {
       continue;
     }
-
+    DEBUG ((DEBUG_INFO, "SvstLevel error! Deny list item of index: %d is found but does not match any access conditions!\n", Index2));
     goto Done;
   }
 

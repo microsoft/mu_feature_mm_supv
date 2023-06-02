@@ -422,6 +422,7 @@ VerifyMemPolicy (
             // Shoot, found an overlap and we are an allow list...
             if ((MemoryMap->Attribute & EFI_MEMORY_XP) == 0) {
               // Check the paging attribute to see if this really is a code page
+              DEBUG ((DEBUG_INFO, "Memory map contains a bad memory type: %x at Index1: %d, Index2: %d! \n", MemoryMap->Type, Index1, Index2));
               goto Done;
             }
           }
@@ -439,6 +440,7 @@ VerifyMemPolicy (
         (SECURE_POLICY_RESOURCE_ATTR_WRITE|SECURE_POLICY_RESOURCE_ATTR_EXECUTE))
     {
       // Shoot, found a W/EX region and we are an allow list...
+      DEBUG ((DEBUG_INFO, "MemLevel failure!  We have execute and write protections on the same page: %d\n", Index2));
       goto Done;
     }
   }
