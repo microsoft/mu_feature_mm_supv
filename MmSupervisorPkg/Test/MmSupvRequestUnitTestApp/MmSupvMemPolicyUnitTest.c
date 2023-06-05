@@ -227,8 +227,8 @@ GetTxtRegions (
   for (TxtIndex = 0; TxtIndex < TXT_REGION_COUNT; TxtIndex++) {
     switch (TxtIndex) {
       case 0:
-        (*Size)[TxtIndex]        = TXT_DEVICE_SIZE;
-        (*BaseAddress)[TxtIndex] = TXT_DEVICE_BASE;
+        (*Size)[TxtIndex]        = TXT_PRIVATE_SIZE;
+        (*BaseAddress)[TxtIndex] = TXT_PRIVATE_BASE;
         break;
       case 1:
         (*Size)[TxtIndex]        = MmioRead32 (TXT_HEAP_SIZE_REG);
@@ -238,6 +238,10 @@ GetTxtRegions (
         Temp                     = MmioRead32 (TXT_DPR_REG);
         (*Size)[TxtIndex]        = (Temp & 0xFF0) << 16;
         (*BaseAddress)[TxtIndex] = (Temp & 0xFFF00000) - (*Size)[TxtIndex];
+        break;
+      case 3:
+        (*Size)[TxtIndex]        = TXT_PUBLIC_SIZE;
+        (*BaseAddress)[TxtIndex] = TXT_PUBLIC_BASE;
         break;
     }
   }
@@ -290,6 +294,7 @@ VerifyIommuMemoryWithPolicy (
       {
         // Shoot, found an overlap and we are an allow list...
         Status = EFI_SECURITY_VIOLATION;
+        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an IOMMU register being used that is blocked by policy.\n"));
         goto Done;
       }
     }
@@ -343,6 +348,7 @@ VerifyTxtMemoryWithPolicy (
            (TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
       {
         // Shoot, found an overlap and we are an allow list...
+        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found a TXT region being used that is blocked by policy.\n"));
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
       }
@@ -422,6 +428,7 @@ VerifyMemPolicy (
             // Shoot, found an overlap and we are an allow list...
             if ((MemoryMap->Attribute & EFI_MEMORY_XP) == 0) {
               // Check the paging attribute to see if this really is a code page
+              DEBUG ((DEBUG_ERROR, "Memory map contains a bad memory type: %x at Index1: %d, Index2: %d! \n", MemoryMap->Type, Index1, Index2));
               goto Done;
             }
           }
@@ -439,6 +446,7 @@ VerifyMemPolicy (
         (SECURE_POLICY_RESOURCE_ATTR_WRITE|SECURE_POLICY_RESOURCE_ATTR_EXECUTE))
     {
       // Shoot, found a W/EX region and we are an allow list...
+      DEBUG ((DEBUG_ERROR, "MemLevel failure!  We have execute and write protections on the same page: %d\n", Index2));
       goto Done;
     }
   }
