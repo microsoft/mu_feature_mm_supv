@@ -262,7 +262,7 @@ MmSupvRequestDxeToMmCommunicate (
     DEBUG ((DEBUG_VERBOSE, "[%a] - Communicate() = %r\n", __FUNCTION__, Status));
   }
 
-  return ((MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data)->Result;
+  return Status;
 }
 
 /*
@@ -294,13 +294,22 @@ FetchSecurityPolicyFromSupv (
   Status = MmSupvRequestDxeToMmCommunicate ();
 
   if (EFI_ERROR (Status)) {
-    // We encountered some errors on our way fetching policy.
-    UT_LOG_ERROR ("Supervisor did not successfully returned policy %r.", Status);
-  } else {
-    SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(CommBuffer + 1);
-    DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "");
+    // We encountered some MM systematic errors on our way unblocking memory.
+    UT_LOG_ERROR ("Supervisor is not successfully communicated %r.", Status);
+    goto Done;
   }
 
+  // Get the real handler status code
+  if ((UINTN)CommBuffer->Result != 0) {
+    Status = ENCODE_ERROR ((UINTN)CommBuffer->Result);
+    UT_LOG_ERROR ("Supervisor did not successfully return policy %r.", Status);
+    goto Done;
+  }
+
+  SecurityPolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(CommBuffer + 1);
+  DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "");
+
+Done:
   return SecurityPolicy;
 }
 
@@ -647,8 +656,8 @@ RequestVersionInfo (
 
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way fetching version information.
-    UT_LOG_ERROR ("Supervisor did not successfully returned version info %r.", Status);
-    return UNIT_TEST_ERROR_TEST_FAILED;
+    UT_LOG_ERROR ("Supervisor did not successfully process version info request %r.", Status);
+    UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
   // Get the real handler status code
@@ -683,7 +692,7 @@ RequestUnblockRegion (
   TargetPage = AllocatePages (1);
   if (TargetPage == NULL) {
     UT_LOG_ERROR ("Target memory allocation failed.");
-    return UNIT_TEST_ERROR_TEST_FAILED;
+    UT_ASSERT_NOT_NULL (TargetPage);
   }
 
   // Grab the CommBuffer and fill it in for this test
@@ -704,8 +713,8 @@ RequestUnblockRegion (
 
   if (EFI_ERROR (Status)) {
     // We encountered some MM systematic errors on our way unblocking memory.
-    UT_LOG_ERROR ("Supervisor did not successfully returned policy %r.", Status);
-    return UNIT_TEST_ERROR_TEST_FAILED;
+    UT_LOG_ERROR ("Supervisor did not successfully process unblock request %r.", Status);
+    UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
   // This unit test runs in shell, which is past unblock window (ready to lock)
@@ -894,9 +903,9 @@ RequestUpdateCommBuffer (
   Status = MmSupvRequestDxeToMmCommunicate ();
 
   if (EFI_ERROR (Status)) {
-    // We encountered some errors on our way fetching version information.
-    UT_LOG_ERROR ("Supervisor did not successfully return from communication %r.", Status);
-    return UNIT_TEST_ERROR_TEST_FAILED;
+    // We encountered some errors on our way updating communication buffer.
+    UT_LOG_ERROR ("Supervisor did not successfully process communication buffer update request %r.", Status);
+    UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
   // Get the real handler status code
