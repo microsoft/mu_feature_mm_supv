@@ -19,7 +19,7 @@
   BASE_NAME                      = MmSupervisorCore
   FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
-  VERSION_STRING                 = 7.003
+  VERSION_STRING                 = 8.001
   PI_SPECIFICATION_VERSION       = 0x00010032
   ENTRY_POINT                    = MmSupervisorMain
 
@@ -27,8 +27,8 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 7.0039
-  DEBUG_DRIVER_VERSION     = 7.0038
+  RELEASE_DRIVER_VERSION   = 8.0019
+  DEBUG_DRIVER_VERSION     = 8.0018
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
