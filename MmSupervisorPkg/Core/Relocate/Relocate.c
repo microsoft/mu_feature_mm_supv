@@ -974,6 +974,11 @@ SetupSmiEntryExit (
   InitializeDataForMmMp ();
 
   //
+  // Initialize Package First Thread Index Info.
+  //
+  InitPackageFirstThreadIndexInfo ();
+
+  //
   // Initialize SMM Profile feature
   //
   InitSmmProfile (Cr3);

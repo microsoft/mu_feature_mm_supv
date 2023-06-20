@@ -816,7 +816,7 @@ SmmPagingAuditHandler (
         if (Index + StartIndex == gMmCoreMmst.CurrentlyExecutingCpu) {
           SmiEntryDumpHandler (&AuditCommBuffer->Data.SmiEntry);
         } else {
-          Status = SmmStartupThisAp (SmiEntryDumpHandler, Index + StartIndex, &AuditCommBuffer->Data.SmiEntry);
+          Status = SmmBlockingStartupThisAp (SmiEntryDumpHandler, Index + StartIndex, &AuditCommBuffer->Data.SmiEntry);
           ASSERT_EFI_ERROR (Status);
         }
       }

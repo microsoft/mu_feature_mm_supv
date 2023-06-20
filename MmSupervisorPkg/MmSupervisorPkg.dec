@@ -13,7 +13,7 @@
   DEC_SPECIFICATION              = 0x0001001A
   PACKAGE_NAME                   = MmSupervisorPkg
   PACKAGE_GUID                   = 2DCA2E5C-4696-4613-943F-DFE5F6941C34
-  PACKAGE_VERSION                = 6.002
+  PACKAGE_VERSION                = 8.001
 
 [Includes]
   Include
@@ -64,6 +64,14 @@
   #    TRUE  - Print out the MSR and IO ports being access during boot.
   #    FALSE - Don't print out the MSR and IO ports as normal.
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable|FALSE|BOOLEAN|0x00010002
+
+  ## Indicates if syscall entry logs should be printed out.<BR>
+  #  Enabling this will extensively slow down the boot process and bloated the boot log output.<BR>
+  #  It is suggested to enable this logging exclusively for syscall usage/distribution analysis.<BR>
+  #
+  #    TRUE  - Print out each syscall requests through out this boot.
+  #    FALSE - Don't print out any syscall request entries.
+  gMmSupervisorPkgTokenSpaceGuid.PcdEnableSyscallLogs|FALSE|BOOLEAN|0x00010003
 
 [PcdsFixedAtBuild]
   ## Size of supervisor communication buffer in number of pages

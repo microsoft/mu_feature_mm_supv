@@ -273,12 +273,12 @@ _ModuleEntryPoint (
   if ((NULL != (VOID *)(UINTN)EntrypointContext->MmCoreEntryPointAddr) &&
       (NULL != (VOID *)(UINTN)EntrypointContext->HobStartAddr))
   {
-    Status = ((STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)EntrypointContext->MmCoreEntryPointAddr)(
+    ((STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)EntrypointContext->MmCoreEntryPointAddr)(
     (VOID *)(UINTN)EntrypointContext->HobStartAddr);
-    ReturnContext->ReturnStatus = Status;
+    ReturnContext->ReturnStatus = EFI_SUCCESS;
   } else {
     ReturnContext->ReturnStatus = EFI_INVALID_PARAMETER;
-    ASSERT_EFI_ERROR (Status);
+    ASSERT_EFI_ERROR (ReturnContext->ReturnStatus);
   }
 
   DEBUG ((

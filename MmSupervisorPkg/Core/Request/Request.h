@@ -69,4 +69,30 @@ ProcessVersionInfoRequest (
   OUT MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfoBuffer
   );
 
+/**
+  Routine used to update communication buffers and core private mailbox region
+  to the updated location. Given this routine could receive untrusted data, the
+  old memory region has to be already properly unblocked prior to this request and
+  the received new buffer has to persist exactly the same memory length and attribute
+  as before. For requests that pass security checks, the new region will be marked
+  as R/W supervisor data page. The old buffers will be blocked after this routine,
+  and new return status will be populated to the new address. The caller should be
+  prepared to check data from newly supplied region upon returning.
+
+  @param[in]  UpdateCommBuffer  Input new comm buffer parameters conveyed from non-MM environment
+
+  @retval EFI_SUCCESS             The requested region properly unblocked.
+  @retval EFI_ACCESS_DENIED       The request was made post lock down event.
+  @retval EFI_INVALID_PARAMETER   UnblockMemParams or its ID GUID is null pointer.
+  @retval EFI_SECURITY_VIOLATION  The requested region has illegal page attributes.
+  @retval EFI_OUT_OF_RESOURCES    The unblocked database failed to log new entry after
+                                  processing this request.
+  @retval Others                  Page attribute setting/clearing routine has failed.
+
+**/
+EFI_STATUS
+ProcessUpdateCommBufferRequest (
+  IN MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer
+  );
+
 #endif // _MM_SUPV_REQUEST_H_

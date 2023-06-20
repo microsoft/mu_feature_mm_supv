@@ -1,7 +1,7 @@
 /** @file
 SMM MP service implementation
 
-Copyright (c) 2009 - 2020, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -17,11 +17,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/SynchronizationLib.h>
 
 #define INVALID_APIC_ID  0xFFFFFFFFFFFFFFFFULL
-
-typedef UINT32 SMM_CPU_ARRIVAL_EXCEPTIONS;
-#define ARRIVAL_EXCEPTION_BLOCKED       0x1
-#define ARRIVAL_EXCEPTION_DELAYED       0x2
-#define ARRIVAL_EXCEPTION_SMI_DISABLED  0x4
 
 //
 // Wrapper used to convert EFI_AP_PROCEDURE2 and EFI_AP_PROCEDURE.
@@ -106,6 +101,7 @@ typedef struct {
   volatile SMM_CPU_SYNC_MODE    EffectiveSyncMode;
   volatile BOOLEAN              SwitchBsp;
   volatile BOOLEAN              *CandidateBsp;
+  volatile BOOLEAN              AllApArrivedWithException;
   EFI_AP_PROCEDURE              StartupProcedure;
   VOID                          *StartupProcArgs;
 } SMM_DISPATCHER_MP_SYNC_DATA;
@@ -216,11 +212,30 @@ IsSyncTimerTimeout (
   );
 
 /**
+  Initialize PackageBsp Info. Processor specified by mPackageFirstThreadIndex[PackageIndex]
+  will do the package-scope register programming. Set default CpuIndex to (UINT32)-1, which
+  means not specified yet.
+
+**/
+VOID
+InitPackageFirstThreadIndexInfo (
+  VOID
+  );
+
+/**
   Allocate buffer for SpinLock and Wrapper function buffer.
 
 **/
 VOID
 InitializeDataForMmMp (
+  VOID
+  );
+
+/**
+  Insure when this function returns, no AP will execute normal mode code before entering SMM, except SMI disabled APs.
+**/
+VOID
+SmmWaitForApArrival (
   VOID
   );
 

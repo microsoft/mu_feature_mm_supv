@@ -62,15 +62,174 @@ typedef struct {
 } MEMORY_ADDRESS_POINT;
 
 UINTN                  mInternalCr3;
+BOOLEAN                mIsShadowStack      = FALSE;
+BOOLEAN                m5LevelPagingNeeded = FALSE;
 EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
+
+//
+// Global variable to keep track current available memory used as page table.
+//
+PAGE_TABLE_POOL  *mPageTablePool = NULL;
+
+//
+// If memory used by SMM page table has been mareked as ReadOnly.
+//
+BOOLEAN  mIsReadOnlyPageTable = FALSE;
+
+/**
+  Initialize a buffer pool for page table use only.
+
+  To reduce the potential split operation on page table, the pages reserved for
+  page table should be allocated in the times of PAGE_TABLE_POOL_UNIT_PAGES and
+  at the boundary of PAGE_TABLE_POOL_ALIGNMENT. So the page pool is always
+  initialized with number of pages greater than or equal to the given PoolPages.
+
+  Once the pages in the pool are used up, this method should be called again to
+  reserve at least another PAGE_TABLE_POOL_UNIT_PAGES. But usually this won't
+  happen in practice.
+
+  @param PoolPages  The least page number of the pool to be created.
+
+  @retval TRUE    The pool is initialized successfully.
+  @retval FALSE   The memory is out of resource.
+
+**/
+BOOLEAN
+InitializePageTablePool (
+  IN UINTN  PoolPages
+  )
+{
+  VOID      *Buffer;
+  BOOLEAN   CetEnabled;
+  BOOLEAN   WpEnabled;
+  IA32_CR0  Cr0;
+
+  //
+  // Always reserve at least PAGE_TABLE_POOL_UNIT_PAGES, including one page for
+  // header.
+  //
+  PoolPages += 1;   // Add one page for header.
+  PoolPages  = ((PoolPages - 1) / PAGE_TABLE_POOL_UNIT_PAGES + 1) *
+               PAGE_TABLE_POOL_UNIT_PAGES;
+  Buffer = AllocateAlignedPages (PoolPages, PAGE_TABLE_POOL_ALIGNMENT);
+  if (Buffer == NULL) {
+    DEBUG ((DEBUG_ERROR, "ERROR: Out of aligned pages\r\n"));
+    return FALSE;
+  }
+
+  //
+  // Link all pools into a list for easier track later.
+  //
+  if (mPageTablePool == NULL) {
+    mPageTablePool           = Buffer;
+    mPageTablePool->NextPool = mPageTablePool;
+  } else {
+    ((PAGE_TABLE_POOL *)Buffer)->NextPool = mPageTablePool->NextPool;
+    mPageTablePool->NextPool              = Buffer;
+    mPageTablePool                        = Buffer;
+  }
+
+  //
+  // Reserve one page for pool header.
+  //
+  mPageTablePool->FreePages = PoolPages - 1;
+  mPageTablePool->Offset    = EFI_PAGES_TO_SIZE (1);
+
+  //
+  // If page table memory has been marked as RO, mark the new pool pages as read-only.
+  //
+  if (mIsReadOnlyPageTable) {
+    CetEnabled = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0) ? TRUE : FALSE;
+    Cr0.UintN  = AsmReadCr0 ();
+    WpEnabled  = (Cr0.Bits.WP != 0) ? TRUE : FALSE;
+    if (WpEnabled) {
+      if (CetEnabled) {
+        //
+        // CET must be disabled if WP is disabled. Disable CET before clearing CR0.WP.
+        //
+        DisableCet ();
+      }
+
+      Cr0.Bits.WP = 0;
+      AsmWriteCr0 (Cr0.UintN);
+    }
+
+    AsmWriteCr0 (AsmReadCr0 () & ~CR0_WP);
+    SmmSetMemoryAttributes ((EFI_PHYSICAL_ADDRESS)(UINTN)Buffer, EFI_PAGES_TO_SIZE (PoolPages), EFI_MEMORY_RO);
+    if (WpEnabled) {
+      Cr0.UintN   = AsmReadCr0 ();
+      Cr0.Bits.WP = 1;
+      AsmWriteCr0 (Cr0.UintN);
+
+      if (CetEnabled) {
+        //
+        // re-enable CET.
+        //
+        EnableCet ();
+      }
+    }
+  }
+
+  return TRUE;
+}
+
+/**
+  This API provides a way to allocate memory for page table.
+
+  This API can be called more than once to allocate memory for page tables.
+
+  Allocates the number of 4KB pages of type EfiRuntimeServicesData and returns a pointer to the
+  allocated buffer.  The buffer returned is aligned on a 4KB boundary.  If Pages is 0, then NULL
+  is returned.  If there is not enough memory remaining to satisfy the request, then NULL is
+  returned.
+
+  @param  Pages                 The number of 4 KB pages to allocate.
+
+  @return A pointer to the allocated buffer or NULL if allocation fails.
+
+**/
+VOID *
+AllocatePageTableMemory (
+  IN UINTN  Pages
+  )
+{
+  VOID  *Buffer;
+
+  if (mCoreInitializationComplete) {
+    DEBUG ((DEBUG_ERROR, "%a This function should not be called after inside SMM\n", __FUNCTION__));
+    ASSERT (FALSE);
+    return NULL;
+  }
+
+  if (Pages == 0) {
+    return NULL;
+  }
+
+  //
+  // Renew the pool if necessary.
+  //
+  if ((mPageTablePool == NULL) ||
+      (Pages > mPageTablePool->FreePages))
+  {
+    if (!InitializePageTablePool (Pages)) {
+      return NULL;
+    }
+  }
+
+  Buffer = (UINT8 *)mPageTablePool + mPageTablePool->Offset;
+
+  mPageTablePool->Offset    += EFI_PAGES_TO_SIZE (Pages);
+  mPageTablePool->FreePages -= Pages;
+
+  return Buffer;
+}
 
 /**
   Set the internal page table base address.
   If it is non zero, further MemoryAttribute modification will be on this page table.
   If it is zero, further MemoryAttribute modification will be on real page table.
-
   @param Cr3 page table base.
 **/
 VOID
@@ -130,31 +289,31 @@ PageAttributeToMask (
 /**
   Return page table entry to match the address.
 
-  @param[in]   Address          The address to be checked.
-  @param[out]  PageAttributes   The page attribute of the page entry.
+  @param[in]   PageTableBase      The page table base.
+  @param[in]   Enable5LevelPaging If PML5 paging is enabled.
+  @param[in]   Address            The address to be checked.
+  @param[out]  PageAttributes     The page attribute of the page entry.
 
   @return The page entry.
 **/
 VOID *
 GetPageTableEntry (
+  IN  UINTN             PageTableBase,
+  IN  BOOLEAN           Enable5LevelPaging,
   IN  PHYSICAL_ADDRESS  Address,
   OUT PAGE_ATTRIBUTE    *PageAttribute
   )
 {
-  UINTN    Index1;
-  UINTN    Index2;
-  UINTN    Index3;
-  UINTN    Index4;
-  UINTN    Index5;
-  UINT64   *L1PageTable;
-  UINT64   *L2PageTable;
-  UINT64   *L3PageTable;
-  UINT64   *L4PageTable;
-  UINT64   *L5PageTable;
-  UINTN    PageTableBase;
-  BOOLEAN  Enable5LevelPaging;
-
-  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  UINTN   Index1;
+  UINTN   Index2;
+  UINTN   Index3;
+  UINTN   Index4;
+  UINTN   Index5;
+  UINT64  *L1PageTable;
+  UINT64  *L2PageTable;
+  UINT64  *L3PageTable;
+  UINT64  *L4PageTable;
+  UINT64  *L5PageTable;
 
   Index5 = ((UINTN)RShiftU64 (Address, 48)) & PAGING_PAE_INDEX_MASK;
   Index4 = ((UINTN)RShiftU64 (Address, 39)) & PAGING_PAE_INDEX_MASK;
@@ -291,7 +450,7 @@ ConvertPageEntryAttribute (
   if ((Attributes & EFI_MEMORY_RO) != 0) {
     if (IsSet) {
       NewPageEntry &= ~(UINT64)IA32_PG_RW;
-      if (mInternalCr3 != 0) {
+      if ((mInternalCr3 != 0) || mIsShadowStack) {
         // Environment setup
         // ReadOnly page need set Dirty bit for shadow stack
         NewPageEntry |= IA32_PG_D;
@@ -451,6 +610,8 @@ SplitPage (
 
   Caller should make sure BaseAddress and Length is at page boundary.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to modify for the memory region.
@@ -472,14 +633,15 @@ SplitPage (
                                    range specified by BaseAddress and Length.
 **/
 RETURN_STATUS
-EFIAPI
 ConvertMemoryPageAttributes (
+  IN  UINTN PageTableBase,
+  IN  BOOLEAN EnablePML5Paging,
   IN  PHYSICAL_ADDRESS BaseAddress,
   IN  UINT64 Length,
   IN  UINT64 Attributes,
   IN  BOOLEAN IsSet,
   OUT BOOLEAN *IsSplitted, OPTIONAL
-  OUT BOOLEAN                           *IsModified   OPTIONAL
+  OUT BOOLEAN           *IsModified   OPTIONAL
   )
 {
   UINT64                *PageEntry;
@@ -532,7 +694,7 @@ ConvertMemoryPageAttributes (
   // Below logic is to check 2M/4K page to make sure we do not waste memory.
   //
   while (Length != 0) {
-    PageEntry = GetPageTableEntry (BaseAddress, &PageAttribute);
+    PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttribute);
     if (PageEntry == NULL) {
       return RETURN_UNSUPPORTED;
     }
@@ -615,6 +777,8 @@ FlushTlbForAll (
   This function sets the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to set for the memory region.
@@ -635,8 +799,9 @@ FlushTlbForAll (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -646,7 +811,7 @@ SmmSetMemoryAttributesEx (
   EFI_STATUS  Status;
   BOOLEAN     IsModified;
 
-  Status = ConvertMemoryPageAttributes (BaseAddress, Length, Attributes, TRUE, IsSplitted, &IsModified);
+  Status = ConvertMemoryPageAttributes (PageTableBase, EnablePML5Paging, BaseAddress, Length, Attributes, TRUE, IsSplitted, &IsModified);
   if (!EFI_ERROR (Status)) {
     if (IsModified) {
       //
@@ -663,6 +828,8 @@ SmmSetMemoryAttributesEx (
   This function clears the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to clear for the memory region.
@@ -683,8 +850,9 @@ SmmSetMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -694,7 +862,7 @@ SmmClearMemoryAttributesEx (
   EFI_STATUS  Status;
   BOOLEAN     IsModified;
 
-  Status = ConvertMemoryPageAttributes (BaseAddress, Length, Attributes, FALSE, IsSplitted, &IsModified);
+  Status = ConvertMemoryPageAttributes (PageTableBase, EnablePML5Paging, BaseAddress, Length, Attributes, FALSE, IsSplitted, &IsModified);
   if (!EFI_ERROR (Status)) {
     if (IsModified) {
       //
@@ -730,14 +898,17 @@ SmmClearMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes
   )
 {
-  return SmmSetMemoryAttributesEx (BaseAddress, Length, Attributes, NULL);
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
+
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  return SmmSetMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
 /**
@@ -763,14 +934,17 @@ SmmSetMemoryAttributes (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes
   )
 {
-  return SmmClearMemoryAttributesEx (BaseAddress, Length, Attributes, NULL);
+  UINTN    PageTableBase;
+  BOOLEAN  Enable5LevelPaging;
+
+  GetPageTable (&PageTableBase, &Enable5LevelPaging);
+  return SmmClearMemoryAttributesEx (PageTableBase, Enable5LevelPaging, BaseAddress, Length, Attributes, NULL);
 }
 
 /**
@@ -800,6 +974,8 @@ SmmSetGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -812,7 +988,11 @@ SmmSetGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
+
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO | EFI_MEMORY_SP,
@@ -861,6 +1041,8 @@ SmmClearGdtReadOnlyForThisProcessor (
   BOOLEAN          IsModified;
   IA32_DESCRIPTOR  Gdtr;
   UINTN            CpuIndex;
+  UINTN            PageTableBase;
+  BOOLEAN          EnablePML5Paging;
 
   AsmReadGdtr (&Gdtr);
 
@@ -873,7 +1055,10 @@ SmmClearGdtReadOnlyForThisProcessor (
   ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
   ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
   Status = ConvertMemoryPageAttributes (
+             PageTableBase,
+             EnablePML5Paging,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO,
@@ -913,11 +1098,9 @@ SetShadowStack (
 {
   EFI_STATUS  Status;
 
-  SetPageTableBase (Cr3);
-
-  Status = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RO);
-
-  SetPageTableBase (0);
+  mIsShadowStack = TRUE;
+  Status         = SmmSetMemoryAttributesEx (Cr3, m5LevelPagingNeeded, BaseAddress, Length, EFI_MEMORY_RO, NULL);
+  mIsShadowStack = FALSE;
 
   return Status;
 }
@@ -940,12 +1123,7 @@ SetNotPresentPage (
 {
   EFI_STATUS  Status;
 
-  SetPageTableBase (Cr3);
-
-  Status = SmmSetMemoryAttributes (BaseAddress, Length, EFI_MEMORY_RP);
-
-  SetPageTableBase (0);
-
+  Status = SmmSetMemoryAttributesEx (Cr3, m5LevelPagingNeeded, BaseAddress, Length, EFI_MEMORY_RP, NULL);
   return Status;
 }
 
@@ -1371,6 +1549,8 @@ SmmGetMemoryAttributes (
   UINT64                MemAttr;
   PAGE_ATTRIBUTE        PageAttr;
   INT64                 Size;
+  UINTN                 PageTableBase;
+  BOOLEAN               EnablePML5Paging;
   EFI_STATUS            Status;   // MU_CHANGE: Avoid Length overflow for INT64
 
   if ((Length < SIZE_4KB) || (Attributes == NULL)) {
@@ -1388,8 +1568,10 @@ SmmGetMemoryAttributes (
   // MU_CHANGE Ends
   MemAttr = (UINT64)-1;
 
+  GetPageTable (&PageTableBase, &EnablePML5Paging);
+
   do {
-    PageEntry = GetPageTableEntry (BaseAddress, &PageAttr);
+    PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttr);
     if ((PageEntry == NULL) || (PageAttr == PageNone)) {
       return EFI_UNSUPPORTED;
     }
@@ -2029,6 +2211,7 @@ SetCommonBufferRegionAttribute (
   UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox;
   UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
   UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
   Status                                             = ProcessUnblockPages (&UnblockRegionParams);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __FUNCTION__, Status));
@@ -2124,4 +2307,186 @@ SetUnblockRegionAttribute (
 
   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
   return Status;
+}
+
+/**
+  Prevent the memory pages used for SMM page table from being overwritten.
+**/
+VOID
+EnablePageTableProtection (
+  VOID
+  )
+{
+  PAGE_TABLE_POOL       *HeadPool;
+  PAGE_TABLE_POOL       *Pool;
+  UINT64                PoolSize;
+  EFI_PHYSICAL_ADDRESS  Address;
+  UINTN                 PageTableBase;
+  BOOLEAN               LockPageTableToReadOnly;
+  UINTN                 PageTableAttr;
+
+  if (mPageTablePool == NULL) {
+    return;
+  }
+
+  GetPageTable (&PageTableBase, NULL);
+  LockPageTableToReadOnly = (AsmReadCr3 () == PageTableBase) ? TRUE : FALSE;
+  if (LockPageTableToReadOnly) {
+    PageTableAttr = EFI_MEMORY_RO | EFI_MEMORY_SP;
+  } else {
+    PageTableAttr = EFI_MEMORY_SP;
+  }
+
+  PageTableBase = PageTableBase & PAGING_4K_ADDRESS_MASK_64;
+
+  //
+  // ConvertMemoryPageAttributes might update mPageTablePool. It's safer to
+  // remember original one in advance.
+  //
+  HeadPool = mPageTablePool;
+  Pool     = HeadPool;
+  do {
+    Address  = (EFI_PHYSICAL_ADDRESS)(UINTN)Pool;
+    PoolSize = Pool->Offset + EFI_PAGES_TO_SIZE (Pool->FreePages);
+    //
+    // Set entire pool including header, used-memory and left free-memory as ReadOnly in SMM page table.
+    //
+    ConvertMemoryPageAttributes (PageTableBase, m5LevelPagingNeeded, Address, PoolSize, PageTableAttr, TRUE, NULL, NULL);
+    Pool = Pool->NextPool;
+  } while (Pool != HeadPool);
+}
+
+/**
+  Return whether memory used by SMM page table need to be set as Read Only.
+
+  @retval TRUE  Need to set SMM page table as Read Only.
+  @retval FALSE Do not set SMM page table as Read Only.
+**/
+BOOLEAN
+IfReadOnlyPageTableNeeded (
+  VOID
+  )
+{
+  //
+  // Don't mark page table memory as read-only if
+  //  - no restriction on access to non-SMRAM memory; or
+  //  - SMM heap guard feature enabled; or
+  //      BIT2: SMM page guard enabled
+  //      BIT3: SMM pool guard enabled
+  //  - SMM profile feature enabled
+  //
+
+  // MU_CHANGE START
+
+  /*if (!IsRestrictedMemoryAccess () ||
+      ((PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0) ||
+      FeaturePcdGet (PcdCpuSmmProfileEnable))
+  {*/
+  // MU_CHANGE END
+  if (!IsRestrictedMemoryAccess () ||
+      // MU_CHANGE: MM_SUPV: Update to remove exclusivity between static paging and heap guard
+      // ((gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0) ||
+      FeaturePcdGet (PcdCpuSmmProfileEnable))
+  {
+    // MU_CHANGE END
+    if (sizeof (UINTN) == sizeof (UINT64)) {
+      //
+      // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
+      //
+      // MU_CHANGE START
+
+      /*ASSERT (
+        !(IsRestrictedMemoryAccess () &&
+          (PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0)
+        ); */
+      ASSERT (
+        !(IsRestrictedMemoryAccess () &&
+          (gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0)
+        );
+      // MU_CHANGE END
+
+      //
+      // Restriction on access to non-SMRAM memory and SMM profile could not be enabled at the same time.
+      //
+      ASSERT (!(IsRestrictedMemoryAccess () && FeaturePcdGet (PcdCpuSmmProfileEnable)));
+    }
+
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
+  This function sets memory attribute for page table.
+**/
+VOID
+SetPageTableAttributes (
+  VOID
+  )
+{
+  BOOLEAN  CetEnabled;
+  UINTN    CachedCr0; // MU_CHANGE: MM_SUPV: Cache CR0
+
+  if (!IfReadOnlyPageTableNeeded ()) {
+    return;
+  }
+
+  DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
+
+  //
+  // Disable write protection, because we need mark page table to be write protected.
+  // We need *write* page table memory, to mark itself to be *read only*.
+  //
+  CetEnabled = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0) ? TRUE : FALSE;
+  if (CetEnabled) {
+    //
+    // CET must be disabled if WP is disabled.
+    //
+    DisableCet ();
+  }
+
+  // MU_CHANGE: MM_SUPV: Need to restore CR0 when this routine is executed before
+  // initialization complete.
+  CachedCr0 = AsmReadCr0 ();
+  AsmWriteCr0 (CachedCr0 & ~CR0_WP);
+
+  // Set memory used by page table as Read Only.
+  DEBUG ((DEBUG_INFO, "Start...\n"));
+  EnablePageTableProtection ();
+
+  //
+  // Enable write protection, after page table attribute updated.
+  //
+  // MU_CHANGE: MM_SUPV Starts: Need to restore CR0 when this routine is executed before
+  // initialization complete.
+  if (mCoreInitializationComplete) {
+    //
+    // Only enforce write protect in CR0 if initialization is complete
+    //
+    AsmWriteCr0 (CachedCr0 | CR0_WP);
+
+    //
+    // Flush TLB after mark all page table pool as read only.
+    //
+    FlushTlbForAll ();
+  } else {
+    //
+    // Otherwise restore the original value to avoid tampering non MM environment
+    //
+    AsmWriteCr0 (CachedCr0);
+  }
+
+  // MU_CHANGE: MM_SUPV Ends
+
+  mIsReadOnlyPageTable = TRUE;
+
+  if (CetEnabled) {
+    //
+    // re-enable CET.
+    //
+    EnableCet ();
+  }
+
+  return;
 }

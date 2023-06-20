@@ -8,6 +8,7 @@
 **/
 
 #include "BaseIoLibIntrinsicInternal.h"
+#include "IoLibTdx.h"
 #include <Uefi.h>
 #include <Library/SysCallLib.h>
 #include <Protocol/MmCpuIo.h>
@@ -29,6 +30,8 @@
 
   If 8-bit I/O port operations are not supported, then ASSERT().
 
+  For Td guest TDVMCALL_IO is invoked to read I/O port.
+
   @param  Port  The I/O port to read.
 
   @return The value read.
@@ -45,7 +48,11 @@ IoRead8 (
 
   Flag = FilterBeforeIoRead (FilterWidth8, Port, &Value);
   if (Flag) {
-    Value = (UINT8)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT8, 0);
+    if (IsTdxGuest ()) {
+      Value = TdIoRead8 (Port);
+    } else {
+      Value = (UINT8)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT8, 0);
+    }
   }
 
   FilterAfterIoRead (FilterWidth8, Port, &Value);
@@ -61,6 +68,8 @@ IoRead8 (
   operations are serialized.
 
   If 8-bit I/O port operations are not supported, then ASSERT().
+
+  For Td guest TDVMCALL_IO is invoked to write I/O port.
 
   @param  Port  The I/O port to write.
   @param  Value The value to write to the I/O port.
@@ -79,7 +88,11 @@ IoWrite8 (
 
   Flag = FilterBeforeIoWrite (FilterWidth8, Port, &Value);
   if (Flag) {
-    SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT8, (UINTN)Value);
+    if (IsTdxGuest ()) {
+      TdIoWrite8 (Port, Value);
+    } else {
+      SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT8, (UINTN)Value);
+    }
   }
 
   FilterAfterIoWrite (FilterWidth8, Port, &Value);
@@ -96,6 +109,8 @@ IoWrite8 (
 
   If 16-bit I/O port operations are not supported, then ASSERT().
   If Port is not aligned on a 16-bit boundary, then ASSERT().
+
+  For Td guest TDVMCALL_IO is invoked to read I/O port.
 
   @param  Port  The I/O port to read.
 
@@ -115,7 +130,11 @@ IoRead16 (
 
   Flag = FilterBeforeIoRead (FilterWidth16, Port, &Value);
   if (Flag) {
-    Value = (UINT16)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT16, 0);
+    if (IsTdxGuest ()) {
+      Value = TdIoRead16 (Port);
+    } else {
+      Value = (UINT16)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT16, 0);
+    }
   }
 
   FilterBeforeIoRead (FilterWidth16, Port, &Value);
@@ -132,6 +151,8 @@ IoRead16 (
 
   If 16-bit I/O port operations are not supported, then ASSERT().
   If Port is not aligned on a 16-bit boundary, then ASSERT().
+
+  For Td guest TDVMCALL_IO is invoked to write I/O port.
 
   @param  Port  The I/O port to write.
   @param  Value The value to write to the I/O port.
@@ -152,7 +173,11 @@ IoWrite16 (
 
   Flag = FilterBeforeIoWrite (FilterWidth16, Port, &Value);
   if (Flag) {
-    SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT16, (UINTN)Value);
+    if (IsTdxGuest ()) {
+      TdIoWrite16 (Port, Value);
+    } else {
+      SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT16, (UINTN)Value);
+    }
   }
 
   FilterAfterIoWrite (FilterWidth16, Port, &Value);
@@ -169,6 +194,8 @@ IoWrite16 (
 
   If 32-bit I/O port operations are not supported, then ASSERT().
   If Port is not aligned on a 32-bit boundary, then ASSERT().
+
+  For Td guest TDVMCALL_IO is invoked to read I/O port.
 
   @param  Port  The I/O port to read.
 
@@ -188,7 +215,11 @@ IoRead32 (
 
   Flag = FilterBeforeIoRead (FilterWidth32, Port, &Value);
   if (Flag) {
-    Value = (UINT32)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT32, 0);
+    if (IsTdxGuest ()) {
+      Value = TdIoRead32 (Port);
+    } else {
+      Value = (UINT32)SysCall (SMM_SC_IO_READ, Port, MM_IO_UINT32, 0);
+    }
   }
 
   FilterAfterIoRead (FilterWidth32, Port, &Value);
@@ -205,6 +236,8 @@ IoRead32 (
 
   If 32-bit I/O port operations are not supported, then ASSERT().
   If Port is not aligned on a 32-bit boundary, then ASSERT().
+
+  For Td guest TDVMCALL_IO is invoked to write I/O port.
 
   @param  Port  The I/O port to write.
   @param  Value The value to write to the I/O port.
@@ -225,7 +258,11 @@ IoWrite32 (
 
   Flag = FilterBeforeIoWrite (FilterWidth32, Port, &Value);
   if (Flag) {
-    SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT32, (UINTN)Value);
+    if (IsTdxGuest ()) {
+      TdIoWrite32 (Port, Value);
+    } else {
+      SysCall (SMM_SC_IO_WRITE, Port, MM_IO_UINT32, (UINTN)Value);
+    }
   }
 
   FilterAfterIoWrite (FilterWidth32, Port, &Value);

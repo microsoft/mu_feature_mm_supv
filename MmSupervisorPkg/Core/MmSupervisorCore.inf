@@ -1,7 +1,7 @@
 ## @file
 # This module provide an SMM CIS compliant implementation of SMM Core.
 #
-# Copyright (c) 2009 - 2021, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
 # Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 # Copyright (C) Microsoft Corporation.
@@ -10,19 +10,16 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fd7b8d037fd5ce572bb2a4444e5adb26 | 2022-05-05T16-31-55 | c4d0d1130454b3e5051bb601c707234e3a91713a
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | e1d04656b23d9cafbe2c35de0f77fcf7 | 2022-05-20T19-21-22 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
-# Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a6a02b861e6a50624bd8e9cf6eb01984 | 2022-05-20T19-26-48 | 1d76f25c33af475572ad8f4f5cc1460c4ab8c868
-# Non-Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a26023ade63eb3aabca910107656ab3a | 2022-05-20T19-16-17 | baa0eb6aafe7dc8930822f6dd6f71eba411970be
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-02-14T23-02-36 | 45b2886c1f0d56d32b0b048494e4e9c2b4f88671
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | d8c8a510e27fa589b66a6a6d6581834e | 2023-05-20T03-12-35 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c6af8bbe5339bdf045cc9e36064b0ea2 | 2023-05-19T23-00-30 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmSupervisorCore
   FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
-  VERSION_STRING                 = 6.002
+  VERSION_STRING                 = 8.001
   PI_SPECIFICATION_VERSION       = 0x00010032
   ENTRY_POINT                    = MmSupervisorMain
 
@@ -30,8 +27,8 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 6.0029
-  DEBUG_DRIVER_VERSION     = 6.0028
+  RELEASE_DRIVER_VERSION   = 8.0019
+  DEBUG_DRIVER_VERSION     = 8.0018
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
@@ -100,6 +97,7 @@
   Request/UnblockMemory.c
   Request/FetchPolicy.c
   Request/VersionInfo.c
+  Request/UpdateCommBuffer.c
 
   Telemetry/Telemetry.c
   Telemetry/Telemetry.h
@@ -136,10 +134,11 @@
   SmmCpuPlatformHookLib
   CpuExceptionHandlerLib
   DevicePathLib
-  VmgExitLib
+  CcExitLib
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
+  BaseBinSecurityLib
   MmMemoryProtectionHobLib ## MU_CHANGE
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
@@ -177,6 +176,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable   ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdEnableSyscallLogs              ## CONSUMES
 
 [FixedPcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES

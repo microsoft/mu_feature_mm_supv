@@ -1,26 +1,29 @@
 ## @file
-# Azure Pipeline build file for a build using Windows and VS2019
+# Azure Pipeline build file for a build using Windows and Visual Studio.
+#
+# NOTE: This file is automatically synchronized from Mu DevOps. Update the original file there
+#       instead of the file in this repo.
+#
+# - Mu DevOps Repo: https://github.com/microsoft/mu_devops
+# - File Sync Settings: https://github.com/microsoft/mu_devops/blob/main/.sync/Files.yml
 #
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
-trigger:
-- main
 
-schedules:
-- cron: "0 8 * * 0"   # Sun/Wed at 1AM Pacific
-  displayName: Sun Build
-  branches:
-    include:
-    - main
-  always: true          # Always build, even if no changes
+variables:
+- group: architectures-x86-64
+- group: tool-chain-windows-visual-studio-latest
 
-pr:
-- main
-
-jobs:
-- template: templates/pr-gate-build-job.yml
+extends:
+  template: MuDevOpsWrapper.yml
   parameters:
-    tool_chain_tag: 'VS2022'
-    vm_image: 'windows-latest'
-    arch_list: "IA32,X64"
+    do_ci_build: true	
+    do_ci_setup: true	
+    do_pr_eval: false
+    os_type: Windows_NT
+    build_matrix:
+      TARGET_MM_SUPV:
+        Pkgs: 'MmSupervisorPkg'
+        Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)

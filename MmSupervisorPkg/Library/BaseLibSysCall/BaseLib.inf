@@ -12,7 +12,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | 910f14e67ca4202234a8c2b562fb0e67 | 2022-03-26T07-06-37 | 42bc9a3f2f7e2ec18d948888353c44138cc6e834
+#Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | 1f5cab6a914fb872e77c1298f36644e4 | 2023-05-19T21-53-39 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -149,6 +149,9 @@
   X64/ReadCr0.nasm| MSFT
   X64/ReadEflags.nasm| MSFT
 
+  X64/TdCall.nasm
+  X64/TdVmcall.nasm
+  X64/TdProbe.c
 
   X64/Non-existing.c
   Math64.c

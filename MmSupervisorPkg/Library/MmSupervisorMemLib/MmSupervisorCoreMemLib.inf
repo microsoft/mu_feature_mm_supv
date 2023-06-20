@@ -1,7 +1,7 @@
 ## @file
 #  Instance of MM memory check library.
 #
-#  MM memory check library library implementation. This library consumes MM_ACCESS_PROTOCOL
+#  MM memory check library implementation. This library consumes MM_ACCESS_PROTOCOL
 #  to get MMRAM information. In order to use this library instance, the platform should produce
 #  all MMRAM range via MM_ACCESS_PROTOCOL, including the range for firmware (like MM Core
 #  and MM driver) and/or specific dedicated hardware.
@@ -14,7 +14,7 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Library/StandaloneMmMemLib/StandaloneMmMemLib.inf | 5dbfe1b19872b562e478e32d2dc68952 | 2022-03-17T00-27-56 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+#Override : 00000002 | StandaloneMmPkg/Library/StandaloneMmMemLib/StandaloneMmMemLib.inf | 3a749f4074dda1056586135c0199559a | 2023-05-19T22-17-34 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x0001001A

@@ -81,7 +81,7 @@ ReserveCommBuffer (
   // Allocate and fill CommRegionHob
   //
   if (Type == MM_SUPERVISOR_BUFFER_T || Type == MM_USER_BUFFER_T) {
-    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateRuntimePages ((UINTN)PageSize);
+    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   } else {
     CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)NULL;
     Status = PeiServicesAllocatePages (EfiACPIMemoryNVS, (UINTN)PageSize, &CommRegionHob->MmCommonRegionAddr);

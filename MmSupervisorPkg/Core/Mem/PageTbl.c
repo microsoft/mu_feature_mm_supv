@@ -36,28 +36,9 @@ extern UINTN  mSmmShadowStackSize;
 LIST_ENTRY                mPagePool           = INITIALIZE_LIST_HEAD_VARIABLE (mPagePool);
 BOOLEAN                   m1GPageTableSupport = FALSE;
 BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
-BOOLEAN                   m5LevelPagingNeeded;
 X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
-PAGE_TABLE_POOL           mPageTablePool;
+PAGE_TABLE_POOL           mPageTablePoolEx;
 UINT8                     mPhysicalAddressBits;
-
-/**
-  Disable CET.
-**/
-VOID
-EFIAPI
-DisableCet (
-  VOID
-  );
-
-/**
-  Enable CET.
-**/
-VOID
-EFIAPI
-EnableCet (
-  VOID
-  );
 
 /**
   Check if 1-GByte pages is supported by processor or not.
@@ -125,8 +106,9 @@ Is5LevelPagingNeeded (
     ExtFeatureEcx.Bits.FiveLevelPage
     ));
 
-  if (VirPhyAddressSize.Bits.PhysicalAddressBits > 4 * 9 + 12) {
-    ASSERT (ExtFeatureEcx.Bits.FiveLevelPage == 1);
+  if ((VirPhyAddressSize.Bits.PhysicalAddressBits > 4 * 9 + 12) &&
+      (ExtFeatureEcx.Bits.FiveLevelPage == 1))
+  {
     return TRUE;
   } else {
     return FALSE;
@@ -266,6 +248,11 @@ SetStaticPageTable (
 
   EFI_STATUS  Status;
 
+  PageMapLevel4Entry        = NULL;
+  PageMapLevel5Entry        = NULL;
+  PageDirectoryPointerEntry = NULL;
+  PageDirectoryEntry        = NULL;
+
   //
   // IA-32e paging translates 48-bit linear addresses to 52-bit physical addresses
   //  when 5-Level Paging is disabled.
@@ -306,10 +293,7 @@ SetStaticPageTable (
   //
   PageMap = (VOID *)PageTable;
 
-  PageMapLevel4Entry        = PageMap;
-  PageMapLevel5Entry        = NULL;
-  PageDirectoryPointerEntry = NULL;
-  PageDirectoryEntry        = NULL;
+  PageMapLevel4Entry = PageMap;
   if (m5LevelPagingNeeded) {
     //
     // By architecture only one PageMapLevel5 exists - so lets allocate storage for it.
@@ -419,6 +403,8 @@ SetStaticPageTable (
     }
   }
 
+  Status = EFI_SUCCESS;
+
 Done:
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
@@ -469,15 +455,15 @@ SmmInitPageTable (
   // Allocate extension page table for split usage just in case, this data will have
   // supervisor page and xp attribute when MAT is applied
   //
-  ZeroMem (&mPageTablePool, sizeof (mPageTablePool));
-  mPageTablePool.PoolHeader = AllocateAlignedPages (PAGE_TABLE_POOL_UNIT_PAGES, EFI_PAGE_SIZE);
-  if (mPageTablePool.PoolHeader == NULL) {
+  ZeroMem (&mPageTablePoolEx, sizeof (mPageTablePoolEx));
+  mPageTablePoolEx.NextPool = AllocateAlignedPages (PAGE_TABLE_POOL_EX_UNIT_PAGES, EFI_PAGE_SIZE);
+  if (mPageTablePoolEx.NextPool == NULL) {
     DEBUG ((DEBUG_ERROR, "Failed to initialize page table pool!\n"));
     ASSERT (FALSE);
   }
 
-  DEBUG ((DEBUG_INFO, "Allcoated page table pool at %p\n", mPageTablePool.PoolHeader));
-  mPageTablePool.FreePages = PAGE_TABLE_POOL_UNIT_PAGES;
+  DEBUG ((DEBUG_INFO, "Allcoated page table pool at %p\n", mPageTablePoolEx.NextPool));
+  mPageTablePoolEx.FreePages = PAGE_TABLE_POOL_EX_UNIT_PAGES;
 
   mCpuSmmRestrictedMemoryAccess = PcdGetBool (PcdCpuSmmRestrictedMemoryAccess);
   m1GPageTableSupport           = Is1GPageSupport ();
@@ -1356,186 +1342,6 @@ Exit:
   ReleaseSpinLock (mPFLock);
   return;
   // MSCHANGE [END]
-}
-
-/**
-  This function sets memory attribute for page table.
-**/
-VOID
-SetPageTableAttributes (
-  VOID
-  )
-{
-  UINTN    Index2;
-  UINTN    Index3;
-  UINTN    Index4;
-  UINTN    Index5;
-  UINT64   *L1PageTable;
-  UINT64   *L2PageTable;
-  UINT64   *L3PageTable;
-  UINT64   *L4PageTable;
-  UINT64   *L5PageTable;
-  UINTN    PageTableBase;
-  BOOLEAN  IsSplitted;
-  BOOLEAN  PageTableSplitted;
-  BOOLEAN  CetEnabled;
-  BOOLEAN  Enable5LevelPaging;
-  BOOLEAN  LockPageTableToReadOnly;
-  UINTN    PageTableAttr;
-  UINTN    CachedCr0;
-
-  //
-  // Don't mark page table memory as read-only if
-  //  - no restriction on access to non-SMRAM memory; or
-  //  - SMM heap guard feature enabled; or
-  //      BIT2: SMM page guard enabled
-  //      BIT3: SMM pool guard enabled
-  //  - SMM profile feature enabled
-  //
-  if (!mCpuSmmRestrictedMemoryAccess ||
-      // MU_CHANGE START Update to remove exclusivity between static paging and heap guard
-      // ((PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0) ||
-      // (gMPS.HeapGuardPolicy.SmmPageGuard || gMPS.HeapGuardPolicy.SmmPoolGuard) ||
-      // MU_CHANGE
-      FeaturePcdGet (PcdCpuSmmProfileEnable))
-  {
-    //
-    // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
-    //
-    ASSERT (
-      !(mCpuSmmRestrictedMemoryAccess &&
-        (gMmMps.HeapGuardPolicy.Fields.MmPageGuard || gMmMps.HeapGuardPolicy.Fields.MmPoolGuard))
-      );                                                                                                // MU_CHANGE
-
-    //
-    // Restriction on access to non-SMRAM memory and SMM profile could not be enabled at the same time.
-    //
-    ASSERT (!(mCpuSmmRestrictedMemoryAccess && FeaturePcdGet (PcdCpuSmmProfileEnable)));
-    return;
-  }
-
-  DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
-
-  //
-  // Disable write protection, because we need mark page table to be write protected.
-  // We need *write* page table memory, to mark itself to be *read only*.
-  //
-  CetEnabled = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0) ? TRUE : FALSE;
-  if (CetEnabled) {
-    //
-    // CET must be disabled if WP is disabled.
-    //
-    DisableCet ();
-  }
-
-  // MU_CHANGE: MM_SUPV: Need to restore CR0 when this routine is executed before
-  // initialization complete.
-  CachedCr0 = AsmReadCr0 ();
-  AsmWriteCr0 (CachedCr0 & ~CR0_WP);
-
-  GetPageTable (&PageTableBase, NULL);
-  LockPageTableToReadOnly = (AsmReadCr3 () == PageTableBase) ? TRUE : FALSE;
-  if (LockPageTableToReadOnly) {
-    PageTableAttr = EFI_MEMORY_RO | EFI_MEMORY_SP;
-  } else {
-    PageTableAttr = EFI_MEMORY_SP;
-  }
-
-  do {
-    DEBUG ((DEBUG_INFO, "Start...\n"));
-    PageTableSplitted = FALSE;
-    L5PageTable       = NULL;
-
-    GetPageTable (&PageTableBase, &Enable5LevelPaging);
-
-    if (Enable5LevelPaging) {
-      L5PageTable = (UINT64 *)PageTableBase;
-      SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)PageTableBase, SIZE_4KB, EFI_MEMORY_RO, &IsSplitted);
-      PageTableSplitted = (PageTableSplitted || IsSplitted);
-    }
-
-    for (Index5 = 0; Index5 < (Enable5LevelPaging ? SIZE_4KB/sizeof (UINT64) : 1); Index5++) {
-      if (Enable5LevelPaging) {
-        L4PageTable = (UINT64 *)(UINTN)(L5PageTable[Index5] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
-        if (L4PageTable == NULL) {
-          continue;
-        }
-      } else {
-        L4PageTable = (UINT64 *)PageTableBase;
-      }
-
-      SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L4PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
-      PageTableSplitted = (PageTableSplitted || IsSplitted);
-
-      for (Index4 = 0; Index4 < SIZE_4KB/sizeof (UINT64); Index4++) {
-        L3PageTable = (UINT64 *)(UINTN)(L4PageTable[Index4] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
-        if (L3PageTable == NULL) {
-          continue;
-        }
-
-        SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L3PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
-        PageTableSplitted = (PageTableSplitted || IsSplitted);
-
-        for (Index3 = 0; Index3 < SIZE_4KB/sizeof (UINT64); Index3++) {
-          if ((L3PageTable[Index3] & IA32_PG_PS) != 0) {
-            // 1G
-            continue;
-          }
-
-          L2PageTable = (UINT64 *)(UINTN)(L3PageTable[Index3] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
-          if (L2PageTable == NULL) {
-            continue;
-          }
-
-          SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L2PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
-          PageTableSplitted = (PageTableSplitted || IsSplitted);
-
-          for (Index2 = 0; Index2 < SIZE_4KB/sizeof (UINT64); Index2++) {
-            if ((L2PageTable[Index2] & IA32_PG_PS) != 0) {
-              // 2M
-              continue;
-            }
-
-            L1PageTable = (UINT64 *)(UINTN)(L2PageTable[Index2] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
-            if (L1PageTable == NULL) {
-              continue;
-            }
-
-            SmmSetMemoryAttributesEx ((EFI_PHYSICAL_ADDRESS)(UINTN)L1PageTable, SIZE_4KB, PageTableAttr, &IsSplitted);
-            PageTableSplitted = (PageTableSplitted || IsSplitted);
-          }
-        }
-      }
-    }
-  } while (PageTableSplitted);
-
-  //
-  // Enable write protection, after page table updated.
-  //
-  // MU_CHANGE: MM_SUPV Starts: Need to restore CR0 when this routine is executed before
-  // initialization complete.
-  if (mCoreInitializationComplete) {
-    //
-    // Only enforce write protect in CR0 if initialization is complete
-    //
-    AsmWriteCr0 (CachedCr0 | CR0_WP);
-  } else {
-    //
-    // Otherwise restore the original value to avoid tampering non MM environment
-    //
-    AsmWriteCr0 (CachedCr0);
-  }
-
-  // MU_CHANGE: MM_SUPV Ends
-
-  if (CetEnabled) {
-    //
-    // re-enable CET.
-    //
-    EnableCet ();
-  }
-
-  return;
 }
 
 /**

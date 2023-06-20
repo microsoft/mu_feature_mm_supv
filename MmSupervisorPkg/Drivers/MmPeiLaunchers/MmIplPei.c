@@ -247,7 +247,7 @@ GetMmramCacheRange (
 
   do {
     FoundAdjacentRange = FALSE;
-    for (Index = 0; Index < gMmCorePrivate->MmramRangeCount; Index++) {
+    for (Index = 0; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
       RangeCpuStart     = MmramRanges[Index].CpuStart;
       RangePhysicalSize = MmramRanges[Index].PhysicalSize;
       if ((RangeCpuStart < *MmramCacheBase) && (*MmramCacheBase == (RangeCpuStart + RangePhysicalSize))) {
@@ -1001,12 +1001,27 @@ SmmIsMmramOverlap (
   IN EFI_MM_RESERVED_MMRAM_REGION  *ReservedRangeToCompare
   )
 {
-  UINT64  RangeToCompareEnd;
-  UINT64  ReservedRangeToCompareEnd;
+  UINT64   RangeToCompareEnd;
+  UINT64   ReservedRangeToCompareEnd;
+  BOOLEAN  IsOverUnderflow1;
+  BOOLEAN  IsOverUnderflow2;
 
-  if (EFI_ERROR (SafeUint64Add ((UINT64)RangeToCompare->CpuStart, RangeToCompare->PhysicalSize, &RangeToCompareEnd)) ||
-      EFI_ERROR (SafeUint64Add ((UINT64)ReservedRangeToCompare->MmramReservedStart, ReservedRangeToCompare->MmramReservedSize, &ReservedRangeToCompareEnd)))
-  {
+  // Check for over or underflow.
+  IsOverUnderflow1 = EFI_ERROR (
+                       SafeUint64Add (
+                         (UINT64)RangeToCompare->CpuStart,
+                         RangeToCompare->PhysicalSize,
+                         &RangeToCompareEnd
+                         )
+                       );
+  IsOverUnderflow2 = EFI_ERROR (
+                       SafeUint64Add (
+                         (UINT64)ReservedRangeToCompare->MmramReservedStart,
+                         ReservedRangeToCompare->MmramReservedSize,
+                         &ReservedRangeToCompareEnd
+                         )
+                       );
+  if (IsOverUnderflow1 || IsOverUnderflow2) {
     return TRUE;
   }
 
@@ -1056,6 +1071,9 @@ GetFullMmramRanges (
   EFI_MM_RESERVED_MMRAM_REGION  *MmramReservedRanges;
   UINTN                         MaxCount;
   BOOLEAN                       Rescan;
+
+  MmramRanges     = NULL;
+  TempMmramRanges = NULL;
 
   // MU_CHANGE: Changed to use MM PPI instead of protocol
   //
@@ -1339,7 +1357,7 @@ MmIplPeiEntry (
 
   // MU_CHANGE: MM_SUPV: Allocate designated runtime buffer for gMmCorePrivate, it will be unblocked with Supervisor access
   // Here we allocate the core private data and copy the data
-  gMmCorePrivate = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), SIZE_4KB);
+  gMmCorePrivate = AllocateAlignedPages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), SIZE_4KB);
   ASSERT (gMmCorePrivate != NULL);
   CopyMem (gMmCorePrivate, &mSmmCorePrivateData, sizeof (MM_CORE_PRIVATE_DATA));
 
@@ -1403,7 +1421,7 @@ MmIplPeiEntry (
   // Find the largest SMRAM range between 1MB and 4GB that is at least 256KB - 4K in size
   //
   mCurrentMmramRange = NULL;
-  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; Index < gMmCorePrivate->MmramRangeCount; Index++) {
+  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
     //
     // Skip any SMRAM region that is already allocated, needs testing, or needs ECC initialization
     //

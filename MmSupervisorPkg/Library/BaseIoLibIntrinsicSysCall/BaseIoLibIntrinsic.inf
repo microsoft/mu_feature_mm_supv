@@ -17,7 +17,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 66d2367b339202ca4eddb98dcb6b546a | 2022-03-17T00-30-52 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+#Override : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 52c5b0f77fbc8736f06094345ff7a968 | 2023-05-19T22-00-00 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -38,6 +38,8 @@
   BaseIoLibIntrinsicInternal.h
   IoHighLevel.c
   IoLibReadWrite.c
+  IoLibInternalTdxNull.c
+  IoLibTdx.h
 
 [Sources.X64]
   IoLibMsc.c    | MSFT

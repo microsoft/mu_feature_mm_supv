@@ -21,8 +21,6 @@ defined data structures in addition to supervisor-specific data structures to be
 1. [MM Supervisor Code Integration](#mm-supervisor-code-integration) - How to best integrate the `MmSupervisorPkg`
 collateral into a platform firmware.
 
-1. [Known Issues](#known-issues) - Known issues that need to be taken into account.
-
 1. [Platform Security Goals](TODO/SUPERVISOR_SECURITY_OVERVIEW.md) - The MM Supervisor aims to improve security. It is
 important to understand the goals of the supervisor and how that aligns with the platform security goals.
 
@@ -233,6 +231,10 @@ flash drivers, SW MMI dispatcher drivers, etc.
 ``` bash
 [PcdsFixedAtBuild]
   gEfiSecurityPkgTokenSpaceGuid.PcdUserPhysicalPresence               | FALSE
+  # MM environment only set up the exception handler for the upper 32 entries.
+  # The platform should set this to a non-conflicting exception number, otherwise
+  # it will be treated as one of the normal types of CPU faults.
+  gEfiMdePkgTokenSpaceGuid.PcdStackCookieExceptionVector              | 0x0F
 
 [LibraryClasses.IA32]
   MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
@@ -290,7 +292,6 @@ flash drivers, SW MMI dispatcher drivers, etc.
 !endif
 
 [Components.X64]
-  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferDxe.inf
 !if $(PEI_MM_IPL_ENABLED) == TRUE
   # Note: MmIplX64Relay is a 64-bit PEI module.
   #       - Any libraries linked to this module should not make 32-bit PEI assumptions
@@ -397,7 +398,6 @@ Note: There might be other silicon specific drivers a platform will need for the
 !endif
   INF  MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   INF  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
-  INF  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferDxe.inf
 
   INF  MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterStandaloneMm.inf
   INF  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableSmm/FirmwarePerformanceStandaloneMm.inf

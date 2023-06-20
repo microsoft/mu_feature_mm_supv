@@ -167,11 +167,11 @@ POSSIBILITY OF SUCH DAMAGE.
 .. CoreCI
 
 .. _Windows_VS: https://dev.azure.com/projectmu/mu/_build/latest?definitionId=111&&branchName=main
-.. |WindowsCiBuild| image:: https://dev.azure.com/projectmu/mu/_apis/build/status/CI/feature_supv/Windows%20VS%20CI?branchName=main
+.. |WindowsCiBuild| image:: https://dev.azure.com/projectmu/mu/_apis/build/status/CI/Feature%20MM%20Supervisor/Mu%20Feature%20MM%20Supervisor%20-%20CI%20-%20GCC5?repoName=microsoft%2Fmu_feature_mm_supv&branchName=main
 .. |WindowsCiTest| image:: https://img.shields.io/azure-devops/tests/projectmu/mu/111.svg
 .. |WindowsCiCoverage| image:: https://img.shields.io/badge/coverage-coming_soon-blue
 
 .. _Ubuntu_GCC5: https://dev.azure.com/projectmu/mu/_build/latest?definitionId=110&branchName=main
-.. |UbuntuCiBuild| image:: https://dev.azure.com/projectmu/mu/_apis/build/status/CI/feature_supv/Ubuntu%20CI?branchName=main
+.. |UbuntuCiBuild| image:: https://dev.azure.com/projectmu/mu/_apis/build/status/CI/Feature%20MM%20Supervisor/Mu%20Feature%20MM%20Supervisor%20-%20CI%20-%20Windows%20VS?repoName=microsoft%2Fmu_feature_mm_supv&branchName=main
 .. |UbuntuCiTest| image:: https://img.shields.io/azure-devops/tests/projectmu/mu/110.svg
 .. |UbuntuCiCoverage| image:: https://img.shields.io/badge/coverage-coming_soon-blue

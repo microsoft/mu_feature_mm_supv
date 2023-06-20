@@ -17,10 +17,7 @@
   PI_SPECIFICATION_VERSION       = 0x0001000A
   ENTRY_POINT                    = MmDxeSupportEntry
 
-# Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 363e254ecb2e8334d7efdbe363172897 | 2022-05-13T05-08-11 | 1fe56ccdeb39aa2fb6b85a37f4fb3225f4fa2e2a
-# Non-Secure:
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | c552f7d1889413df958c1a3faa1ed16b | 2022-05-18T19-34-40 | 8b96b84846f46f16f96a44ac838c6a1c50f2d0b3
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 03b789c79bf1608a7458425a36f6d98b | 2023-05-19T23-02-41 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -75,6 +72,8 @@
   gMmCoreDataHobGuid                            ## CONSUMES
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
+  gMmSupervisorCommunicationRegionTableGuid     ## CONSUMES
+  gEdkiiPiSmmCommunicationRegionTableGuid       ## CONSUMES
 
 [Depex]
   gEfiSmmControl2ProtocolGuid

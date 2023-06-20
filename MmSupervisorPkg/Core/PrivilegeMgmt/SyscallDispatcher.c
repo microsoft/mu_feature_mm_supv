@@ -238,23 +238,25 @@ SyscallDispatcher (
     mPcdCheck     = FALSE;
   }
 
-  while (!AcquireSpinLockOrFail (mCpuToken)) {
-    CpuPause ();
+  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
+    while (!AcquireSpinLockOrFail (mCpuToken)) {
+      CpuPause ();
+    }
+
+    DEBUG ((
+      DEBUG_INFO,
+      "%a Enter... CallIndex: %lx, Arg1: %lx, Arg2: %lx, Arg3: %lx, CallerAddr: %p, Ring3Stack %p\n",
+      __FUNCTION__,
+      CallIndex,
+      Arg1,
+      Arg2,
+      Arg3,
+      CallerAddr,
+      Ring3StackPointer
+      ));
+
+    ReleaseSpinLock (mCpuToken);
   }
-
-  DEBUG ((
-    DEBUG_VERBOSE,
-    "%a Enter... CallIndex: %lx, Arg1: %lx, Arg2: %lx, Arg3: %lx, CallerAddr: %p, Ring3Stack %p\n",
-    __FUNCTION__,
-    CallIndex,
-    Arg1,
-    Arg2,
-    Arg3,
-    CallerAddr,
-    Ring3StackPointer
-    ));
-
-  ReleaseSpinLock (mCpuToken);
 
   // The real policy come from DRTM event is copied over to FirmwarePolicy
   switch (CallIndex) {
@@ -628,6 +630,9 @@ Exit:
     CpuDeadLoop ();
   }
 
-  DEBUG ((DEBUG_VERBOSE, "%a Exit...\n", __FUNCTION__));
+  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
+    DEBUG ((DEBUG_INFO, "%a Exit...\n", __FUNCTION__));
+  }
+
   return Ret;
 }

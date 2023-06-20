@@ -195,21 +195,132 @@ CallgateInit (
   UINTN                 CpuIndex;
   EFI_PHYSICAL_ADDRESS  GdtrBaseAddr;
 
-  PrivilegeMgmtFixupAddress ();
-
   for (CpuIndex = 0; CpuIndex < NumberOfCpus; CpuIndex++) {
     if (CpuIndex == mSmmMpSyncData->BspIndex) {
       // BSP call gate will change, patch at runtime
       continue;
     }
 
-    // Patch AP handlers call gate and stack here as they are static after init
+    // Patch AP handlers call gate here, they can still change during later usage
     GdtrBaseAddr = mGdtBuffer + mGdtStepSize * CpuIndex;
-    PatchCallGatePtr ((IA32_IDT_GATE_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + CALL_GATE_OFFSET), (VOID *)ApHandlerReturnPointer);
+    PatchCallGatePtr ((IA32_IDT_GATE_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + CALL_GATE_OFFSET), (VOID *)NULL);
     PatchTssDescriptor (
       (IA32_TSS_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + TSS_SEL_OFFSET),
       (IA32_TASK_STATE_SEGMENT *)(UINTN)(GdtrBaseAddr + TSS_DESC_OFFSET),
       (VOID *)GetThisCpl3Stack (CpuIndex)
       );
   }
+}
+
+/**
+  Invoke MM driver in CPL 3.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedDriverEntryPoint (
+  IN MM_IMAGE_ENTRY_POINT  *EntryPoint,
+  IN EFI_HANDLE            ImageHandle,
+  IN EFI_MM_SYSTEM_TABLE   *MmSystemTable
+  )
+{
+  if (EntryPoint == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  return InvokeDemotedRoutine (
+           mSmmMpSyncData->BspIndex,
+           (EFI_PHYSICAL_ADDRESS)(UINTN)EntryPoint,
+           2,
+           ImageHandle,
+           MmSystemTable
+           );
+}
+
+/**
+  Invoke MM handler in CPL 3.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedMmHandler (
+  IN MMI_HANDLER  *DispatchHandle,
+  IN CONST VOID   *Context         OPTIONAL,
+  IN OUT VOID     *CommBuffer      OPTIONAL,
+  IN OUT UINTN    *CommBufferSize  OPTIONAL
+  )
+{
+  if (DispatchHandle == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((VOID *)RegisteredRing3JumpPointer == NULL) {
+    return EFI_NOT_READY;
+  }
+
+  return InvokeDemotedRoutine (
+           mSmmMpSyncData->BspIndex,
+           (EFI_PHYSICAL_ADDRESS)RegisteredRing3JumpPointer,
+           5,
+           DispatchHandle,
+           Context,
+           CommBuffer,
+           CommBufferSize,
+           DispatchHandle->Handler
+           );
+}
+
+/**
+  Invoke AP Procedure in CPL 3.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedApProcedure (
+  IN UINTN              CpuIndex,
+  IN EFI_AP_PROCEDURE2  Procedure,
+  IN VOID               *ProcedureArgument
+  )
+{
+  if ((Procedure == NULL) || (ProcedureArgument == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((VOID *)RegApRing3JumpPointer == NULL) {
+    return EFI_NOT_READY;
+  }
+
+  return InvokeDemotedRoutine (
+           CpuIndex,
+           (EFI_PHYSICAL_ADDRESS)RegApRing3JumpPointer,
+           2,
+           Procedure,
+           ProcedureArgument
+           );
+}
+
+/**
+  Invoke Error Report function in CPL 3, if registered.
+
+  Note: Never call this from the syscall dispatcher.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedErrorReport (
+  IN UINTN  CpuIndex,
+  IN VOID   *ErrorInfoBuffer
+  )
+{
+  if (ErrorInfoBuffer == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((VOID *)RegErrorReportJumpPointer == NULL) {
+    return EFI_NOT_READY;
+  }
+
+  return InvokeDemotedRoutine (
+           CpuIndex,
+           (EFI_PHYSICAL_ADDRESS)RegErrorReportJumpPointer,
+           2,
+           CpuIndex,
+           ErrorInfoBuffer
+           );
 }

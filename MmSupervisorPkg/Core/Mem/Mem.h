@@ -130,16 +130,22 @@ typedef enum {
 extern LIST_ENTRY  mMmMemoryMap;
 extern LIST_ENTRY  mMmPoolLists[MmPoolTypeMax][MAX_POOL_INDEX];
 
-#define PAGE_TABLE_POOL_UNIT_SIZE   SIZE_512KB
+#define PAGE_TABLE_POOL_EX_UNIT_SIZE   SIZE_512KB
+#define PAGE_TABLE_POOL_EX_UNIT_PAGES  EFI_SIZE_TO_PAGES (PAGE_TABLE_POOL_EX_UNIT_SIZE)
+
+#define PAGE_TABLE_POOL_ALIGNMENT   BASE_128KB
+#define PAGE_TABLE_POOL_UNIT_SIZE   BASE_128KB
 #define PAGE_TABLE_POOL_UNIT_PAGES  EFI_SIZE_TO_PAGES (PAGE_TABLE_POOL_UNIT_SIZE)
+#define PAGE_TABLE_POOL_ALIGN_MASK  \
+  (~(EFI_PHYSICAL_ADDRESS)(PAGE_TABLE_POOL_ALIGNMENT - 1))
 
 typedef struct {
-  VOID     *PoolHeader;
+  VOID     *NextPool;
   UINTN    Offset;
   UINTN    FreePages;
 } PAGE_TABLE_POOL;
 
-extern PAGE_TABLE_POOL  mPageTablePool;
+extern PAGE_TABLE_POOL  mPageTablePoolEx;
 
 //
 // Copy of the PcdPteMemoryEncryptionAddressOrMask
@@ -150,6 +156,24 @@ extern UINT8   mPhysicalAddressBits;
 extern EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap;
 extern UINTN                  mInitDescriptorSize;
 extern UINTN                  mInitMemoryMapSize;
+
+/**
+  Disable CET.
+**/
+VOID
+EFIAPI
+DisableCet (
+  VOID
+  );
+
+/**
+  Enable CET.
+**/
+VOID
+EFIAPI
+EnableCet (
+  VOID
+  );
 
 /**
   Internal Function. Allocate n pages from given free page node.
@@ -241,6 +265,8 @@ GetPageTable (
   This function sets the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to set for the memory region.
@@ -261,8 +287,9 @@ GetPageTable (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -273,6 +300,8 @@ SmmSetMemoryAttributesEx (
   This function clears the attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
 
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   EnablePML5Paging If PML5 paging is enabled.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to clear for the memory region.
@@ -293,8 +322,9 @@ SmmSetMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributesEx (
+  IN  UINTN                 PageTableBase,
+  IN  BOOLEAN               EnablePML5Paging,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes,
@@ -324,7 +354,6 @@ SmmClearMemoryAttributesEx (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmSetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
@@ -354,7 +383,6 @@ SmmSetMemoryAttributes (
 
 **/
 EFI_STATUS
-EFIAPI
 SmmClearMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,

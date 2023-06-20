@@ -206,23 +206,22 @@ PrepareCommonBuffers (
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart = CommRegionHob->MmCommonRegionAddr;
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages = CommRegionHob->MmCommonRegionPages;
       // But the memory itself is allocated under reserved..
-      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type = EfiRuntimeServicesData;
+      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type      = EfiRuntimeServicesData;
+      mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
       if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
-        mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
-        Status                                                                 = MmAllocateSupervisorPages (
-                                                                                   AllocateAnyPages,
-                                                                                   EfiRuntimeServicesData,
-                                                                                   CommRegionHob->MmCommonRegionPages,
-                                                                                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                                                                                   );
+        Status = MmAllocateSupervisorPages (
+                   AllocateAnyPages,
+                   EfiRuntimeServicesData,
+                   CommRegionHob->MmCommonRegionPages,
+                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                   );
       } else {
-        mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP;
-        Status                                                                 = MmAllocatePages (
-                                                                                   AllocateAnyPages,
-                                                                                   EfiRuntimeServicesData,
-                                                                                   CommRegionHob->MmCommonRegionPages,
-                                                                                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                                                                                   );
+        Status = MmAllocatePages (
+                   AllocateAnyPages,
+                   EfiRuntimeServicesData,
+                   CommRegionHob->MmCommonRegionPages,
+                   (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                   );
       }
 
       ASSERT_EFI_ERROR (Status);
@@ -384,16 +383,16 @@ InternalIsBufferOverlapped (
   IN UINTN  Size2
   )
 {
-  UINTN  End1;
-  UINTN  End2;
+  UINTN    End1;
+  UINTN    End2;
+  BOOLEAN  IsOverUnderflow1;
+  BOOLEAN  IsOverUnderflow2;
 
-  //
-  // If buff1's end is less than the start of buff2, then it's ok.
-  // Also, if buff1's start is beyond buff2's end, then it's ok.
-  //
-  if (EFI_ERROR (SafeUintnAdd ((UINTN)Buff1, Size1, &End1)) ||
-      EFI_ERROR (SafeUintnAdd ((UINTN)Buff2, Size2, &End2)))
-  {
+  // Check for over or underflow
+  IsOverUnderflow1 = EFI_ERROR (SafeUintnAdd ((UINTN)Buff1, Size1, &End1));
+  IsOverUnderflow2 = EFI_ERROR (SafeUintnAdd ((UINTN)Buff2, Size2, &End2));
+
+  if (IsOverUnderflow1 || IsOverUnderflow2) {
     return TRUE;
   }
 
@@ -538,7 +537,7 @@ MmEntryPoint (
       //
       BufferSize = BufferSize + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
       if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-        CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
+        CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
       } else {
         // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
         DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));

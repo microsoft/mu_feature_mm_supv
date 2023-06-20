@@ -1,28 +1,30 @@
 ## @file
-# Azure Pipeline build file for a build using ubuntu and GCC5
+# Azure Pipeline build file for a build using ubuntu and GCC5.
+#
+# NOTE: This file is automatically synchronized from Mu DevOps. Update the original file there
+#       instead of the file in this repo.
+#
+# - Mu DevOps Repo: https://github.com/microsoft/mu_devops
+# - File Sync Settings: https://github.com/microsoft/mu_devops/blob/main/.sync/Files.yml
 #
 # Copyright (c) Microsoft Corporation.
-# Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
-trigger:
-- main
 
-schedules:
-- cron: "30 9 * * 0"  # Sun/Wed at 2:30AM Pacific
-  displayName: Sun Build
-  branches:
-    include:
-    - main
-  always: true          # Always build, even if no changes
+variables:
+- group: architectures-x86-64
+- group: tool-chain-ubuntu-gcc
 
-pr:
-- main
-
-jobs:
-- template: templates/pr-gate-build-job.yml
+extends:
+  template: MuDevOpsWrapper.yml
   parameters:
-    tool_chain_tag: 'GCC5'
-    vm_image: 'ubuntu-latest'
-    arch_list: "IA32,X64"
-
+    do_ci_build: true	
+    do_ci_setup: true	
+    do_pr_eval: false
+    container_build: true
+    os_type: Linux
+    build_matrix:
+      TARGET_MM_SUPV:
+        Pkgs: 'MmSupervisorPkg'
+        Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)

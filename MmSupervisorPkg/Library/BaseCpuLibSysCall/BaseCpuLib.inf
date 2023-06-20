@@ -4,7 +4,7 @@
 #  CPU Library implemented using ASM functions for IA32, X64, ARM, AARCH64,
 #  PAL CALLs for IPF, and empty functions for EBC.
 #
-#  Copyright (c) 2007 - 2018, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2007 - 2022, Intel Corporation. All rights reserved.<BR>
 #  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
 #  Portions copyright (c) 2011 - 2013, ARM Ltd. All rights reserved.<BR>
 #  Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
@@ -15,7 +15,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 1fea1e4684efa0b09e98b8e59f02588a | 2022-03-17T00-27-09 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
+#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | d0c8e15f448b76a4d613430cfb45320d | 2023-05-19T22-07-15 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
 
 [Defines]
   INF_VERSION                    = 0x00010005
@@ -32,7 +32,7 @@
 #
 
 [Sources.X64]
-  X64/CpuFlushTlb.nasm
+  X86CpuFlushTlb.c
   X64/CpuSleep.c
 
 [Packages]
