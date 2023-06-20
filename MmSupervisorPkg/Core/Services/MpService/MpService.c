@@ -1996,9 +1996,21 @@ SmiRendezvous (
         //
         // BSP Handler is always called with a ValidSmi == TRUE
         //
-        BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
+        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+          BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
+        } else {
+          // Fail fast is invoked, we should have injected NMI, return to non-SMM
+          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on BSP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+          goto Exit;
+        }
       } else {
-        APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+        if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
+          APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+        } else {
+          // Fail fast is invoked, we should have injected NMI, return to non-SMM
+          DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on AP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
+          goto Exit;
+        }
       }
     }
 

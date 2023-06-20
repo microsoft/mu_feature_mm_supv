@@ -76,6 +76,7 @@ global ASM_PFX(gcSmiHandlerTemplate)
 global ASM_PFX(gcSmiHandlerSize)
 
 extern ASM_PFX(mCetSupported)
+extern ASM_PFX(mFailFastOccurred)
 global ASM_PFX(mPatchCetSupported)
 global ASM_PFX(mPatchCetPl0Ssp)
 global ASM_PFX(mPatchCetInterruptSsp)
@@ -308,6 +309,14 @@ CpuSmmDebugExitAbsAddr:
 
     add     rsp, 0x20
 
+    mov     rax, strict qword 0        ;    mov     rax, ASM_PFX(mFailFastOccurred)
+mFailFastOccurredAbsAddr:
+    mov     al, [rax]
+    cmp     al, 0
+    je      SkipHang
+    int     3
+SkipHang:
+
     ;
     ; Restore FP registers
     ;
@@ -392,5 +401,9 @@ ASM_PFX(PiSmmCpuSmiEntryFixupAddress):
 
     lea    rax, [ASM_PFX(mCetSupported)]
     lea    rcx, [mCetSupportedAbsAddr]
+    mov    qword [rcx - 8], rax
+
+    lea    rax, [ASM_PFX(mFailFastOccurred)]
+    lea    rcx, [mFailFastOccurredAbsAddr]
     mov    qword [rcx - 8], rax
     ret
