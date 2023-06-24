@@ -19,7 +19,7 @@
 
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
-#include <Library/HobLib.h>
+#include <Library/PcdLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 
@@ -51,9 +51,9 @@ AppendMmSupvErrorSources (
   )
 {
   EFI_STATUS            Status;
-  EFI_PEI_HOB_POINTERS  GuidHob;
   EFI_PHYSICAL_ADDRESS  StatusBlock;
-  MM_COMM_REGION_HOB    *CommRegionHob;
+  EFI_PHYSICAL_ADDRESS  MmCommonRegionAddr;
+  UINT64                MmCommonRegionPages;
 
   EFI_ACPI_6_4_GENERIC_HARDWARE_ERROR_SOURCE_VERSION_2_STRUCTURE  GhesV2ErrorStruct;
 
@@ -67,25 +67,14 @@ AppendMmSupvErrorSources (
   GhesV2ErrorStruct.MaxSectionsPerRecord = 1; // Only 1 section in from MM supv.
 
   // Connect up the error status block to allocated GHES space buffer
-  CommRegionHob = NULL;
-  GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
-  while (GuidHob.Guid != NULL) {
-    CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
-    if (CommRegionHob->MmCommonRegionType == MM_GHES_BUFFER_T) {
-      // This is what we need
-      break;
-    }
-
-    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
-  }
-
-  if (CommRegionHob == NULL) {
+  MmCommonRegionPages = FixedPcdGet64 (PcdGhesBufferPages);
+  Status  = gBS->AllocatePages (AllocateAnyPages, EfiLoaderCode, MmCommonRegionPages, &MmCommonRegionAddr);
+  if (EFI_ERROR (Status)) {
     Status = EFI_NOT_FOUND;
     goto Done;
   }
 
-  GhesV2ErrorStruct.MaxRawDataLength = (UINT32)EFI_PAGES_TO_SIZE (CommRegionHob->MmCommonRegionPages);
+  GhesV2ErrorStruct.MaxRawDataLength = (UINT32)EFI_PAGES_TO_SIZE (MmCommonRegionPages);
   GhesV2ErrorStruct.ErrorStatusAddress.AddressSpaceId = EFI_ACPI_6_4_SYSTEM_MEMORY;
   GhesV2ErrorStruct.ErrorStatusAddress.RegisterBitWidth = 64; // 64 bit physical address
   GhesV2ErrorStruct.ErrorStatusAddress.RegisterBitOffset = 0;
@@ -98,7 +87,7 @@ AppendMmSupvErrorSources (
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
   }
-  *(EFI_PHYSICAL_ADDRESS*)StatusBlock = CommRegionHob->MmCommonRegionAddr;
+  *(EFI_PHYSICAL_ADDRESS*)StatusBlock = MmCommonRegionAddr;
   GhesV2ErrorStruct.ErrorStatusAddress.Address = StatusBlock;
 
   SetMem (&GhesV2ErrorStruct.NotificationStructure, sizeof (GhesV2ErrorStruct.NotificationStructure), 0);
@@ -112,7 +101,7 @@ AppendMmSupvErrorSources (
   // GhesV2ErrorStruct.NotificationStructure.ErrorThresholdValue;
   // GhesV2ErrorStruct.NotificationStructure.ErrorThresholdWindow;
 
-  GhesV2ErrorStruct.ErrorStatusBlockLength = (UINT32)EFI_PAGES_TO_SIZE (CommRegionHob->MmCommonRegionPages);
+  GhesV2ErrorStruct.ErrorStatusBlockLength = (UINT32)EFI_PAGES_TO_SIZE (MmCommonRegionPages);
 
   // TODO: This is not properly used yet. Maybe write leave this to the platform?
   GhesV2ErrorStruct.ReadAckRegister.AddressSpaceId = EFI_ACPI_6_4_SYSTEM_MEMORY;
@@ -127,8 +116,8 @@ AppendMmSupvErrorSources (
   DEBUG ((
     DEBUG_INFO,
     "HEST Generic Error Status Block: Address = 0x%p, Pages = 0x%x \n",
-    CommRegionHob->MmCommonRegionAddr,
-    CommRegionHob->MmCommonRegionPages
+    MmCommonRegionAddr,
+    MmCommonRegionPages
     ));
   //
   // Append the error source descriptors to HEST table using the HEST table

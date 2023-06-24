@@ -145,12 +145,6 @@ MmCommunicationBufferPeiEntry (
     goto Done;
   }
 
-  Status = ReserveCommBuffer (MM_GHES_BUFFER_T, PcdGet64 (PcdGhesBufferPages), &GhesBufferAddr);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for error reporting - %r!\n", __FUNCTION__, Status));
-    goto Done;
-  }
-
   //
   // Notify others that the communication buffer is ready to go
   //
