@@ -8,6 +8,7 @@
   generation protocol.
 
   Copyright (c) 2020, ARM Limited. All rights reserved.
+  Copyright (c) Microsoft Corporation.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -16,18 +17,116 @@
 #include <Pi/PiStatusCode.h>
 #include <IndustryStandard/Acpi.h>
 #include <Guid/MmCommonRegion.h>
+#include <Guid/PiSmmCommunicationRegionTable.h>
+#include <Guid/MmGhesTableRegion.h>
+#include <Protocol/MmCommunication.h>
 
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
+#include <Library/MmUnblockMemoryLib.h>
 
 #include <Protocol/HestTable.h>
 
 #define MM_SUPV_GHES_SRC_ID   0xBA5E
 
 STATIC HEST_TABLE_PROTOCOL    *mHestProtocol;
+
+/**
+  Locate the MM communication buffer and protocol, then use it to communicate GHES buffer information to
+  MmSupervisorErrorReport.
+
+  @param[in, out] TcgNvs         The NVS subject to send to MM environment.
+
+  @return                        The status for locating MM common buffer, communicate to MM, etc.
+
+**/
+EFI_STATUS
+EFIAPI
+ExchangeCommonBuffer (
+  IN  EFI_PHYSICAL_ADDRESS  Address,
+  IN  UINTN                 PageNumber
+  )
+{
+  EFI_STATUS                               Status;
+  EFI_MM_COMMUNICATION_PROTOCOL            *MmCommunication;
+  EDKII_PI_SMM_COMMUNICATION_REGION_TABLE  *PiSmmCommunicationRegionTable;
+  EFI_MEMORY_DESCRIPTOR                    *MmCommMemRegion;
+  EFI_MM_COMMUNICATE_HEADER                *CommHeader;
+  MM_GHES_TABLE_REGION                     *CommBuffer;
+  UINTN                                    CommBufferSize;
+  UINTN                                    Index;
+
+  // Step 0: Sanity check for input argument
+  if (((VOID*)(UINTN)Address == NULL) || (PageNumber == 0)) {
+    DEBUG ((DEBUG_ERROR, "%a - Input argument is NULL!\n", __FUNCTION__));
+    return EFI_INVALID_PARAMETER;
+  }
+
+  // Step 1: Grab the common buffer header
+  Status = EfiGetSystemConfigurationTable (&gEdkiiPiSmmCommunicationRegionTableGuid, (VOID **)&PiSmmCommunicationRegionTable);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to locate SMM communication common buffer - %r!\n", __FUNCTION__, Status));
+    return Status;
+  }
+
+  // Step 2: Grab one that is large enough to hold MM_GHES_TABLE_REGION, the IPL one should be sufficient
+  CommBufferSize  = 0;
+  MmCommMemRegion = (EFI_MEMORY_DESCRIPTOR *)(PiSmmCommunicationRegionTable + 1);
+  for (Index = 0; Index < PiSmmCommunicationRegionTable->NumberOfEntries; Index++) {
+    if (MmCommMemRegion->Type == EfiConventionalMemory) {
+      CommBufferSize = EFI_PAGES_TO_SIZE ((UINTN)MmCommMemRegion->NumberOfPages);
+      if (CommBufferSize >= (sizeof (MM_GHES_TABLE_REGION) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data))) {
+        break;
+      }
+    }
+
+    MmCommMemRegion = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)MmCommMemRegion + PiSmmCommunicationRegionTable->DescriptorSize);
+  }
+
+  if (Index >= PiSmmCommunicationRegionTable->NumberOfEntries) {
+    // Could not find one that meets our goal...
+    DEBUG ((DEBUG_ERROR, "%a - Could not find a common buffer that is big enough for NVS!\n", __FUNCTION__));
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  // Step 3: Start to populate contents
+  // Step 3.1: MM Communication common header
+  CommHeader     = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)MmCommMemRegion->PhysicalStart;
+  CommBufferSize = sizeof (MM_GHES_TABLE_REGION) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  ZeroMem (CommHeader, CommBufferSize);
+  CopyGuid (&CommHeader->HeaderGuid, &gMmGhesTableRegionGuid);
+  CommHeader->MessageLength = sizeof (MM_GHES_TABLE_REGION);
+
+  // Step 3.2: MM_GHES_TABLE_REGION content per our needs
+  CommBuffer                                   = (MM_GHES_TABLE_REGION *)(CommHeader->Data);
+  CommBuffer->MmGhesTableRegion.Attribute      = EFI_MEMORY_XP;
+  CommBuffer->MmGhesTableRegion.PhysicalStart  = Address;
+  CommBuffer->MmGhesTableRegion.VirtualStart   = Address;
+  CommBuffer->MmGhesTableRegion.NumberOfPages  = PageNumber;
+  CommBuffer->MmGhesTableRegion.Type           = EfiACPIMemoryNVS;
+
+  // Step 4: Locate the protocol and signal Mmi.
+  Status = gBS->LocateProtocol (&gEfiMmCommunicationProtocolGuid, NULL, (VOID **)&MmCommunication);
+  if (!EFI_ERROR (Status)) {
+    Status = MmCommunication->Communicate (MmCommunication, CommHeader, &CommBufferSize);
+    DEBUG ((DEBUG_INFO, "%a - Communicate() = %r\n", __FUNCTION__, Status));
+  } else {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to locate MmCommunication protocol - %r\n", __FUNCTION__, Status));
+    return Status;
+  }
+
+  // Step 5: If everything goes well, populate the channel number
+  if (EFI_ERROR (CommBuffer->ReturnStatus)) {
+    Status = ENCODE_ERROR ((UINTN)CommBuffer->ReturnStatus);
+  } else {
+    Status = EFI_SUCCESS;
+  }
+
+  return Status;
+}
 
 /**
   Collect HEST error source descriptors from all Standalone MM drivers and append
@@ -68,10 +167,25 @@ AppendMmSupvErrorSources (
 
   // Connect up the error status block to allocated GHES space buffer
   MmCommonRegionPages = FixedPcdGet64 (PcdGhesBufferPages);
-  Status  = gBS->AllocatePages (AllocateAnyPages, EfiLoaderCode, MmCommonRegionPages, &MmCommonRegionAddr);
+  Status  = gBS->AllocatePages (AllocateAnyPages, EfiACPIMemoryNVS, MmCommonRegionPages, &MmCommonRegionAddr);
   if (EFI_ERROR (Status)) {
     Status = EFI_NOT_FOUND;
     goto Done;
+  }
+
+  Status = ExchangeCommonBuffer (MmCommonRegionAddr, MmCommonRegionPages);
+  if (EFI_ERROR (Status)) {
+    FreePages (MmCommonRegionAddr, MmCommonRegionPages);
+    DEBUG ((DEBUG_ERROR, "%a: Failed to exchange common buffer. Code=%r\n", __FUNCTION__, Status));
+    goto Done;
+  }
+
+  Status = MmUnblockMemoryRequest (MmCommonRegionAddr, MmCommonRegionPages);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a: Unable to notify StandaloneMM. Code=%r\n", __FUNCTION__, Status));
+    goto Done;
+  } else {
+    DEBUG ((DEBUG_INFO, "%a: StandaloneMM Hob data published\n", __FUNCTION__));
   }
 
   GhesV2ErrorStruct.MaxRawDataLength = (UINT32)EFI_PAGES_TO_SIZE (MmCommonRegionPages);

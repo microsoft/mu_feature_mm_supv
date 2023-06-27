@@ -131,7 +131,6 @@ MmCommunicationBufferPeiEntry (
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  SupvBufferAddr;
   EFI_PHYSICAL_ADDRESS  UserBufferAddr;
-  EFI_PHYSICAL_ADDRESS  GhesBufferAddr;
 
   Status = ReserveCommBuffer (MM_SUPERVISOR_BUFFER_T, PcdGet64 (PcdSupervisorCommBufferPages), &SupvBufferAddr);
   if (EFI_ERROR (Status)) {
@@ -162,11 +161,6 @@ Done:
     if (NULL != (VOID *)(UINTN)UserBufferAddr) {
       // Clean user legacy if any
       FreePages ((VOID *)(UINTN)UserBufferAddr, (UINTN)PcdGet64 (PcdUserCommBufferPages));
-    }
-
-    if (NULL != (VOID *)(UINTN)GhesBufferAddr) {
-      // Clean user legacy if any
-      FreePages ((VOID *)(UINTN)GhesBufferAddr, (UINTN)PcdGet64 (PcdGhesBufferPages));
     }
   }
 

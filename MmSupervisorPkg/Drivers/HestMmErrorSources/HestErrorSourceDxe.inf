@@ -31,10 +31,11 @@
   UefiDriverEntryPoint
   UefiLib
   HobLib
+  MmUnblockMemoryLib
 
 [Guids]
-  gMmHestGetErrorSourceInfoGuid                  ## PRODUCES
-  gMmCommonRegionHobGuid
+  gMmHestGetErrorSourceInfoGuid                 ## PRODUCES
+  gMmGhesTableRegionGuid                        ## CONSUMES
 
 [Protocols]
   gHestTableProtocolGuid                         ## CONSUMES

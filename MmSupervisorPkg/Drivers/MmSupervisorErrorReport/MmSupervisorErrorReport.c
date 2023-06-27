@@ -17,18 +17,24 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/Cper.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/MuTelemetryCperSection.h>
+#include <Guid/MmGhesTableRegion.h>
+#include <Protocol/MmReadyToLock.h>
+#include <Protocol/MmCommunication.h>
 
 #include <Library/BaseLib.h>
+#include <Library/SafeIntLib.h>
 #include <Library/DebugLib.h>
 #include <Library/SysCallLib.h>
 #include <Library/MuTelemetryHelperLib.h>
 #include <Library/HobLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MmServicesTableLib.h>
+#include <Library/StandaloneMmMemLib.h>
 #include <Library/MsWheaEarlyStorageLib.h>
 
-EFI_PHYSICAL_ADDRESS  mGhesReportAddress = 0;
-UINTN                 mGhesReportNumberOfPages = 0;
+EFI_PHYSICAL_ADDRESS  mGhesReportAddress        = 0;
+UINTN                 mGhesReportNumberOfPages  = 0;
+EFI_HANDLE            mDispatchHandle           = NULL;
 
 EFI_STATUS
 EFIAPI
@@ -149,7 +155,7 @@ MmSupvErrorReportWorker (
       (ErrorInfoBuffer->Signature == MM_SUPV_TELEMETRY_SIGNATURE))
   {
     if (NeedSysCall ()) {
-      // Try to populate the GHES information here as well.
+      // Try to populate the GHES information here.
       Status = GenericErrorBlockAddErrorData (
                 ErrorInfoBuffer->ExceptionType,
                 &ErrorInfoBuffer->DriverId,
@@ -161,7 +167,7 @@ MmSupvErrorReportWorker (
         DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __FUNCTION__, Status));
       }
 
-      // Need to add the module name/guid and load address
+      // Need to add the module name/guid and load address.
       Status = MsWheaESAddRecordV0 (
                  (EFI_STATUS_CODE_VALUE)(EFI_SOFTWARE_SMM_DRIVER | ErrorInfoBuffer->ExceptionType),
                  ErrorInfoBuffer->ExceptionRIP,
@@ -181,6 +187,137 @@ MmSupvErrorReportWorker (
 }
 
 /**
+  Communication service MMI Handler entry.
+
+  This handler takes requests to receive GHES table resource through Mmi channel.
+
+  Caution: This function may receive untrusted input.
+  Communicate buffer and buffer size are external input, so this function will do basic validation.
+
+  @param[in]      DispatchHandle    The unique handle assigned to this handler by SmiHandlerRegister().
+  @param[in]      RegisterContext   Points to an optional handler context which was specified when the
+                                    handler was registered.
+  @param[in, out] CommBuffer        A pointer to a collection of data in memory that will
+                                    be conveyed from a non-SMM environment into an SMM environment.
+  @param[in, out] CommBufferSize    The size of the CommBuffer.
+
+  @retval EFI_SUCCESS               The interrupt was handled and quiesced. No other handlers
+                                    should still be called.
+  @retval EFI_UNSUPPORTED           An unknown test function was requested.
+  @retval EFI_ACCESS_DENIED         Part of the communication buffer lies in an invalid region.
+
+**/
+EFI_STATUS
+EFIAPI
+GhesTableRegionMmiHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *RegisterContext,
+  IN OUT VOID        *CommBuffer,
+  IN OUT UINTN       *CommBufferSize
+  )
+{
+  EFI_STATUS              Status;
+  UINTN                   TempCommBufferSize;
+  MM_GHES_TABLE_REGION    *CommParams;
+  UINT64                  GhesBufferSize;
+  UINT64                  GhesBufferEnd;
+
+  DEBUG ((DEBUG_VERBOSE, "%a()\n", __FUNCTION__));
+
+  //
+  // If input is invalid, stop processing this SMI
+  //
+  if ((CommBuffer == NULL) || (CommBufferSize == NULL)) {
+    return EFI_SUCCESS;
+  }
+
+  if ((mGhesReportAddress != 0) || (mGhesReportNumberOfPages != 0)) {
+    DEBUG ((DEBUG_ERROR, "[%a] MM has already set up the GHES table!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  TempCommBufferSize = *CommBufferSize;
+
+  if (TempCommBufferSize != sizeof (MM_GHES_TABLE_REGION)) {
+    DEBUG ((DEBUG_ERROR, "[%a] MM Communication buffer size is invalid for this handler!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  if (!MmCommBufferValid ((UINTN)CommBuffer, TempCommBufferSize)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  CommParams = (MM_GHES_TABLE_REGION *)CommBuffer + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  // At least we have a valid buffer, let's see what we can do with it
+  if ((CommParams->MmGhesTableRegion.NumberOfPages == 0) ||
+      (CommParams->MmGhesTableRegion.PhysicalStart == 0) ||
+      (CommParams->MmGhesTableRegion.Type != EfiACPIMemoryNVS) ||
+      (CommParams->MmGhesTableRegion.Attribute == EFI_MEMORY_XP)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES table region!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  // Check if the buffer page value is valid
+  Status = SafeUint64Mult (CommParams->MmGhesTableRegion.NumberOfPages, EFI_PAGE_SIZE, &GhesBufferSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region size!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  // Check if the buffer range is valid
+  Status = SafeUint64Add (CommParams->MmGhesTableRegion.PhysicalStart, GhesBufferSize, &GhesBufferEnd);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region range!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  if (!MmIsBufferOutsideMmValid ((UINTN)CommParams->MmGhesTableRegion.PhysicalStart, TempCommBufferSize)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __FUNCTION__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  // Enough validation, we can accept the buffer now
+  mGhesReportAddress        = CommParams->MmGhesTableRegion.PhysicalStart;
+  mGhesReportNumberOfPages  = CommParams->MmGhesTableRegion.NumberOfPages;
+
+  // Finally, we can set the return code
+  CommParams->ReturnStatus = EFI_SUCCESS;
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Notification for SMM ReadyToLock protocol.
+
+  @param[in] Protocol   Points to the protocol's unique identifier.
+  @param[in] Interface  Points to the interface instance.
+  @param[in] Handle     The handle on which the interface was installed.
+
+  @retval EFI_SUCCESS   Notification runs successfully.
+
+**/
+EFI_STATUS
+EFIAPI
+ErrorReportMmReadyToLock (
+  IN CONST EFI_GUID  *Protocol,
+  IN VOID            *Interface,
+  IN EFI_HANDLE      Handle
+  )
+{
+  EFI_STATUS  Status;
+
+  Status = EFI_SUCCESS;
+
+  if (mDispatchHandle != NULL) {
+    Status             = gMmst->MmiHandlerUnRegister (mDispatchHandle);
+    mDispatchHandle = NULL;
+  }
+
+  return Status;
+}
+
+/**
   Entry to SmmSupvErrorReport, register SMM error reporter and callback functions
 
   @param[in] ImageHandle                The image handle.
@@ -195,30 +332,36 @@ SmmSupvErrorReportEntry (
   IN EFI_MM_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS            Status;
-  EFI_PEI_HOB_POINTERS  GuidHob;
-  MM_COMM_REGION_HOB    *CommRegionHob;
+  EFI_STATUS  Status;
+  EFI_HANDLE  NotifyHandle;
+
+  mDispatchHandle  = NULL; 
+  NotifyHandle     = NULL;
 
   // Register with MM Core with handler jump point
   Status = SysCall (SMM_ERR_RPT_JMP, (UINTN)RegErrorReportJumpPointer, 0, 0);
 
-  // Locate the reserved area for GHES reporting
-  CommRegionHob = NULL;
-  GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
-  while (GuidHob.Guid != NULL) {
-    CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
-    if (CommRegionHob->MmCommonRegionType == MM_GHES_BUFFER_T) {
-      // This is what we need
-      break;
-    }
-
-    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
+  // Register the callback function for SMM error reporting
+  Status = gMmst->MmiHandlerRegister (
+                    GhesTableRegionMmiHandler,
+                    &gMmGhesTableRegionGuid,
+                    &mDispatchHandle
+                    );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a MMI handler registration failed with status : %r\n",
+      __func__,
+      Status
+      ));
+    return Status;
   }
 
-  if (CommRegionHob != NULL) {
-    mGhesReportAddress        = CommRegionHob->MmCommonRegionAddr;
-    mGhesReportNumberOfPages  = CommRegionHob->MmCommonRegionPages;
+  // Turn off the light before leaving the room...
+  Status = gMmst->MmRegisterProtocolNotify (&gEfiMmReadyToLockProtocolGuid, ErrorReportMmReadyToLock, &NotifyHandle);
+  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to register ready to lock notification - %r!\n", __FUNCTION__, Status));
   }
 
   DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __FUNCTION__, Status));
