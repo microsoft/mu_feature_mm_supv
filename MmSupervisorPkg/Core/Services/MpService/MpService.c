@@ -725,12 +725,7 @@ BSPHandler (
   //
   // Invoke SMM Foundation EntryPoint with the processor information context.
   //
-  if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
-    gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
-  } else {
-    // Fail fast is invoked, we should have injected NMI, return to non-SMM
-    DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on BSP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
-  }
+  gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
 
   //
   // Make sure all APs have completed their pending none-block tasks
@@ -992,20 +987,14 @@ APHandler (
     //
     // Invoke the scheduled procedure
     //
-    if (SetJump (&mJumpBuffer[CpuIndex]) == 0){
-      if (mSmmMpSyncData->CpuData[CpuIndex].Procedure == ProcedureWrapper) {
-        ProcedureStatus = ProcedureWrapper ((VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter);
-      } else {
-        ProcedureStatus = InvokeDemotedApProcedure (
-                            CpuIndex,
-                            mSmmMpSyncData->CpuData[CpuIndex].Procedure,
-                            (VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter
-                            );
-      }
+    if (mSmmMpSyncData->CpuData[CpuIndex].Procedure == ProcedureWrapper) {
+      ProcedureStatus = ProcedureWrapper ((VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter);
     } else {
-      // Fail fast is invoked, we should have injected NMI, return to non-SMM
-      DEBUG ((DEBUG_ERROR, "%a Fail fast triggered on AP (0x%x), exiting...\n", __FUNCTION__, CpuIndex));
-      ProcedureStatus = EFI_ABORTED;
+      ProcedureStatus = InvokeDemotedApProcedure (
+                          CpuIndex,
+                          mSmmMpSyncData->CpuData[CpuIndex].Procedure,
+                          (VOID *)mSmmMpSyncData->CpuData[CpuIndex].Parameter
+                          );
     }
 
     if (mSmmMpSyncData->CpuData[CpuIndex].Status != NULL) {
