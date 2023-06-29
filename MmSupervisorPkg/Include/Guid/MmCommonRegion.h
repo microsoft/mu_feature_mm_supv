@@ -19,7 +19,7 @@
 #define MM_OPEN_BUFFER_CNT  2           // The number of all supported buffer types listed above
 
 typedef struct {
-  UINT64                  MmCommonRegionType;     // Should be MM_*_BUFFER_T
+  UINT64                  MmCommonRegionType;     // Should be either MM_SUPERVISOR_BUFFER_T or MM_USER_BUFFER_T
   EFI_PHYSICAL_ADDRESS    MmCommonRegionAddr;
   UINT64                  MmCommonRegionPages;
 } MM_COMM_REGION_HOB;

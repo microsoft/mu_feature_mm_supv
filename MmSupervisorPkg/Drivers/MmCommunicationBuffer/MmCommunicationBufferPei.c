@@ -80,12 +80,7 @@ ReserveCommBuffer (
   //
   // Allocate and fill CommRegionHob
   //
-  if (Type == MM_SUPERVISOR_BUFFER_T || Type == MM_USER_BUFFER_T) {
-    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
-  } else {
-    CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)NULL;
-    Status = PeiServicesAllocatePages (EfiACPIMemoryNVS, (UINTN)PageSize, &CommRegionHob->MmCommonRegionAddr);
-  }
+  CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __FUNCTION__, PageSize));
     ASSERT (FALSE);

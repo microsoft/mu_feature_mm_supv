@@ -485,12 +485,12 @@ MmEntryPoint (
       }
 
       SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize = BufferSize;
-      Status = MmiManage (
-                 &CommunicateHeader->HeaderGuid,
-                 NULL,
-                 CommunicateHeader->Data,
-                 (UINTN *)&(SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize)
-                 );
+      Status                                                     = MmiManage (
+                                                                     &CommunicateHeader->HeaderGuid,
+                                                                     NULL,
+                                                                     CommunicateHeader->Data,
+                                                                     (UINTN *)&(SupervisorToUserDataBuffer->gMmCorePrivateDummy.BufferSize)
+                                                                     );
       //
       // Update CommunicationBuffer, BufferSize and ReturnStatus
       // Communicate service finished, reset the pointer to CommBuffer to NULL

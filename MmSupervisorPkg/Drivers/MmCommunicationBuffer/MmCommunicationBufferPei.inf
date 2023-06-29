@@ -48,7 +48,6 @@
 [Pcd]
   gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages           ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages                 ## CONSUMES
-  gMmSupervisorPkgTokenSpaceGuid.PcdGhesBufferPages                     ## CONSUMES
 
 [Depex]
   gEfiPeiMemoryDiscoveredPpiGuid
