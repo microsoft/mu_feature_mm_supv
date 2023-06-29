@@ -73,16 +73,12 @@ GenericErrorBlockAddErrorData (
   UINTN                                            MaxBlockLength;
 
   if (((VOID*)(UINTN)mGhesReportAddress == NULL) || (mGhesReportNumberOfPages == 0)) {
+    DEBUG ((DEBUG_ERROR, "%a: The GHES is not initialized address: %p and size: 0x%x\n", __func__, mGhesReportAddress, mGhesReportNumberOfPages));
     return EFI_NOT_STARTED;
   }
 
   BlockHeader = (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE*)mGhesReportAddress;
   MaxBlockLength = EFI_PAGES_TO_SIZE (mGhesReportNumberOfPages);
-
-  if ((BlockHeader == NULL) || (MaxBlockLength == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a - %d: Invalid Param \n", __FUNCTION__, __LINE__));
-    return EFI_INVALID_PARAMETER;
-  }
 
   // Setup GHES structures
   ZeroMem (BlockHeader, MaxBlockLength);
@@ -96,6 +92,7 @@ GenericErrorBlockAddErrorData (
 
   // Fail if we don't have room
   if (sizeof (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE) + ExpectedNewDataLength > MaxBlockLength) {
+    DEBUG ((DEBUG_ERROR, "%a: The GHES region is too small for the usage: maximum 0x%x and has: 0x%x\n", __func__, MaxBlockLength, sizeof (EFI_ACPI_6_4_GENERIC_ERROR_STATUS_STRUCTURE) + ExpectedNewDataLength));
     return EFI_BUFFER_TOO_SMALL;
   }
 
@@ -149,7 +146,7 @@ MmSupvErrorReportWorker (
 {
   EFI_STATUS  Status = EFI_SUCCESS;
 
-  DEBUG ((DEBUG_INFO, "%a: Enters... CpuIndex 0x%x\n", __FUNCTION__, CpuIndex));
+  DEBUG ((DEBUG_INFO, "%a: Enters... CpuIndex 0x%x\n", __func__, CpuIndex));
 
   if ((ErrorInfoBuffer != NULL) &&
       (ErrorInfoBuffer->Signature == MM_SUPV_TELEMETRY_SIGNATURE))
@@ -164,7 +161,7 @@ MmSupvErrorReportWorker (
                 );
       if (EFI_ERROR (Status)) {
         // This is not likely since this is only populating data in the allocated space...
-        DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a Cannot populate the GHES information, continue to try HwErrRec... - %r\n", __func__, Status));
       }
 
       // Need to add the module name/guid and load address.
@@ -177,12 +174,12 @@ MmSupvErrorReportWorker (
                  );
     } else {
       // Why are we even here?
-      DEBUG ((DEBUG_ERROR, "%a: This should not happen...\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a: This should not happen...\n", __func__));
       ASSERT (FALSE);
     }
   }
 
-  DEBUG ((DEBUG_INFO, "%a: Exits...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a: Exits... - %r\n", __func__, Status));
   return Status;
 }
 
@@ -222,7 +219,7 @@ GhesTableRegionMmiHandler (
   UINT64                  GhesBufferSize;
   UINT64                  GhesBufferEnd;
 
-  DEBUG ((DEBUG_VERBOSE, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // If input is invalid, stop processing this SMI
@@ -232,48 +229,48 @@ GhesTableRegionMmiHandler (
   }
 
   if ((mGhesReportAddress != 0) || (mGhesReportNumberOfPages != 0)) {
-    DEBUG ((DEBUG_ERROR, "[%a] MM has already set up the GHES table!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] MM has already set up the GHES table!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   TempCommBufferSize = *CommBufferSize;
 
   if (TempCommBufferSize != sizeof (MM_GHES_TABLE_REGION)) {
-    DEBUG ((DEBUG_ERROR, "[%a] MM Communication buffer size is invalid for this handler!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] MM Communication buffer size is invalid for this handler!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   if (!MmCommBufferValid ((UINTN)CommBuffer, TempCommBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
-  CommParams = (MM_GHES_TABLE_REGION *)CommBuffer + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  CommParams = (MM_GHES_TABLE_REGION *)(UINTN)CommBuffer;
   // At least we have a valid buffer, let's see what we can do with it
   if ((CommParams->MmGhesTableRegion.NumberOfPages == 0) ||
       (CommParams->MmGhesTableRegion.PhysicalStart == 0) ||
       (CommParams->MmGhesTableRegion.Type != EfiACPIMemoryNVS) ||
-      (CommParams->MmGhesTableRegion.Attribute == EFI_MEMORY_XP)) {
-    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES table region!\n", __FUNCTION__));
+      ((CommParams->MmGhesTableRegion.Attribute & EFI_MEMORY_XP) == 0)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES table region!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   // Check if the buffer page value is valid
   Status = SafeUint64Mult (CommParams->MmGhesTableRegion.NumberOfPages, EFI_PAGE_SIZE, &GhesBufferSize);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region size!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region size!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   // Check if the buffer range is valid
   Status = SafeUint64Add (CommParams->MmGhesTableRegion.PhysicalStart, GhesBufferSize, &GhesBufferEnd);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region range!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer has invalid GHES region range!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   if (!MmIsBufferOutsideMmValid ((UINTN)CommParams->MmGhesTableRegion.PhysicalStart, TempCommBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - MM Communication buffer in invalid location!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
@@ -361,9 +358,9 @@ SmmSupvErrorReportEntry (
   Status = gMmst->MmRegisterProtocolNotify (&gEfiMmReadyToLockProtocolGuid, ErrorReportMmReadyToLock, &NotifyHandle);
   ASSERT_EFI_ERROR (Status);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to register ready to lock notification - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to register ready to lock notification - %r!\n", __func__, Status));
   }
 
-  DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __func__, Status));
   return Status;
 }

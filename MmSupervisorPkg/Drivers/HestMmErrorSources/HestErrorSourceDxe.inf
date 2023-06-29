@@ -21,6 +21,7 @@
   ArmPkg/ArmPkg.dec
   ArmPlatformPkg/ArmPlatformPkg.dec
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
   #StandaloneMmPkg/StandaloneMmPkg.dec    # MU_CHANGE
 
@@ -36,13 +37,14 @@
 [Guids]
   gMmHestGetErrorSourceInfoGuid                 ## PRODUCES
   gMmGhesTableRegionGuid                        ## CONSUMES
+  gEdkiiPiSmmCommunicationRegionTableGuid       ## CONSUMES
 
 [Protocols]
   gHestTableProtocolGuid                         ## CONSUMES
-  gEfiMmCommunication2ProtocolGuid
+  gEfiMmCommunicationProtocolGuid                ## CONSUMES
 
 [Pcd]
   gMmSupervisorPkgTokenSpaceGuid.PcdGhesBufferPages                     ## CONSUMES
 
 [Depex]
-  gHestTableProtocolGuid AND gEfiMmCommunication2ProtocolGuid
+  gHestTableProtocolGuid AND gEfiMmCommunicationProtocolGuid

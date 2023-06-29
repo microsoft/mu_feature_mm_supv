@@ -24,6 +24,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
+#include <Library/UefiLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MmUnblockMemoryLib.h>
@@ -151,8 +152,8 @@ AppendMmSupvErrorSources (
 {
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  StatusBlock;
-  EFI_PHYSICAL_ADDRESS  MmCommonRegionAddr;
-  UINT64                MmCommonRegionPages;
+  EFI_PHYSICAL_ADDRESS  MmCommonRegionAddr  = 0;
+  UINT64                MmCommonRegionPages = 0;
 
   EFI_ACPI_6_4_GENERIC_HARDWARE_ERROR_SOURCE_VERSION_2_STRUCTURE  GhesV2ErrorStruct;
 
@@ -173,19 +174,18 @@ AppendMmSupvErrorSources (
     goto Done;
   }
 
-  Status = ExchangeCommonBuffer (MmCommonRegionAddr, MmCommonRegionPages);
-  if (EFI_ERROR (Status)) {
-    FreePages (MmCommonRegionAddr, MmCommonRegionPages);
-    DEBUG ((DEBUG_ERROR, "%a: Failed to exchange common buffer. Code=%r\n", __FUNCTION__, Status));
-    goto Done;
-  }
-
   Status = MmUnblockMemoryRequest (MmCommonRegionAddr, MmCommonRegionPages);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Unable to notify StandaloneMM. Code=%r\n", __FUNCTION__, Status));
     goto Done;
   } else {
     DEBUG ((DEBUG_INFO, "%a: StandaloneMM Hob data published\n", __FUNCTION__));
+  }
+
+  Status = ExchangeCommonBuffer (MmCommonRegionAddr, MmCommonRegionPages);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a: Failed to exchange common buffer. Code=%r\n", __FUNCTION__, Status));
+    goto Done;
   }
 
   GhesV2ErrorStruct.MaxRawDataLength = (UINT32)EFI_PAGES_TO_SIZE (MmCommonRegionPages);
@@ -251,6 +251,11 @@ AppendMmSupvErrorSources (
   }
 
 Done:
+  if (EFI_ERROR (Status)) {
+    if (MmCommonRegionAddr != 0) {
+      FreePages ((VOID*)MmCommonRegionAddr, MmCommonRegionPages);
+    }
+  }
   return Status;
 }
 

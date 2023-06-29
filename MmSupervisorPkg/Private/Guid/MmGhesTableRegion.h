@@ -15,9 +15,13 @@
 
 extern EFI_GUID  gMmGhesTableRegionGuid;
 
+#pragma pack(1)
+
 typedef struct _MM_GHES_TABLE_REGION {
   EFI_MEMORY_DESCRIPTOR  MmGhesTableRegion;
   UINT64                 ReturnStatus;
 } MM_GHES_TABLE_REGION;
+
+#pragma pack()
 
 #endif // MM_GHES_TABLE_REGION_GUID_H_
