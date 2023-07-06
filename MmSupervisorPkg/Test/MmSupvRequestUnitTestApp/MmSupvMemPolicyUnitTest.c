@@ -285,8 +285,25 @@ VerifyIommuMemoryWithPolicy (
     goto Done;
   }
 
+  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld IOMMU regions.\n", __FUNCTION__, Count));
+
   for (Index1 = 0; Index1 < Count; Index1++) {
+    DEBUG ((DEBUG_INFO, "[%a] - Checking the following IOMMU region:\n", __FUNCTION__));
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a] -   IOMMU Region: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+      __FUNCTION__,
+      IommuBases[Index1],
+      IommuSizes[Index1]
+      ));
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+      DEBUG ((
+        DEBUG_INFO,
+        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+        __FUNCTION__,
+        MemDesc[Index2].BaseAddress,
+        MemDesc[Index2].Size
+        ));
       if ((((IommuBases[Index1] <= MemDesc[Index2].BaseAddress) &&
             (IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
           ((IommuBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) &&
