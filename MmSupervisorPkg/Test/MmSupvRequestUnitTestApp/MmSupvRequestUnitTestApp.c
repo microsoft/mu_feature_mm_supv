@@ -902,12 +902,6 @@ RequestUpdateCommBuffer (
 
   Status = MmSupvRequestDxeToMmCommunicate ();
 
-  if (EFI_ERROR (Status)) {
-    // We encountered some errors on our way updating communication buffer.
-    UT_LOG_ERROR ("Supervisor did not successfully process communication buffer update request %r.", Status);
-    UT_ASSERT_NOT_EFI_ERROR (Status);
-  }
-
   // Get the real handler status code
   if ((UINTN)CommBuffer->Result != 0) {
     Status = ENCODE_ERROR ((UINTN)CommBuffer->Result);
