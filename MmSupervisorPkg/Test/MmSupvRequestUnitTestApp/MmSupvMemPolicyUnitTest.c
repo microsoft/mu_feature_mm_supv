@@ -310,9 +310,19 @@ VerifyIommuMemoryWithPolicy (
            (IommuBases[Index1] + IommuSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
       {
         // Shoot, found an overlap and we are an allow list...
-        Status = EFI_SECURITY_VIOLATION;
-        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an IOMMU register being used that is blocked by policy.\n"));
-        goto Done;
+        // Check the access attributes before we freak out, read only is ok
+        if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
+          // Not read only, we have a problem
+          Status = EFI_SECURITY_VIOLATION;
+          DEBUG ((
+            DEBUG_ERROR,
+            "MemLevel Error! Found an accessible IOMMU region (Base: 0x%llx, Size: 0x%llx, Attribute: 0x%x) that should be blocked per policy.\n",
+            MemDesc[Index2].BaseAddress,
+            MemDesc[Index2].Size,
+            MemDesc[Index2].MemAttributes
+            ));
+          goto Done;
+        }
       }
     }
   }
@@ -365,9 +375,19 @@ VerifyTxtMemoryWithPolicy (
            (TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
       {
         // Shoot, found an overlap and we are an allow list...
-        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found a TXT region being used that is blocked by policy.\n"));
-        Status = EFI_SECURITY_VIOLATION;
-        goto Done;
+        // Check the access attributes before we freak out, read only is ok
+        if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
+          // Not read only, we have a problem
+          DEBUG ((
+            DEBUG_ERROR,
+            "MemLevel Error! Found an accessible TXT region (Base: 0x%llx, Size: 0x%llx, Attribute: 0x%x) that should be blocked per policy.\n",
+            MemDesc[Index2].BaseAddress,
+            MemDesc[Index2].Size,
+            MemDesc[Index2].MemAttributes
+            ));
+          Status = EFI_SECURITY_VIOLATION;
+          goto Done;
+        }
       }
     }
   }
