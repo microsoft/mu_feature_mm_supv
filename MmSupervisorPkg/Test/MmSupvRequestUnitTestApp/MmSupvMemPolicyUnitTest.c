@@ -498,15 +498,15 @@ VerifyMemPolicy (
   // So level 10 passed, set it to at least level 10
   *Level = SMM_POLICY_LEVEL_10;
 
-  // // Level 20:
-  // // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
-  // Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
-  // if (EFI_ERROR (Status)) {
-  //   DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
-  //   // This is not an error anymore, since it should at least get level 10 report
-  //   Status = EFI_SUCCESS;
-  //   goto Done;
-  // }
+  // Level 20:
+  // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
+  Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
+    // This is not an error anymore, since it should at least get level 10 report
+    Status = EFI_SUCCESS;
+    goto Done;
+  }
 
   // So level 20 passed, set it to at least level 20
   *Level = SMM_POLICY_LEVEL_20;
