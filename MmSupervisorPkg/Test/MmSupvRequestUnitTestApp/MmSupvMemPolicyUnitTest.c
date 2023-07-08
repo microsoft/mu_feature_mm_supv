@@ -299,10 +299,11 @@ VerifyIommuMemoryWithPolicy (
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
       DEBUG ((
         DEBUG_INFO,
-        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
         __FUNCTION__,
         MemDesc[Index2].BaseAddress,
-        MemDesc[Index2].Size
+        MemDesc[Index2].Size,
+        MemDesc[Index2].MemAttributes
         ));
       if ((((IommuBases[Index1] <= MemDesc[Index2].BaseAddress) &&
             (IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
@@ -314,13 +315,7 @@ VerifyIommuMemoryWithPolicy (
         if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
           // Not read only, we have a problem
           Status = EFI_SECURITY_VIOLATION;
-          DEBUG ((
-            DEBUG_ERROR,
-            "MemLevel Error! Found an accessible IOMMU region (Base: 0x%llx, Size: 0x%llx, Attribute: 0x%x) that should be blocked per policy.\n",
-            MemDesc[Index2].BaseAddress,
-            MemDesc[Index2].Size,
-            MemDesc[Index2].MemAttributes
-            ));
+          DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an accessible IOMMU region that should be blocked per policy.\n"));
           goto Done;
         }
       }
@@ -367,8 +362,26 @@ VerifyTxtMemoryWithPolicy (
     goto Done;
   }
 
+  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld TXT regions.\n", __FUNCTION__, Count));
+
   for (Index1 = 0; Index1 < Count; Index1++) {
+    DEBUG ((DEBUG_INFO, "[%a] - Checking the following TXT region:\n", __FUNCTION__));
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a] -   TXT Region: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+      __FUNCTION__,
+      TxtBases[Index1],
+      TxtSizes[Index1]
+      ));
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+      DEBUG ((
+        DEBUG_INFO,
+        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
+        __FUNCTION__,
+        MemDesc[Index2].BaseAddress,
+        MemDesc[Index2].Size,
+        MemDesc[Index2].MemAttributes
+        ));
       if ((((TxtBases[Index1] <= MemDesc[Index2].BaseAddress) &&
             (TxtBases[Index1] + TxtSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
           ((TxtBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) &&
@@ -378,13 +391,7 @@ VerifyTxtMemoryWithPolicy (
         // Check the access attributes before we freak out, read only is ok
         if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
           // Not read only, we have a problem
-          DEBUG ((
-            DEBUG_ERROR,
-            "MemLevel Error! Found an accessible TXT region (Base: 0x%llx, Size: 0x%llx, Attribute: 0x%x) that should be blocked per policy.\n",
-            MemDesc[Index2].BaseAddress,
-            MemDesc[Index2].Size,
-            MemDesc[Index2].MemAttributes
-            ));
+          DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an accessible TXT region that should be blocked per policy.\n"));
           Status = EFI_SECURITY_VIOLATION;
           goto Done;
         }
@@ -491,15 +498,15 @@ VerifyMemPolicy (
   // So level 10 passed, set it to at least level 10
   *Level = SMM_POLICY_LEVEL_10;
 
-  // Level 20:
-  // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
-  Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
-    // This is not an error anymore, since it should at least get level 10 report
-    Status = EFI_SUCCESS;
-    goto Done;
-  }
+  // // Level 20:
+  // // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
+  // Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
+  //   // This is not an error anymore, since it should at least get level 10 report
+  //   Status = EFI_SUCCESS;
+  //   goto Done;
+  // }
 
   // So level 20 passed, set it to at least level 20
   *Level = SMM_POLICY_LEVEL_20;
