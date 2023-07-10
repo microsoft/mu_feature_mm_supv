@@ -10,6 +10,7 @@
 ##
 
 import logging
+import io
 from argparse import ArgumentParser
 import os
 import datetime
@@ -164,13 +165,15 @@ class SupervisorPolicyMaker(IUefiHelperPlugin):
             ParseXmlAndAddToPolicy(xml_file_path, Policy)
 
             # print out our policy
-        print("=================================================")
-        print("========    Start Dumping Policy    =============")
-        print("=================================================")
-        Policy.DumpInfo(prefix="  ")
-        print("=================================================")
-        print("========    End Dumping Policy    ===============")
-        print("=================================================")
+        logging.debug("=================================================")
+        logging.debug("========    Start Dumping Policy    =============")
+        logging.debug("=================================================")
+        outfs = io.StringIO()
+        Policy.DumpInfo(prefix="  ", outfs = outfs)
+        logging.debug(outfs.getvalue())
+        logging.debug("=================================================")
+        logging.debug("========    End Dumping Policy    ===============")
+        logging.debug("=================================================")
         # write out policy as binary file
         if output_binary_path is not None:
             with open(output_binary_path, "wb") as f:
