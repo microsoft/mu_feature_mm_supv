@@ -169,7 +169,7 @@ class SupervisorPolicyMaker(IUefiHelperPlugin):
         logging.debug("========    Start Dumping Policy    =============")
         logging.debug("=================================================")
         outfs = io.StringIO()
-        Policy.DumpInfo(prefix="  ", outfs = outfs)
+        Policy.DumpInfo(outfs = outfs)
         logging.debug(outfs.getvalue())
         logging.debug("=================================================")
         logging.debug("========    End Dumping Policy    ===============")
