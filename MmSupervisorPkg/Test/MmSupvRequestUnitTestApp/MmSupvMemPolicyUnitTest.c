@@ -373,6 +373,12 @@ VerifyTxtMemoryWithPolicy (
       TxtBases[Index1],
       TxtSizes[Index1]
       ));
+
+    if (TxtBases[Index1] == 0) {
+      // This is region is probably not initialized, finding a hit with NULL does not make much sense, skip it
+      continue;
+    }
+
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
       DEBUG ((
         DEBUG_INFO,
