@@ -525,7 +525,7 @@ class InstructionPolicyEntry(PolicyEntry):
         self.Header = PolicyEntryHeader(POLICY_TYPE.INSTRUCTION, self._StructSizeLegacy)
         try:
             self.InstructionIndex = int(SUPPORTED_INSTRUCTION[InstructionName.upper()]) # UINT16
-        except:
+        except Exception:
             self.InstructionIndex = -1
         self.Attributes = AccessType(Attributes)  # UINT16
 
@@ -589,11 +589,11 @@ class SaveStatePolicyEntry(PolicyEntry):
         self.Header = PolicyEntryHeader(POLICY_TYPE.SAVESTATE, self._StructSize)
         try:
             self.SaveStateIndex = int(ALLOWED_SAVE_STATE_FIELD[SaveStateFieldName.upper()]) # UINT32
-        except:
+        except Exception:
             self.SaveStateIndex = -1
         try:
             self.AccessCondition = int(ALLOWED_SAVE_STATE_ACCESS_CONDITION[AccessCondition.upper()]) # UINT32
-        except:
+        except Exception:
             self.AccessCondition = 0
         self.Attributes = AccessType(Attributes)  # UINT32
 
