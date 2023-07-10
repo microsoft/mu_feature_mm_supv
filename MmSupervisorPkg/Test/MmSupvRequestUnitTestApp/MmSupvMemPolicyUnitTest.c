@@ -299,10 +299,11 @@ VerifyIommuMemoryWithPolicy (
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
       DEBUG ((
         DEBUG_INFO,
-        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
         __FUNCTION__,
         MemDesc[Index2].BaseAddress,
-        MemDesc[Index2].Size
+        MemDesc[Index2].Size,
+        MemDesc[Index2].MemAttributes
         ));
       if ((((IommuBases[Index1] <= MemDesc[Index2].BaseAddress) &&
             (IommuBases[Index1] + IommuSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
@@ -310,9 +311,13 @@ VerifyIommuMemoryWithPolicy (
            (IommuBases[Index1] + IommuSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
       {
         // Shoot, found an overlap and we are an allow list...
-        Status = EFI_SECURITY_VIOLATION;
-        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an IOMMU register being used that is blocked by policy.\n"));
-        goto Done;
+        // Check the access attributes before we freak out, read only is ok
+        if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
+          // Not read only, we have a problem
+          Status = EFI_SECURITY_VIOLATION;
+          DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an accessible IOMMU region that should be blocked per policy.\n"));
+          goto Done;
+        }
       }
     }
   }
@@ -357,17 +362,45 @@ VerifyTxtMemoryWithPolicy (
     goto Done;
   }
 
+  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld TXT regions.\n", __FUNCTION__, Count));
+
   for (Index1 = 0; Index1 < Count; Index1++) {
+    DEBUG ((DEBUG_INFO, "[%a] - Checking the following TXT region:\n", __FUNCTION__));
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a] -   TXT Region: Base = 0x%016Lx. Size = 0x%016Lx.\n",
+      __FUNCTION__,
+      TxtBases[Index1],
+      TxtSizes[Index1]
+      ));
+
+    if (TxtBases[Index1] == 0) {
+      // This is region is probably not initialized, finding a hit with NULL does not make much sense, skip it
+      continue;
+    }
+
     for (Index2 = 0; Index2 < MemPolicyCount; Index2++) {
+      DEBUG ((
+        DEBUG_INFO,
+        "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
+        __FUNCTION__,
+        MemDesc[Index2].BaseAddress,
+        MemDesc[Index2].Size,
+        MemDesc[Index2].MemAttributes
+        ));
       if ((((TxtBases[Index1] <= MemDesc[Index2].BaseAddress) &&
             (TxtBases[Index1] + TxtSizes[Index1] > MemDesc[Index2].BaseAddress))) ||
           ((TxtBases[Index1] < (MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)) &&
            (TxtBases[Index1] + TxtSizes[Index1] >= MemDesc[Index2].BaseAddress + MemDesc[Index2].Size)))
       {
         // Shoot, found an overlap and we are an allow list...
-        DEBUG ((DEBUG_ERROR, "MemLevel Error! Found a TXT region being used that is blocked by policy.\n"));
-        Status = EFI_SECURITY_VIOLATION;
-        goto Done;
+        // Check the access attributes before we freak out, read only is ok
+        if ((MemDesc[Index2].MemAttributes & (~SECURE_POLICY_RESOURCE_ATTR_READ)) != 0) {
+          // Not read only, we have a problem
+          DEBUG ((DEBUG_ERROR, "MemLevel Error! Found an accessible TXT region that should be blocked per policy.\n"));
+          Status = EFI_SECURITY_VIOLATION;
+          goto Done;
+        }
       }
     }
   }
