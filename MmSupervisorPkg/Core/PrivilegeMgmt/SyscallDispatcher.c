@@ -602,6 +602,14 @@ SyscallDispatcher (
       break;
     case SMM_MM_UNBLOCKED:
       Ret = (UINT64)MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)Arg1, Arg2);
+      if (Ret != FALSE) {
+        // Add another check to see if the buffer is in the user space.
+        if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
+          // If cannot determine the ownership, or the buffer is not in the user space, then return FALSE.
+          // Note, we will not fail on the Status code here.
+          Ret = FALSE;
+        }
+      }
       break;
     case SMM_MM_IS_COMM_BUFF:
       Ret = (UINT64)VerifyRequestUserCommBuffer ((VOID *)(UINTN)Arg1, (UINTN)Arg2);
