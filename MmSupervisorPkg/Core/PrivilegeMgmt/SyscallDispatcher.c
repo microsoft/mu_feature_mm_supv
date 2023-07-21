@@ -610,6 +610,7 @@ SyscallDispatcher (
           Ret = FALSE;
         }
       }
+
       break;
     case SMM_MM_IS_COMM_BUFF:
       Ret = (UINT64)VerifyRequestUserCommBuffer ((VOID *)(UINTN)Arg1, (UINTN)Arg2);
