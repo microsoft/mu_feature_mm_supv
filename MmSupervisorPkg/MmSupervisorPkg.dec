@@ -78,7 +78,7 @@
   gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages|16|UINT64|0x00000001
 
   ## Size of user communication buffer in number of pages
-  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages|4|UINT64|0x00000002
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages|16|UINT64|0x00000002
 
   ## FILE_GUID of MmIplPeiX64Relay module
   #  This will be used by MmIplPei to look up driver location before switching to long mode.
