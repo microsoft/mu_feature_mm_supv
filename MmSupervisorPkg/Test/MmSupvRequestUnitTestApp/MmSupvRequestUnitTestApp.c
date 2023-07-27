@@ -295,14 +295,14 @@ FetchSecurityPolicyFromSupv (
 
   if (EFI_ERROR (Status)) {
     // We encountered some MM systematic errors on our way unblocking memory.
-    UT_LOG_ERROR ("Supervisor is not successfully communicated %r.", Status);
+    UT_LOG_ERROR ("Supervisor is not successfully communicated %r.\n", Status);
     goto Done;
   }
 
   // Get the real handler status code
   if ((UINTN)CommBuffer->Result != 0) {
     Status = ENCODE_ERROR ((UINTN)CommBuffer->Result);
-    UT_LOG_ERROR ("Supervisor did not successfully return policy %r.", Status);
+    UT_LOG_ERROR ("Supervisor did not successfully return policy %r.\n", Status);
     goto Done;
   }
 
@@ -656,7 +656,7 @@ RequestVersionInfo (
 
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way fetching version information.
-    UT_LOG_ERROR ("Supervisor did not successfully process version info request %r.", Status);
+    UT_LOG_ERROR ("Supervisor did not successfully process version info request %r.\n", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
@@ -670,7 +670,7 @@ RequestVersionInfo (
   VersionInfo = (MM_SUPERVISOR_VERSION_INFO_BUFFER *)(CommBuffer + 1);
   UT_ASSERT_EQUAL (VersionInfo->MaxSupervisorRequestLevel, MM_SUPERVISOR_REQUEST_MAX_SUPPORTED);
 
-  UT_LOG_INFO ("Supervisor version %x, patch level %x.", VersionInfo->Version, VersionInfo->PatchLevel);
+  UT_LOG_INFO ("Supervisor version %x, patch level %x.\n", VersionInfo->Version, VersionInfo->PatchLevel);
 
   return UNIT_TEST_PASSED;
 }
@@ -691,7 +691,7 @@ RequestUnblockRegion (
 
   TargetPage = AllocatePages (1);
   if (TargetPage == NULL) {
-    UT_LOG_ERROR ("Target memory allocation failed.");
+    UT_LOG_ERROR ("Target memory allocation failed.\n");
     UT_ASSERT_NOT_NULL (TargetPage);
   }
 
@@ -713,7 +713,7 @@ RequestUnblockRegion (
 
   if (EFI_ERROR (Status)) {
     // We encountered some MM systematic errors on our way unblocking memory.
-    UT_LOG_ERROR ("Supervisor did not successfully process unblock request %r.", Status);
+    UT_LOG_ERROR ("Supervisor did not successfully process unblock request %r.\n", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 
@@ -862,7 +862,7 @@ InspectSecurityPolicy (
 
 Done:
   DEBUG ((DEBUG_INFO, "The fetch policy is at level %d\n", FinalLevel));
-  UT_LOG_INFO ("The fetch policy is at level %d", FinalLevel);
+  UT_LOG_INFO ("The fetch policy is at level %d\n", FinalLevel);
 
   // If we can get policy but still get 0 mm measurement level, something is messed up...
   UT_ASSERT_TRUE (FinalLevel > 0);
@@ -904,7 +904,7 @@ RequestUpdateCommBuffer (
 
   if (EFI_ERROR (Status)) {
     // We encountered some errors on our way updating communication buffer.
-    UT_LOG_ERROR ("Supervisor did not successfully process communication buffer update request %r.", Status);
+    UT_LOG_ERROR ("Supervisor did not successfully process communication buffer update request %r.\n", Status);
     UT_ASSERT_NOT_EFI_ERROR (Status);
   }
 

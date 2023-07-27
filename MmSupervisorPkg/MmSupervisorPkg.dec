@@ -79,7 +79,7 @@
   gMmSupervisorPkgTokenSpaceGuid.PcdSupervisorCommBufferPages|16|UINT64|0x00000001
 
   ## Size of user communication buffer in number of pages
-  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages|4|UINT64|0x00000002
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages|16|UINT64|0x00000002
 
   ## Size of user communication buffer in number of pages
   gMmSupervisorPkgTokenSpaceGuid.PcdGhesBufferPages|4|UINT64|0x00000003

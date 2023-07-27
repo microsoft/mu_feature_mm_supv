@@ -111,14 +111,14 @@ class MemoryRange(object):
             return "None"
         else:
             try: return MemoryRange.MemoryMapTypes[self.MemoryType]
-            except: raise Exception("Memory type is invalid")
+            except Exception: raise Exception("Memory type is invalid")
 
     def GetSystemMemoryType(self):
         if self.SystemMemoryType is None:
             return "None"
         try:
             return MemoryRange.SystemMemoryTypes[self.SystemMemoryType]
-        except:
+        except Exception:
             raise Exception("System Memory Type is invalid %d" % self.SystemMemoryType)
 
 

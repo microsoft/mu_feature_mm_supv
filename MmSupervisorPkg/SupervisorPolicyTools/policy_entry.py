@@ -7,8 +7,9 @@
 ##
 
 import struct
+import sys
 from enum import IntEnum
-from typing import Type
+from typing import Type, IO
 import logging
 
 
@@ -166,14 +167,14 @@ class PolicyEntryHeader(object):
         # slice off buffer bytes decoded
         return Buffer[self._StructSize:]
 
-    def DumpInfo(self, prefix: str = "") -> None:
+    def DumpInfo(self, prefix: str = "", outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         '''
-        print(f"{prefix}Version: 0x{self.Version:08X}")
-        print(f"{prefix}Type: {self.Type}")
-        print(f"{prefix}EntrySize: {self.EntrySize}")
+        outfs.write(f"{prefix}Version: 0x{self.Version:08X}\n")
+        outfs.write(f"{prefix}Type: {self.Type}\n")
+        outfs.write(f"{prefix}EntrySize: {self.EntrySize}\n")
 
 
 class PolicyEntry(object):
@@ -198,7 +199,7 @@ class PolicyEntry(object):
         '''
         raise NotImplementedError("Base Class does not implement this method")
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
@@ -290,19 +291,19 @@ class PolicyRoot(object):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Policy Root")
-        print(f"{prefix}  Version: 0x{self.Version:016X}")
-        print(f"{prefix}  Type: {POLICY_TYPE(self.Type).name}")
-        print(f"{prefix}  Count: 0x{self.Count:016X}")
-        print(f"{prefix}  Access Attribute: {self.AccessAttr}")
+        outfs.write(f"{prefix}Policy Root\n")
+        outfs.write(f"{prefix}  Version: 0x{self.Version:016X}\n")
+        outfs.write(f"{prefix}  Type: {POLICY_TYPE(self.Type).name}\n")
+        outfs.write(f"{prefix}  Count: 0x{self.Count:016X}\n")
+        outfs.write(f"{prefix}  Access Attribute: {self.AccessAttr}\n")
         for pe in self.PolicyEntries:
-            pe.DumpInfo(prefix=prefix + "    ", short=short)
+            pe.DumpInfo(prefix=prefix + "    ", short=short, outfs = outfs)
 
 
 class MemoryPolicyEntry(PolicyEntry):
@@ -375,18 +376,18 @@ class MemoryPolicyEntry(PolicyEntry):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Memory Policy Entry")
+        outfs.write(f"{prefix}Memory Policy Entry\n")
         if not short:
-            self.Header.DumpInfo(prefix + "  ")
-        print(f"{prefix}  BaseAddress: 0x{self.BaseAddress:016X}")
-        print(f"{prefix}  Size: 0x{self.Size:016X}")
-        print(f"{prefix}  Memory Attributes: 0x{self.MemoryAttributes:08X}")
+            self.Header.DumpInfo(prefix + "  ", outfs=outfs)
+        outfs.write(f"{prefix}  BaseAddress: 0x{self.BaseAddress:016X}\n")
+        outfs.write(f"{prefix}  Size: 0x{self.Size:016X}\n")
+        outfs.write(f"{prefix}  Memory Attributes: 0x{self.MemoryAttributes:08X}\n")
 
 
 class IoPolicyEntry(PolicyEntry):
@@ -442,18 +443,18 @@ class IoPolicyEntry(PolicyEntry):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Io Policy Entry")
+        outfs.write(f"{prefix}Io Policy Entry\n")
         if not short:
-            self.Header.DumpInfo(prefix + "  ")
-        print(f"{prefix}  IoAddress: 0x{self.IoAddress:04X}")
-        print(f"{prefix}  Size: 0x{self.Size:04X}")
-        print(f"{prefix}  Attributes: {self.Attributes}")
+            self.Header.DumpInfo(prefix + "  ", outfs=outfs)
+        outfs.write(f"{prefix}  IoAddress: 0x{self.IoAddress:04X}\n")
+        outfs.write(f"{prefix}  Size: 0x{self.Size:04X}\n")
+        outfs.write(f"{prefix}  Attributes: {self.Attributes}\n")
 
 
 class MsrPolicyEntry(PolicyEntry):
@@ -498,18 +499,18 @@ class MsrPolicyEntry(PolicyEntry):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}MSR Policy Entry")
+        outfs.write(f"{prefix}MSR Policy Entry\n")
         if(not short):
-            self.Header.DumpInfo(prefix + "  ")
-        print(f"{prefix}  MsrAddress: {self.MsrAddress:08X}")
-        print(f"{prefix}  Size: {self.Size:04X}")
-        print(f"{prefix}  Attributes: {self.Attributes}")
+            self.Header.DumpInfo(prefix + "  ", outfs=outfs)
+        outfs.write(f"{prefix}  MsrAddress: {self.MsrAddress:08X}\n")
+        outfs.write(f"{prefix}  Size: {self.Size:04X}\n")
+        outfs.write(f"{prefix}  Attributes: {self.Attributes}\n")
 
 
 class InstructionPolicyEntry(PolicyEntry):
@@ -525,7 +526,7 @@ class InstructionPolicyEntry(PolicyEntry):
         self.Header = PolicyEntryHeader(POLICY_TYPE.INSTRUCTION, self._StructSizeLegacy)
         try:
             self.InstructionIndex = int(SUPPORTED_INSTRUCTION[InstructionName.upper()]) # UINT16
-        except:
+        except Exception:
             self.InstructionIndex = -1
         self.Attributes = AccessType(Attributes)  # UINT16
 
@@ -566,17 +567,17 @@ class InstructionPolicyEntry(PolicyEntry):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Instruction Policy Entry")
+        outfs.write(f"{prefix}Instruction Policy Entry\n")
         if(not short):
-            self.Header.DumpInfo(prefix + "  ")
-        print(f"{prefix}  Instruction: {SUPPORTED_INSTRUCTION(self.InstructionIndex).name}")
-        print(f"{prefix}  Attributes: {self.Attributes}")
+            self.Header.DumpInfo(prefix + "  ", outfs=outfs)
+        outfs.write(f"{prefix}  Instruction: {SUPPORTED_INSTRUCTION(self.InstructionIndex).name}\n")
+        outfs.write(f"{prefix}  Attributes: {self.Attributes}\n")
 
 class SaveStatePolicyEntry(PolicyEntry):
     '''
@@ -589,11 +590,11 @@ class SaveStatePolicyEntry(PolicyEntry):
         self.Header = PolicyEntryHeader(POLICY_TYPE.SAVESTATE, self._StructSize)
         try:
             self.SaveStateIndex = int(ALLOWED_SAVE_STATE_FIELD[SaveStateFieldName.upper()]) # UINT32
-        except:
+        except Exception:
             self.SaveStateIndex = -1
         try:
             self.AccessCondition = int(ALLOWED_SAVE_STATE_ACCESS_CONDITION[AccessCondition.upper()]) # UINT32
-        except:
+        except Exception:
             self.AccessCondition = 0
         self.Attributes = AccessType(Attributes)  # UINT32
 
@@ -621,18 +622,18 @@ class SaveStatePolicyEntry(PolicyEntry):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Save State Policy Entry")
+        outfs.write(f"{prefix}Save State Policy Entry\n")
         if(not short):
-            self.Header.DumpInfo(prefix + "  ")
-        print(f"{prefix}  SaveStateField: {ALLOWED_SAVE_STATE_FIELD(self.SaveStateIndex).name}")
-        print(f"{prefix}  Attributes: {self.Attributes}")
-        print(f"{prefix}  AccessCondition: {ALLOWED_SAVE_STATE_ACCESS_CONDITION(self.AccessCondition).name}")
+            self.Header.DumpInfo(prefix + "  ", outfs=outfs)
+        outfs.write(f"{prefix}  SaveStateField: {ALLOWED_SAVE_STATE_FIELD(self.SaveStateIndex).name}\n")
+        outfs.write(f"{prefix}  Attributes: {self.Attributes}\n")
+        outfs.write(f"{prefix}  AccessCondition: {ALLOWED_SAVE_STATE_ACCESS_CONDITION(self.AccessCondition).name}\n")
 
 
 class PolicyDataCommonHeader(object):
@@ -950,15 +951,15 @@ class Supervisor_Policy(object):
     def Print(self):
         self.DumpInfo()
 
-    def DumpInfo(self, prefix: str = "", short: bool = True) -> None:
+    def DumpInfo(self, prefix: str = "", short: bool = True, outfs: IO = sys.stdout) -> None:
         '''Print the object in human readable form.
 
         prefix: str printed before each line of output.  Best used for whitespace and alignment
         short: True (default): print short form.  False: print long form including header
         '''
-        print(f"{prefix}Supervisor Policy Object")
-        print(f"{prefix}  Version: {self.Version}")
-        print(f"{prefix}  Size: {self.GetSize()}")
-        print(f"{prefix}  Policy Roots: {len(self.PolicyRoots)}")
+        outfs.write(f"{prefix}Supervisor Policy Object\n")
+        outfs.write(f"{prefix}  Version: {self.Version}\n")
+        outfs.write(f"{prefix}  Size: {self.GetSize()}\n")
+        outfs.write(f"{prefix}  Policy Roots: {len(self.PolicyRoots)}\n")
         for pr in self.PolicyRoots:
-            pr.DumpInfo(prefix=prefix + "    ", short=short)
+            pr.DumpInfo(prefix=prefix + "    ", short=short, outfs=outfs)
