@@ -15,7 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/UefiCpuLib.h>
+#include <Library/CpuLib.h>
 
 #include <Protocol/SmmCommunication.h>
 #include <Guid/DebugImageInfoTable.h>

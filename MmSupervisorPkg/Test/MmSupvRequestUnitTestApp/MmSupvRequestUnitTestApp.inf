@@ -43,10 +43,10 @@
   PrintLib
   MemoryAllocationLib
   BaseLib
+  CpuLib
   ShellLib
   PcdLib
   UefiLib
-  UefiCpuLib
   IoLib
 
 [Protocols]
