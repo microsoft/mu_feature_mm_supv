@@ -38,7 +38,7 @@
   DebugLib
   UefiBootServicesTableLib
   UefiLib
-  UefiCpuLib
+  CpuLib
   DxeServicesTableLib
   DevicePathLib
   PeCoffGetEntryPointLib

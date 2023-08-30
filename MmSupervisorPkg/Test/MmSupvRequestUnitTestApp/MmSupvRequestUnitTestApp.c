@@ -25,7 +25,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UnitTestLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/UefiCpuLib.h>
+#include <Library/CpuLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 
 #include "MmPolicyMeasurementLevels.h"

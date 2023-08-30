@@ -20,7 +20,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Register/Cpuid.h>
 
 #include <Library/BaseLib.h>
-#include <Library/UefiCpuLib.h>
+#include <Library/CpuLib.h>
 #include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PrintLib.h>
