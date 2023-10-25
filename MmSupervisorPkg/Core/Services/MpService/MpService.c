@@ -401,6 +401,8 @@ SmmWaitForApArrival (
   UINT32   DelayedCount;
   UINT32   BlockedCount;
 
+  PERF_FUNCTION_BEGIN ();
+
   DelayedCount = 0;
   BlockedCount = 0;
 
@@ -489,7 +491,7 @@ SmmWaitForApArrival (
     DEBUG ((DEBUG_INFO, "SmmWaitForApArrival: Delayed AP Count = %d, Blocked AP Count = %d\n", DelayedCount, BlockedCount));
   }
 
-  return;
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -626,6 +628,8 @@ BSPHandler (
 
   ASSERT (CpuIndex == mSmmMpSyncData->BspIndex);
   ApCount = 0;
+
+  PERF_FUNCTION_BEGIN ();
 
   //
   // Flag BSP's presence
@@ -815,6 +819,15 @@ BSPHandler (
   WaitForAllAPs (ApCount);
 
   //
+  // At this point, all APs should have exited from APHandler().
+  // Migrate the SMM MP performance logging to standard SMM performance logging.
+  // Any SMM MP performance logging after this point will be migrated in next SMI.
+  //
+  PERF_CODE (
+    MigrateMpPerf (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus, CpuIndex);
+    );
+
+  //
   // Reset the tokens buffer.
   //
   ResetTokens ();
@@ -832,6 +845,8 @@ BSPHandler (
   *mSmmMpSyncData->Counter                  = 0;
   *mSmmMpSyncData->AllCpusInSync            = FALSE;
   mSmmMpSyncData->AllApArrivedWithException = FALSE;
+
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -1857,12 +1872,24 @@ SmiRendezvous (
   //
   // Perform CPU specific entry hooks
   //
+  PERF_CODE (
+    MpPerfBegin (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (SmmRendezvousEntry));
+    );
   SmmCpuFeaturesRendezvousEntry (CpuIndex);
+  PERF_CODE (
+    MpPerfEnd (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (SmmRendezvousEntry));
+    );
 
   //
   // Determine if this is a valid SMI
   //
+  PERF_CODE (
+    MpPerfBegin (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (PlatformValidSmi));
+    );
   ValidSmi = PlatformValidSmi ();
+  PERF_CODE (
+    MpPerfEnd (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (PlatformValidSmi));
+    );
 
   //
   // Determine if BSP has been already in progress. Note this must be checked after
@@ -1992,7 +2019,20 @@ SmiRendezvous (
   }
 
 Exit:
+  //
+  // Note: SmmRendezvousExit perf-logging entry is the only one that will be
+  //       migrated to standard perf-logging database in next SMI by BSPHandler().
+  //       Hence, the number of SmmRendezvousEntry entries will be larger than
+  //       the number of SmmRendezvousExit entries. Delta equals to the number
+  //       of CPU threads.
+  //
+  PERF_CODE (
+    MpPerfBegin (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (SmmRendezvousExit));
+    );
   SmmCpuFeaturesRendezvousExit (CpuIndex);
+  PERF_CODE (
+    MpPerfEnd (CpuIndex, SMM_MP_PERF_PROCEDURE_ID (SmmRendezvousExit));
+    );
 
   //
   // Restore Cr2
