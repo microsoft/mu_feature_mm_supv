@@ -224,6 +224,9 @@ SmmInitHandler (
 
   for (Index = 0; Index < mNumberOfCpus; Index++) {
     if (ApicId == (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
+        PERF_CODE (
+          MpPerfBegin (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
+          );
       //
       // Initialize SMM specific features on the currently executing CPU
       //
@@ -254,6 +257,10 @@ SmmInitHandler (
         SemaphoreHook (Index, &mRebased[Index]);
       }
 
+      PERF_CODE (
+        MpPerfEnd (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
+        );
+
       return;
     }
   }
@@ -271,12 +278,15 @@ ExecuteFirstSmiInit (
 {
   UINTN  Index;
 
+  PERF_FUNCTION_BEGIN ();
+
   if (mSmmInitialized == NULL) {
     mSmmInitialized = (BOOLEAN *)AllocatePool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
   }
 
   ASSERT (mSmmInitialized != NULL);
   if (mSmmInitialized == NULL) {
+    PERF_FUNCTION_END ();
     return;
   }
 
@@ -303,6 +313,8 @@ ExecuteFirstSmiInit (
     while (!(BOOLEAN)mSmmInitialized[Index]) {
     }
   }
+
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -323,6 +335,8 @@ SmmRelocateBases (
   UINT8                 *U8Ptr;
   UINTN                 Index;
   UINTN                 BspIndex;
+
+  PERF_FUNCTION_BEGIN ();
 
   //
   // Make sure the reserved size is large enough for procedure SmmInitTemplate.
@@ -401,6 +415,8 @@ SmmRelocateBases (
   //
   CopyMem (CpuStatePtr, &BakBuf2, sizeof (BakBuf2));
   CopyMem (U8Ptr, BakBuf, sizeof (BakBuf));
+
+  PERF_FUNCTION_END ();
 }
 
 EFI_STATUS
@@ -430,6 +446,8 @@ LockMmCoreBeforeExit (
   )
 {
   EFI_STATUS  Status;
+
+  PERF_FUNCTION_BEGIN ();
 
   // This will stand for the initial locking, which will cover that:
   // a. Core data and code set to supervisor pages
@@ -491,9 +509,12 @@ LockMmCoreBeforeExit (
     SetPageTableAttributes ();
   }
 
+  PERF_START (NULL, "SmmCompleteReadyToLock", NULL, 0);
   SmmCpuFeaturesCompleteSmmReadyToLock ();
+  PERF_END (NULL, "SmmCompleteReadyToLock", NULL, 0);
 
   SetPageTableBase (0);
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -535,6 +556,8 @@ SetupSmiEntryExit (
 
   GuidHob        = NULL;
   SmmBaseHobData = NULL;
+
+  PERF_FUNCTION_BEGIN ();
 
   //
   // Initialize address fixup
@@ -609,6 +632,10 @@ SetupSmiEntryExit (
   }
 
   gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus = mMaxNumberOfCpus;
+
+  PERF_CODE (
+    InitializeMpPerf (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
+    );
 
   //
   // The CPU save state and code for the SMI entry point are tiled within an SMRAM
@@ -1084,6 +1111,7 @@ SetupSmiEntryExit (
 
   DEBUG ((DEBUG_INFO, "SMM CPU Module exit from SMRAM with EFI_SUCCESS\n"));
 
+  PERF_FUNCTION_END ();
   return EFI_SUCCESS;
 }
 
@@ -1246,12 +1274,15 @@ ConfigSmmCodeAccessCheck (
   UINTN       Index;
   EFI_STATUS  Status;
 
+  PERF_FUNCTION_BEGIN ();
+
   //
   // Check to see if the Feature Control MSR is supported on this CPU
   //
   Index = gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu;
   if (!SmmCpuFeaturesIsSmmRegisterSupported (Index, SmmRegFeatureControl)) {
     mSmmCodeAccessCheckEnable = FALSE;
+    PERF_FUNCTION_END ();
     return;
   }
 
@@ -1261,6 +1292,7 @@ ConfigSmmCodeAccessCheck (
   //
   if ((AsmReadMsr64 (EFI_MSR_SMM_MCA_CAP) & SMM_CODE_ACCESS_CHK_BIT) == 0) {
     mSmmCodeAccessCheckEnable = FALSE;
+    PERF_FUNCTION_END ();
     return;
   }
 
@@ -1317,6 +1349,8 @@ ConfigSmmCodeAccessCheck (
       ReleaseSpinLock (mConfigSmmCodeAccessCheckLock);
     }
   }
+
+  PERF_FUNCTION_END ();
 }
 
 // MSCHANGE [BEGIN] - Add flag to enable "test mode" for the SMM protections.
