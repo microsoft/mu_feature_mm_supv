@@ -37,7 +37,6 @@ LIST_ENTRY                mPagePool           = INITIALIZE_LIST_HEAD_VARIABLE (m
 BOOLEAN                   m1GPageTableSupport = FALSE;
 BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
 X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
-PAGE_TABLE_POOL           mPageTablePoolEx;
 UINT8                     mPhysicalAddressBits;
 
 /**
@@ -451,25 +450,16 @@ SmmInitPageTable (
   //
   InitializeSpinLock (mPFLock);
 
-  //
-  // Allocate extension page table for split usage just in case, this data will have
-  // supervisor page and xp attribute when MAT is applied
-  //
-  ZeroMem (&mPageTablePoolEx, sizeof (mPageTablePoolEx));
-  mPageTablePoolEx.NextPool = AllocateAlignedPages (PAGE_TABLE_POOL_EX_UNIT_PAGES, EFI_PAGE_SIZE);
-  if (mPageTablePoolEx.NextPool == NULL) {
-    DEBUG ((DEBUG_ERROR, "Failed to initialize page table pool!\n"));
-    ASSERT (FALSE);
-  }
-
-  DEBUG ((DEBUG_INFO, "Allcoated page table pool at %p\n", mPageTablePoolEx.NextPool));
-  mPageTablePoolEx.FreePages = PAGE_TABLE_POOL_EX_UNIT_PAGES;
-
   mCpuSmmRestrictedMemoryAccess = PcdGetBool (PcdCpuSmmRestrictedMemoryAccess);
   m1GPageTableSupport           = Is1GPageSupport ();
   m5LevelPagingNeeded           = Is5LevelPagingNeeded ();
   mPhysicalAddressBits          = CalculateMaximumSupportAddress ();
   PatchInstructionX86 (gPatch5LevelPagingNeeded, m5LevelPagingNeeded, 1);
+  if (m5LevelPagingNeeded) {
+    mPagingMode = m1GPageTableSupport ? Paging5Level1GB : Paging5Level;
+  } else {
+    mPagingMode = m1GPageTableSupport ? Paging4Level1GB : Paging4Level;
+  }
   DEBUG ((DEBUG_INFO, "5LevelPaging Needed             - %d\n", m5LevelPagingNeeded));
   DEBUG ((DEBUG_INFO, "1GPageTable Support             - %d\n", m1GPageTableSupport));
   DEBUG ((DEBUG_INFO, "PcdCpuSmmRestrictedMemoryAccess - %d\n", mCpuSmmRestrictedMemoryAccess));
