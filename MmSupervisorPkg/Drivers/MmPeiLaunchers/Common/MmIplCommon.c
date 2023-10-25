@@ -263,13 +263,13 @@ InitializeCommunicationBufferFromHob (
   MM_COMM_REGION_HOB    *CommRegionHob;
 
   if (SupvCommonRegionDesc == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Incoming memory descriptor cannot be NULL!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Incoming memory descriptor cannot be NULL!!!\n", __func__));
     return EFI_INVALID_PARAMETER;
   }
 
   GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
   if (GuidHob.Guid == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Did not locate any published hob to create communication buffer table!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Did not locate any published hob to create communication buffer table!!!\n", __func__));
     ASSERT (FALSE);
     return EFI_NOT_FOUND;
   }
@@ -372,7 +372,7 @@ QuerySupervisorVersion (
   //
   Status = SmmCommunicationCommunicateWorker (TRUE, mCommunicateHeader, &Size);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __func__, Status));
     return Status;
   }
 
@@ -390,7 +390,7 @@ QuerySupervisorVersion (
   DEBUG ((
     DEBUG_INFO,
     "%a Supervisor version is 0x%x, patch level is 0x%x, maximal request level is 0x%x!!\n",
-    __FUNCTION__,
+    __func__,
     VersionInfo->Version,
     VersionInfo->PatchLevel,
     VersionInfo->MaxSupervisorRequestLevel
@@ -398,7 +398,7 @@ QuerySupervisorVersion (
 
   if (VersionInfo->Version == 0) {
  #ifdef __GNUC__
-    DEBUG ((DEBUG_WARN, "%a Unable to get supervisor version under GCC compiler!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Unable to get supervisor version under GCC compiler!!\n", __func__));
  #else
     // This means the supervisor version is 0, something must be wrong...
     return EFI_SECURITY_VIOLATION;
