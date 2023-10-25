@@ -406,11 +406,12 @@ StrDecimalToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN          Result;
-  RETURN_STATUS  Status;
+  UINTN  Result;
 
-  Status = StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result))) {
+    return MAX_UINTN;
+  }
+
   return Result;
 }
 
@@ -454,11 +455,12 @@ StrDecimalToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64         Result;
-  RETURN_STATUS  Status;
+  UINT64  Result;
 
-  Status = StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result))) {
+    return MAX_UINT64;
+  }
+
   return Result;
 }
 
@@ -503,11 +505,12 @@ StrHexToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN          Result;
-  RETURN_STATUS  Status;
+  UINTN  Result;
 
-  Status = StrHexToUintnS (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (StrHexToUintnS (String, (CHAR16 **)NULL, &Result))) {
+    return MAX_UINTN;
+  }
+
   return Result;
 }
 
@@ -552,11 +555,12 @@ StrHexToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64         Result;
-  RETURN_STATUS  Status;
+  UINT64  Result;
 
-  Status = StrHexToUint64S (String, (CHAR16 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (StrHexToUint64S (String, (CHAR16 **)NULL, &Result))) {
+    return MAX_UINT64;
+  }
+
   return Result;
 }
 
@@ -995,11 +999,12 @@ AsciiStrDecimalToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN          Result;
-  RETURN_STATUS  Status;
+  UINTN  Result;
 
-  Status = AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result))) {
+    return MAX_UINTN;
+  }
+
   return Result;
 }
 
@@ -1039,11 +1044,12 @@ AsciiStrDecimalToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64         Result;
-  RETURN_STATUS  Status;
+  UINT64  Result;
 
-  Status = AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result))) {
+    return MAX_UINT64;
+  }
+
   return Result;
 }
 
@@ -1087,11 +1093,12 @@ AsciiStrHexToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN          Result;
-  RETURN_STATUS  Status;
+  UINTN  Result;
 
-  Status = AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result))) {
+    return MAX_UINTN;
+  }
+
   return Result;
 }
 
@@ -1135,11 +1142,12 @@ AsciiStrHexToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64         Result;
-  RETURN_STATUS  Status;
+  UINT64  Result;
 
-  Status = AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result);
-  ASSERT_RETURN_ERROR (Status);
+  if (RETURN_ERROR (AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result))) {
+    return MAX_UINT64;
+  }
+
   return Result;
 }
 
