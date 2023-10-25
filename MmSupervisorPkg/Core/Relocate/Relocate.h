@@ -1,7 +1,7 @@
 /** @file
 Agent Module to load other modules to deploy SMM Entry Vector for X86 CPU.
 
-Copyright (c) 2009 - 2020, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -28,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/MmCoreData.h>
 #include <Guid/MmramMemoryReserve.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Guid/SmmBaseHob.h>
 
 #include <Library/BaseLib.h>
 #include <Library/IoLib.h>
@@ -212,6 +213,15 @@ SmmWriteSaveState (
   );
 
 /**
+  C function for SMI handler. To change all processor's SMMBase Register.
+**/
+VOID
+EFIAPI
+SmmInitHandler (
+  VOID
+  );
+
+/**
 Read a CPU Save State register on the target processor.
 
 This function abstracts the differences that whether the CPU Save State register is in the
@@ -264,6 +274,10 @@ WriteSaveStateRegister (
   IN UINTN                        Width,
   IN CONST VOID                   *Buffer
   );
+
+extern BOOLEAN            mSmmRelocated;
+extern volatile  BOOLEAN  *mSmmInitialized;
+extern UINT32             mBspApicId;
 
 extern CONST UINT8        gcSmmInitTemplate[];
 extern CONST UINT16       gcSmmInitSize;
