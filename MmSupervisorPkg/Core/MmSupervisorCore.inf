@@ -145,6 +145,7 @@
   SafeIntLib
   TimerLib
   PerformanceLib
+  CpuPageTableLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
