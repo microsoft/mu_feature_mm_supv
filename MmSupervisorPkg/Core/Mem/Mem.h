@@ -156,6 +156,7 @@ extern EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap;
 extern UINTN                  mInitDescriptorSize;
 extern UINTN                  mInitMemoryMapSize;
 extern PAGING_MODE            mPagingMode;
+extern UINTN                  mSmmShadowStackSize;
 
 /**
   Disable CET.
