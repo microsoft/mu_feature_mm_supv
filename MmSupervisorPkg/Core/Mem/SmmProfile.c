@@ -576,6 +576,8 @@ InitPaging (
   BOOLEAN  Nx;
   BOOLEAN  Enable5LevelPaging;
 
+  PERF_FUNCTION_BEGIN ();
+
   Enable5LevelPaging = m5LevelPagingNeeded;
 
   if (sizeof (UINTN) == sizeof (UINT64)) {
@@ -810,7 +812,7 @@ InitPaging (
   //
   mXdEnabled = TRUE;
 
-  return;
+  PERF_FUNCTION_END ();
 }
 
 /**

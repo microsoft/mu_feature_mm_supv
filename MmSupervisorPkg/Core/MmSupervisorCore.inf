@@ -68,6 +68,8 @@
   Misc/MemoryAttributesTable.c
   Misc/Semaphore.c
   Misc/SmmFuncsArch.c
+  Misc/SmmMpPerf.h
+  Misc/SmmMpPerf.c
 
   Relocate/Relocate.c
   Relocate/Relocate.h
@@ -142,6 +144,7 @@
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
   TimerLib
+  PerformanceLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -172,6 +175,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackGuard                    ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdSmmApPerfLogEnable                  ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable   ## CONSUMES
