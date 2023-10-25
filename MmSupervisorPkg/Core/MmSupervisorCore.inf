@@ -1,7 +1,7 @@
 ## @file
 # This module provide an SMM CIS compliant implementation of SMM Core.
 #
-# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
 # Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 # Copyright (C) Microsoft Corporation.
@@ -208,6 +208,7 @@
   gEdkiiMemoryProfileGuid
   gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
   gEfiSmmSmramMemoryGuid                        ## SOMETIMES_CONSUMES   ## GUID
+  gSmmBaseHobGuid                               ## CONSUMES
   gEfiHobListGuid
   gMmCoreDataHobGuid
   gMmFvDispatchGuid
