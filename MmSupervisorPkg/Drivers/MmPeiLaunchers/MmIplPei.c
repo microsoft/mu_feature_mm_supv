@@ -623,7 +623,7 @@ ExecuteMmCoreFromMmram (
   // MM_CORE_MM_PROFILE_DATA               *BufferInHob;
   VOID  *HobStart;
 
-  DEBUG ((DEBUG_INFO, "%a Enters...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a Enters...\n", __func__));
   //
   // Search all Firmware Volumes for a PE/COFF image in a file of type MM_CORE_STANDALONE
   //
@@ -631,7 +631,7 @@ ExecuteMmCoreFromMmram (
   // MU_CHANGE: The MM core address found routine is updated with PEI services
   Status = MmIplPeiFindMmCore (&SourceBuffer);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __func__, Status));
     goto Exit;
   }
 
@@ -783,13 +783,13 @@ ExecuteMmCoreFromMmram (
       //
       // Thunk to x64 then execute image , and then come back...
       //
-      DEBUG ((DEBUG_INFO, "%a Need to switch mode in order to execute MM core...\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a Need to switch mode in order to execute MM core...\n", __func__));
       Status = SetMmFoundationInX64Relay (EntryPoint, HobStart);
  #else
       //
       // Execute image directly
       //
-      DEBUG ((DEBUG_INFO, "%a Easy mode, load it directly...\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a Easy mode, load it directly...\n", __func__));
       Status = EntryPoint (HobStart);
  #endif
       // MU_CHANGE Ends
@@ -1178,7 +1178,7 @@ GetFullMmramRanges (
   Size                = MaxCount * sizeof (EFI_MM_RESERVED_MMRAM_REGION);
   MmramReservedRanges = (EFI_MM_RESERVED_MMRAM_REGION *)AllocatePool (Size);
   if (MmramReservedRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramReservedRanges!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramReservedRanges!!!\n", __func__));
     ASSERT (FALSE);
     goto Cleanup;
   }
@@ -1190,7 +1190,7 @@ GetFullMmramRanges (
   Size            = MaxCount * sizeof (EFI_MMRAM_DESCRIPTOR);
   TempMmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
   if (TempMmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for TempMmramRanges!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for TempMmramRanges!!!\n", __func__));
     ASSERT (FALSE);
     goto Cleanup;
   }
@@ -1199,7 +1199,7 @@ GetFullMmramRanges (
 
   MmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
   if (MmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramRanges!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramRanges!!!\n", __func__));
     ASSERT (FALSE);
     goto Cleanup;
   }
@@ -1261,7 +1261,7 @@ GetFullMmramRanges (
   //
   FullMmramRanges = AllocateZeroPool ((TempMmramRangeCount + AdditionMmramRangeCount) * sizeof (EFI_MMRAM_DESCRIPTOR));
   if (FullMmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for FullMmramRanges!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for FullMmramRanges!!!\n", __func__));
     ASSERT (FALSE);
     goto Cleanup;
   }
@@ -1351,7 +1351,7 @@ MmIplPeiEntry (
              &mMmSupvCommunication.CommunicationRegion
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __func__, Status));
     return Status;
   }
 
