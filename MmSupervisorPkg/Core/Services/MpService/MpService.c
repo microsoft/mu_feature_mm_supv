@@ -73,8 +73,6 @@ MM_COMPLETION                mSmmStartupThisApToken;
 //
 UINT32  *mPackageFirstThreadIndex = NULL;
 
-extern UINTN  mSmmShadowStackSize;
-
 EFI_STATUS
 EFIAPI
 ProcedureWrapper (
