@@ -564,8 +564,6 @@ InitPaging (
   UINT64         Limit;
   UINT64         PreviousAddress;
   UINT64         MemoryAttrMask;
-  BOOLEAN        WpEnabled;
-  BOOLEAN        CetEnabled;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -579,7 +577,8 @@ InitPaging (
   //
   // [0, 4k] may be non-present.
   //
-  PreviousAddress = ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) ? BASE_4KB : 0;
+  // MU_CHANGE: MM_SUPV: Null pointer is enabled regardless for this module
+  PreviousAddress = BASE_4KB;
 
   DEBUG ((DEBUG_INFO, "Patch page table start ...\n"));
   if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
