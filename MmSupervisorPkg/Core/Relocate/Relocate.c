@@ -1116,6 +1116,30 @@ SetupSmiEntryExit (
 }
 
 /**
+  Function to compare 2 EFI_SMRAM_DESCRIPTOR based on CpuStart.
+  @param[in] Buffer1            pointer to Device Path poiner to compare
+  @param[in] Buffer2            pointer to second DevicePath pointer to compare
+  @retval 0                     Buffer1 equal to Buffer2
+  @retval <0                    Buffer1 is less than Buffer2
+  @retval >0                    Buffer1 is greater than Buffer2
+**/
+INTN
+EFIAPI
+CpuSmramRangeCompare (
+  IN  CONST VOID  *Buffer1,
+  IN  CONST VOID  *Buffer2
+  )
+{
+  if (((EFI_SMRAM_DESCRIPTOR *)Buffer1)->CpuStart > ((EFI_SMRAM_DESCRIPTOR *)Buffer2)->CpuStart) {
+    return 1;
+  } else if (((EFI_SMRAM_DESCRIPTOR *)Buffer1)->CpuStart < ((EFI_SMRAM_DESCRIPTOR *)Buffer2)->CpuStart) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
 
   Find out SMRAM information including SMRR base and SMRR size.
 
@@ -1135,6 +1159,7 @@ FindSmramInfo (
   UINTN                           Index;
   UINT64                          MaxSize;
   BOOLEAN                         Found;
+  EFI_SMRAM_DESCRIPTOR            SmramDescriptor;
 
   //
   // Get SMRAM hob
@@ -1165,6 +1190,11 @@ FindSmramInfo (
   ASSERT (mSmmCpuSmramRanges != NULL);
 
   CopyMem (mSmmCpuSmramRanges, HobData->Descriptor, mSmmCpuSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
+
+  //
+  // Sort the mSmmCpuSmramRanges
+  //
+  QuickSort (mSmmCpuSmramRanges, mSmmCpuSmramRangeCount, sizeof (EFI_SMRAM_DESCRIPTOR), (BASE_SORT_COMPARE)CpuSmramRangeCompare, &SmramDescriptor);
 
   //
   // Find the largest SMRAM range between 1MB and 4GB that is at least 256K - 4K in size
