@@ -146,6 +146,7 @@
   TimerLib
   PerformanceLib
   CpuPageTableLib
+  MmSaveStateLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
