@@ -598,6 +598,18 @@ SetMemMapAttributes (
   );
 
 /**
+  Create page table based on input PagingMode and PhysicalAddressBits in smm.
+  @param[in]      PagingMode           The paging mode.
+  @param[in]      PhysicalAddressBits  The bits of physical address to map.
+  @retval         PageTable Address
+**/
+UINTN
+GenSmmPageTable (
+  IN PAGING_MODE  PagingMode,
+  IN UINT8        PhysicalAddressBits
+  );
+
+/**
   Helper function that will evaluate the page where the input address is located belongs to a
   user page that is mapped inside MM.
 
