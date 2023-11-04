@@ -221,12 +221,6 @@ AllocatePageTableMemory (
 {
   VOID  *Buffer;
 
-  if (mCoreInitializationComplete) {
-    DEBUG ((DEBUG_ERROR, "%a This function should not be called after inside SMM\n", __FUNCTION__));
-    ASSERT (FALSE);
-    return NULL;
-  }
-
   if (Pages == 0) {
     return NULL;
   }
@@ -440,11 +434,8 @@ ConvertMemoryPageAttributes (
   UINTN                 PageTableBufferSize;
   VOID                  *PageTableBuffer;
   EFI_PHYSICAL_ADDRESS  MaximumSupportMemAddress;
-  IA32_MAP_ENTRY        *Map;
-  UINTN                 Count;
-  UINTN                 Index;
-  UINT64                OverlappedRangeBase;
-  UINT64                OverlappedRangeLimit;
+  BOOLEAN               WpEnabled;
+  BOOLEAN               CetEnabled;
 
   ASSERT (Attributes != 0);
   ASSERT ((Attributes & ~EFI_MEMORY_ATTRIBUTE_MASK) == 0);
@@ -534,52 +525,6 @@ ConvertMemoryPageAttributes (
       // By default memory is Ring 0 accessble.
       //
       PagingAttribute.Bits.UserSupervisor = 0;
-
-      DEBUG_CODE_BEGIN ();
-      if (((Attributes & EFI_MEMORY_RO) == 0) || (((Attributes & EFI_MEMORY_XP) == 0) && (mXdSupported))) {
-        //
-        // When mapping a range to present and EFI_MEMORY_RO or EFI_MEMORY_XP is not specificed,
-        // check if [BaseAddress, BaseAddress + Length] contains present range.
-        // Existing Present range in [BaseAddress, BaseAddress + Length] is set to NX disable or ReadOnly.
-        //
-        Count  = 0;
-        Map    = NULL;
-        Status = PageTableParse (PageTableBase, mPagingMode, NULL, &Count);
-
-        while (Status == RETURN_BUFFER_TOO_SMALL) {
-          if (Map != NULL) {
-            FreePool (Map);
-          }
-
-          Map = AllocatePool (Count * sizeof (IA32_MAP_ENTRY));
-          ASSERT (Map != NULL);
-          Status = PageTableParse (PageTableBase, mPagingMode, Map, &Count);
-        }
-
-        ASSERT_RETURN_ERROR (Status);
-        for (Index = 0; Index < Count; Index++) {
-          if (Map[Index].LinearAddress >= BaseAddress + Length) {
-            break;
-          }
-
-          if ((BaseAddress < Map[Index].LinearAddress + Map[Index].Length) && (BaseAddress + Length > Map[Index].LinearAddress)) {
-            OverlappedRangeBase  = MAX (BaseAddress, Map[Index].LinearAddress);
-            OverlappedRangeLimit = MIN (BaseAddress + Length, Map[Index].LinearAddress + Map[Index].Length);
-
-            if (((Attributes & EFI_MEMORY_RO) == 0) && (Map[Index].Attribute.Bits.ReadWrite == 1)) {
-              DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: [0x%lx, 0x%lx] is set from ReadWrite to ReadOnly\n", OverlappedRangeBase, OverlappedRangeLimit));
-            }
-
-            if (((Attributes & EFI_MEMORY_XP) == 0) && (mXdSupported) && (Map[Index].Attribute.Bits.Nx == 1)) {
-              DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: [0x%lx, 0x%lx] is set from NX enabled to NX disabled\n", OverlappedRangeBase, OverlappedRangeLimit));
-            }
-          }
-        }
-
-        FreePool (Map);
-      }
-
-      DEBUG_CODE_END ();
     }
   }
 
@@ -587,10 +532,10 @@ ConvertMemoryPageAttributes (
     // UINT64  UserSupervisor:1;         // 0 = Supervisor, 1=User
     PagingAttrMask.Bits.UserSupervisor = 1;
     if (IsSet) {
-      // Clear user bit for supervisor shadow stack
-      PagingAttribute.Bits.UserSupervisor = 1;
-    } else {
+      // Clear user bit for supervisor attribute set request
       PagingAttribute.Bits.UserSupervisor = 0;
+    } else {
+      PagingAttribute.Bits.UserSupervisor = 1;
     }
   }
 
@@ -599,13 +544,16 @@ ConvertMemoryPageAttributes (
   }
 
   PageTableBufferSize = 0;
-  Status              = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
+  DisableReadOnlyPageWriteProtect (&WpEnabled, &CetEnabled);
+  Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
 
   if (Status == RETURN_BUFFER_TOO_SMALL) {
     PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize));
     ASSERT (PageTableBuffer != NULL);
     Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
   }
+
+  EnableReadOnlyPageWriteProtect (WpEnabled, CetEnabled);
 
   if (Status == RETURN_INVALID_PARAMETER) {
     //
@@ -860,6 +808,8 @@ GenSmmPageTable (
   MapAttribute.Bits.UserSupervisor = 1;
   MapAttribute.Bits.Accessed       = 1;
   MapAttribute.Bits.Dirty          = 1;
+  // MU_CHANGE: MM_SUPV: Change default to NX
+  MapAttribute.Bits.Nx = 1;
 
   Status = PageTableMap (&PageTable, PagingMode, NULL, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_BUFFER_TOO_SMALL);
@@ -869,6 +819,12 @@ GenSmmPageTable (
   Status = PageTableMap (&PageTable, PagingMode, PageTableBuffer, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_SUCCESS);
   ASSERT (PageTableBufferSize == 0);
+
+  if (mCoreInitializationComplete) {
+    DEBUG ((DEBUG_ERROR, "%a Trying to generate a new page table after initialization!!!\n", __func__));
+    ASSERT (!mCoreInitializationComplete);
+    return 0;
+  }
 
   SetPageTableBase (PageTable);
 
@@ -884,12 +840,13 @@ GenSmmPageTable (
 
   // MU_CHANGE: MM_SUPV: Enable null pointer detection
   if (TRUE) {
-  // if ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) {
+    // if ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) {
     //
     // Mark [0, 4k] as non-present
     //
     Status = ConvertMemoryPageAttributes (PageTable, PagingMode, 0, SIZE_4KB, EFI_MEMORY_RP, TRUE, NULL);
   }
+
   SetPageTableBase (0);
 
   return (UINTN)PageTable;
@@ -1316,7 +1273,7 @@ SetMemMapWithNonPresentRange (
         (Base < Map[Index].LinearAddress) && (Limit > NonPresentRangeStart))
     {
       //
-      // We should NOT set attributes for non-present ragne.
+      // We should NOT set attributes for non-present range.
       //
       //
       // There is a non-present ( [NonPresentStart, Map[Index].LinearAddress] ) range before current Map[Index]
@@ -1398,12 +1355,12 @@ SetMemMapAttributes (
     MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, DescriptorSize);
   }
 
-  Count     = 0;
-  Map       = NULL;
+  Count = 0;
+  Map   = NULL;
   // MU_CHANGE: MM_SUPV: Use GetPageTable to get the page table base instead of reading from CR3 because we could be
   // using a different CR3 when initializing the environment.
   GetPageTable (&PageTable, NULL);
-  Status    = PageTableParse (PageTable, mPagingMode, NULL, &Count);
+  Status = PageTableParse (PageTable, mPagingMode, NULL, &Count);
   while (Status == RETURN_BUFFER_TOO_SMALL) {
     if (Map != NULL) {
       FreePool (Map);
@@ -2260,11 +2217,27 @@ SetProtectedRegionAttribute (
           ProtRegionHob->MmProtectedRegionAddr,
           ProtRegionHob->MmProtectedRegionPages
           ));
+
+        Status = SmmClearMemoryAttributes (
+                   ProtRegionHob->MmProtectedRegionAddr,
+                   EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
+                   EFI_MEMORY_RP | EFI_MEMORY_SP
+                   );
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "%a - Failed to clear IOMMU region attributes - %r\n", __FUNCTION__, Status));
+          ASSERT (FALSE);
+        }
+
         Status = SmmSetMemoryAttributes (
                    ProtRegionHob->MmProtectedRegionAddr,
                    EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
                    EFI_MEMORY_RO | EFI_MEMORY_XP
                    );
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "%a - Failed to set IOMMU region attributes - %r\n", __FUNCTION__, Status));
+          ASSERT (FALSE);
+        }
+
         break;
       case MM_PROT_MMIO_SEC_BIO_T:
         DEBUG ((DEBUG_INFO, "%a - Secure Bio region found 0x%x\n", __FUNCTION__, ProtRegionHob->MmProtectedRegionType));
@@ -2428,21 +2401,12 @@ SetPageTableAttributes (
   VOID
   )
 {
-  BOOLEAN  WpEnabled;
-  BOOLEAN  CetEnabled;
-
   if (!IfReadOnlyPageTableNeeded ()) {
     return;
   }
 
   PERF_FUNCTION_BEGIN ();
   DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
-
-  //
-  // Disable write protection, because we need mark page table to be write protected.
-  // We need *write* page table memory, to mark itself to be *read only*.
-  //
-  DisableReadOnlyPageWriteProtect (&WpEnabled, &CetEnabled);
 
   // Set memory used by page table as Read Only.
   DEBUG ((DEBUG_INFO, "Start...\n"));
@@ -2455,19 +2419,9 @@ SetPageTableAttributes (
   // initialization complete.
   if (mCoreInitializationComplete) {
     //
-    // Only enforce write protect in CR0 if initialization is complete
-    //
-    EnableReadOnlyPageWriteProtect (TRUE, CetEnabled);
-
-    //
     // Flush TLB after mark all page table pool as read only.
     //
     FlushTlbForAll ();
-  } else {
-    //
-    // Otherwise restore the original value to avoid tampering non MM environment
-    //
-    EnableReadOnlyPageWriteProtect (WpEnabled, CetEnabled);
   }
 
   // MU_CHANGE: MM_SUPV Ends

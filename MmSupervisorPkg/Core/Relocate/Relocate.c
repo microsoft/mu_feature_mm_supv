@@ -224,9 +224,9 @@ SmmInitHandler (
 
   for (Index = 0; Index < mNumberOfCpus; Index++) {
     if (ApicId == (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
-        PERF_CODE (
-          MpPerfBegin (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
-          );
+      PERF_CODE (
+        MpPerfBegin (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
+        );
       //
       // Initialize SMM specific features on the currently executing CPU
       //
@@ -542,15 +542,15 @@ SetupSmiEntryExit (
   UINTN       TileSize;
   UINT8       *Stacks;
   // VOID                       *Registration;
-  UINT32              RegEax;
-  UINT32              RegEbx;
-  UINT32              RegEcx;
-  UINT32              RegEdx;
-  UINTN               FamilyId;
-  UINTN               ModelId;
-  UINT32              Cr3;
-  EFI_HOB_GUID_TYPE   *GuidHob;
-  SMM_BASE_HOB_DATA   *SmmBaseHobData;
+  UINT32             RegEax;
+  UINT32             RegEbx;
+  UINT32             RegEcx;
+  UINT32             RegEdx;
+  UINTN              FamilyId;
+  UINTN              ModelId;
+  UINT32             Cr3;
+  EFI_HOB_GUID_TYPE  *GuidHob;
+  SMM_BASE_HOB_DATA  *SmmBaseHobData;
 
   UINT8  *Cpl3Stacks;
 
@@ -1121,7 +1121,7 @@ SetupSmiEntryExit (
 
 /**
   Function to compare 2 EFI_SMRAM_DESCRIPTOR based on CpuStart.
-  @param[in] Buffer1            pointer to Device Path poiner to compare
+  @param[in] Buffer1            pointer to Device Path pointer to compare
   @param[in] Buffer2            pointer to second DevicePath pointer to compare
   @retval 0                     Buffer1 equal to Buffer2
   @retval <0                    Buffer1 is less than Buffer2
