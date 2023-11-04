@@ -276,6 +276,11 @@ SmmInitPageTable (
     Pml4Entry = (UINT64 *)PageTable;
   }
 
+  if (Pml4Entry == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Cleanup;
+  }
+
   //
   // Set IA32_PG_PMNT bit to mask first 4 PdptEntry.
   //
