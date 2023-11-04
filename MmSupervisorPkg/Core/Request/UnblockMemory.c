@@ -238,7 +238,7 @@ VerifyUnblockRequest (
 
   // Only not present pages can be unblocked. And for pages already have read only and/or supervisor ownership,
   // it cannot be touched through this method.
-  if ((Attributes & (EFI_MEMORY_RO | EFI_MEMORY_SP)) || !(Attributes & EFI_MEMORY_RP)) {
+  if ((Attributes & (EFI_MEMORY_RO)) || !(Attributes & EFI_MEMORY_RP)) {
     DEBUG ((
       DEBUG_ERROR,
       "%a Targeted region (Start: 0x%p - End: 0x%p) has unexpected attributes: 0x%x\n",
@@ -416,7 +416,7 @@ ProcessUnblockPages (
   Status = SmmClearMemoryAttributes (
              UnblockMemParams->MemoryDescriptor.PhysicalStart,
              EFI_PAGES_TO_SIZE (UnblockMemParams->MemoryDescriptor.NumberOfPages),
-             EFI_MEMORY_RP
+             EFI_MEMORY_RP | EFI_MEMORY_RO | EFI_MEMORY_SP
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to ClearMemAttr to unblock memory %r!\n", __FUNCTION__, Status));
