@@ -67,7 +67,7 @@
 BITS 16
     jmp     _SmiEntryPoint
 _SmiEntryPoint:
-    mov     bx, [cs:FixUp32_1 - _SmiEntryPoint + 0x8000]
+    mov     bx, [cs:FIXUP32_GDTR - _SmiEntryPoint + 0x8000]
     mov     ax,[cs:DSC_OFFSET + DSC_GDTSIZ]
     dec     ax
     mov     [cs:bx], ax
@@ -76,7 +76,7 @@ _SmiEntryPoint:
 o32 lgdt    [cs:bx]                       ; lgdt fword ptr cs:[bx]
     mov     ax, PROTECT_MODE_CS
     mov     [cs:bx-0x2],ax
-    mov     edi, [cs:FixUp32_6 - _SmiEntryPoint + 0x8000]   ; SMM Base
+    mov     edi, [cs:FIXUP32_MSR_SMM_BASE - _SmiEntryPoint + 0x8000]   ; SMM Base
     lea     eax, [edi + (@ProtectedMode - _SmiEntryPoint) + 0x8000]
     mov     [cs:bx-0x6],eax
     mov     ebx, cr0
@@ -95,16 +95,16 @@ o16 mov     es, ax
 o16 mov     fs, ax
 o16 mov     gs, ax
 o16 mov     ss, ax
-    mov     esp, dword [FixUp32_5 - _SmiEntryPoint + 0x8000 + edi]
+    mov     esp, dword [FIXUP32_STACK_OFFSET_CPL0 - _SmiEntryPoint + 0x8000 + edi]
     jmp     ProtFlatMode
 
 BITS 64
 ProtFlatMode:
-    mov     eax, [rdi + FixUp32_2 - _SmiEntryPoint + 0x8000]    ; source operand will be populated at loading time
+    mov     eax, [rdi + FIXUP32_CR3_OFFSET - _SmiEntryPoint + 0x8000]    ; source operand will be populated at loading time
     mov     cr3, rax
     mov     eax, 0x100E68                ; as cr4.PGE is not set here, refresh cr3
 
-    mov     cl, [rdi + FixUp8_2 - _SmiEntryPoint + 0x8000]      ; source operand will be patched
+    mov     cl, [rdi + FIXUP8_gPatch5LevelPagingNeeded - _SmiEntryPoint + 0x8000]      ; source operand will be patched
     cmp     cl, 0
     je      SkipEnable5LevelPaging
     ;
@@ -125,12 +125,12 @@ SkipEnable5LevelPaging:
     ltr     ax
 
 ; enable NXE if supported
-    mov     al, [FixUp8_0 - _SmiEntryPoint + 0x8000 + rdi]
+    mov     al, [FIXUP8_gPatchXdSupported - _SmiEntryPoint + 0x8000 + rdi]
     cmp     al, 0
     jz      @SkipXd
 
 ; If MSR_IA32_MISC_ENABLE is supported, clear XD Disable bit
-    mov     al, [FixUp8_1 - _SmiEntryPoint + 0x8000 + rdi]
+    mov     al, [FIXUP8_gPatchMsrIa32MiscEnableSupported - _SmiEntryPoint + 0x8000 + rdi]
     cmp     al, 1
     jz      MsrIa32MiscEnableSupported
 
@@ -177,7 +177,7 @@ Base:
     mov     cr0, rbx
     retf
 @LongMode:                              ; long mode (64-bit code) starts here
-    mov     rax, [FixUp64_5 - _SmiEntryPoint + 0x8000 + rdi]     ;  mov     rax, ASM_PFX(gSmiHandlerIdtr)
+    mov     rax, [FIXUP64_SMI_HANDLER_IDTR - _SmiEntryPoint + 0x8000 + rdi]     ;  mov     rax, ASM_PFX(gSmiHandlerIdtr)
     lidt    [rax]
     lea     ebx, [rdi + DSC_OFFSET]
     mov     ax, [rbx + DSC_DS]
@@ -192,7 +192,7 @@ Base:
     mov     rbx, [rsp + 0x8]             ; rbx <- CpuIndex
 
 ; enable CET if supported
-    mov     al, [FixUp8_3 - _SmiEntryPoint + 0x8000 + rdi]         ; source operand may be patched
+    mov     al, [FIXUP8_mPatchCetSupported - _SmiEntryPoint + 0x8000 + rdi]         ; source operand may be patched
     cmp     al, 0
     jz      CetDone
 
@@ -217,7 +217,7 @@ Base:
     wrmsr
 
     mov     ecx, MSR_IA32_PL0_SSP
-    mov     eax, [FixUp32_0 - _SmiEntryPoint + 0x8000 + rdi]       ; source operand will be patched
+    mov     eax, [FIXUP32_mPatchCetPl0Ssp - _SmiEntryPoint + 0x8000 + rdi]       ; source operand will be patched
     xor     edx, edx
     wrmsr
     mov     rcx, cr0
@@ -228,11 +228,11 @@ Base:
     mov     [eax + 4], ecx
 
     mov     ecx, MSR_IA32_INTERRUPT_SSP_TABLE_ADDR
-    mov     eax, [FixUp32_4 - _SmiEntryPoint + 0x8000 + rdi]         ; source operand will be patched
+    mov     eax, [FIXUP32_mPatchCetInterruptSspTable - _SmiEntryPoint + 0x8000 + rdi]         ; source operand will be patched
     xor     edx, edx
     wrmsr
 
-    mov     eax, [FixUp32_3 - _SmiEntryPoint + 0x8000 + rdi]     ; source operand will be patched
+    mov     eax, [FIXUP32_mPatchCetInterruptSsp - _SmiEntryPoint + 0x8000 + rdi]     ; source operand will be patched
     cmp     eax, 0
     jz      CetInterruptDone
     mov     [eax], eax                  ; reload SSP, and clear busyflag.
@@ -260,15 +260,15 @@ CetDone:
     add     rsp, -0x20
 
     mov     rcx, rbx
-    mov     rax, [FixUp64_0 - _SmiEntryPoint + 0x8000 + rdi]    ;   call    ASM_PFX(CpuSmmDebugEntry)
+    mov     rax, [FIXUP64_SMM_DBG_ENTRY - _SmiEntryPoint + 0x8000 + rdi]    ;   call    ASM_PFX(CpuSmmDebugEntry)
     call    rax
 
     mov     rcx, rbx
-    mov     rax, [FixUp64_2 - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(SmiRendezvous)
+    mov     rax, [FIXUP64_SMI_RDZ_ENTRY - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(SmiRendezvous)
     call    rax
 
     mov     rcx, rbx
-    mov     rax, [FixUp64_1 - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(CpuSmmDebugExit)
+    mov     rax, [FIXUP64_SMM_DBG_EXIT - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(CpuSmmDebugExit)
     call    rax
 
     add     rsp, 0x20
@@ -280,7 +280,7 @@ CetDone:
 
     add     rsp, 0x200
 
-    mov     rax, [FixUp64_4 - _SmiEntryPoint + 0x8000 + rdi]     ;    mov     rax, ASM_PFX(mCetSupported)
+    mov     rax, [FIXUP64_CET_SUPPORTED - _SmiEntryPoint + 0x8000 + rdi]     ;    mov     rax, ASM_PFX(mCetSupported)
     mov     al, [rax]
     cmp     al, 0
     jz      CetDone2
@@ -305,7 +305,7 @@ CetDone:
 CetDone2:
 
     ; TODO: Check if this is right...
-    mov     rax, [FixUp64_3 - _SmiEntryPoint + 0x8000 + rdi]     ;       lea     rax, [ASM_PFX(mXdSupported)]
+    mov     rax, [FIXUP64_XD_SUPPORTED - _SmiEntryPoint + 0x8000 + rdi]     ;       lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
     jz      .1
@@ -341,13 +341,13 @@ HeaderVersion         DD    4
 FixUpStructOffset     DB    FixUpOffset0Size - PerCoreSmiEntryStruct
 FixUpStructNum        DB    4
 
-FixUp64Offset         DB    FixUp64_0 - PerCoreSmiEntryStruct
+FixUp64Offset         DB    FIXUP64_SMM_DBG_ENTRY - PerCoreSmiEntryStruct
 FixUp64Num            DB    7
 
-FixUp32Offset         DB    FixUp32_0 - PerCoreSmiEntryStruct
+FixUp32Offset         DB    FIXUP32_mPatchCetPl0Ssp - PerCoreSmiEntryStruct
 FixUp32Num            DB    7
 
-FixUp8Offset          DB    FixUp8_0 - PerCoreSmiEntryStruct
+FixUp8Offset          DB    FIXUP8_gPatchXdSupported - PerCoreSmiEntryStruct
 FixUp8Num             DB    8
 
 ;--------------    SmiEntry binary version
@@ -374,33 +374,33 @@ FixUpOffset3          DW    0
 
 ;--------------     #define MAXNUM_NUM_FIXUP64 7
 ;--------------     UINT64   FixUp64 [MAXNUM_FIXUP_64]; ---------
-FixUp64_0            DQ    0  ; FIXUP64_SMM_DBG_ENTRY point to CpuSmmDebugEntry
-FixUp64_1            DQ    0  ; FIXUP64_SMM_DBG_EXIT point to CpuSmmDebugExit
-FixUp64_2            DQ    0  ; FIXUP64_SMI_RDZ_ENTRY point to SmiRendezvous
-FixUp64_3            DQ    0  ; FIXUP64_XD_SUPPORTED point to mXdSupported
-FixUp64_4            DQ    0  ; FIXUP64_CET_SUPPORTED point to mCetSupported
-FixUp64_5            DQ    0  ; FIXUP64_SMI_HANDLER_IDTR SmiHandlerIdtr
-FixUp64_6            DQ    0  ; FIXUP64_OFFSET6_RSVD
+FIXUP64_SMM_DBG_ENTRY       DQ    0  ; FIXUP64_SMM_DBG_ENTRY point to CpuSmmDebugEntry
+FIXUP64_SMM_DBG_EXIT        DQ    0  ; FIXUP64_SMM_DBG_EXIT point to CpuSmmDebugExit
+FIXUP64_SMI_RDZ_ENTRY       DQ    0  ; FIXUP64_SMI_RDZ_ENTRY point to SmiRendezvous
+FIXUP64_XD_SUPPORTED        DQ    0  ; FIXUP64_XD_SUPPORTED point to mXdSupported
+FIXUP64_CET_SUPPORTED       DQ    0  ; FIXUP64_CET_SUPPORTED point to mCetSupported
+FIXUP64_SMI_HANDLER_IDTR    DQ    0  ; FIXUP64_SMI_HANDLER_IDTR SmiHandlerIdtr
+FixUp64_6                   DQ    0  ; FIXUP64_OFFSET6_RSVD
 
 ;--------------     #define MAXNUM_NUM_FIXUP32 7
 ;--------------     UINT32   FixUp32[MAXNUM_FIXUP_VARIABLE]; ---------
-FixUp32_0        DD    0  ; FIXUP32_mPatchCetPl0Ssp
-FixUp32_1        DD    0  ; FIXUP32_GDTR
-FixUp32_2        DD    0  ; FIXUP32_CR3_OFFSET
-FixUp32_3        DD    0  ; FIXUP32_mPatchCetInterruptSsp
-FixUp32_4        DD    0  ; FIXUP32_mPatchCetInterruptSspTable
-FixUp32_5        DD    0  ; FIXUP32_STACK_OFFSET_CPL0
-FixUp32_6        DD    0  ; FIXUP32_MSR_SMM_BASE
+FIXUP32_mPatchCetPl0Ssp             DD    0  ; FIXUP32_mPatchCetPl0Ssp
+FIXUP32_GDTR                        DD    0  ; FIXUP32_GDTR
+FIXUP32_CR3_OFFSET                  DD    0  ; FIXUP32_CR3_OFFSET
+FIXUP32_mPatchCetInterruptSsp       DD    0  ; FIXUP32_mPatchCetInterruptSsp
+FIXUP32_mPatchCetInterruptSspTable  DD    0  ; FIXUP32_mPatchCetInterruptSspTable
+FIXUP32_STACK_OFFSET_CPL0           DD    0  ; FIXUP32_STACK_OFFSET_CPL0
+FIXUP32_MSR_SMM_BASE                DD    0  ; FIXUP32_MSR_SMM_BASE
 
 ;--------------     #define MAXNUM_NUM_FIXUP8 8
 ;--------------     UINT32   FixUp8[MAXNUM_FIXUP_VARIABLE]; ---------
-FixUp8_0        DD    0  ; FIXUP8_gPatchXdSupported
-FixUp8_1        DD    0  ; FIXUP8_gPatchMsrIa32MiscEnableSupported
-FixUp8_2        DD    0  ; FIXUP8_gPatch5LevelPagingNeeded
-FixUp8_3        DD    0  ; FIXUP8_mPatchCetSupported
-FixUp8_4        DD    0  ; FIXUP8_OFFSET_RSVD
-FixUp8_5        DD    0  ; FIXUP8_OFFSET_RSVD
-FixUp8_6        DD    0  ; FIXUP8_OFFSET_RSVD
-FixUp8_7        DD    0  ; FIXUP8_OFFSET_RSVD
+FIXUP8_gPatchXdSupported                DD    0  ; FIXUP8_gPatchXdSupported
+FIXUP8_gPatchMsrIa32MiscEnableSupported DD    0  ; FIXUP8_gPatchMsrIa32MiscEnableSupported
+FIXUP8_gPatch5LevelPagingNeeded         DD    0  ; FIXUP8_gPatch5LevelPagingNeeded
+FIXUP8_mPatchCetSupported               DD    0  ; FIXUP8_mPatchCetSupported
+FixUp8_4                                DD    0  ; FIXUP8_OFFSET4_RSVD
+FixUp8_5                                DD    0  ; FIXUP8_OFFSET5_RSVD
+FixUp8_6                                DD    0  ; FIXUP8_OFFSET6_RSVD
+FixUp8_7                                DD    0  ; FIXUP8_OFFSET7_RSVD
 
 Size             DD    $ - PerCoreSmiEntryStruct
