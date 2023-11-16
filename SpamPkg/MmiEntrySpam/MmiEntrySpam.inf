@@ -1,0 +1,29 @@
+## @file
+# This module provide an SMM CIS compliant implementation of SMM entrypoint.
+#
+# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
+# Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
+# Copyright (C) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 32523fbea769a9c594fb5f7254907c3f | 2023-08-30T19-58-00 | c8cdc60a6e689681f0c81209aeb71e26fd023416
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmEntrySpam
+  FILE_GUID                      = DB8C904D-AF07-43DD-BE30-A60E527A1ED2
+  MODULE_TYPE                    = USER_DEFINED
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = MmEntrySpam
+
+[Sources]
+  MmEntrySpam.nasmb
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
