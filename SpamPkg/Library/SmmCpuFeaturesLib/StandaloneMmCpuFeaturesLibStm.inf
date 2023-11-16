@@ -7,15 +7,16 @@
 #
 ##
 
+#Override : 00000002 | UefiCpuPkg/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLibStm.inf | 802e9e3d1573bf839ee79069ab73f973 | 2023-11-16T21-18-38 | 6f4fd152cf29b18cc0658146b8f7eca6e92ac7d3
+
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = SmmCpuFeaturesLibStm
-  MODULE_UNI_FILE                = SmmCpuFeaturesLib.uni
+  BASE_NAME                      = StandaloneMmCpuFeaturesLibStm
   FILE_GUID                      = 374DE830-81C5-4CC8-B2AB-28F0AB73710B
-  MODULE_TYPE                    = DXE_SMM_DRIVER
+  MODULE_TYPE                    = MM_STANDALONE
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = SmmCpuFeaturesLib
-  CONSTRUCTOR                    = SmmCpuFeaturesLibStmConstructor
+  CONSTRUCTOR                    = StandaloneMmCpuFeaturesLibConstructor
 
 [Sources]
   CpuFeaturesLib.h
@@ -23,20 +24,10 @@
   SmmCpuFeaturesLibCommon.c
   SmmStm.c
   SmmStm.h
-  TraditionalMmCpuFeaturesLib.c
-
-[Sources.Ia32]
-  Ia32/SmmStmSupport.c
-
-
-  Ia32/SmiEntry.nasm
-  Ia32/SmiException.nasm
+  StandaloneMmCpuFeaturesLib.c
 
 [Sources.X64]
   X64/SmmStmSupport.c
-
-
-  X64/SmiEntry.nasm
   X64/SmiException.nasm
 
 [Packages]
@@ -51,8 +42,7 @@
   HobLib
   MemoryAllocationLib
   DebugLib
-  UefiBootServicesTableLib
-  SmmServicesTableLib
+  MmServicesTableLib
   TpmMeasurementLib
 
 [Protocols]
