@@ -77,82 +77,11 @@ LoadMonitor (
   );
 
 /**
-
-  Add resources in list to database. Allocate new memory areas as needed.
-
-  @param ResourceList  A pointer to resource list to be added
-  @param NumEntries    Optional number of entries.
-                       If 0, list must be terminated by END_OF_RESOURCES.
-
-  @retval EFI_SUCCESS            If resources are added
-  @retval EFI_INVALID_PARAMETER  If nested procedure detected resource failer
-  @retval EFI_OUT_OF_RESOURCES   If nested procedure returned it and we cannot allocate more areas.
-
-**/
-EFI_STATUS
-EFIAPI
-AddPiResource (
-  IN  STM_RSC  *ResourceList,
-  IN  UINT32   NumEntries OPTIONAL
-  );
-
-/**
-
-  Delete resources in list to database.
-
-  @param ResourceList  A pointer to resource list to be deleted
-                       NULL means delete all resources.
-  @param NumEntries    Optional number of entries.
-                       If 0, list must be terminated by END_OF_RESOURCES.
-
-  @retval EFI_SUCCESS            If resources are deleted
-  @retval EFI_INVALID_PARAMETER  If nested procedure detected resource failer
-
-**/
-EFI_STATUS
-EFIAPI
-DeletePiResource (
-  IN  STM_RSC  *ResourceList,
-  IN  UINT32   NumEntries OPTIONAL
-  );
-
-/**
-
-  Get BIOS resources.
-
-  @param ResourceList  A pointer to resource list to be filled
-  @param ResourceSize  On input it means size of resource list input.
-                       On output it means size of resource list filled,
-                       or the size of resource list to be filled if size of too small.
-
-  @retval EFI_SUCCESS            If resources are returned.
-  @retval EFI_BUFFER_TOO_SMALL   If resource list buffer is too small to hold the whole resources.
-
-**/
-EFI_STATUS
-EFIAPI
-GetPiResource (
-  OUT    STM_RSC  *ResourceList,
-  IN OUT UINT32   *ResourceSize
-  );
-
-/**
   This function initialize STM configuration table.
 **/
 VOID
 StmSmmConfigurationTableInit (
   VOID
-  );
-
-/**
-  This function notify STM resource change.
-
-  @param StmResource BIOS STM resource
-
-**/
-VOID
-NotifyStmResourceChange (
-  IN VOID  *StmResource
   );
 
 /**
@@ -164,15 +93,6 @@ NotifyStmResourceChange (
 VOID *
 GetStmResource (
   VOID
-  );
-
-/**
-  This function fixes up the address of the global variable or function
-  referred in SmiEntry assembly files to be the absolute address.
-**/
-VOID
-EFIAPI
-SmmCpuFeaturesLibStmSmiEntryFixupAddress (
   );
 
 #endif
