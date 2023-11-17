@@ -1,0 +1,21 @@
+## @file
+# This package is a common package that provide SPAM measurement and supporting libraries
+# required by SPAM mechanism.
+#
+# Copyright (c) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+
+[Defines]
+  DEC_SPECIFICATION              = 0x0001001A
+  PACKAGE_NAME                   = SpamPkg
+  PACKAGE_GUID                   = CC5AB0D0-C0AD-4FFC-8598-4643B2E00E97
+  PACKAGE_VERSION                = 1.0
+
+[Includes]
+  Include
+
+[Guids]
+  gMmiEntrySpamFileGuid                           = { 0x20a3658c, 0x982, 0x4d69, { 0x80, 0x44, 0x7, 0xc7, 0x87, 0x1e, 0xdb, 0xed } }

@@ -14,60 +14,14 @@
 
 %include "StuffRsbNasm.inc"
 
-global  ASM_PFX(gcStmPsd)
-
 extern  ASM_PFX(SmmStmExceptionHandler)
 extern  ASM_PFX(SmmStmSetup)
 extern  ASM_PFX(SmmStmTeardown)
 extern  ASM_PFX(gStmXdSupported)
-extern  ASM_PFX(gStmSmiHandlerIdtr)
 
 %define MSR_IA32_MISC_ENABLE 0x1A0
 %define MSR_EFER      0xc0000080
 %define MSR_EFER_XD   0x800
-
-CODE_SEL          equ 0x38
-DATA_SEL          equ 0x20
-TR_SEL            equ 0x40
-
-    SECTION .data
-
-;
-; This structure serves as a template for all processors.
-;
-ASM_PFX(gcStmPsd):
-            DB      'TXTPSSIG'
-            DW      PSD_SIZE
-            DW      1              ; Version
-            DD      0              ; LocalApicId
-            DB      0x0F           ; Cr4Pse;Cr4Pae;Intel64Mode;ExecutionDisableOutsideSmrr
-            DB      0              ; BIOS to STM
-            DB      0              ; STM to BIOS
-            DB      0
-            DW      CODE_SEL
-            DW      DATA_SEL
-            DW      DATA_SEL
-            DW      DATA_SEL
-            DW      TR_SEL
-            DW      0
-            DQ      0              ; SmmCr3
-            DQ      ASM_PFX(OnStmSetup)
-            DQ      ASM_PFX(OnStmTeardown)
-            DQ      0              ; SmmSmiHandlerRip - SMM guest entrypoint
-            DQ      0              ; SmmSmiHandlerRsp
-            DQ      0
-            DD      0
-            DD      0x80010100     ; RequiredStmSmmRevId
-            DQ      ASM_PFX(OnException)
-            DQ      0              ; ExceptionStack
-            DW      DATA_SEL
-            DW      0x01F          ; ExceptionFilter
-            DD      0
-            DQ      0
-            DQ      0              ; BiosHwResourceRequirementsPtr
-            DQ      0              ; AcpiRsdp
-            DB      0              ; PhysicalAddressBits
-PSD_SIZE  equ $ -   ASM_PFX(gcStmPsd)
 
     DEFAULT REL
     SECTION .text

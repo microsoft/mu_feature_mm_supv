@@ -25,15 +25,14 @@
   SmmStm.c
   SmmStm.h
   StandaloneMmCpuFeaturesLib.c
-
-[Sources.X64]
-  X64/SmmStmSupport.c
-  X64/SmiException.nasm
+  SmmStmSupport.c
+  SmiException.nasm
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
+  SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -46,14 +45,12 @@
   TpmMeasurementLib
 
 [Protocols]
-  gEfiMpServiceProtocolGuid                ## CONSUMES
-  gEfiSmmEndOfDxeProtocolGuid              ## CONSUMES
-  gEfiSmMonitorInitProtocolGuid            ## PRODUCES
+  gEfiMmEndOfDxeProtocolGuid  ## CONSUMES
 
 [Guids]
-  gMsegSmramGuid                           ## SOMETIMES_CONSUMES ## HOB
-  gEfiAcpi20TableGuid                      ## SOMETIMES_CONSUMES ## SystemTable
-  gEfiAcpi10TableGuid                      ## SOMETIMES_CONSUMES ## SystemTable
+  gMsegSmramGuid              ## SOMETIMES_CONSUMES ## HOB
+  gMpInformationHobGuid       ## CONSUMES ## HOB
+  gMmiEntrySpamFileGuid       ## CONSUMES ## File
 
 [Pcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
