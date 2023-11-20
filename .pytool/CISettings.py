@@ -58,6 +58,7 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
 
         return (
                 "MmSupervisorPkg",
+                "SpamPkg"
                 )
 
     def GetArchitecturesSupported(self):
