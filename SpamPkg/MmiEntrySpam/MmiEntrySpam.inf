@@ -21,7 +21,7 @@
   ENTRY_POINT                    = MmEntrySpam
 
 [Sources]
-  MmEntrySpam.nasmb
+  MmiEntrySpam.nasmb
 
 [Packages]
   MdePkg/MdePkg.dec

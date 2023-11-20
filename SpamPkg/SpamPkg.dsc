@@ -23,3 +23,5 @@
 
 [Components.X64]
   SpamPkg/MmiEntrySpam/MmiEntrySpam.inf
+
+  SpamPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf

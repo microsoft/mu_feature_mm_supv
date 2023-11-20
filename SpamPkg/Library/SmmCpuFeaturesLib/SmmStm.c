@@ -8,6 +8,7 @@
 
 #include <PiMm.h>
 #include <SpamResponder.h>
+#include <Library/FvLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/HobLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -27,6 +28,10 @@
 #define TXT_EVTYPE_BASE      0x400
 #define TXT_EVTYPE_STM_HASH  (TXT_EVTYPE_BASE + 14)
 
+#define CODE_SEL  0x38
+#define DATA_SEL  0x40
+#define TR_SEL    0x68
+
 #define RDWR_ACCS  3
 #define FULL_ACCS  7
 
@@ -45,49 +50,6 @@ GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceSizeUsed      = 0x0;
 GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceSizeAvailable = 0x0;
 
 GLOBAL_REMOVE_IF_UNREFERENCED UINT32  mStmState = 0;
-
-//
-// This structure serves as a template for all processors.
-//
-CONST TXT_PROCESSOR_SMM_DESCRIPTOR mPsdTemplate = {
-  .Signature = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
-  .Size = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
-  .SmmDescriptorVerMajor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
-  .SmmDescriptorVerMinor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
-  .LocalApicId = 0,
-  .SmmEntryState = 0x0F, // Cr4Pse;Cr4Pae;Intel64Mode;ExecutionDisableOutsideSmrr
-  .SmmResumeState = 0, // BIOS to STM
-  .StmSmmState = 0, // STM to BIOS
-  .Reserved4 = 0,
-  .SmmCs = CODE_SEL,
-  .SmmDs = DATA_SEL,
-  .SmmSs = DATA_SEL,
-  .SmmOtherSegment = DATA_SEL,
-  .SmmTr = TR_SEL,
-  .Reserved5 = 0,
-  .SmmCr3 = 0,
-  .SmmStmSetupRip = OnStmSetup,
-  .SmmStmTeardownRip = OnStmTeardown,
-  .SmmSmiHandlerRip = 0, // SmmSmiHandlerRip - SMM guest entrypoint
-  .SmmSmiHandlerRsp = , // SmmSmiHandlerRsp
-  .SmmGdtPtr = 0,
-  .SmmGdtSize = 0,
-  .RequiredStmSmmRevId = 0x80010100,
-  .StmProtectionExceptionHandler = {
-    .SpeRip = OnException,
-    .SpeRsp = 0,
-    .SpeSs = DATA_SEL,
-    .PageViolationException = 1,
-    .MsrViolationException = 1,
-    .RegisterViolationException = 1,
-    .IoViolationException = 1,
-    .PciViolationException = 1,
-  },
-  .Reserved6 = 0,
-  .BiosHwResourceRequirementsPtr = 0,
-  .AcpiRsdp = 0,
-  .PhysicalAddressBits = 0,
-}
 
 //
 // System Configuration Table pointing to STM Configuration Table
@@ -137,6 +99,67 @@ EFIAPI
 SmiRendezvous (
   IN      UINTN  CpuIndex
   );
+
+VOID
+EFIAPI
+OnStmSetup (
+  VOID
+  );
+
+VOID
+EFIAPI
+OnStmTeardown (
+  VOID
+  );
+
+VOID
+EFIAPI
+OnException (
+  VOID
+  );
+
+//
+// This structure serves as a template for all processors.
+//
+CONST TXT_PROCESSOR_SMM_DESCRIPTOR mPsdTemplate = {
+  .Signature = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
+  .Size = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
+  .SmmDescriptorVerMajor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
+  .SmmDescriptorVerMinor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
+  .LocalApicId = 0,
+  .SmmEntryState = 0x0F, // Cr4Pse;Cr4Pae;Intel64Mode;ExecutionDisableOutsideSmrr
+  .SmmResumeState = 0, // BIOS to STM
+  .StmSmmState = 0, // STM to BIOS
+  .Reserved4 = 0,
+  .SmmCs = CODE_SEL,
+  .SmmDs = DATA_SEL,
+  .SmmSs = DATA_SEL,
+  .SmmOtherSegment = DATA_SEL,
+  .SmmTr = TR_SEL,
+  .Reserved5 = 0,
+  .SmmCr3 = 0,
+  .SmmStmSetupRip = (UINT64)OnStmSetup,
+  .SmmStmTeardownRip = (UINT64)OnStmTeardown,
+  .SmmSmiHandlerRip = 0, // SmmSmiHandlerRip - SMM guest entrypoint
+  .SmmSmiHandlerRsp = 0, // SmmSmiHandlerRsp
+  .SmmGdtPtr = 0,
+  .SmmGdtSize = 0,
+  .RequiredStmSmmRevId = 0x80010100,
+  .StmProtectionExceptionHandler = {
+    .SpeRip = (UINT64)OnException,
+    .SpeRsp = 0,
+    .SpeSs = DATA_SEL,
+    .PageViolationException = 1,
+    .MsrViolationException = 1,
+    .RegisterViolationException = 1,
+    .IoViolationException = 1,
+    .PciViolationException = 1,
+  },
+  .Reserved6 = 0,
+  .BiosHwResourceRequirementsPtr = 0,
+  .AcpiRsdp = 0,
+  .PhysicalAddressBits = 0,
+};
 
 //
 // Variables used by SMI Handler
@@ -402,11 +425,9 @@ SmmCpuFeaturesInstallSmiHandler (
   IN UINT32  Cr3
   )
 {
-  EFI_STATUS                    Status;
   TXT_PROCESSOR_SMM_DESCRIPTOR  *Psd;
   VOID                          *Hob;
   UINT32                        RegEax;
-  UINT32                        RegEdx;
   EFI_PROCESSOR_INFORMATION     ProcessorInfo;
   PER_CORE_MMI_ENTRY_STRUCT_HDR *SmiEntryStructHdrPtr = NULL;
   UINT32                        SmiEntryStructHdrAddr;
@@ -460,11 +481,11 @@ SmmCpuFeaturesInstallSmiHandler (
   //Do the fixup
   
   Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp] = mCetPl0Ssp;
-  Fixup32Ptr[FIXUP32_GDTR] = GdtBase;
+  Fixup32Ptr[FIXUP32_GDTR] = (UINT32)GdtBase;
   Fixup32Ptr[FIXUP32_CR3_OFFSET] = Cr3;
   Fixup32Ptr[FIXUP32_mPatchCetInterruptSsp] = mCetInterruptSsp;
   Fixup32Ptr[FIXUP32_mPatchCetInterruptSspTable] = mCetInterruptSspTable;
-  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0] = SmiStack;
+  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0] = (UINT32)(UINTN)SmiStack;
   Fixup32Ptr[FIXUP32_MSR_SMM_BASE] = SmBase;
 
   Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = (UINT64)CpuSmmDebugEntry;
