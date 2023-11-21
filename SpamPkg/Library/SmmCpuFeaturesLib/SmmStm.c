@@ -22,7 +22,7 @@
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/SmramSaveStateMap.h>
 
-#include <Protocol/MpService.h>
+#include <Protocol/LoadedImage.h>
 
 #include "CpuFeaturesLib.h"
 #include "SmmStm.h"
@@ -83,6 +83,8 @@ extern BOOLEAN gPatch5LevelPagingNeeded;
 extern UINT32 mCetPl0Ssp;
 extern UINT32 mCetInterruptSsp;
 extern UINT32 mCetInterruptSspTable;
+
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0   *FirmwarePolicy;
 
 VOID
 EFIAPI
@@ -161,6 +163,26 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR mPsdTemplate = {
   .BiosHwResourceRequirementsPtr = 0,
   .AcpiRsdp = 0,
   .PhysicalAddressBits = 0,
+};
+
+//
+// This structure serves as a template for all processors.
+//
+SPAM_RESPONDER_DATA mSpamResponderTemplate = {
+  .Signature = SPAM_RESPONDER_STRUCT_SIGNATURE,
+  .VersionMinor = SPAM_REPSONDER_STRUCT_MINOR_VER,
+  .VersionMajor = SPAM_REPSONDER_STRUCT_MAJOR_VER,
+  .Size = 0,
+  .Reserved = 0,
+  .CpuIndex = 0,
+  .MmEntryBase = 0,
+  .MmEntrySize = 0,
+  .MmSupervisorBase = 0,
+  .MmSupervisorSize = 0,
+  .MmSecurePolicyBase = 0,
+  .MmSecurePolicySize = 0,
+  .UserModuleOffset = sizeof (SPAM_RESPONDER_DATA),
+  .UserModuleCount = 0
 };
 
 //
@@ -388,10 +410,6 @@ SmmCpuFeaturesGetSmiHandlerSize (
   return mMmiEntrySize;
 }
 
-// TODO: Make this cleaner?
-extern MM_CORE_PRIVATE_DATA               *gMmCorePrivate;
-extern SMM_SUPV_SECURE_POLICY_DATA_V1_0   *FirmwarePolicy;
-
 STATIC
 EFI_STATUS
 EFIAPI
@@ -403,23 +421,17 @@ PopulateSpamInformation (
   IN UINTN                  StackSize
   )
 {
-  SPAM_RESPONDER_DATA *SpamResponderData;
-
-  SpamResponderData = (SPAM_RESPONDER_DATA *)(UINTN)StackBase + StackSize - sizeof (SPAM_RESPONDER_DATA);
-
-  SpamResponderData->Signature          = SPAM_RESPONDER_STRUCT_SIGNATURE;
-  SpamResponderData->VersionMajor       = SPAM_REPSONDER_STRUCT_MAJOR_VER;
-  SpamResponderData->VersionMinor       = SPAM_REPSONDER_STRUCT_MINOR_VER;
-  SpamResponderData->Size               = sizeof (SPAM_RESPONDER_DATA);
-  SpamResponderData->CpuIndex           = CpuIndex;
-  SpamResponderData->MmEntryBase        = MmEntryBase;
-  SpamResponderData->MmEntrySize        = MmEntrySize;
-  SpamResponderData->MmSupervisorBase   = gMmCorePrivate->MmCoreImageBase;
-  SpamResponderData->MmSupervisorSize   = gMmCorePrivate->MmCoreImageSize;
-  SpamResponderData->MmSecurePolicyBase = (UINT64)FirmwarePolicy;
-  SpamResponderData->MmSecurePolicySize = FirmwarePolicy->Size;
-  SpamResponderData->UserModuleOffset   = 0;
-  SpamResponderData->UserModuleCount    = 0;
+  mSpamResponderTemplate.Signature          = SPAM_RESPONDER_STRUCT_SIGNATURE;
+  mSpamResponderTemplate.VersionMajor       = SPAM_REPSONDER_STRUCT_MAJOR_VER;
+  mSpamResponderTemplate.VersionMinor       = SPAM_REPSONDER_STRUCT_MINOR_VER;
+  mSpamResponderTemplate.Size               = sizeof (SPAM_RESPONDER_DATA);
+  mSpamResponderTemplate.CpuIndex           = CpuIndex;
+  mSpamResponderTemplate.MmEntryBase        = MmEntryBase;
+  mSpamResponderTemplate.MmEntrySize        = MmEntrySize;
+  mSpamResponderTemplate.MmSecurePolicyBase = (UINT64)FirmwarePolicy;
+  mSpamResponderTemplate.MmSecurePolicySize = FirmwarePolicy->Size;
+  mSpamResponderTemplate.UserModuleOffset   = 0;
+  mSpamResponderTemplate.UserModuleCount    = 0;
 
   // TODO: Populate more user modules and fix up the size.
 
@@ -611,20 +623,108 @@ MmEndOfDxeEventNotify (
 {
   UINTN                         Index;
   TXT_PROCESSOR_SMM_DESCRIPTOR  *Psd;
+  SPAM_RESPONDER_DATA           *SpamResponderData;
+  UINTN                         NoHandles;
+  UINTN                         HandleBufferSize;
+  EFI_HANDLE                    *HandleBuffer;
+  EFI_STATUS                    Status;
+  EFI_LOADED_IMAGE_PROTOCOL     *LoadedImage;
+  USER_MODULE_INFO              *UserModuleBuffer = NULL;
 
   DEBUG ((DEBUG_INFO, "MmEndOfDxeEventNotify\n"));
+
+  // Now that we have all the loaded image information, prepare the responder data
+  HandleBufferSize = 0;
+  HandleBuffer     = NULL;
+  Status           = gMmst->MmLocateHandle (
+                                   ByProtocol,
+                                   &gEfiLoadedImageProtocolGuid,
+                                   NULL,
+                                   &HandleBufferSize,
+                                   HandleBuffer
+                                   );
+  if (Status != EFI_BUFFER_TOO_SMALL) {
+    goto Done;
+  }
+
+  HandleBuffer = AllocateZeroPool (HandleBufferSize);
+  if (HandleBuffer == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
+  }
+
+  Status = gMmst->MmLocateHandle (
+                         ByProtocol,
+                         &gEfiLoadedImageProtocolGuid,
+                         NULL,
+                         &HandleBufferSize,
+                         HandleBuffer
+                         );
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  NoHandles = HandleBufferSize/sizeof (EFI_HANDLE);
+  Status    = gMmst->MmLocateHandle (
+                          ByProtocol,
+                          &gEfiLoadedImageProtocolGuid,
+                          NULL,
+                          &HandleBufferSize,
+                          HandleBuffer
+                          );
+
+  // Let's be honest, the first one will be the core...
+  Status = gMmst->MmHandleProtocol (
+                        HandleBuffer[Index],
+                        &gEfiLoadedImageProtocolGuid,
+                        (VOID **)&LoadedImage
+                        );
+  mSpamResponderTemplate.MmSupervisorBase = (UINT64)(UINTN)LoadedImage->ImageBase;
+  mSpamResponderTemplate.MmSupervisorSize = (UINT64)(UINTN)LoadedImage->ImageSize;
+
+  // Now we continue to the user modules information
+  mSpamResponderTemplate.UserModuleCount  = NoHandles - 1;
+  UserModuleBuffer = AllocateZeroPool ((NoHandles - 1) * sizeof (USER_MODULE_INFO));
+  for (Index = 1; Index < NoHandles; Index++) {
+    Status = gMmst->MmHandleProtocol (
+                           HandleBuffer[Index],
+                           &gEfiLoadedImageProtocolGuid,
+                           (VOID **)&LoadedImage
+                           );
+    if (EFI_ERROR (Status)) {
+      continue;
+    }
+
+    UserModuleBuffer[Index - 1].UserModuleBase = (UINT64)(UINTN)LoadedImage->ImageBase;
+    UserModuleBuffer[Index - 1].UserModuleSize = (UINT64)(UINTN)LoadedImage->ImageSize;
+  }
 
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
+
+    SpamResponderData = (SPAM_RESPONDER_DATA*)(UINTN)(Psd->SmmSmiHandlerRsp + sizeof (UINTN) -
+                        sizeof (SPAM_RESPONDER_DATA) -
+                        (NoHandles - 1) * sizeof (USER_MODULE_INFO));
+
+    CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
+    CopyMem (SpamResponderData + 1, UserModuleBuffer, (NoHandles - 1) * sizeof (USER_MODULE_INFO));
   }
-
-
 
   mLockLoadMonitor = TRUE;
 
-  return EFI_SUCCESS;
+  Status = EFI_SUCCESS;
+
+Done:
+  if (HandleBuffer != NULL) {
+    FreePool (HandleBuffer);
+  }
+
+  if (UserModuleBuffer != NULL) {
+    FreePool (UserModuleBuffer);
+  }
+  return Status;
 }
 
 /**

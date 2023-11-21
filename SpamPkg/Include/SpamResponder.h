@@ -77,8 +77,8 @@ typedef struct {
   UINT64                MmSupervisorSize;
   EFI_PHYSICAL_ADDRESS  MmSecurePolicyBase;
   UINT64                MmSecurePolicySize;
-  UINT32                UserModuleOffset;
-  UINT32                UserModuleCount;
+  UINT64                UserModuleOffset;
+  UINT64                UserModuleCount;
   // USER_MODULE_INFO      UserModules[];
 } SPAM_RESPONDER_DATA;
 
