@@ -7,6 +7,7 @@
 **/
 
 #include <PiMm.h>
+#include <SmmSecurePolicy.h>
 #include <SpamResponder.h>
 #include <Library/FvLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -15,6 +16,7 @@
 #include <Library/MmServicesTableLib.h>
 #include <Library/TpmMeasurementLib.h>
 #include <Guid/MpInformation.h>
+#include <Guid/MmCoreData.h>
 #include <Protocol/MmEndOfDxe.h>
 #include <Register/Intel/Cpuid.h>
 #include <Register/Intel/ArchitecturalMsr.h>
@@ -386,6 +388,44 @@ SmmCpuFeaturesGetSmiHandlerSize (
   return mMmiEntrySize;
 }
 
+// TODO: Make this cleaner?
+extern MM_CORE_PRIVATE_DATA               *gMmCorePrivate;
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0   *FirmwarePolicy;
+
+STATIC
+EFI_STATUS
+EFIAPI
+PopulateSpamInformation (
+  IN UINTN                  CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS   MmEntryBase,
+  IN UINTN                  MmEntrySize,
+  IN EFI_PHYSICAL_ADDRESS   StackBase,
+  IN UINTN                  StackSize
+  )
+{
+  SPAM_RESPONDER_DATA *SpamResponderData;
+
+  SpamResponderData = (SPAM_RESPONDER_DATA *)(UINTN)StackBase + StackSize - sizeof (SPAM_RESPONDER_DATA);
+
+  SpamResponderData->Signature          = SPAM_RESPONDER_STRUCT_SIGNATURE;
+  SpamResponderData->VersionMajor       = SPAM_REPSONDER_STRUCT_MAJOR_VER;
+  SpamResponderData->VersionMinor       = SPAM_REPSONDER_STRUCT_MINOR_VER;
+  SpamResponderData->Size               = sizeof (SPAM_RESPONDER_DATA);
+  SpamResponderData->CpuIndex           = CpuIndex;
+  SpamResponderData->MmEntryBase        = MmEntryBase;
+  SpamResponderData->MmEntrySize        = MmEntrySize;
+  SpamResponderData->MmSupervisorBase   = gMmCorePrivate->MmCoreImageBase;
+  SpamResponderData->MmSupervisorSize   = gMmCorePrivate->MmCoreImageSize;
+  SpamResponderData->MmSecurePolicyBase = (UINT64)FirmwarePolicy;
+  SpamResponderData->MmSecurePolicySize = FirmwarePolicy->Size;
+  SpamResponderData->UserModuleOffset   = 0;
+  SpamResponderData->UserModuleCount    = 0;
+
+  // TODO: Populate more user modules and fix up the size.
+
+  return EFI_SUCCESS;
+}
+
 /**
   Install a custom SMI handler for the CPU specified by CpuIndex.  This function
   is only called if SmmCpuFeaturesGetSmiHandlerSize() returns a size is greater
@@ -425,6 +465,7 @@ SmmCpuFeaturesInstallSmiHandler (
   IN UINT32  Cr3
   )
 {
+  EFI_STATUS                    Status;
   TXT_PROCESSOR_SMM_DESCRIPTOR  *Psd;
   VOID                          *Hob;
   UINT32                        RegEax;
@@ -479,7 +520,6 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup64Ptr = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
 
   //Do the fixup
-  
   Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp] = mCetPl0Ssp;
   Fixup32Ptr[FIXUP32_GDTR] = (UINT32)GdtBase;
   Fixup32Ptr[FIXUP32_CR3_OFFSET] = Cr3;
@@ -535,6 +575,17 @@ SmmCpuFeaturesInstallSmiHandler (
 
   if (!mStmConfigurationTableInitialized) {
     StmSmmConfigurationTableInit ();
+    Status = PopulateSpamInformation (
+      CpuIndex,
+      mMmiEntryBaseAddress,
+      mMmiEntrySize,
+      (EFI_PHYSICAL_ADDRESS)(UINTN)SmiStack,
+      StackSize
+      );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "PopulateSpamInformation failed - %r\n", Status));
+      ASSERT_EFI_ERROR (Status);
+    }
     mStmConfigurationTableInitialized = TRUE;
   }
 }
@@ -568,6 +619,8 @@ MmEndOfDxeEventNotify (
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
   }
+
+
 
   mLockLoadMonitor = TRUE;
 
