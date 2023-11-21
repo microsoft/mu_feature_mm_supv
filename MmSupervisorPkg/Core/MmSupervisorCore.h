@@ -50,7 +50,6 @@
 #include <Library/UefiLib.h>
 #include <Library/SafeIntLib.h>
 #include <Library/ResetSystemLib.h>
-#include <Library/BaseBinSecurityLib.h>
 
 //
 // Used to build a table of MMI Handlers that the MM Core registers

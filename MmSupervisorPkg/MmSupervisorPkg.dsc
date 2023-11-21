@@ -50,15 +50,11 @@
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   RegisterFilterLib|MdePkg/Library/RegisterFilterLibNull/RegisterFilterLibNull.inf
 
-!if $(TOOL_CHAIN_TAG) == VS2017 or $(TOOL_CHAIN_TAG) == VS2015 or $(TOOL_CHAIN_TAG) == VS2019 or $(TOOL_CHAIN_TAG) == VS2022
-  #if debug is enabled provide StackCookie support lib so that we can link to /GS exports
-  NULL|MdePkg/Library/BaseBinSecurityLibRng/BaseBinSecurityLibRng.inf
-  BaseBinSecurityLib|MdePkg/Library/BaseBinSecurityLibRng/BaseBinSecurityLibRng.inf
-  RngLib|MdePkg/Library/BaseRngLib/BaseRngLib.inf
-!else
-  # otherwise use the null version for GCC and CLANG
-  BaseBinSecurityLib|MdePkg/Library/BaseBinSecurityLibNull/BaseBinSecurityLibNull.inf
-!endif
+# MU_CHANGE [BEGIN] - Add Stack Cookie Support
+[LibraryClasses.X64]
+  NULL|MdePkg/Library/StackCheckLib/StackCheckLib.inf
+  StackCheckFailureLib|MdePkg/Library/StackCheckFailureLibNull/StackCheckFailureLibNull.inf
+# MU_CHANGE [END] - Add Stack Cookie Support
 
 [LibraryClasses.IA32]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
