@@ -231,6 +231,9 @@ DiscoverSmiEntryInFvHobs (
   EFI_FFS_FILE_HEADER             *FileHeader;
   EFI_PEI_HOB_POINTERS            Hob;
   EFI_STATUS                      Status;
+  UINTN                           SpamBinSize;
+  BOOLEAN                         MmiEntryFound = FALSE;
+  BOOLEAN                         SpamResponderFound = FALSE;
 
   Hob.Raw = GetHobList ();
   if (Hob.Raw == NULL) {
@@ -271,6 +274,7 @@ DiscoverSmiEntryInFvHobs (
         if (CompareGuid (&FileHeader->Name, &gMmiEntrySpamFileGuid)) {
           mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader;
           mMmiEntrySize         = 0;
+          // Moving the buffer like size field to our global variable
           CopyMem (&mMmiEntrySize, FileHeader->Size, sizeof (FileHeader->Size));
           DEBUG ((
             DEBUG_INFO,
@@ -280,7 +284,20 @@ DiscoverSmiEntryInFvHobs (
             mMmiEntryBaseAddress,
             mMmiEntrySize
             ));
-          Status = EFI_SUCCESS;
+          MmiEntryFound = TRUE;
+        } else if (CompareGuid (&FileHeader->Name, &gSpamBinFileGuid)) {
+          // Moving the buffer like size field to our local variable
+          CopyMem (&SpamBinSize, FileHeader->Size, sizeof (FileHeader->Size));
+          Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader, SpamBinSize);
+          if (EFI_ERROR (Status)) {
+            DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
+            break;
+          }
+          SpamResponderFound = TRUE;
+        }
+
+        if (MmiEntryFound && SpamResponderFound) {
+          // Job done, break out of the loop
           break;
         }
       }
@@ -621,17 +638,33 @@ MmEndOfDxeEventNotify (
   IN EFI_HANDLE      Handle
   )
 {
-  UINTN                         Index;
-  TXT_PROCESSOR_SMM_DESCRIPTOR  *Psd;
-  SPAM_RESPONDER_DATA           *SpamResponderData;
-  UINTN                         NoHandles;
-  UINTN                         HandleBufferSize;
-  EFI_HANDLE                    *HandleBuffer;
-  EFI_STATUS                    Status;
-  EFI_LOADED_IMAGE_PROTOCOL     *LoadedImage;
-  USER_MODULE_INFO              *UserModuleBuffer = NULL;
+  UINTN                              Index;
+  TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
+  SPAM_RESPONDER_DATA                *SpamResponderData;
+  UINTN                              NoHandles;
+  UINTN                              HandleBufferSize;
+  EFI_HANDLE                         *HandleBuffer;
+  EFI_STATUS                         Status;
+  EFI_LOADED_IMAGE_PROTOCOL          *LoadedImage;
+  USER_MODULE_INFO                   *UserModuleBuffer = NULL;
+  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
+  UINT32                             MsegBase;
+  STM_HEADER                         *StmHeader;
+  VOID                               *LongRsp;
 
   DEBUG ((DEBUG_INFO, "MmEndOfDxeEventNotify\n"));
+
+  //
+  // Get MSEG base address from MSR_IA32_SMM_MONITOR_CTL
+  //
+  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
+  MsegBase             = SmmMonitorCtl.Bits.MsegBase << 12;
+
+  //
+  // STM Header is at the beginning of the STM Image, we use the value from MSR
+  //
+  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
+  LongRsp = (VOID*)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
 
   // Now that we have all the loaded image information, prepare the responder data
   HandleBufferSize = 0;
@@ -704,12 +737,15 @@ MmEndOfDxeEventNotify (
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
 
-    SpamResponderData = (SPAM_RESPONDER_DATA*)(UINTN)(Psd->SmmSmiHandlerRsp + sizeof (UINTN) -
+    StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+    SpamResponderData = (SPAM_RESPONDER_DATA*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
                         sizeof (SPAM_RESPONDER_DATA) -
                         (NoHandles - 1) * sizeof (USER_MODULE_INFO));
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
     CopyMem (SpamResponderData + 1, UserModuleBuffer, (NoHandles - 1) * sizeof (USER_MODULE_INFO));
+
+    LongRsp = (VOID*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
   }
 
   mLockLoadMonitor = TRUE;
@@ -873,32 +909,24 @@ StmLoadStmImage (
   IN UINTN                 StmImageSize
   )
 {
-  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  UINT32                             MsegBase;
   STM_HEADER                         *StmHeader;
-
-  //
-  // Get MSEG base address from MSR_IA32_SMM_MONITOR_CTL
-  //
-  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
-  MsegBase             = SmmMonitorCtl.Bits.MsegBase << 12;
 
   //
   // Zero all of MSEG base address
   //
-  ZeroMem ((VOID *)(UINTN)MsegBase, mMsegSize);
+  ZeroMem ((VOID *)(UINTN)mMsegBase, mMsegSize);
 
   //
   // Copy STM Image into MSEG
   //
-  CopyMem ((VOID *)(UINTN)MsegBase, (VOID *)(UINTN)StmImage, StmImageSize);
+  CopyMem ((VOID *)(UINTN)mMsegBase, (VOID *)(UINTN)StmImage, StmImageSize);
 
   //
   // STM Header is at the beginning of the STM Image
   //
   StmHeader = (STM_HEADER *)(UINTN)StmImage;
 
-  StmGen4GPageTable ((UINTN)MsegBase + StmHeader->HwStmHdr.Cr3Offset);
+  StmGen4GPageTable ((UINTN)mMsegBase + StmHeader->HwStmHdr.Cr3Offset);
 }
 
 /**
@@ -921,14 +949,11 @@ LoadMonitor (
   IN UINTN                 StmImageSize
   )
 {
-  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-
   if (mLockLoadMonitor) {
     return EFI_ACCESS_DENIED;
   }
 
-  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
-  if (SmmMonitorCtl.Bits.MsegBase == 0) {
+  if (mMsegBase == 0) {
     return EFI_UNSUPPORTED;
   }
 
