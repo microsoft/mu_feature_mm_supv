@@ -10,9 +10,9 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-02-14T23-02-36 | 45b2886c1f0d56d32b0b048494e4e9c2b4f88671
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-11-22T00-10-02 | 8a980c0465feec3e2096995006fa984fe4d7e238
 #Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 32523fbea769a9c594fb5f7254907c3f | 2023-08-30T19-58-00 | c8cdc60a6e689681f0c81209aeb71e26fd023416
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c6af8bbe5339bdf045cc9e36064b0ea2 | 2023-05-19T23-00-30 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 82ced358be9755dd8c3768cb01837d09 | 2023-11-22T00-11-19 | 8a980c0465feec3e2096995006fa984fe4d7e238
 
 [Defines]
   INF_VERSION                    = 0x0001001A
@@ -138,7 +138,6 @@
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
-  BaseBinSecurityLib
   MmMemoryProtectionHobLib ## MU_CHANGE
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
