@@ -1039,8 +1039,8 @@ EFIAPI
 MmSupvRequestHandler (
   IN     EFI_HANDLE  DispatchHandle,
   IN     CONST VOID  *Context         OPTIONAL,
-  IN OUT VOID        *CommBuffer      OPTIONAL,
-  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  IN OUT VOID        *CommBuffer,
+  IN OUT UINTN       *CommBufferSize
   );
 
 /**
