@@ -173,7 +173,7 @@ DumpStmImage (
 
   printf ("STM Header (%08x)\n", (UINT32)(UINTN)StmHeader);
   printf ("Hardware field:\n");
-  printf ("  StmHeaderRevision           - %08x\n", StmHeader->HwStmHdr.StmHeaderRevision);
+  printf ("  MsegHeaderRevision          - %08x\n", StmHeader->HwStmHdr.MsegHeaderRevision);
   printf ("  MonitorFeatures             - %08x\n", StmHeader->HwStmHdr.MonitorFeatures);
   printf ("  GdtrLimit                   - %08x\n", StmHeader->HwStmHdr.GdtrLimit);
   printf ("  GdtrBaseOffset              - %08x\n", StmHeader->HwStmHdr.GdtrBaseOffset);
