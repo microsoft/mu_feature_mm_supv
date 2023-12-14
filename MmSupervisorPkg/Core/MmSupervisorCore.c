@@ -1,7 +1,7 @@
 /** @file
   MM Core Main Entry Point
 
-  Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -321,6 +321,8 @@ MmReadyToLockHandler (
   EFI_STATUS  Status;
   UINTN       Index;
 
+  PERF_CALLBACK_BEGIN (&gEfiDxeMmReadyToLockProtocolGuid);
+
   DEBUG ((DEBUG_INFO, "MmReadyToLockHandler\n"));
 
   //
@@ -358,6 +360,8 @@ MmReadyToLockHandler (
   Status = PrepareMemPolicySnapshot ();
 
   mMmReadyToLockDone = TRUE;
+
+  PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
   return Status;
 }
@@ -423,6 +427,8 @@ MmEntryPoint (
   STATIC BOOLEAN             FirstMmi = TRUE;
   EFI_PHYSICAL_ADDRESS       CommunicationBuffer;
   UINT64                     BufferSize;
+
+  PERF_FUNCTION_BEGIN ();
 
   DEBUG ((DEBUG_VERBOSE, "MmEntryPoint ...\n"));
 
@@ -580,6 +586,8 @@ Cleanup:
   }
 
   DEBUG ((DEBUG_VERBOSE, "MmEntryPoint Done\n"));
+
+  PERF_FUNCTION_END ();
 }
 
 EFI_STATUS
