@@ -11,8 +11,8 @@
 ##
 
 #Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-11-22T00-10-02 | 8a980c0465feec3e2096995006fa984fe4d7e238
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 32523fbea769a9c594fb5f7254907c3f | 2023-08-30T19-58-00 | c8cdc60a6e689681f0c81209aeb71e26fd023416
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | d284a9a4d41fada5c5276d8bb01f0fbe | 2023-10-25T18-03-38 | e77aa3b4b2bb9854c8ec3ec931b97428fe86315e
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 2ec994e563518dde8cbd5f5b20ffd820 | 2023-10-26T17-59-05 | e77aa3b4b2bb9854c8ec3ec931b97428fe86315e
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | e9d4a69133813bbea71f4035493b26f6 | 2023-12-14T22-58-18 | 78db5a7c3d55d1389373187973bf2936f4bbe5fa
 
 [Defines]
   INF_VERSION                    = 0x0001001A
