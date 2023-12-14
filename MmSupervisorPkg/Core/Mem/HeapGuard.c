@@ -581,6 +581,13 @@ UnsetGuardPage (
                   EFI_MEMORY_RP
                   );
   ASSERT_EFI_ERROR (Status);
+
+  Status  = SmmSetMemoryAttributes (
+              BaseAddress,
+              EFI_PAGE_SIZE,
+              EFI_MEMORY_XP | EFI_MEMORY_SP
+              );
+  ASSERT_EFI_ERROR (Status);
   mOnGuarding = FALSE;
 }
 

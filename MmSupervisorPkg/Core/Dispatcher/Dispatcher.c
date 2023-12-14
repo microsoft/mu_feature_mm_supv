@@ -1004,6 +1004,8 @@ MmDriverDispatchHandler (
   EFI_STATUS            Status;
   EFI_PEI_HOB_POINTERS  Hob;
 
+  PERF_CALLBACK_BEGIN (&gMmSupervisorDriverDispatchGuid);
+
   DEBUG ((DEBUG_INFO, "%a Entry\n", __FUNCTION__));
 
   Hob.Raw = GetHobList ();
@@ -1045,6 +1047,9 @@ PrepareCommonBuffer:
   }
 
   DEBUG ((DEBUG_INFO, "%a Exit\n", __FUNCTION__));
+
+  PERF_CALLBACK_END (&gMmSupervisorDriverDispatchGuid);
+
   return EFI_SUCCESS;
 }
 

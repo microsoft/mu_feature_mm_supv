@@ -113,12 +113,14 @@ MmiManage (
   EFI_STATUS   Status;
   BOOLEAN      IsUserRange;
 
+  PERF_FUNCTION_BEGIN ();
+
   Status         = EFI_NOT_FOUND;
   SuccessReturn  = FALSE;
   SupervisorPath = FALSE;
 
   if ((CommBuffer != NULL) && (CommBufferSize == NULL)) {
-    return EFI_NOT_FOUND;
+    goto Done;
   }
 
   if (CommBuffer == NULL) {
@@ -128,7 +130,8 @@ MmiManage (
     // Determine if the communicate buffer is supervisor or user pages
     Status = InspectTargetRangeOwnership ((EFI_PHYSICAL_ADDRESS)(UINTN)CommBuffer, *CommBufferSize, &IsUserRange);
     if (EFI_ERROR (Status)) {
-      return EFI_NOT_FOUND;
+      Status = EFI_NOT_FOUND;
+      goto Done;
     }
 
     SupervisorPath = !IsUserRange;
@@ -149,7 +152,8 @@ MmiManage (
       //
       // There is no handler registered for this interrupt source
       //
-      return Status;
+      Status = EFI_NOT_FOUND;
+      goto Done;
     }
   }
 
@@ -230,6 +234,8 @@ MmiManage (
     Status = EFI_SUCCESS;
   }
 
+Done:
+  PERF_FUNCTION_END ();
   return Status;
 }
 
