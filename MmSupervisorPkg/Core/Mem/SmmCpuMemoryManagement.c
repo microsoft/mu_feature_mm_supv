@@ -38,6 +38,43 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define PREVIOUS_MEMORY_DESCRIPTOR(MemoryDescriptor, Size) \
   ((EFI_MEMORY_DESCRIPTOR *)((UINT8 *)(MemoryDescriptor) - (Size)))
 
+///
+/// Define macros to encapsulate the write unprotect/protect
+/// read-only pages.
+/// Below pieces of logic are defined as macros and not functions
+/// because "CET" feature disable & enable must be in the same
+/// function to avoid shadow stack and normal SMI stack mismatch,
+/// thus WRITE_UNPROTECT_RO_PAGES () must be called pair with
+/// WRITE_PROTECT_RO_PAGES () in same function.
+///
+/// @param[in,out] Wp   A BOOLEAN variable local to the containing
+///                     function, carrying write protection status from
+///                     WRITE_UNPROTECT_RO_PAGES() to
+///                     WRITE_PROTECT_RO_PAGES().
+///
+/// @param[in,out] Cet  A BOOLEAN variable local to the containing
+///                     function, carrying control flow integrity
+///                     enforcement status from
+///                     WRITE_UNPROTECT_RO_PAGES() to
+///                     WRITE_PROTECT_RO_PAGES().
+///
+#define WRITE_UNPROTECT_RO_PAGES(Wp, Cet) \
+  do { \
+    Cet = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0); \
+    if (Cet) { \
+      DisableCet (); \
+    } \
+    SmmWriteUnprotectReadOnlyPage (&Wp); \
+  } while (FALSE)
+
+#define WRITE_PROTECT_RO_PAGES(Wp, Cet) \
+  do { \
+    SmmWriteProtectReadOnlyPage (Wp); \
+    if (Cet) { \
+      EnableCet (); \
+    } \
+  } while (FALSE)
+
 // Note: This is ordered this type intentionally as tie breaker,
 // thus when an address is at the end of both DXE and SMM range,
 // SMM will eliminate the previous range for inclusion, vice versa
@@ -74,58 +111,39 @@ PAGE_TABLE_POOL  *mPageTablePool = NULL;
 BOOLEAN  mIsReadOnlyPageTable = FALSE;
 
 /**
-  Disable Write Protect on pages marked as read-only if Cr0.Bits.WP is 1.
-  @param[out]  WpEnabled      If Cr0.WP is enabled.
-  @param[out]  CetEnabled     If CET is enabled.
+  Write unprotect read-only pages if Cr0.Bits.WP is 1.
+  @param[out]  WriteProtect      If Cr0.Bits.WP is enabled.
 **/
 VOID
-DisableReadOnlyPageWriteProtect (
-  OUT BOOLEAN  *WpEnabled,
-  OUT BOOLEAN  *CetEnabled
+SmmWriteUnprotectReadOnlyPage (
+  OUT BOOLEAN  *WriteProtect
   )
 {
   IA32_CR0  Cr0;
 
-  *CetEnabled = ((AsmReadCr4 () & CR4_CET_ENABLE) != 0) ? TRUE : FALSE;
-  Cr0.UintN   = AsmReadCr0 ();
-  *WpEnabled  = (Cr0.Bits.WP != 0) ? TRUE : FALSE;
-  if (*WpEnabled) {
-    if (*CetEnabled) {
-      //
-      // CET must be disabled if WP is disabled. Disable CET before clearing CR0.WP.
-      //
-      DisableCet ();
-    }
-
+  Cr0.UintN     = AsmReadCr0 ();
+  *WriteProtect = (Cr0.Bits.WP != 0);
+  if (*WriteProtect) {
     Cr0.Bits.WP = 0;
     AsmWriteCr0 (Cr0.UintN);
   }
 }
 
 /**
-  Enable Write Protect on pages marked as read-only.
-  @param[out]  WpEnabled      If Cr0.WP should be enabled.
-  @param[out]  CetEnabled     If CET should be enabled.
+  Write protect read-only pages.
+  @param[in]  WriteProtect      If Cr0.Bits.WP should be enabled.
 **/
 VOID
-EnableReadOnlyPageWriteProtect (
-  BOOLEAN  WpEnabled,
-  BOOLEAN  CetEnabled
+SmmWriteProtectReadOnlyPage (
+  IN  BOOLEAN  WriteProtect
   )
 {
   IA32_CR0  Cr0;
 
-  if (WpEnabled) {
+  if (WriteProtect) {
     Cr0.UintN   = AsmReadCr0 ();
     Cr0.Bits.WP = 1;
     AsmWriteCr0 (Cr0.UintN);
-
-    if (CetEnabled) {
-      //
-      // re-enable CET.
-      //
-      EnableCet ();
-    }
   }
 }
 
@@ -153,7 +171,7 @@ InitializePageTablePool (
   )
 {
   VOID     *Buffer;
-  BOOLEAN  WpEnabled;
+  BOOLEAN  WriteProtect;
   BOOLEAN  CetEnabled;
 
   //
@@ -191,9 +209,11 @@ InitializePageTablePool (
   // If page table memory has been marked as RO, mark the new pool pages as read-only.
   //
   if (mIsReadOnlyPageTable) {
-    DisableReadOnlyPageWriteProtect (&WpEnabled, &CetEnabled);
+    WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
+
     SmmSetMemoryAttributes ((EFI_PHYSICAL_ADDRESS)(UINTN)Buffer, EFI_PAGES_TO_SIZE (PoolPages), EFI_MEMORY_RO);
-    EnableReadOnlyPageWriteProtect (WpEnabled, CetEnabled);
+
+    WRITE_PROTECT_RO_PAGES (WriteProtect, CetEnabled);
   }
 
   return TRUE;
