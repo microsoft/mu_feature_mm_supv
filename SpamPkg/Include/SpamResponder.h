@@ -39,10 +39,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define FIXUP8_OFFSET6_RSVD                     6
 #define FIXUP8_OFFSET7_RSVD                     
 
+#define MMI_ENTRY_STRUCT_VERSION  4
+
 #pragma pack(push,1)
 
 typedef struct {
-  UINT32  HeaderVersion;     //4 For Version 4 Header
+  UINT32  HeaderVersion;     // 4 For Version 4 Header
   UINT8   FixUpStructOffset; // Offset to FixUpStruct Arrary
   UINT8   FixUpStructNum;    // number of FixUpStruct Arrary member
   UINT8   FixUp64Offset;     // Offset to FixUp64 Arrary
