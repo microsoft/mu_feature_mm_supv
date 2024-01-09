@@ -256,6 +256,7 @@ CreateHob (
   if (0x10000 - HobLength <= 0x7) {
     return NULL;
   }
+
   // MU_SEC_TCBZ4166 [END] - mitigate potential integer overflow
 
   HobLength = (UINT16)((HobLength + 0x7) & (~0x7));
