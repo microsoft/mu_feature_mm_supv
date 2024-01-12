@@ -32,20 +32,13 @@
 [Sources.X64]
   X64/InterlockedCompareExchange64.c | MSFT
   X64/InterlockedCompareExchange32.c | MSFT
-  
-  X64/InterlockedCompareExchange64.asm | INTEL
-  X64/InterlockedCompareExchange32.asm | INTEL
-  
-  X64/InterlockedDecrement.c | MSFT 
-  X64/InterlockedIncrement.c | MSFT 
-  SynchronizationMsc.c | MSFT 
 
-  X64/InterlockedDecrement.asm | INTEL 
-  X64/InterlockedIncrement.asm | INTEL 
-  Synchronization.c | INTEL 
+  X64/InterlockedDecrement.c | MSFT
+  X64/InterlockedIncrement.c | MSFT
+  SynchronizationMsc.c | MSFT
 
   X64/GccInline.c | GCC
-  SynchronizationGcc.c  | GCC 
+  SynchronizationGcc.c  | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
