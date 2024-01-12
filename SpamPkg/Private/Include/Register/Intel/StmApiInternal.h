@@ -20,9 +20,7 @@
 #define STM_SPEC_VERSION_MAJOR 1
 #define STM_SPEC_VERSION_MINOR 0
 
-#pragma pack (push, 1)    
-
-#define STM_SMM_REV_ID   0x80010100
+#pragma pack (push, 1)
 
 typedef struct _STM_SMM_CPU_STATE {
   UINT8                         Reserved1[0x1d0];       // fc00h
