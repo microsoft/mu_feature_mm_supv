@@ -31,6 +31,7 @@
   DebugLib.c
 
 [Packages]
+  MdePkg/MdePkg.dec
   SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
@@ -42,7 +43,7 @@
   SynchronizationLib
 
 [Pcd]
-  gEfiStmPkgTokenSpaceGuid.PcdDebugPrintErrorLevel   ## CONSUMES
-  gEfiStmPkgTokenSpaceGuid.PcdDebugClearMemoryValue  ## CONSUMES
-  gEfiStmPkgTokenSpaceGuid.PcdDebugPropertyMask      ## CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel   ## CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdDebugClearMemoryValue  ## CONSUMES
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask      ## CONSUMES
 
