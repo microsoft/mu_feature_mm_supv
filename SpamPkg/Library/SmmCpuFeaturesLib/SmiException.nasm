@@ -17,7 +17,7 @@
 extern  ASM_PFX(SmmStmExceptionHandler)
 extern  ASM_PFX(SmmStmSetup)
 extern  ASM_PFX(SmmStmTeardown)
-extern  ASM_PFX(gStmXdSupported)
+extern  ASM_PFX(mXdSupported)
 
 %define MSR_IA32_MISC_ENABLE 0x1A0
 %define MSR_EFER      0xc0000080
@@ -45,7 +45,7 @@ ASM_PFX(OnStmSetup):
 ; Check XD disable bit
 ;
     xor     r8, r8
-    lea     rax, [ASM_PFX(gStmXdSupported)]
+    lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
     jz      @StmXdDone1
@@ -68,7 +68,7 @@ ASM_PFX(OnStmSetup):
   call ASM_PFX(SmmStmSetup)
   add  rsp, 0x20
 
-    lea     rax, [ASM_PFX(gStmXdSupported)]
+    lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
     jz      .11
@@ -90,7 +90,7 @@ ASM_PFX(OnStmTeardown):
 ; Check XD disable bit
 ;
     xor     r8, r8
-    lea     rax, [ASM_PFX(gStmXdSupported)]
+    lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
     jz      @StmXdDone2
@@ -113,7 +113,7 @@ ASM_PFX(OnStmTeardown):
   call ASM_PFX(SmmStmTeardown)
   add  rsp, 0x20
 
-    lea     rax, [ASM_PFX(gStmXdSupported)]
+    lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
     jz      .12
