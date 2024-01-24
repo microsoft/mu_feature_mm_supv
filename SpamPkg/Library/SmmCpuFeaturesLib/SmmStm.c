@@ -65,18 +65,10 @@ EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
 #define   CPUID1_EDX_XD_SUPPORT  0x100000
 
 //
-// External global variables associated with SMI Handler Template
-//
-extern CONST TXT_PROCESSOR_SMM_DESCRIPTOR  gcStmPsd;
-extern UINT32                              gStmSmbase;
-extern volatile UINT32                     gStmSmiStack;
-extern UINT32                              gStmSmiCr3;
-
-//
 // Global variables and symbols pulled in from MmSupervisor
 //
 extern BOOLEAN mCetSupported;
-extern BOOLEAN gXdSupported;
+extern BOOLEAN gPatchXdSupported;
 extern BOOLEAN gPatchMsrIa32MiscEnableSupported;
 extern BOOLEAN gPatch5LevelPagingNeeded;
 
@@ -293,6 +285,7 @@ DiscoverSmiEntryInFvHobs (
             DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
             break;
           }
+          // TODO: Mark the region as supervisor read-only
           SpamResponderFound = TRUE;
         }
 
@@ -506,8 +499,9 @@ SmmCpuFeaturesInstallSmiHandler (
   UINT32                        *Fixup32Ptr;
   UINT64                        *Fixup64Ptr;
   UINT8                         *Fixup8Ptr;
+  UINT32                        tSmiStack;
 
-  CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &gcStmPsd, sizeof (gcStmPsd));
+  CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &mPsdTemplate, sizeof (mPsdTemplate));
   Psd             = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET);
   Psd->SmmGdtPtr  = GdtBase;
   Psd->SmmGdtSize = (UINT32)GdtSize;
@@ -515,16 +509,14 @@ SmmCpuFeaturesInstallSmiHandler (
   //
   // Initialize values in template before copy
   //
-  gStmSmiStack             = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
-  gStmSmiCr3               = Cr3;
-  gStmSmbase               = SmBase;
+  tSmiStack                = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
   gStmSmiHandlerIdtr.Base  = IdtBase;
   gStmSmiHandlerIdtr.Limit = (UINT16)(IdtSize - 1);
 
   //
   // Set the value at the top of the CPU stack to the CPU Index
   //
-  *(UINTN *)(UINTN)gStmSmiStack = CpuIndex;
+  *(UINTN *)(UINTN)tSmiStack = CpuIndex;
 
   //
   // Copy template to CPU specific SMI handler location from what is located from the FV
@@ -547,6 +539,7 @@ SmmCpuFeaturesInstallSmiHandler (
   FixStructPtr = (UINT16 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUpStructOffset);
   Fixup32Ptr = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
   Fixup64Ptr = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
+  Fixup8Ptr = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
 
   //Do the fixup
   Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp] = mCetPl0Ssp;
@@ -560,16 +553,16 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = (UINT64)CpuSmmDebugEntry;
   Fixup64Ptr[FIXUP64_SMM_DBG_EXIT] = (UINT64)CpuSmmDebugExit;
   Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] = (UINT64)SmiRendezvous;
-  Fixup64Ptr[FIXUP64_XD_SUPPORTED] = (UINT64)&gXdSupported;
+  Fixup64Ptr[FIXUP64_XD_SUPPORTED] = (UINT64)&gPatchXdSupported;
   Fixup64Ptr[FIXUP64_CET_SUPPORTED] = (UINT64)&mCetSupported;
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = IdtBase;
 
-  Fixup8Ptr[FIXUP8_gPatchXdSupported] = gXdSupported;
+  Fixup8Ptr[FIXUP8_gPatchXdSupported] = gPatchXdSupported;
   Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
   Fixup8Ptr[FIXUP8_gPatch5LevelPagingNeeded] = gPatch5LevelPagingNeeded;
   Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;
 
-  // TODO: Sort out this values, if needed
+  // TODO: Sort out these values, if needed
   Psd->SmmSmiHandlerRip = 0;
   Psd->SmmSmiHandlerRsp = (UINTN)SmiStack + StackSize - sizeof (UINTN);
   Psd->SmmCr3           = Cr3;
@@ -638,7 +631,7 @@ MmEndOfDxeEventNotify (
   IN EFI_HANDLE      Handle
   )
 {
-  UINTN                              Index;
+  UINTN                              Index = 0;
   TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
   SPAM_RESPONDER_DATA                *SpamResponderData;
   UINTN                              NoHandles;
@@ -744,6 +737,7 @@ MmEndOfDxeEventNotify (
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
     CopyMem (SpamResponderData + 1, UserModuleBuffer, (NoHandles - 1) * sizeof (USER_MODULE_INFO));
+    // TODO: Mark the region as supervisor read-only, or even read prevention...
 
     LongRsp = (VOID*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
   }
@@ -893,6 +887,22 @@ StmCheckStmImage (
   }
 
   return TRUE;
+}
+
+/**
+
+  Get STM state.
+
+  @return STM state
+
+**/
+EFI_SM_MONITOR_STATE
+EFIAPI
+GetMonitorState (
+  VOID
+  )
+{
+  return mStmState;
 }
 
 /**
