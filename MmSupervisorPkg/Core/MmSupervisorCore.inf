@@ -10,7 +10,7 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-11-22T00-10-02 | 8a980c0465feec3e2096995006fa984fe4d7e238
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
 #Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 32523fbea769a9c594fb5f7254907c3f | 2023-08-30T19-58-00 | c8cdc60a6e689681f0c81209aeb71e26fd023416
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 82ced358be9755dd8c3768cb01837d09 | 2023-11-22T00-11-19 | 8a980c0465feec3e2096995006fa984fe4d7e238
 
