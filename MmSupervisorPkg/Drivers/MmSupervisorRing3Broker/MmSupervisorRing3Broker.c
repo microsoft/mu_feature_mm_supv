@@ -19,6 +19,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/SysCallLib.h>
+#include <Library/PerformanceLib.h>
 
 #include "MmSupervisorRing3Broker.h"
 #include "MmCpu/SyscallMmCpuRing3Broker.h"
@@ -166,6 +167,8 @@ MmReadyToBootHandler (
   EFI_STATUS      Status         = EFI_SUCCESS;
   STATIC BOOLEAN  mInReadyToBoot = FALSE;
 
+  PERF_CALLBACK_BEGIN (&gEfiEventReadyToBootGuid);
+
   if (!mInReadyToBoot) {
     MmHandle = NULL;
     Status   = MmInstallUserProtocolInterface (
@@ -177,6 +180,7 @@ MmReadyToBootHandler (
   }
 
   mInReadyToBoot = TRUE;
+  PERF_CALLBACK_END (&gEfiEventReadyToBootGuid);
   return Status;
 }
 
@@ -209,6 +213,8 @@ MmReadyToLockHandler (
   UINTN       Index;
   EFI_HANDLE  MmHandle;
 
+  PERF_CALLBACK_BEGIN (&gEfiDxeMmReadyToLockProtocolGuid);
+
   DEBUG ((DEBUG_INFO, "MmReadyToLockHandler\n"));
 
   //
@@ -230,6 +236,8 @@ MmReadyToLockHandler (
                EFI_NATIVE_INTERFACE,
                NULL
                );
+
+  PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
   return Status;
 }
@@ -261,6 +269,9 @@ MmEndOfDxeHandler (
   EFI_HANDLE  MmHandle;
 
   DEBUG ((DEBUG_INFO, "MmEndOfDxeHandler\n"));
+
+  PERF_CALLBACK_BEGIN (&gEfiEndOfDxeEventGroupGuid);
+
   //
   // Install MM EndOfDxe protocol
   //
@@ -271,6 +282,8 @@ MmEndOfDxeHandler (
                EFI_NATIVE_INTERFACE,
                NULL
                );
+
+  PERF_CALLBACK_END (&gEfiEndOfDxeEventGroupGuid);
   return Status;
 }
 
