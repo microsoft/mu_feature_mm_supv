@@ -248,6 +248,13 @@ CreateHob (
 
   HandOffHob = GetHobList ();
 
+  //
+  // Check Length to avoid data overflow.
+  //
+  if (HobLength > MAX_UINT16 - 0x7) {
+    return NULL;
+  }
+
   HobLength = (UINT16)((HobLength + 0x7) & (~0x7));
 
   FreeMemory = HandOffHob->EfiFreeMemoryTop - HandOffHob->EfiFreeMemoryBottom;
