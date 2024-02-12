@@ -96,7 +96,8 @@ PeCoffLoaderRevertRelocateImage (
 RETURN_STATUS
 EFIAPI
 PeCoffLoaderRevertLoadImage (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
+  OUT    VOID                          *Buffer
   );
 
 /**
