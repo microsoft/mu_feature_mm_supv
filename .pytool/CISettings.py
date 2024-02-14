@@ -14,13 +14,7 @@ from edk2toolext.invocables.edk2_ci_setup import CiSetupSettingsManager
 from edk2toollib.utility_functions import GetHostInfo
 from pathlib import Path
 
-try:
-    # May not be present until submodules are populated
-    root = Path(__file__).parent.parent.resolve()
-    sys.path.append(str(root/'MU_BASECORE'/'.pytool'/'Plugin'/'CodeQL'/'integration'))
-    import stuart_codeql as codeql_helpers
-except ImportError:
-    pass
+from edk2toolext import codeql as codeql_helpers
 
 
 class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsManager):
@@ -185,17 +179,17 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
             {
                 "Path": "MU_BASECORE",
                 "Url": "https://github.com/microsoft/mu_basecore.git",
-                "Branch": "release/202302"
+                "Branch": "release/202311"
             },
             {
                 "Path": "Common/MU_PLUS",
                 "Url": "https://github.com/microsoft/mu_plus.git",
-                "Branch": "release/202302"
+                "Branch": "release/202311"
             },
             {
                 "Path": "Common/MU_TIANO_PLUS",
                 "Url": "https://github.com/microsoft/mu_tiano_plus.git",
-                "Branch": "release/202302"
+                "Branch": "release/202311"
             }
         ]
 

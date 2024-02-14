@@ -2,13 +2,15 @@
 #
 # Results are uploaded to GitHub Code Scanning.
 #
-# Note: Important: This file currently only works with "CI" builds. "Platform" builds can
-#                   be supported without much effort but that will be done in the future.
+# Note: Important: This file only works with "CI" builds. "Platform" builds are
+#                  supported with the codeql-platform.yml file.
 #
 # Note: This workflow only supports Windows as CodeQL CLI has confirmed issues running
 #       against edk2-style codebases on Linux (only tested on Ubuntu). Therefore, this
 #       workflow is written only for Windows but could easily be adapted to run on Linux
-#       in the future if needed (e.g. swap out "windows" with agent OS var value, etc.)
+#       in the future if needed (e.g. swap out "windows" with agent OS var value, etc.).
+#
+#       For details about the Linux issue see: https://github.com/github/codeql-action/issues/1338
 #
 # NOTE: This file is automatically synchronized from Mu DevOps. Update the original file there
 #       instead of the file in this repo.
@@ -46,7 +48,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
@@ -92,7 +94,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
@@ -178,14 +180,14 @@ jobs:
 
     - name: Attempt to Load cargo-make From Cache
       id: cargo_make_cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ steps.get_cargo_tool_details.outputs.cargo_bin_path }}
         key: ${{ steps.get_cargo_tool_details.outputs.cargo_make_cache_key }}
 
     - name: Download cargo-make
       if: steps.cargo_make_cache.outputs.cache-hit != 'true'
-      uses: robinraju/release-downloader@v1.8
+      uses: robinraju/release-downloader@v1.9
       with:
         repository: 'sagiegurari/cargo-make'
         tag: '${{ steps.get_cargo_tool_details.outputs.cargo_make_version }}'
@@ -226,10 +228,10 @@ jobs:
       run: stuart_setup -c .pytool/CISettings.py -t DEBUG -a ${{ matrix.archs }} TOOL_CHAIN_TAG=${{ matrix.tool_chain_tag }}
 
     - name: Upload Setup Log As An Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: (success() || failure()) && steps.get_ci_file_operations.outputs.setup_supported == 'true'
       with:
-        name: ${{ matrix.package }}-Logs
+        name: ${{ matrix.package }}-Setup-Log
         path: |
           **/SETUPLOG.txt
           retention-days: 7
@@ -240,10 +242,10 @@ jobs:
       run: stuart_ci_setup -c .pytool/CISettings.py -t DEBUG -a ${{ matrix.archs }} TOOL_CHAIN_TAG=${{ matrix.tool_chain_tag }}
 
     - name: Upload CI Setup Log As An Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: (success() || failure()) && steps.get_ci_file_operations.outputs.ci_setup_supported == 'true'
       with:
-        name: ${{ matrix.package }}-Logs
+        name: ${{ matrix.package }}-CI-Setup-Log
         path: |
           **/CISETUP.txt
           retention-days: 7
@@ -253,10 +255,10 @@ jobs:
       run: stuart_update -c .pytool/CISettings.py -t DEBUG -a ${{ matrix.archs }} TOOL_CHAIN_TAG=${{ matrix.tool_chain_tag }}
 
     - name: Upload Update Log As An Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success() || failure()
       with:
-        name: ${{ matrix.package }}-Logs
+        name: ${{ matrix.package }}-Update-Log
         path: |
           **/UPDATE_LOG.txt
         retention-days: 7
@@ -270,8 +272,17 @@ jobs:
         import sys
         from pathlib import Path
 
-        # Find the plugin directory that contains the CodeQL plugin
-        plugin_dir = list(Path(os.environ['GITHUB_WORKSPACE']).rglob('.pytool/Plugin/CodeQL'))
+        #
+        # Find the plugin directory that contains the CodeQL plugin.
+        #
+        # Prior to Mu Basecore 202311, the CodeQL plugin was located in .pytool. After it
+        # is located in BaseTools. First check BaseTools, but consider .pytool as a backup
+        # for backward compatibility. The .pytool backup can be removed when no longer needed
+        # for supported branches.
+        #
+        plugin_dir = list(Path(os.environ['GITHUB_WORKSPACE']).rglob('BaseTools/Plugin/CodeQL'))
+        if not plugin_dir:
+          plugin_dir = list(Path(os.environ['GITHUB_WORKSPACE']).rglob('.pytool/Plugin/CodeQL'))
 
         # This should only be found once
         if len(plugin_dir) == 1:
@@ -310,7 +321,7 @@ jobs:
 
     - name: Attempt to Load CodeQL CLI From Cache
       id: codeqlcli_cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{ steps.cache_key_gen.outputs.codeql_cli_ext_dep_dir }}
         key: ${{ steps.cache_key_gen.outputs.codeql_cli_cache_key }}
@@ -319,19 +330,48 @@ jobs:
       if: steps.codeqlcli_cache.outputs.cache-hit != 'true'
       run: stuart_update -c .pytool/CISettings.py -t DEBUG -a ${{ matrix.archs }} TOOL_CHAIN_TAG=${{ matrix.tool_chain_tag }} --codeql
 
+    - name: Find pytool Plugin Directory
+      id: find_pytool_dir
+      shell: python
+      run: |
+        import os
+        import sys
+        from pathlib import Path
+
+        # Find the plugin directory that contains the Compiler plugin
+        plugin_dir = list(Path(os.environ['GITHUB_WORKSPACE']).rglob('.pytool/Plugin/CompilerPlugin'))
+
+        # This should only be found once
+        if len(plugin_dir) == 1:
+            # If the directory is found get the parent Plugin directory
+            plugin_dir = str(plugin_dir[0].parent)
+
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f'pytool_plugin_dir={plugin_dir}', file=fh)
+        else:
+            print("::error title=Workspace Error!::Failed to find Mu Basecore .pytool/Plugin directory!")
+            sys.exit(1)
+
     - name: Remove CI Plugins Irrelevant to CodeQL
       shell: python
       env:
-        CODEQL_PLUGIN_DIR: ${{ steps.find_dir.outputs.codeql_plugin_dir }}
+        PYTOOL_PLUGIN_DIR: ${{ steps.find_pytool_dir.outputs.pytool_plugin_dir }}
       run: |
         import os
         import shutil
         from pathlib import Path
 
-        # Only these two plugins are needed for CodeQL
+        # Only these two plugins are needed for CodeQL.
+        #
+        # CodeQL build time is reduced by removing other plugins that are not needed for the CodeQL
+        # build in the .pytool directory. The CompilerPlugin is required to compile code for CodeQL
+        # to extract results from and the CodeQL plugin is necessary to to analyze the results and
+        # build the CodeQL database from them. The CodeQL plugin should be in BaseTools moving forward
+        # but still might be in .pytool in older branches so it is kept here as an exception.
+        #
         plugins_to_keep = ['CodeQL', 'CompilerPlugin']
 
-        plugin_dir = Path(os.environ['CODEQL_PLUGIN_DIR']).parent.absolute()
+        plugin_dir = Path(os.environ['PYTOOL_PLUGIN_DIR']).absolute()
         if plugin_dir.is_dir():
             for dir in plugin_dir.iterdir():
                 if str(dir.stem) not in plugins_to_keep:
@@ -367,10 +407,10 @@ jobs:
         delete_dirs(build_path)
 
     - name: Upload Build Logs As An Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success() || failure()
       with:
-        name: ${{ matrix.package }}-Logs
+        name: ${{ matrix.package }}-Build-Logs
         path: |
           **/BUILD_REPORT.TXT
           **/OVERRIDELOG.TXT
@@ -398,7 +438,7 @@ jobs:
             print(f'sarif_file_path={sarif_path}', file=fh)
 
     - name: Upload CodeQL Results (SARIF) As An Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.package }}-CodeQL-SARIF
         path: ${{ steps.env_data.outputs.sarif_file_path }}
@@ -406,7 +446,7 @@ jobs:
         if-no-files-found: warn
 
     - name: Upload CodeQL Results (SARIF) To GitHub Code Scanning
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         # Path to SARIF file relative to the root of the repository.
         sarif_file: ${{ steps.env_data.outputs.sarif_file_path }}

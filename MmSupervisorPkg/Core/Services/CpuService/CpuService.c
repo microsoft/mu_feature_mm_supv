@@ -1,7 +1,7 @@
 /** @file
 Implementation of SMM CPU Services Protocol.
 
-Copyright (c) 2011 - 2022, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2011 - 2023, Intel Corporation. All rights reserved.<BR>
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -184,48 +184,4 @@ SmmRegisterExceptionHandler (
   )
 {
   return RegisterCpuInterruptHandler (ExceptionType, InterruptHandler);
-}
-
-/**
-  Wait for all processors enterring SMM until all CPUs are already synchronized or not.
-  If BlockingMode is False, timeout value is zero.
-  @param This          A pointer to the EDKII_SMM_CPU_RENDEZVOUS_PROTOCOL instance.
-  @param BlockingMode  Blocking mode or non-blocking mode.
-  @retval EFI_SUCCESS  All available APs arrived.
-  @retval EFI_TIMEOUT  Wait for all APs until timeout.
-**/
-EFI_STATUS
-EFIAPI
-SmmCpuRendezvous (
-  IN EDKII_SMM_CPU_RENDEZVOUS_PROTOCOL  *This,
-  IN BOOLEAN                            BlockingMode
-  )
-{
-  EFI_STATUS  Status;
-
-  //
-  // Return success immediately if all CPUs are already synchronized.
-  //
-  if (mSmmMpSyncData->AllApArrivedWithException) {
-    Status = EFI_SUCCESS;
-    goto ON_EXIT;
-  }
-
-  if (!BlockingMode) {
-    Status = EFI_TIMEOUT;
-    goto ON_EXIT;
-  }
-
-  //
-  // There are some APs outside SMM, Wait for all available APs to arrive.
-  //
-  SmmWaitForApArrival ();
-  Status = mSmmMpSyncData->AllApArrivedWithException ? EFI_SUCCESS : EFI_TIMEOUT;
-
-ON_EXIT:
-  if (!mSmmMpSyncData->AllApArrivedWithException) {
-    DEBUG ((DEBUG_INFO, "EdkiiSmmWaitForAllApArrival: Timeout to wait all APs arrival\n"));
-  }
-
-  return Status;
 }

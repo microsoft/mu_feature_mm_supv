@@ -48,6 +48,8 @@
   LocalApicLib|UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
   CcExitLib|UefiCpuPkg/Library/CcExitLibNull/CcExitLibNull.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
+  CpuPageTableLib|UefiCpuPkg/Library/CpuPageTableLib/CpuPageTableLib.inf
+  MmSaveStateLib|UefiCpuPkg/Library/MmSaveStateLib/AmdMmSaveStateLib.inf
   RegisterFilterLib|MdePkg/Library/RegisterFilterLibNull/RegisterFilterLibNull.inf
 
 # MU_CHANGE [BEGIN] - Add Stack Cookie Support
@@ -98,6 +100,7 @@
   SmmPolicyGateLib|MmSupervisorPkg/Library/SmmPolicyGateLib/SmmPolicyGateLib.inf
   MemLib|MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
   IhvSmmSaveStateSupervisionLib|MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
+  MmServicesTableLib|StandaloneMmPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLibCore.inf
 
 [LibraryClasses.X64.MM_STANDALONE]
   BaseLib|MmSupervisorPkg/Library/BaseLibSysCall/BaseLib.inf
