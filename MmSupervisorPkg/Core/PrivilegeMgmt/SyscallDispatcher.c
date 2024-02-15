@@ -38,9 +38,7 @@ struct Dict {
 GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mMaxDictSize = (UINT8)FixedPcdGet8 (PcdMmSupervisorPrintPortsMaxSize);
 GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mMsrCurrSize = 0;
 GLOBAL_REMOVE_IF_UNREFERENCED UINT8        mIoCurrSize  = 0;
-GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPcdCheck    = TRUE;
 GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPrintInfo   = FALSE;
-GLOBAL_REMOVE_IF_UNREFERENCED BOOLEAN      mPrintEnabled;
 GLOBAL_REMOVE_IF_UNREFERENCED struct Dict  mMsrValues[FixedPcdGet8 (PcdMmSupervisorPrintPortsMaxSize)];
 GLOBAL_REMOVE_IF_UNREFERENCED struct Dict  mIoValues[FixedPcdGet8 (PcdMmSupervisorPrintPortsMaxSize)];
 
@@ -233,11 +231,6 @@ SyscallDispatcher (
   BOOLEAN     IsUserRange = FALSE;
   EFI_STATUS  Status      = EFI_SUCCESS;
 
-  if (mPcdCheck) {
-    mPrintEnabled = FeaturePcdGet (PcdMmSupervisorPrintPortsEnable);
-    mPcdCheck     = FALSE;
-  }
-
   if (FeaturePcdGet (PcdEnableSyscallLogs)) {
     while (!AcquireSpinLockOrFail (mCpuToken)) {
       CpuPause ();
@@ -273,7 +266,7 @@ SyscallDispatcher (
 
       Ret = AsmReadMsr64 ((UINT32)Arg1);
       DEBUG ((DEBUG_VERBOSE, "%a Read MSR %x got %x\n", __FUNCTION__, Arg1, Ret));
-      if (mPrintEnabled) {
+      if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
       }
 
@@ -291,7 +284,7 @@ SyscallDispatcher (
 
       AsmWriteMsr64 ((UINT32)Arg1, (UINT64)Arg2);
       DEBUG ((DEBUG_VERBOSE, "%a Write MSR %x with %x\n", __FUNCTION__, Arg1, Arg2));
-      if (mPrintEnabled) {
+      if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
       }
 
@@ -341,7 +334,7 @@ SyscallDispatcher (
       }
 
       DEBUG ((DEBUG_VERBOSE, "%x\n", Ret));
-      if (mPrintEnabled) {
+      if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, FALSE);
       }
 
@@ -377,7 +370,7 @@ SyscallDispatcher (
       }
 
       DEBUG ((DEBUG_VERBOSE, "%a Write IO type %d at %x with %x\n", __FUNCTION__, Arg2, Arg1, Arg3));
-      if (mPrintEnabled) {
+      if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, FALSE);
       }
 
