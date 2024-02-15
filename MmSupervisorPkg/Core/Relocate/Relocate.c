@@ -824,7 +824,9 @@ SetupSmiEntryExit (
   // Initialize address fixup
   //
   PiSmmCpuSmmInitFixupAddress ();
-  PiSmmCpuSmiEntryFixupAddress ();
+  if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    PiSmmCpuSmiEntryFixupAddress ();
+  }
 
   //
   // Initialize Debug Agent to support source level debug in SMM code
