@@ -23,7 +23,9 @@
 
 **/
 
+#include <Uefi.h>
 #include "BasePeCoffLibNegativeInternals.h"
+#include "BasePeCoffLibNegativeInt.h"
 
 /**
   Converts an image address to the loaded address copy.
@@ -672,4 +674,99 @@ PeCoffLoaderImageNegativeReadFromMemory (
 
   CopyMem (Buffer, ((UINT8 *)FileHandle) + FileOffset, *ReadSize);
   return RETURN_SUCCESS;
+}
+
+/**
+  Revert fixups and global data changes to an executed PE/COFF image that was loaded
+  with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
+
+  @param[in,out]  TargetImage        The pointer to the target image buffer.
+  @param[in]      TargetImageSize    The size of the target image buffer.
+  @param[in]      ReferenceData      The pointer to the reference data buffer to assist .
+  @param[in]      ReferenceDataSize  The size of the reference data buffer.
+
+  @return EFI_SUCCESS               The PE/COFF image was reverted.
+  @return EFI_INVALID_PARAMETER     The parameter is invalid.
+  @return EFI_COMPROMISED_DATA      The PE/COFF image is compromised.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffImageDiffValidation (
+  IN OUT  VOID        *TargetImage,
+  IN      UINTN       TargetImageSize,
+  IN      CONST VOID  *ReferenceData,
+  IN      UINTN       ReferenceDataSize
+  )
+{
+  IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr;
+  IMAGE_VALIDATION_ENTRY_HEADER *ImageValidationEntryHdr;
+  UINTN                         Index;
+  EFI_STATUS                    Status;
+
+  if (TargetImageSize == 0 || ReferenceDataSize == 0) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (TargetImage == NULL || ReferenceData == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ImageValidationHdr = (IMAGE_VALIDATION_DATA_HEADER*)ReferenceData;
+  if (ImageValidationHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (ImageValidationHdr->Size != ReferenceDataSize) {
+    return EFI_COMPROMISED_DATA;
+  }
+
+  ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationHdr + 1);
+  for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
+    // TODO: Safe integer arithmetic
+    if ((UINT8*)(ImageValidationEntryHdr) >= (UINT8*)ReferenceData + ReferenceDataSize) {
+      return EFI_COMPROMISED_DATA;
+    }
+
+    if (ImageValidationEntryHdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) {
+      return EFI_COMPROMISED_DATA;
+    }
+
+    if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
+      return EFI_INVALID_PARAMETER;
+    }
+
+    if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
+      return EFI_INVALID_PARAMETER;
+    }
+
+    switch (ImageValidationEntryHdr->ValidationType) {
+      case IMAGE_VALIDATION_ENTRY_TYPE_NONE:
+        // TODO: We should not allow this type of entry?
+        Status = EFI_SUCCESS;
+        break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
+        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
+          Status = EFI_COMPROMISED_DATA;
+        }
+        break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
+        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
+          Status = EFI_COMPROMISED_DATA;
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (EFI_ERROR(Status)) {
+      break;
+    }
+
+    // We should not do this when the above validation fails
+    CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+
+    ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
+  }
+
+  return Status;
 }
