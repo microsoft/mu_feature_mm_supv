@@ -62,6 +62,9 @@ FvIsBeingProcessed (
   IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
   );
 
+EFI_PHYSICAL_ADDRESS  MmSupvAuxFileBase;
+EFI_PHYSICAL_ADDRESS  MmSupvAuxFileSize;
+
 EFI_STATUS
 MmCoreFfsFindMmDriver (
   IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
@@ -97,6 +100,7 @@ Returns:
   UINTN                       BufferIndex;
   UINTN                       FileSize;
   FFS_DRIVER_CACHE_LIST       *CurrentCacheNode;
+  VOID                        *RawAuxFileData;
 
   DEBUG ((DEBUG_INFO, "MmCoreFfsFindMmDriver - 0x%x\n", FwVolHeader));
 
@@ -112,6 +116,33 @@ Returns:
     //
     return EFI_SUCCESS;
   }
+
+  FileHeader = NULL;
+  do {
+    Status     =  FfsFindNextFile (
+                    EFI_FV_FILETYPE_FREEFORM,
+                    FwVolHeader,
+                    &FileHeader
+                    );
+    if (!EFI_ERROR (Status)) {
+      if (CompareGuid (&FileHeader->Name, &gMmSupervisorAuxFileGuid)) {
+        // Moving the buffer like size field to our local variable
+        Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawAuxFileData, &MmSupvAuxFileSize);
+        DEBUG ((DEBUG_INFO, "Find raw data from supv aux file - %r\n", Status));
+        if (EFI_ERROR (Status)) {
+          break;
+        }
+
+        MmSupvAuxFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (MmSupvAuxFileSize));
+        if (MmSupvAuxFileBase == 0) {
+          Status = EFI_OUT_OF_RESOURCES;
+          break;
+        }
+
+        CopyMem ((VOID *)(UINTN)MmSupvAuxFileBase, (VOID *)(UINTN)RawAuxFileData, MmSupvAuxFileSize);
+      }
+    }
+  } while (!EFI_ERROR (Status));
 
   for (Index = 0; Index < sizeof (mMmFileTypes) / sizeof (mMmFileTypes[0]); Index++) {
     DEBUG ((DEBUG_INFO, "Check MmFileTypes - 0x%x\n", mMmFileTypes[Index]));

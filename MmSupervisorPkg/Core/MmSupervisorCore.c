@@ -20,6 +20,8 @@
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
 
+#include <Library/BasePeCoffLibNegative.h>
+
 #include <Guid/MmCommonRegion.h>
 
 EFI_STATUS
@@ -309,6 +311,10 @@ Exit:
   @return Status Code
 
 **/
+volatile BOOLEAN loop = TRUE;
+extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileBase;
+extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileSize;
+
 EFI_STATUS
 EFIAPI
 MmReadyToLockHandler (
@@ -361,6 +367,49 @@ MmReadyToLockHandler (
 
   mMmReadyToLockDone = TRUE;
 
+  //
+  // Get information about the image being loaded
+  //
+  PE_COFF_LOADER_IMAGE_CONTEXT ImageContext;
+
+  ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
+  VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
+  CopyMem (Buffer, (VOID*)(UINTN)gMmCorePrivate->MmCoreImageBase, gMmCorePrivate->MmCoreImageSize);
+
+  Status = PeCoffImageDiffValidation (Buffer, gMmCorePrivate->MmCoreImageSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
+  ImageContext.Handle    = (VOID*)Buffer;
+
+  Status = PeCoffLoaderGetImageInfo (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
+  Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  // Now prepare a new buffer to revert loading operations.
+  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
+
+  DEBUG ((DEBUG_INFO, "%p %p %p\n", gMmCorePrivate->MmCoreImageBase, Buffer, NewBuffer));
+
+  // At this point we dealt with the relocation, some data are still off.
+  // Next we unload the image in the copy.
+  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  while (loop) {}
+
+Done:
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
   return Status;
