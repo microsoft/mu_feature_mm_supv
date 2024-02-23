@@ -316,6 +316,11 @@ DiscoverSmiEntryInFvHobs (
     }
   } while (Hob.Raw != NULL);
 
+  if (!MmiEntryFound) {
+    DEBUG ((DEBUG_ERROR, "[%a]   MMI Entry for SPAM not found in any FV.\n", __FUNCTION__));
+    Status = EFI_NOT_FOUND;
+  }
+
 Done:
   return Status;
 }
