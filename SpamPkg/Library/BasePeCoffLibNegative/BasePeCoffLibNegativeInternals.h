@@ -1,82 +1,73 @@
 /** @file
-  Declaration of internal functions in PE/COFF Lib.
+  Base PE/COFF loader supports loading any PE32/PE32+ or TE image, but
+  only supports relocating IA32, x64, IPF, ARM, RISC-V, LoongArch and EBC images.
 
-  Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
+  Caution: This file requires additional review when modified.
+  This library will have external input - PE/COFF image.
+  This external input must be validated carefully to avoid security issue like
+  buffer overflow, integer overflow.
+
+  The basic guideline is that caller need provide ImageContext->ImageRead () with the
+  necessary data range check, to make sure when this library reads PE/COFF image, the
+  PE image buffer is always in valid range.
+  This library will also do some additional check for PE header fields.
+
+  PeCoffLoaderGetPeHeader() routine will do basic check for PE/COFF header.
+  PeCoffLoaderGetImageInfo() routine will do basic check for whole PE/COFF image.
+
+  Copyright (c) 2006 - 2019, Intel Corporation. All rights reserved.<BR>
+  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
   Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+  Portions Copyright (c) 2022, Loongson Technology Corporation Limited. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
+#ifndef BASE_PE_COFF_LIB_NEGATIVE_INT_H_
+#define BASE_PE_COFF_LIB_NEGATIVE_INT_H_
 
-#ifndef __BASE_PECOFF_LIB_INTERNALS__
-#define __BASE_PECOFF_LIB_INTERNALS__
+#define IMAGE_VALIDATION_ENTRY_TYPE_NONE      0x00000000
+#define IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO  0x00000001
+#define IMAGE_VALIDATION_ENTRY_TYPE_CONTENT   0x00000002
+#define IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR  0x00000003
+#define IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF  0x00000004
 
-#include <Base.h>
-#include <Library/PeCoffLib.h>
-#include <Library/BaseMemoryLib.h>
-#include <Library/DebugLib.h>
-#include <Library/PeCoffExtraActionLib.h>
-#include <IndustryStandard/PeImage.h>
+#define IMAGE_VALIDATION_DATA_SIGNATURE    SIGNATURE_32 ('V', 'A', 'L', 'D')
+#define IMAGE_VALIDATION_ENTRY_SIGNATURE   SIGNATURE_32 ('E', 'N', 'T', 'R')
 
-//
-// Macro definitions for RISC-V architecture.
-//
-#define RV_X(x, s, n)  (((x) >> (s)) & ((1<<(n))-1))
-#define RISCV_IMM_BITS   12
-#define RISCV_IMM_REACH  (1LL<<RISCV_IMM_BITS)
-#define RISCV_CONST_HIGH_PART(VALUE) \
-  (((VALUE) + (RISCV_IMM_REACH/2)) & ~(RISCV_IMM_REACH-1))
+#pragma pack(1)
 
-/**
-  Retrieves the PE or TE Header from a PE/COFF or TE image.
+typedef struct {
+  UINT32  HeaderSignature;
+  UINT32  Size;
+  UINT32  EntryCount;
+  UINT32  OffsetToFirstEntry;
+  UINT32  OffsetToFirstDefault;
+} IMAGE_VALIDATION_DATA_HEADER;
 
-  @param  ImageContext    The context of the image being loaded.
-  @param  Hdr             The buffer in which to return the PE32, PE32+, or TE header.
+typedef struct {
+  UINT32  EntrySignature;
+  UINT32  Offset; // Offset to the start of the target image
+  UINT32  Size; // Size of this entry
+  UINT32  ValidationType;
+  UINT32  OffsetToDefault;
+} IMAGE_VALIDATION_ENTRY_HEADER;
 
-  @retval RETURN_SUCCESS  The PE or TE Header is read.
-  @retval Other           The error status from reading the PE/COFF or TE image using the ImageRead function.
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT8                           TargetContent[];
+} IMAGE_VALIDATION_CONTENT;
 
-**/
-RETURN_STATUS
-PeCoffLoaderGetPeHeader (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext,
-  OUT    EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr
-  );
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT64                          TargetMemorySize;
+  UINT32                          TargetMemeoryAttribute;
+} IMAGE_VALIDATION_MEM_ATTR;
 
-/**
-  Performs an Itanium-based specific relocation fixup and is a no-op on other
-  instruction sets.
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT32                          TargetOffset;
+} IMAGE_VALIDATION_SELF_REF;
 
-  @param  Reloc       The pointer to the relocation record.
-  @param  Fixup       The pointer to the address to fix up.
-  @param  FixupData   The pointer to a buffer to log the fixups.
-  @param  Adjust      The offset to adjust the fixup.
+#pragma pack()
 
-  @return Status code.
-
-**/
-RETURN_STATUS
-PeCoffLoaderRelocateImageEx (
-  IN UINT16     *Reloc,
-  IN OUT CHAR8  *Fixup,
-  IN OUT CHAR8  **FixupData,
-  IN UINT64     Adjust
-  );
-
-/**
-  Converts an image address to the loaded address.
-
-  @param  ImageContext      The context of the image being loaded.
-  @param  Address           The address to be converted to the loaded address.
-  @param  TeStrippedOffset  Stripped offset for TE image.
-
-  @return The converted address or NULL if the address can not be converted.
-
-**/
-VOID *
-PeCoffLoaderImageAddress (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
-  IN     UINTN                         Address,
-  IN     UINTN                         TeStrippedOffset
-  );
-
-#endif
+#endif // BASE_PE_COFF_LIB_NEGATIVE_INT_H_
