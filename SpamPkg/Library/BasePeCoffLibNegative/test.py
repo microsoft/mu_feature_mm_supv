@@ -4,7 +4,7 @@ import struct
 # Define the C structures as Python classes
 class IMAGE_VALIDATION_DATA_HEADER:
     def __init__(self):
-        self.HeaderSignature = 0x12345678
+        self.HeaderSignature = 0x444C4156
         self.Size = 0
         self.EntryCount = 0
         self.OffsetToFirstEntry = 0
@@ -12,7 +12,7 @@ class IMAGE_VALIDATION_DATA_HEADER:
 
 class IMAGE_VALIDATION_ENTRY_HEADER:
     def __init__(self):
-        self.EntrySignature = 0x87654321
+        self.EntrySignature = 0x52544E45
         self.Offset = 0
         self.Size = 0
         self.ValidationType = 0
@@ -55,6 +55,7 @@ with open('entries.csv', newline='') as csvfile:
         offset += entry.Size
         data.Entries.append(entry)
         data.Header.EntryCount += 1
+        data.Header.Size += (entry.Size + 20)
 
         rawdata.extend(bytearray([0] * entry.Size))
 
