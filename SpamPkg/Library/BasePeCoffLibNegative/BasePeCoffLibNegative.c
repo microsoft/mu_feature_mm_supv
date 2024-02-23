@@ -24,8 +24,30 @@
 **/
 
 #include <Uefi.h>
+#include <Base.h>
+#include <Library/PeCoffLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/DebugLib.h>
+#include <Library/PeCoffExtraActionLib.h>
+#include <IndustryStandard/PeImage.h>
+
 #include "BasePeCoffLibNegativeInternals.h"
-#include "BasePeCoffLibNegativeInt.h"
+
+/**
+  Retrieves the PE or TE Header from a PE/COFF or TE image.
+
+  @param  ImageContext    The context of the image being loaded.
+  @param  Hdr             The buffer in which to return the PE32, PE32+, or TE header.
+
+  @retval RETURN_SUCCESS  The PE or TE Header is read.
+  @retval Other           The error status from reading the PE/COFF or TE image using the ImageRead function.
+
+**/
+RETURN_STATUS
+PeCoffLoaderGetPeHeader (
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT         *ImageContext,
+  OUT    EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr
+  );
 
 /**
   Converts an image address to the loaded address copy.
@@ -700,6 +722,7 @@ PeCoffImageDiffValidation (
 {
   IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr;
   IMAGE_VALIDATION_ENTRY_HEADER *ImageValidationEntryHdr;
+  IMAGE_VALIDATION_ENTRY_HEADER *NextImageValidationEntryHdr;
   UINTN                         Index;
   EFI_STATUS                    Status;
 
@@ -723,7 +746,7 @@ PeCoffImageDiffValidation (
   ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationHdr + 1);
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
-    if ((UINT8*)(ImageValidationEntryHdr) >= (UINT8*)ReferenceData + ReferenceDataSize) {
+    if ((UINT8*)(ImageValidationEntryHdr) >= ((UINT8*)ReferenceData + ReferenceDataSize)) {
       return EFI_COMPROMISED_DATA;
     }
 
@@ -741,20 +764,26 @@ PeCoffImageDiffValidation (
 
     switch (ImageValidationEntryHdr->ValidationType) {
       case IMAGE_VALIDATION_ENTRY_TYPE_NONE:
-        // TODO: We should not allow this type of entry?
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryHdr + 1);
         Status = EFI_SUCCESS;
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
         if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
           Status = EFI_COMPROMISED_DATA;
+        } else {
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)ImageValidationEntryHdr + sizeof (IMAGE_VALIDATION_MEM_ATTR));
         }
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
         if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
           Status = EFI_COMPROMISED_DATA;
+        } else {
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
         }
         break;
       default:
+        // Does not support unknown validation type
+        Status = EFI_INVALID_PARAMETER;
         break;
     }
 
@@ -765,7 +794,7 @@ PeCoffImageDiffValidation (
     // We should not do this when the above validation fails
     CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
 
-    ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
+    ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
 
   return Status;

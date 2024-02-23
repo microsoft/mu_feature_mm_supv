@@ -134,4 +134,26 @@ PeCoffLoaderImageNegativeReadFromMemory (
   OUT    VOID   *Buffer
   );
 
+/**
+  Revert fixups and global data changes to an executed PE/COFF image that was loaded
+  with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
+
+  @param[in,out]  TargetImage        The pointer to the target image buffer.
+  @param[in]      TargetImageSize    The size of the target image buffer.
+  @param[in]      ReferenceData      The pointer to the reference data buffer to assist .
+  @param[in]      ReferenceDataSize  The size of the reference data buffer.
+
+  @return EFI_SUCCESS               The PE/COFF image was reverted.
+  @return EFI_INVALID_PARAMETER     The parameter is invalid.
+  @return EFI_COMPROMISED_DATA      The PE/COFF image is compromised.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffImageDiffValidation (
+  IN OUT  VOID        *TargetImage,
+  IN      UINTN       TargetImageSize,
+  IN      CONST VOID  *ReferenceData,
+  IN      UINTN       ReferenceDataSize
+  );
+
 #endif // BASE_PECOFF_LIB_NEGATIVE_H_
