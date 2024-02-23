@@ -55,6 +55,7 @@
   gMpInformationHobGuid       ## CONSUMES ## HOB
   gMmiEntrySpamFileGuid       ## CONSUMES ## File
   gSpamBinFileGuid            ## CONSUMES ## File
+  gMmSupervisorAuxFileGuid    ## CONSUMES ## File
 
 [Pcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
