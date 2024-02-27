@@ -26,6 +26,51 @@
 #ifndef BASE_PECOFF_LIB_NEGATIVE_H_
 #define BASE_PECOFF_LIB_NEGATIVE_H_
 
+#define IMAGE_VALIDATION_ENTRY_TYPE_NONE      0x00000000
+#define IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO  0x00000001
+#define IMAGE_VALIDATION_ENTRY_TYPE_CONTENT   0x00000002
+#define IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR  0x00000003
+#define IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF  0x00000004
+
+#define IMAGE_VALIDATION_DATA_SIGNATURE    SIGNATURE_32 ('V', 'A', 'L', 'D')
+#define IMAGE_VALIDATION_ENTRY_SIGNATURE   SIGNATURE_32 ('E', 'N', 'T', 'R')
+
+#pragma pack(1)
+
+typedef struct {
+  UINT32  HeaderSignature;
+  UINT32  Size;
+  UINT32  EntryCount;
+  UINT32  OffsetToFirstEntry;
+  UINT32  OffsetToFirstDefault;
+} IMAGE_VALIDATION_DATA_HEADER;
+
+typedef struct {
+  UINT32  EntrySignature;
+  UINT32  Offset; // Offset to the start of the target image
+  UINT32  Size; // Size of this entry
+  UINT32  ValidationType;
+  UINT32  OffsetToDefault;
+} IMAGE_VALIDATION_ENTRY_HEADER;
+
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT8                           TargetContent[];
+} IMAGE_VALIDATION_CONTENT;
+
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT64                          TargetMemeoryAttributeMustHave;
+  UINT64                          TargetMemeoryAttributeMustNotHave;
+} IMAGE_VALIDATION_MEM_ATTR;
+
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER   Header;
+  UINT32                          TargetOffset;
+} IMAGE_VALIDATION_SELF_REF;
+
+#pragma pack()
+
 /**
   Applies relocation fixups to a PE/COFF image that was loaded with PeCoffLoaderLoadImage().
 
@@ -138,10 +183,12 @@ PeCoffLoaderImageNegativeReadFromMemory (
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
 
-  @param[in,out]  TargetImage        The pointer to the target image buffer.
-  @param[in]      TargetImageSize    The size of the target image buffer.
-  @param[in]      ReferenceData      The pointer to the reference data buffer to assist .
-  @param[in]      ReferenceDataSize  The size of the reference data buffer.
+  @param[in]      OriginalImageBaseAddress  The pointer to the executed image buffer, the implementation
+                                            should not touch the content of this buffer.
+  @param[in,out]  TargetImage               The pointer to the target image buffer.
+  @param[in]      TargetImageSize           The size of the target image buffer.
+  @param[in]      ReferenceData             The pointer to the reference data buffer to assist .
+  @param[in]      ReferenceDataSize         The size of the reference data buffer.
 
   @return EFI_SUCCESS               The PE/COFF image was reverted.
   @return EFI_INVALID_PARAMETER     The parameter is invalid.
@@ -150,6 +197,7 @@ PeCoffLoaderImageNegativeReadFromMemory (
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
+  IN      VOID        *OriginalImageBaseAddress,
   IN OUT  VOID        *TargetImage,
   IN      UINTN       TargetImageSize,
   IN      CONST VOID  *ReferenceData,
