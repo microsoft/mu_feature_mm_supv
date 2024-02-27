@@ -29,9 +29,8 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffExtraActionLib.h>
+#include <Library/BasePeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
-
-#include "BasePeCoffLibNegativeInternals.h"
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
@@ -698,6 +697,17 @@ PeCoffLoaderImageNegativeReadFromMemory (
   return RETURN_SUCCESS;
 }
 
+// TODO: When moving this over to Spam core, we need to make sure that the
+//       following function is implemented in the Spam core and the page
+//       table is fixed up to point to the one used in MM environment.
+EFI_STATUS
+EFIAPI
+SmmGetMemoryAttributes (
+  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64                Length,
+  OUT UINT64                *Attributes
+  );
+
 /**
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
@@ -714,6 +724,7 @@ PeCoffLoaderImageNegativeReadFromMemory (
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
+  IN      VOID        *OriginalImageBaseAddress,
   IN OUT  VOID        *TargetImage,
   IN      UINTN       TargetImageSize,
   IN      CONST VOID  *ReferenceData,
@@ -723,8 +734,13 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr;
   IMAGE_VALIDATION_ENTRY_HEADER *ImageValidationEntryHdr;
   IMAGE_VALIDATION_ENTRY_HEADER *NextImageValidationEntryHdr;
+  IMAGE_VALIDATION_MEM_ATTR     *ImageValidationEntryMemAttr;
+  IMAGE_VALIDATION_SELF_REF     *ImageValidationEntrySelfRef;
+  UINT64                        MemAttr;
   UINTN                         Index;
   EFI_STATUS                    Status;
+  EFI_PHYSICAL_ADDRESS          AddrInTarget;
+  EFI_PHYSICAL_ADDRESS          AddrInOrigin;
 
   if (TargetImageSize == 0 || ReferenceDataSize == 0) {
     return EFI_INVALID_PARAMETER;
@@ -768,8 +784,8 @@ PeCoffImageDiffValidation (
         Status = EFI_SUCCESS;
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
-        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
-          Status = EFI_COMPROMISED_DATA;
+        if (IsZeroBuffer ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size)) {
+          Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)ImageValidationEntryHdr + sizeof (IMAGE_VALIDATION_MEM_ATTR));
         }
@@ -779,6 +795,52 @@ PeCoffImageDiffValidation (
           Status = EFI_COMPROMISED_DATA;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
+        }
+        break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
+        ImageValidationEntryMemAttr = (IMAGE_VALIDATION_MEM_ATTR*)(ImageValidationEntryHdr);
+        if (ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave == 0 && ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave == 0) {
+          Status = EFI_INVALID_PARAMETER;
+          break;
+        }
+
+        // Inspection of the memory attributes of the target image
+        Status = SmmGetMemoryAttributes (
+                   (EFI_PHYSICAL_ADDRESS)((UINTN)OriginalImageBaseAddress + ImageValidationEntryHdr->Offset),
+                   ImageValidationEntryHdr->Size,
+                   &MemAttr
+                   );
+        if (EFI_ERROR(Status)) {
+          break;
+        }
+        // Check if the memory attributes of the target image meet the requirements
+        if (((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) != ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) &&
+            ((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave) != 0)) {
+          Status = EFI_SECURITY_VIOLATION;
+        } else {
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryMemAttr + 1);
+        }
+        break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
+        ImageValidationEntrySelfRef = (IMAGE_VALIDATION_SELF_REF*)(ImageValidationEntryHdr);
+        if (ImageValidationEntrySelfRef->Header.OffsetToDefault + ImageValidationEntrySelfRef->Header.Size > ReferenceDataSize) {
+          Status = EFI_COMPROMISED_DATA;
+          break;
+        }
+
+        // For now, self reference is only valid for address type in x64 mode
+        if (ImageValidationEntrySelfRef->Header.Size != sizeof (EFI_PHYSICAL_ADDRESS)) {
+          Status = EFI_INVALID_PARAMETER;
+          break;
+        }
+
+        // Check if the self-reference data of the target image meet the requirements
+        AddrInTarget = *(EFI_PHYSICAL_ADDRESS*)((UINTN)TargetImage + ImageValidationEntryHdr->Offset);
+        AddrInOrigin = *(EFI_PHYSICAL_ADDRESS*)((UINTN)OriginalImageBaseAddress + ImageValidationEntrySelfRef->TargetOffset);
+        if (AddrInTarget != AddrInOrigin) {
+          Status = EFI_SECURITY_VIOLATION;
+        } else {
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntrySelfRef + 1);
         }
         break;
       default:

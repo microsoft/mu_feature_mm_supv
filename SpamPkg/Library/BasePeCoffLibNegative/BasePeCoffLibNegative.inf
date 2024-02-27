@@ -35,11 +35,11 @@
 #
 
 [Sources]
-  BasePeCoffLibNegativeInternals.h
   BasePeCoffLibNegative.c
 
 [Packages]
   MdePkg/MdePkg.dec
+  SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
   DebugLib
