@@ -1,3 +1,3 @@
 @setlocal
 @set ToolName=%~n0%
-@%PYTHON_COMMAND% %WORKSPACE%/SpamPkg/Plugins/TestPlugin/GenAux.py %*
+@%PYTHON_COMMAND% %~dp0/GenAux.py %*
