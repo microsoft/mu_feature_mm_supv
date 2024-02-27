@@ -29,7 +29,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffExtraActionLib.h>
-#include <Library/BasePeCoffLibNegative.h>
+#include <Library/PeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
 
 /**

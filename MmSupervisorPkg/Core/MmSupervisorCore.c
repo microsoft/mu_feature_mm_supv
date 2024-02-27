@@ -20,7 +20,7 @@
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
 
-#include <Library/BasePeCoffLibNegative.h>
+#include <Library/PeCoffLibNegative.h>
 
 #include <Guid/MmCommonRegion.h>
 

@@ -24,7 +24,7 @@
   Private/Include
 
 [LibraryClasses]
-  BasePeCoffLibNegative|Include/Library/BasePeCoffLibNegative.h
+  PeCoffLibNegative|Include/Library/PeCoffLibNegative.h
 
 [Guids]
   gMmiEntrySpamFileGuid                           = { 0x20a3658c, 0x982, 0x4d69, { 0x80, 0x44, 0x7, 0xc7, 0x87, 0x1e, 0xdb, 0xed } }

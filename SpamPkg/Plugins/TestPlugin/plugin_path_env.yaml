@@ -1,0 +1,10 @@
+## @file
+# Set shell variable EDK_TOOL_PATH to this folder
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+{
+  "scope": "global",
+  "flags": ["set_path"],
+}

@@ -39,6 +39,7 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
+  aux_config.spam.cfg
   MmSupervisorCore.c
   MmSupervisorCore.h
 
@@ -152,6 +153,7 @@
   SmmCpuSyncLib
   PanicLib
   BasePeCoffLibNegative
+  PeCoffLibNegative
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
