@@ -10,7 +10,7 @@
 #
 ##
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 32523fbea769a9c594fb5f7254907c3f | 2023-08-30T19-58-00 | c8cdc60a6e689681f0c81209aeb71e26fd023416
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 8b6b7f9000bbd3471ec17af24b35da63 | 2023-12-19T02-31-43 | 17ac308848f9bb64468030b5a8b5a78fe41e038f
 
 [Defines]
   INF_VERSION                    = 0x0001001A
