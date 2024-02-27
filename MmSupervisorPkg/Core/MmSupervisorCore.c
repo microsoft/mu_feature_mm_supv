@@ -376,11 +376,6 @@ MmReadyToLockHandler (
   VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
   CopyMem (Buffer, (VOID*)(UINTN)gMmCorePrivate->MmCoreImageBase, gMmCorePrivate->MmCoreImageSize);
 
-  Status = PeCoffImageDiffValidation (Buffer, gMmCorePrivate->MmCoreImageSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
   ImageContext.Handle    = (VOID*)Buffer;
 
@@ -391,6 +386,11 @@ MmReadyToLockHandler (
 
   ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
   Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  Status = PeCoffImageDiffValidation ((VOID*)gMmCorePrivate->MmCoreImageBase, Buffer, gMmCorePrivate->MmCoreImageSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -406,8 +406,6 @@ MmReadyToLockHandler (
   if (EFI_ERROR (Status)) {
     goto Done;
   }
-
-  while (loop) {}
 
 Done:
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
