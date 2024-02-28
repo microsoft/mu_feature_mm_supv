@@ -261,7 +261,7 @@ DiscoverSmiEntryInFvHobs (
       //
       FileHeader = NULL;
       Status     =  FfsFindNextFile (
-                      EFI_FV_FILETYPE_RAW,
+                      EFI_FV_FILETYPE_FREEFORM,
                       FwVolHeader,
                       &FileHeader
                       );
@@ -325,10 +325,7 @@ Done:
 }
 
 /**
-  The constructor function for the Traditional MM library instance with STM.
-
-  @param[in]  ImageHandle  The firmware allocated handle for the EFI image.
-  @param[in]  SystemTable  A pointer to the EFI System Table.
+  The constructor function for the common MM library instance with STM.
 
   @retval EFI_SUCCESS      The constructor always returns EFI_SUCCESS.
 
@@ -336,8 +333,7 @@ Done:
 EFI_STATUS
 EFIAPI
 SmmCpuFeaturesLibStmConstructor (
-  IN EFI_HANDLE        ImageHandle,
-  IN EFI_SYSTEM_TABLE  *SystemTable
+  VOID
   )
 {
   EFI_STATUS              Status;
