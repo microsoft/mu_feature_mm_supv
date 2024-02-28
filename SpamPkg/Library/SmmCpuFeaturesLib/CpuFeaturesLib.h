@@ -18,6 +18,18 @@
 #include <Library/HobLib.h>
 
 /**
+  The constructor function for the common MM library instance with STM.
+
+  @retval EFI_SUCCESS      The constructor always returns EFI_SUCCESS.
+
+**/
+EFI_STATUS
+EFIAPI
+SmmCpuFeaturesLibStmConstructor (
+  VOID
+  );
+
+/**
   Performs library initialization.
 
   This initialization function contains common functionality shared betwen all
