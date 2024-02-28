@@ -110,7 +110,7 @@ class ImageValidationDataHeader(ctypes.Structure):
     ]
     def __init__(self):
         self.header_signature = 0x444C4156
-        self.size = 20 + 4 # Bug in FvLib, It adds 4 bytes to the true size of the file
+        self.size = 20
         self.entry_count = 0
         self.offset_to_first_entry = 0
         self.offset_to_first_default = 0
