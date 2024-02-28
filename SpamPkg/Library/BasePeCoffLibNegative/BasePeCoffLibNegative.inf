@@ -27,7 +27,7 @@
   FILE_GUID                      = 065ABD42-6822-4F49-9A27-0384445EAAFE
   MODULE_TYPE                    = BASE
   VERSION_STRING                 = 1.0
-  LIBRARY_CLASS                  = BasePeCoffLibNegative
+  LIBRARY_CLASS                  = PeCoffLibNegative
 
 
 #
