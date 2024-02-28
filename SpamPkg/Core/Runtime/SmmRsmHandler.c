@@ -84,7 +84,6 @@ RsmHandler (
   Rflags = AsmVmResume (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register);
   // BUGBUG: - AsmVmLaunch if AsmVmResume fail
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
-//    DEBUG ((EFI_D_ERROR, "(STM):o(\n", (UINTN)Index));
     Rflags = AsmVmLaunch (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register);
   }
 

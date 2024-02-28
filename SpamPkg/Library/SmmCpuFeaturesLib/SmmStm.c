@@ -1,7 +1,7 @@
 /** @file
   SMM STM support functions
 
-  Copyright (c) 2015 - 2018, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2015 - 2023, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -11,7 +11,6 @@
 #include <SpamResponder.h>
 #include <Library/FvLib.h>
 #include <Library/BaseMemoryLib.h>
-#include <Library/HobLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/TpmMeasurementLib.h>
@@ -299,7 +298,7 @@ DiscoverSmiEntryInFvHobs (
           }
 
           MmSupvAuxFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (MmSupvAuxFileSize));
-          if (MmSupvAuxFileBase == NULL) {
+          if (MmSupvAuxFileBase == 0) {
             Status = EFI_OUT_OF_RESOURCES;
             break;
           }
