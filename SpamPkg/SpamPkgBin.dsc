@@ -89,7 +89,7 @@
   MmSupervisorPkg/Core/MmSupervisorCore.inf {
     <LibraryClasses>
       NULL|MdePkg/Library/StackCheckLib/StackCheckLib.inf
-      BasePeCoffLibNegative|SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
+      PeCoffLibNegative|SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   }
   SpamPkg/MmiEntrySpam/MmiEntrySpam.inf
 
