@@ -261,7 +261,7 @@ DiscoverSmiEntryInFvHobs (
       //
       FileHeader = NULL;
       Status     =  FfsFindNextFile (
-                      EFI_FV_FILETYPE_RAW,
+                      EFI_FV_FILETYPE_FREEFORM,
                       FwVolHeader,
                       &FileHeader
                       );
