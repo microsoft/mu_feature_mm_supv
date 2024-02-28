@@ -155,7 +155,6 @@ ResumeToBiosExceptionHandler (
   Rflags = AsmVmResume (Reg);
   // BUGBUG: - AsmVmLaunch if AsmVmResume fail
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
-//    DEBUG ((EFI_D_ERROR, "(STM):-(\n", (UINTN)Index));
     Rflags = AsmVmLaunch (Reg);
   }
   AcquireSpinLock (&mHostContextCommon.DebugLock);
@@ -245,7 +244,6 @@ ReturnFromBiosExceptionHandler (
   Rflags = AsmVmResume (Reg);
   // BUGBUG: - AsmVmLaunch if AsmVmResume fail
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
-//    DEBUG ((EFI_D_ERROR, "(STM):-(\n", (UINTN)Index));
     Rflags = AsmVmLaunch (Reg);
   }
   AcquireSpinLock (&mHostContextCommon.DebugLock);
