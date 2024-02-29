@@ -126,6 +126,9 @@ PeCoffLoaderRevertRelocateImage (
 
   @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image that is being loaded.
+  @param  Buffer                    The pointer to the buffer used to host unloaded PE/COFF image.
+  @param  BufferSizePtr             On input, this holds the size of Buffer. On output, it holds the size
+                                    of the image that was actually unloaded into Buffer.
 
   @retval RETURN_SUCCESS            The PE/COFF image was loaded into the buffer specified by
                                     the ImageAddress and ImageSize fields of ImageContext.
@@ -141,8 +144,9 @@ PeCoffLoaderRevertRelocateImage (
 RETURN_STATUS
 EFIAPI
 PeCoffLoaderRevertLoadImage (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
-  OUT    VOID                          *Buffer
+  IN OUT  PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
+  OUT     UINTN                         *Buffer,
+  IN OUT  UINTN                         *BufferSizePtr
   );
 
 /**

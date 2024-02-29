@@ -362,6 +362,9 @@ PeCoffLoaderRevertRelocateImage (
 
   @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image that is being loaded.
+  @param  Buffer                    The pointer to the buffer used to host unloaded PE/COFF image.
+  @param  BufferSizePtr             On input, this holds the size of Buffer. On output, it holds the size
+                                    of the image that was actually unloaded into Buffer.
 
   @retval RETURN_SUCCESS            The PE/COFF image was loaded into the buffer specified by
                                     the ImageAddress and ImageSize fields of ImageContext.
@@ -377,8 +380,9 @@ PeCoffLoaderRevertRelocateImage (
 RETURN_STATUS
 EFIAPI
 PeCoffLoaderRevertLoadImage (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT *ImageContext,
-  OUT   UINTN                         *Buffer
+  IN OUT  PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
+  OUT     UINTN                         *Buffer,
+  IN OUT  UINTN                         *BufferSizePtr
   )
 {
   RETURN_STATUS                        Status;
@@ -395,6 +399,8 @@ PeCoffLoaderRevertLoadImage (
   UINT32                               TempDebugEntryRva;
   UINT32                               NumberOfRvaAndSizes;
   UINT32                               TeStrippedOffset;
+  UINTN                                SizeOfImage;
+  UINTN                                BufferSize;
 
   ASSERT (ImageContext != NULL);
 
@@ -414,6 +420,11 @@ PeCoffLoaderRevertLoadImage (
   // }
   // -------------------->8--------------------
 
+  if ((Buffer == NULL) || (BufferSizePtr == NULL)) {
+    return RETURN_INVALID_PARAMETER;
+  }
+
+  BufferSize = *BufferSizePtr;
 
   if (ImageContext->ImageAddress == 0) {
     //
@@ -436,15 +447,6 @@ PeCoffLoaderRevertLoadImage (
       ImageContext->ImageError = IMAGE_ERROR_INVALID_SUBSYSTEM;
       return RETURN_LOAD_ERROR;
     }
-
-    //
-    // If the image does not contain relocations, and the requested load address
-    // is not the linked address, then return an error.
-    //
-    if (ImageContext->ImageAddress != ImageContext->ImageAddress) {
-      ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_ADDRESS;
-      return RETURN_INVALID_PARAMETER;
-    }
   }
 
   //
@@ -464,6 +466,11 @@ PeCoffLoaderRevertLoadImage (
   //
   // Read the entire PE/COFF header into memory
   //
+  if (ImageContext->SizeOfHeaders >= BufferSize) {
+    ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+    return RETURN_BUFFER_TOO_SMALL;
+  }
+
   Status = ImageContext->ImageRead (
                             ImageContext->Handle,
                             0,
@@ -471,6 +478,12 @@ PeCoffLoaderRevertLoadImage (
                             Buffer
                             );
 
+  if (RETURN_ERROR (Status)) {
+    ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
+    return RETURN_LOAD_ERROR;
+  }
+
+  SizeOfImage = ImageContext->SizeOfHeaders;
   Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)((UINTN)Buffer + ImageContext->PeCoffHeaderOffset);
 
   FirstSection = (EFI_IMAGE_SECTION_HEADER *)(
@@ -517,6 +530,11 @@ PeCoffLoaderRevertLoadImage (
 
     // MU_CHANGE - CodeQL change
     if ((Section->SizeOfRawData > 0) && (Base != NULL)) {
+      if (SizeOfImage + Size >= BufferSize) {
+        ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+        return RETURN_BUFFER_TOO_SMALL;
+      }
+
       // Now we copy the section data to the memory allocated for the image, compactly.
       Status = ImageContext->ImageRead (
                                ImageContext->Handle,
@@ -528,6 +546,7 @@ PeCoffLoaderRevertLoadImage (
         ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
         return Status;
       }
+      SizeOfImage += ALIGN_VALUE (Size, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
     }
 
     //
@@ -591,6 +610,11 @@ PeCoffLoaderRevertLoadImage (
 
       if (DebugEntry->RVA != 0) {
         Size   = DebugEntry->SizeOfData;
+        if (SizeOfImage + Size >= BufferSize) {
+          ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+          return RETURN_BUFFER_TOO_SMALL;
+        }
+
         Status = ImageContext->ImageRead (
                                  ImageContext->Handle,
                                  (UINTN)ImageContext->CodeView,
@@ -607,6 +631,7 @@ PeCoffLoaderRevertLoadImage (
           ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
           return RETURN_LOAD_ERROR;
         }
+        SizeOfImage += ALIGN_VALUE (Size, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
 
         DebugEntry->RVA = 0;
       }
@@ -644,6 +669,10 @@ PeCoffLoaderRevertLoadImage (
       }
     }
   }
+
+  // This seems redundant, but just in case...
+  SizeOfImage     = ALIGN_VALUE (SizeOfImage, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
+  *BufferSizePtr  = SizeOfImage;
 
   //
   // Ignore Image's HII resource section

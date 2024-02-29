@@ -29,6 +29,7 @@
   VERSION_STRING                 = 1.0
   LIBRARY_CLASS                  = PeCoffLibNegative
 
+#Override : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 401f7e82e499c011b2ebef8e30db4949 | 2024-02-28T21-39-40 | a880ead29bce709ecba1c047604ebffc16ff3e07
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 EBC ARM AARCH64
