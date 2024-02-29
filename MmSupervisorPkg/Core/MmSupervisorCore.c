@@ -45,6 +45,9 @@ EFI_HANDLE  mMmCpuHandle = NULL;
 MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
 MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
 
+EFI_PHYSICAL_ADDRESS  MmSupvEfiFileBase;
+UINT64                MmSupvEfiFileSize;
+
 //
 // Ring 3 Hob pointer
 //
@@ -396,16 +399,22 @@ MmReadyToLockHandler (
   }
 
   // Now prepare a new buffer to revert loading operations.
-  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
+  UINTN NewBufferSize = gMmCorePrivate->MmCoreImageSize;
+  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
+  ZeroMem (NewBuffer, NewBufferSize);
 
   DEBUG ((DEBUG_INFO, "%p %p %p\n", gMmCorePrivate->MmCoreImageBase, Buffer, NewBuffer));
 
   // At this point we dealt with the relocation, some data are still off.
   // Next we unload the image in the copy.
-  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer);
+  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer, &NewBufferSize);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
+
+  DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
+  ASSERT (MmSupvEfiFileSize == NewBufferSize);
+  ASSERT (CompareMem (NewBuffer, (VOID*)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
 
 Done:
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
@@ -814,6 +823,19 @@ DiscoverStandaloneMmDriversInFvHobs (
             __FUNCTION__,
             &gEfiCallerIdGuid,
             (UINTN)FwVolHeader
+            ));
+
+          VOID *MmCoreImageBase = NULL;
+          Status = FfsFindSectionData (EFI_SECTION_PE32, FileHeader, &MmCoreImageBase, &MmSupvEfiFileSize);
+          ASSERT_EFI_ERROR (Status);
+          MmSupvEfiFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateCopyPool (MmSupvEfiFileSize, MmCoreImageBase);
+          ASSERT (MmSupvEfiFileBase != 0);
+          DEBUG ((
+            DEBUG_INFO,
+            "[%a]   reserved MmSupvEfiFileBase at %p for %x bytes.\n",
+            __FUNCTION__,
+            MmSupvEfiFileBase,
+            MmSupvEfiFileSize
             ));
         }
       } else {
