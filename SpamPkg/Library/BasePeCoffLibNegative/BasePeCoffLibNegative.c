@@ -816,7 +816,7 @@ PeCoffImageDiffValidation (
         if (IsZeroBuffer ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size)) {
           Status = EFI_SECURITY_VIOLATION;
         } else {
-          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)ImageValidationEntryHdr + sizeof (IMAGE_VALIDATION_MEM_ATTR));
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryHdr + 1);
         }
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
