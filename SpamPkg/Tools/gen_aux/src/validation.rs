@@ -1,3 +1,4 @@
+//! A module containing the objects used for working with Validation rules.
 use pdb::TypeFinder;
 use scroll::{ctx, Endian, Pwrite};
 use serde::Deserialize;

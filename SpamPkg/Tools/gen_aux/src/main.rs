@@ -6,34 +6,34 @@ use pdb::PDB;
 use anyhow::Result;
 use serde::Deserialize;
 
-mod auxgen;
-mod util;
-mod validation;
+pub mod auxgen;
+pub mod util;
+pub mod validation;
 
 use auxgen::{Symbol, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
 
-const POINTER_LENGTH: u64 = 8;
+pub const POINTER_LENGTH: u64 = 8;
 
 /// Command line arguments for the Auxillary File Generator.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-struct Args {
+pub struct Args {
     /// Path to the PDB file to parse.
     #[arg(short, long)]
-    pdb: PathBuf,
+    pub pdb: PathBuf,
     /// Path to the efi file to parse.
     #[arg(short, long)]
-    efi: PathBuf,
+    pub efi: PathBuf,
     /// Path to the output auxillary file.
     #[arg(short, long)]
-    output: Option<PathBuf>,
+    pub output: Option<PathBuf>,
     /// Path to the config file.
     #[arg(short, long)]
-    config: Option<PathBuf>,
+    pub config: Option<PathBuf>,
     // Display the parse Symbol information.
     #[arg(short, long)]
-    debug: bool
+    pub debug: bool
 }
 
 /// Configuration options available in the config file.
@@ -42,7 +42,7 @@ pub struct Config {
     /// A list of validation rules that ultimately create a validation entry in
     /// the auxillary file.
     #[serde(alias = "rule", default = "Vec::new")]
-    rules: Vec<ValidationRule>,
+    pub rules: Vec<ValidationRule>,
     /// An option that if true, will generate a validation entry of 
     /// verification type NONE for every symbol without a rule in the config
     /// file.
@@ -62,7 +62,7 @@ impl Config {
     }
 }
 
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     let args = Args::parse();
 
     let file = std::fs::File::open(args.pdb)?;

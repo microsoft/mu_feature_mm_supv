@@ -1,3 +1,4 @@
+//! A module containing utility functions for extracting information from the PDB file.
 use std::collections::HashMap;
 
 use pdb::{PrimitiveKind, TypeData, TypeFinder, TypeIndex};

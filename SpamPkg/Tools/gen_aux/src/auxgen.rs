@@ -1,8 +1,11 @@
+//! A module that contains the C-equivalent structs and final functions to
+//! generate the aux file.
 use std::{collections::HashMap, fmt, io::Write, mem::size_of};
 use pdb::{TypeFinder, TypeIndex};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{Config, ValidationRule, ValidationType};
 
+/// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
 pub struct Symbol {
     /// The human readable name of the symbol
@@ -21,12 +24,19 @@ impl std::fmt::Debug for Symbol {
     }
 }
 
+/// A struct representing the header of the aux file.
 #[derive(Debug, Pwrite, Pread)]
 pub struct ImageValidationDataHeader {
+    /// The signature of the header. Must be 0x444C4156
     signature: u32,
+    /// The size of the entire aux file in bytes.
     size: u32,
+    /// The number of entries in the aux file.
     entry_count: u32,
+    /// The offset to the first entry in the aux file.
+    /// This is the size of the IMAGE_VALIDATION_DATA_HEADER.
     offset_to_first_entry: u32,
+    /// The offset to the first default value in the aux file.
     offset_to_first_default: u32,
 }
 
@@ -42,6 +52,9 @@ impl Default for ImageValidationDataHeader {
     }
 }
 
+/// A struct representing the header of an entry in the aux file.
+/// Typically a IMAGE_VALIDATION_ENTRY_HEADER, but may be casted to a different
+/// type depending on the validation_type field.
 #[derive(Debug, Clone)]
 pub struct ImageValidationEntryHeader {
     signature: u32,
@@ -127,6 +140,8 @@ impl ImageValidationEntryHeader {
         }
     }
 }
+
+/// A builder pattern struct for generating the aux file. 
 #[derive(Default, Debug)]
 pub struct AuxBuilder {
     /// The loaded image to generate the aux file for
@@ -311,7 +326,7 @@ impl AuxFile {
         Ok(())
     }
 
-    /// Converts the AuxFile to a Vec<u8> buffer.
+    /// Converts the AuxFile to a `Vec<u8>` buffer.
     pub fn to_vec(&self) -> anyhow::Result<Vec<u8>> {
         let mut buffer = vec![0; self.header.size as usize];
         buffer.gwrite_with(self, &mut 0, LE)?;
