@@ -55,14 +55,14 @@ impl Default for ImageValidationDataHeader {
 /// A struct representing the header of an entry in the aux file.
 /// Typically a IMAGE_VALIDATION_ENTRY_HEADER, but may be casted to a different
 /// type depending on the validation_type field.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ImageValidationEntryHeader {
     signature: u32,
     /// Offset of the value in the original image.
     offset: u32,
     /// Size of the value in bytes.
     size: u32,
-    /// The type of validation to perfom on the symbol. Contains the data
+    /// The type of validation to perform on the symbol. Contains the data
     /// necessary to perform the validation.
     validation_type: ValidationType,
     /// Offset of the default value in the raw data
@@ -78,6 +78,12 @@ impl Default for ImageValidationEntryHeader {
             validation_type: ValidationType::default(),
             offset_to_default: 0
         }
+    }
+}
+
+impl std::fmt::Debug for ImageValidationEntryHeader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ImageValidationEntryHeader {{ signature: 0x{:08X}, offset: 0x{:08X}, size: 0x{:08X}, validation_type: {:?}, offset_to_default: 0x{:08X} }}", self.signature, self.offset, self.size, self.validation_type, self.offset_to_default)
     }
 }
 
