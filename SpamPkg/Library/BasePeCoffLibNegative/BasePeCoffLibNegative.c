@@ -765,6 +765,7 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_ENTRY_HEADER *NextImageValidationEntryHdr;
   IMAGE_VALIDATION_MEM_ATTR     *ImageValidationEntryMemAttr;
   IMAGE_VALIDATION_SELF_REF     *ImageValidationEntrySelfRef;
+  IMAGE_VALIDATION_CONTENT      *ImageValidationEntryContent;
   UINT64                        MemAttr;
   UINTN                         Index;
   EFI_STATUS                    Status;
@@ -772,19 +773,23 @@ PeCoffImageDiffValidation (
   EFI_PHYSICAL_ADDRESS          AddrInOrigin;
 
   if (TargetImageSize == 0 || ReferenceDataSize == 0) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input size 0x%x and 0x%x\n", __func__, TargetImageSize, ReferenceDataSize));
     return EFI_INVALID_PARAMETER;
   }
 
   if (TargetImage == NULL || ReferenceData == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ReferenceData));
     return EFI_INVALID_PARAMETER;
   }
 
   ImageValidationHdr = (IMAGE_VALIDATION_DATA_HEADER*)ReferenceData;
   if (ImageValidationHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid signature 0x%x at 0x%p\n", __func__, ImageValidationHdr->HeaderSignature, ImageValidationHdr));
     return EFI_INVALID_PARAMETER;
   }
 
   if (ImageValidationHdr->Size != ReferenceDataSize) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid size 0x%x vs. 0x%x\n", __func__, ImageValidationHdr->Size, ReferenceDataSize));
     return EFI_COMPROMISED_DATA;
   }
 
@@ -792,18 +797,17 @@ PeCoffImageDiffValidation (
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
     if ((UINT8*)(ImageValidationEntryHdr) >= ((UINT8*)ReferenceData + ReferenceDataSize)) {
+      DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8*)ReferenceData + ReferenceDataSize));
       return EFI_COMPROMISED_DATA;
     }
 
     if (ImageValidationEntryHdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) {
+      DEBUG ((DEBUG_ERROR, "%a: Invalid current signature 0x%x at 0x%p\n", __func__, ImageValidationEntryHdr->EntrySignature, ImageValidationEntryHdr));
       return EFI_COMPROMISED_DATA;
     }
 
     if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
-      return EFI_INVALID_PARAMETER;
-    }
-
-    if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
+      DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%x exceeds target image limit 0x%x\n", __func__, ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size, TargetImageSize));
       return EFI_INVALID_PARAMETER;
     }
 
@@ -814,14 +818,27 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
         if (IsZeroBuffer ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is all 0s\n", __func__, (UINT8*)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size));
           Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryHdr + 1);
         }
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
-        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
+        ImageValidationEntryContent = (IMAGE_VALIDATION_CONTENT*)(ImageValidationEntryHdr);
+        if (sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > ReferenceDataSize) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
+          __func__,
+          ImageValidationEntryContent,
+          sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size,
+          ReferenceDataSize));
           Status = EFI_COMPROMISED_DATA;
+          break;
+        }
+
+        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryContent->TargetContent, ImageValidationEntryHdr->Size) != 0) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x does not match input content at 0x%p\n", __func__, ImageValidationEntryContent, ImageValidationEntryHdr->Size, ImageValidationEntryContent->TargetContent));
+          Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
         }
@@ -829,7 +846,9 @@ PeCoffImageDiffValidation (
       case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
         ImageValidationEntryMemAttr = (IMAGE_VALIDATION_MEM_ATTR*)(ImageValidationEntryHdr);
         if (ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave == 0 && ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave == 0) {
-          Status = EFI_INVALID_PARAMETER;
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p has invalid must have 0x%x and must not have 0x%x\n",
+                  __func__, ImageValidationEntryMemAttr, ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave, ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave));
+          Status = EFI_COMPROMISED_DATA;
           break;
         }
 
@@ -840,11 +859,22 @@ PeCoffImageDiffValidation (
                    &MemAttr
                    );
         if (EFI_ERROR(Status)) {
+          DEBUG ((DEBUG_ERROR, "%a: Failed to read memory attribute of 0x%p: 0x%x - %r\n",
+                  __func__,
+                  (UINT8*)OriginalImageBaseAddress + ImageValidationEntryHdr->Offset,
+                  ImageValidationEntryHdr->Size,
+                  Status));
           break;
         }
         // Check if the memory attributes of the target image meet the requirements
         if (((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) != ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) &&
             ((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave) != 0)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x attribute 0x%x violated aux file specification must have 0x%x and must not have 0x%x\n",
+                  __func__,
+                  (UINT8*)TargetImage + ImageValidationEntryHdr->Offset,
+                  ImageValidationEntryHdr->Size,
+                  ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave,
+                  ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave));
           Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryMemAttr + 1);
@@ -853,20 +883,35 @@ PeCoffImageDiffValidation (
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
         ImageValidationEntrySelfRef = (IMAGE_VALIDATION_SELF_REF*)(ImageValidationEntryHdr);
         if (ImageValidationEntrySelfRef->Header.OffsetToDefault + ImageValidationEntrySelfRef->Header.Size > ReferenceDataSize) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
+                  __func__,
+                  ImageValidationEntrySelfRef->Header.OffsetToDefault ,
+                  ImageValidationEntrySelfRef->Header.Size,
+                  ReferenceDataSize));
           Status = EFI_COMPROMISED_DATA;
           break;
         }
 
-        // For now, self reference is only valid for address type in x64 mode
-        if (ImageValidationEntrySelfRef->Header.Size != sizeof (EFI_PHYSICAL_ADDRESS)) {
+        // For now, self reference is only valid for address type in x64 mode or below
+        if (ImageValidationEntrySelfRef->Header.Size > sizeof (EFI_PHYSICAL_ADDRESS)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is self reference type but not 64 bit value %d\n",
+                  __func__,
+                  ImageValidationEntrySelfRef,
+                  ImageValidationEntrySelfRef->Header.Size));
           Status = EFI_INVALID_PARAMETER;
           break;
         }
 
         // Check if the self-reference data of the target image meet the requirements
-        AddrInTarget = *(EFI_PHYSICAL_ADDRESS*)((UINTN)TargetImage + ImageValidationEntryHdr->Offset);
-        AddrInOrigin = *(EFI_PHYSICAL_ADDRESS*)((UINTN)OriginalImageBaseAddress + ImageValidationEntrySelfRef->TargetOffset);
+        AddrInTarget = 0;
+        CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+        AddrInOrigin = (EFI_PHYSICAL_ADDRESS)(UINTN)((UINT8*)OriginalImageBaseAddress + ImageValidationEntrySelfRef->TargetOffset);
         if (AddrInTarget != AddrInOrigin) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry at 0x%p regarding 0x%x should self reference 0x%x\n",
+                  __func__,
+                  ImageValidationEntryHdr,
+                  AddrInTarget,
+                  AddrInOrigin));
           Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntrySelfRef + 1);
@@ -874,6 +919,9 @@ PeCoffImageDiffValidation (
         break;
       default:
         // Does not support unknown validation type
+        DEBUG ((DEBUG_ERROR, "%a: Entry validation type not supported 0x%x\n",
+                __func__,
+                ImageValidationEntryHdr->ValidationType));
         Status = EFI_INVALID_PARAMETER;
         break;
     }
