@@ -1,6 +1,6 @@
 //! A module that contains the C-equivalent structs and final functions to
 //! generate the aux file.
-use std::{collections::HashMap, fmt, io::Write, mem::size_of};
+use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeFinder, TypeIndex};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{Config, ValidationRule, ValidationType};
@@ -155,7 +155,7 @@ pub struct AuxBuilder {
     /// A list of symbols to generate rules for
     symbols: Vec<Symbol>,
     // A Map of rules that apply to a certain symbol
-    rules: HashMap<String, Vec<ValidationRule>>,
+    rules: Vec<ValidationRule>,
     // Auto Generate rules for symbols that don't have any
     auto_generate: bool,
 }
@@ -211,7 +211,7 @@ impl AuxBuilder {
             let data = std::fs::read_to_string(path)?;
             let config = toml::from_str::<Config>(&data)?;
             self.auto_generate = config.auto_gen;
-            self.rules = config.to_rule_map();
+            self.rules = config.rules;
         }
         Ok(self)
     }
@@ -235,38 +235,36 @@ impl AuxBuilder {
 
         if self.auto_generate{
             for symbol in &self.symbols {
-                if self.rules.get(&symbol.name).is_none() {
-                    self.rules.insert(symbol.name.clone(), vec![ValidationRule {
+                let rule = self.rules.iter().find(|&entry| &entry.symbol == &symbol.name);
+                if rule.is_none() {
+                    self.rules.push(ValidationRule {
                         symbol: symbol.name.clone(),
                         field: None,
                         validation: ValidationType::None,
                         offset: None,
                         size: None,
-                    }]);
+                    })
                 }
             }
         }
 
-        for symbol in &self.symbols {
-            // Each symbol may have multiple rules. Commonly if the symbol is a
-            // class and the rules are for fields within the class.
-            for rule in self.rules.get_mut(&symbol.name).unwrap_or(&mut Vec::new()){
-                // Resolve any symbols in the rule to their actual addresses
-                rule.resolve(&symbol, &self.symbols, finder)?;
-
-                let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
-                entry.offset_to_default = offset_in_default;
-                
-                offset_in_default += entry.size;
-                
-                aux.header.size += entry.size + entry.header_size();
-                aux.raw_data.extend_from_slice(
-                    &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
-                );
-                aux.entries.push(entry);
-                aux.header.entry_count += 1;
-            }
+        for rule in self.rules.iter_mut() {
+            let symbol = self.symbols.iter().find(|&entry| &entry.name == &rule.symbol).ok_or(anyhow::anyhow!("Could not find symbol {} for rule.", rule.symbol))?;
+            rule.resolve(symbol, &self.symbols, finder)?;
+            
+            let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
+            entry.offset_to_default = offset_in_default;
+            
+            offset_in_default += entry.size;
+            
+            aux.header.size += entry.size + entry.header_size();
+            aux.raw_data.extend_from_slice(
+                &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
+            );
+            aux.entries.push(entry);
+            aux.header.entry_count += 1;
         }
+
         // Now that all entries have been added, we can calculate the offset to
         // the raw data, and update the offset_to_default field in each entry.
         let offset_to_default_start = size_of::<ImageValidationDataHeader>() as u32 
