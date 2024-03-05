@@ -104,7 +104,8 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
             ValidationType::Content{content} => {
                 this.gwrite_with(&content[..], &mut offset, ())?;
             },
-            ValidationType::MemAttr {must_have, must_not_have} => {
+            ValidationType::MemAttr {memory_size, must_have, must_not_have} => {
+                this.gwrite_with(memory_size, &mut offset, le)?;
                 this.gwrite_with(must_have, &mut offset, le)?;
                 this.gwrite_with(must_not_have, &mut offset, le)?;
             },
@@ -141,7 +142,7 @@ impl ImageValidationEntryHeader {
             ValidationType::None => 0,
             ValidationType::NonZero => 0,
             ValidationType::Content{content} => content.len() as u32,
-            ValidationType::MemAttr {..} => 16,
+            ValidationType::MemAttr {..} => 24,
             ValidationType::Ref{..} => 4
         }
     }

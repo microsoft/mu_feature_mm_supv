@@ -84,7 +84,7 @@ pub enum ValidationType {
     Content{content: Vec<u8>} = 2,
     /// Firmware will validate that the memory attributes are as expected.
     #[serde(alias = "MEM_ATTR", alias = "memattr", alias = "mem attr", alias = "Mem Attr")]
-    MemAttr{must_have: u64, must_not_have: u64} = 3,
+    MemAttr{memory_size: u64, must_have: u64, must_not_have: u64} = 3,
     /// Firmware will validate that two symbols are equal.
     #[serde(alias = "SELF", alias = "Self", alias = "self")]
     Ref{reference: Option<String>, address: Option<u32>} = 4
