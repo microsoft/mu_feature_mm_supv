@@ -817,7 +817,6 @@ PeCoffImageDiffValidation (
         Status = EFI_SUCCESS;
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
-        DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p\n", __func__, ImageValidationEntryHdr));
         if (IsZeroBuffer ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size)) {
           DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is all 0s\n", __func__, (UINT8*)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size));
           Status = EFI_SECURITY_VIOLATION;
