@@ -37,7 +37,9 @@ impl ValidationRule {
         if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_index) {
             let (field_offset, field_size) = crate::util::find_field_offset_and_size(finder, &index, attribute, &symbol.name).unwrap();
             self.offset = Some(field_offset as i64);
-            self.size = Some(field_size as u32);
+            if self.size.is_none() {
+                self.size = Some(field_size as u32);
+            }
         }
 
         // Resolve the reference in the SELF validation type to an address
