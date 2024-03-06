@@ -282,8 +282,6 @@ DiscoverSmiEntryInFvHobs (
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySpamFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
-            //mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader;
-            //mMmiEntrySize         = 0;
             // Moving the buffer like size field to our global variable
             CopyMem (&mMmiEntrySize, FileHeader->Size, sizeof (FileHeader->Size));
             DEBUG ((
@@ -301,10 +299,12 @@ DiscoverSmiEntryInFvHobs (
               break;
             }
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawBinFileData, &SpamBinSize);
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SPAM data section [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
             Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SpamBinSize);
             // Moving the buffer like size field to our local variable
-            //CopyMem (&SpamBinSize, FileHeader->Size, sizeof (FileHeader->Size));
-            //Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader, SpamBinSize);
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
               break;
@@ -335,12 +335,12 @@ DiscoverSmiEntryInFvHobs (
 
           if (MmiEntryFound && SpamResponderFound && AuxBinFound) {
             // Job done, break out of the loop
+            Status = EFI_SUCCESS;
             break;
           }
         }
       } while (!EFI_ERROR (Status));
       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
-      Status = EFI_SUCCESS;
     }
   } while (Hob.Raw != NULL);
 
