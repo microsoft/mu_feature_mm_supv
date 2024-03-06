@@ -54,6 +54,9 @@ UINT64                MmSupvEfiFileSize;
 VOID   *mMmHobStart;
 UINTN  mMmHobSize;
 
+// Inidicator to check if this is the first MMI.
+STATIC BOOLEAN    mFirstMmi = TRUE;
+
 //
 // MM Core global variable for MM System Table.  Only accessed as a physical structure in MMRAM.
 //
@@ -480,7 +483,6 @@ MmEntryPoint (
 {
   EFI_STATUS                 Status;
   EFI_MM_COMMUNICATE_HEADER  *CommunicateHeader;
-  STATIC BOOLEAN             FirstMmi = TRUE;
   EFI_PHYSICAL_ADDRESS       CommunicationBuffer;
   UINT64                     BufferSize;
 
@@ -504,7 +506,7 @@ MmEntryPoint (
 
   gMmCorePrivate->InMm = TRUE;
 
-  if (FirstMmi) {
+  if (mFirstMmi) {
     //
     // Call memory management hook function to set all cached guard pages during initialization.
     // This is only applicable to the first time in MMI, since all page allocation/free will
@@ -514,7 +516,7 @@ MmEntryPoint (
 
     // Set up the code access check before any handler was iterated
     ConfigSmmCodeAccessCheck ();
-    FirstMmi = FALSE;
+    mFirstMmi = FALSE;
   }
 
   //
