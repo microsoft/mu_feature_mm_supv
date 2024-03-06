@@ -54,7 +54,13 @@ impl Default for ImageValidationDataHeader {
 
 /// A struct representing the header of an entry in the aux file.
 /// Typically a IMAGE_VALIDATION_ENTRY_HEADER, but may be casted to a different
-/// type depending on the validation_type field.
+/// type depending on the validation_type field. The other possible header
+/// types are:
+/// 
+/// - IMAGE_VALIDATION_CONTENT
+/// - IMAGE_VALIDATION_MEM_ATTR
+/// - IMAGE_VALIDATION_SELF_REF
+/// 
 #[derive(Clone)]
 pub struct ImageValidationEntryHeader {
     signature: u32,

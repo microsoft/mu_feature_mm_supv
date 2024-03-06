@@ -61,11 +61,21 @@ impl ValidationRule {
 }
 
 /// An enum representing the type of validation to be performed on the symbol
-/// 
+///
 /// This enum also contains the data required to perform the validation and is
 /// written to the auxillary file in the validation entry section. See the
 /// TryIntoCtx impl for
-/// [ImageValidationEntryHeader](crate::auxgen::ImageValidationEntryHeader).
+/// [ImageValidationEntryHeader](crate::auxgen::ImageValidationEntryHeader) for
+/// more information.
+///
+/// ## Validation Type headers
+///
+/// None - IMAGE_VALIDATION_ENTRY_HEADER
+/// NonZero - IMAGE_VALIDATION_ENTRY_HEADER
+/// Content - IMAGE_VALIDATION_CONTENT
+/// MemAttr - IMAGE_VALIDATION_MEM_ATTR
+/// Ref - IMAGE_VALIDATION_SELF_REF
+///
 #[derive(Debug, Default, Clone, Deserialize)]
 #[non_exhaustive]
 #[allow(non_camel_case_types)]
