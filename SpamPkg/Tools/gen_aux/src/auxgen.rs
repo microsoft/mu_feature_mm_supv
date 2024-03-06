@@ -20,7 +20,7 @@ pub struct Symbol {
 
 impl std::fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Symbol {{ address: 0x{:08X}, size: 0x{:08X}, name: {} }}", self.address, self.size, self.name)
+        write!(f, "Symbol {{ address: 0x{:08X}, size: 0x{:08X}, name: {}, type_index: {:?} }}", self.address, self.size, self.name, self.type_index)
     }
 }
 

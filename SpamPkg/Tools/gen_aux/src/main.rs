@@ -50,18 +50,6 @@ pub struct Config {
     pub auto_gen: bool,
 }
 
-impl Config {
-    /// Converts a list of validation rules into a map of validation rules
-    /// indexed by the symbol name they are associated with.
-    pub fn to_rule_map(self) -> HashMap<String, Vec<ValidationRule>> {
-        let mut map = HashMap::new();
-        for rule in self.rules.into_iter() {
-            map.entry(rule.symbol.clone()).or_insert(Vec::new()).push(rule.clone());
-        }
-        map
-    }
-}
-
 pub fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -72,14 +60,6 @@ pub fn main() -> Result<()> {
     let address_map = pdb.address_map()?;
     let type_information = pdb.type_information()?;
     let debug_information = pdb.debug_information()?;
-
-    // let mut type_finder = type_information.finder();
-    // let mut iter = type_information.iter();
-    // while let Some(_) = iter.next()? {
-    //     type_finder.update(&iter);
-    // }
-
-    //util::find_symbol_by_name(&type_information, "_LIST_ENTRY")?;
 
     let mut raw_symbol_iter = symbol_table.iter();
     let mut parsed_symbols: HashMap<String, Symbol> = HashMap::new();

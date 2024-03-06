@@ -166,7 +166,11 @@ pub fn get_size_from_index(info: &TypeInformation, index: TypeIndex) -> Result<u
 pub fn get_size_from_type(info: &TypeInformation, data: TypeData) -> Result<u64> {
     let x = match data {
         TypeData::Primitive(prim) => {
-            get_size_from_primitive(prim.kind)
+            if prim.indirection.is_some() {
+                POINTER_LENGTH
+            } else {
+                get_size_from_primitive(prim.kind)
+            }
         }
         TypeData::Class(class) => {
             class.size
