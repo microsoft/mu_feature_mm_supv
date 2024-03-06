@@ -1,7 +1,7 @@
 //! A module that contains the C-equivalent structs and final functions to
 //! generate the aux file.
 use std::{fmt, io::Write, mem::size_of};
-use pdb::{TypeFinder, TypeIndex};
+use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{Config, ValidationRule, ValidationType};
 
@@ -228,7 +228,7 @@ impl AuxBuilder {
     /// config file have entries in the aux file. If `autogen=true` is
     /// specified in the configuration file, a rule (with no validation) will
     /// be generated, so that all symbols are reverted to their original value.
-    pub fn generate(mut self, finder: &TypeFinder) -> anyhow::Result<AuxFile> {
+    pub fn generate(mut self, info: &TypeInformation) -> anyhow::Result<AuxFile> {
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
 
@@ -251,7 +251,7 @@ impl AuxBuilder {
 
         for rule in self.rules.iter_mut() {
             let symbol = self.symbols.iter().find(|&entry| &entry.name == &rule.symbol).ok_or(anyhow::anyhow!("Could not find symbol {} for rule.", rule.symbol))?;
-            rule.resolve(symbol, &self.symbols, finder)?;
+            rule.resolve(symbol, &self.symbols, info)?;
             
             let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
             entry.offset_to_default = offset_in_default;

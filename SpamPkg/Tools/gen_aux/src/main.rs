@@ -73,11 +73,13 @@ pub fn main() -> Result<()> {
     let type_information = pdb.type_information()?;
     let debug_information = pdb.debug_information()?;
 
-    let mut type_finder = type_information.finder();
-    let mut iter = type_information.iter();
-    while let Some(_) = iter.next()? {
-        type_finder.update(&iter);
-    }
+    // let mut type_finder = type_information.finder();
+    // let mut iter = type_information.iter();
+    // while let Some(_) = iter.next()? {
+    //     type_finder.update(&iter);
+    // }
+
+    //util::find_symbol_by_name(&type_information, "_LIST_ENTRY")?;
 
     let mut raw_symbol_iter = symbol_table.iter();
     let mut parsed_symbols: HashMap<String, Symbol> = HashMap::new();
@@ -88,13 +90,13 @@ pub fn main() -> Result<()> {
         let module_info = pdb.module_info(&module)?.unwrap();
         let mut symbols = module_info.symbols()?;
         while let Some(symbol) = symbols.next()? {
-            util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_finder)?;
+            util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
         }
     }
 
     // Add symbols from the global scope
     while let Some(symbol) = raw_symbol_iter.next()? {
-        util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_finder)?;
+        util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
     }
 
     let output = args.output.unwrap_or(args.efi.with_extension("aux"));
@@ -103,7 +105,7 @@ pub fn main() -> Result<()> {
         .with_image(&efi)?
         .with_config(args.config)?
         .with_symbols(parsed_symbols.values().cloned().collect())
-        .generate(&type_finder)?;
+        .generate(&type_information)?;
 
     if args.debug {
         println!("{:?}", aux.header);
