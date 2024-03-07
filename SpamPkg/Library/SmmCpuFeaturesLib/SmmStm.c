@@ -282,8 +282,7 @@ DiscoverSmiEntryInFvHobs (
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySpamFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
-            // Moving the buffer like size field to our global variable
-            CopyMem (&mMmiEntrySize, FileHeader->Size, sizeof (FileHeader->Size));
+
             DEBUG ((
               DEBUG_INFO,
               "[%a]   Discovered MMI Entry for SPAM [%g] in FV at 0x%p of %x bytes.\n",
@@ -344,9 +343,11 @@ DiscoverSmiEntryInFvHobs (
     }
   } while (Hob.Raw != NULL);
 
-  if (!MmiEntryFound) {
-    DEBUG ((DEBUG_ERROR, "[%a]   MMI Entry for SPAM not found in any FV.\n", __FUNCTION__));
+  if (!MmiEntryFound || !SpamResponderFound || !AuxBinFound) {
+    DEBUG ((DEBUG_ERROR, "[%a]   Required entries for SPAM not found in any FV.\n", __FUNCTION__));
     Status = EFI_NOT_FOUND;
+  } else {
+    Status = EFI_SUCCESS;
   }
 
 Done:
