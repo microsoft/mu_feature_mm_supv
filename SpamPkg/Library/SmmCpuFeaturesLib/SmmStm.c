@@ -229,6 +229,8 @@ DiscoverSmiEntryInFvHobs (
   BOOLEAN                         MmiEntryFound = FALSE;
   BOOLEAN                         SpamResponderFound = FALSE;
   BOOLEAN                         AuxBinFound = FALSE;
+  VOID                            *RawBinFileData;
+  VOID                            *RawMmiEntryFileData;
   VOID                            *RawAuxFileData;
 
   Hob.Raw = GetHobList ();
@@ -273,8 +275,13 @@ DiscoverSmiEntryInFvHobs (
               Status = EFI_ALREADY_STARTED;
               break;
             }
-            mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader;
-            mMmiEntrySize         = 0;
+            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawMmiEntryFileData, &mMmiEntrySize);
+            if (!EFI_ERROR (Status)) {
+              mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
+            } else {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySpamFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
             // Moving the buffer like size field to our global variable
             CopyMem (&mMmiEntrySize, FileHeader->Size, sizeof (FileHeader->Size));
             DEBUG ((
@@ -291,9 +298,13 @@ DiscoverSmiEntryInFvHobs (
               Status = EFI_ALREADY_STARTED;
               break;
             }
+            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawBinFileData, &SpamBinSize);
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SPAM data section [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
+            Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SpamBinSize);
             // Moving the buffer like size field to our local variable
-            CopyMem (&SpamBinSize, FileHeader->Size, sizeof (FileHeader->Size));
-            Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader, SpamBinSize);
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
               break;
@@ -324,6 +335,7 @@ DiscoverSmiEntryInFvHobs (
 
           if (MmiEntryFound && SpamResponderFound && AuxBinFound) {
             // Job done, break out of the loop
+            Status = EFI_SUCCESS;
             break;
           }
         }
@@ -357,14 +369,6 @@ SmmCpuFeaturesLibStmConstructor (
   CPUID_VERSION_INFO_ECX  RegEcx;
   EFI_HOB_GUID_TYPE       *GuidHob;
   EFI_SMRAM_DESCRIPTOR    *SmramDescriptor;
-
-  //
-  // First locate the MMI entry blob in the FV
-  Status = DiscoverSmiEntryInFvHobs ();
-  if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
 
   //
   // Perform library initialization common across all instances
@@ -408,6 +412,14 @@ SmmCpuFeaturesLibStmConstructor (
     if (mMsegBase > 0) {
       DEBUG ((DEBUG_INFO, "MsegBase: 0x%08x, MsegSize: 0x%08x\n", mMsegBase, mMsegSize));
     }
+  }
+
+  //
+  // First locate the MMI entry blob in the FV
+  Status = DiscoverSmiEntryInFvHobs ();
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    return Status;
   }
 
   return EFI_SUCCESS;
