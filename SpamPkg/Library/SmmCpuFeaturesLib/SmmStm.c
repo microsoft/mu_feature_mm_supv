@@ -228,6 +228,9 @@ DiscoverSmiEntryInFvHobs (
   UINTN                           SpamBinSize;
   BOOLEAN                         MmiEntryFound = FALSE;
   BOOLEAN                         SpamResponderFound = FALSE;
+  BOOLEAN                         AuxBinFound = FALSE;
+  VOID                            *RawBinFileData;
+  VOID                            *RawMmiEntryFileData;
   VOID                            *RawAuxFileData;
 
   Hob.Raw = GetHobList ();
@@ -260,64 +263,91 @@ DiscoverSmiEntryInFvHobs (
       // to the dispatch list. Mark the FV with this driver as the Standalone BFV.
       //
       FileHeader = NULL;
-      Status     =  FfsFindNextFile (
-                      EFI_FV_FILETYPE_RAW,
-                      FwVolHeader,
-                      &FileHeader
-                      );
-      if (!EFI_ERROR (Status)) {
-        if (CompareGuid (&FileHeader->Name, &gMmiEntrySpamFileGuid)) {
-          mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader;
-          mMmiEntrySize         = 0;
-          // Moving the buffer like size field to our global variable
-          CopyMem (&mMmiEntrySize, FileHeader->Size, sizeof (FileHeader->Size));
-          DEBUG ((
-            DEBUG_INFO,
-            "[%a]   Discovered MMI Entry for SPAM [%g] in FV at 0x%p of %x bytes.\n",
-            __FUNCTION__,
-            &gMmiEntrySpamFileGuid,
-            mMmiEntryBaseAddress,
-            mMmiEntrySize
-            ));
-          MmiEntryFound = TRUE;
-        } else if (CompareGuid (&FileHeader->Name, &gSpamBinFileGuid)) {
-          // Moving the buffer like size field to our local variable
-          CopyMem (&SpamBinSize, FileHeader->Size, sizeof (FileHeader->Size));
-          Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)FileHeader, SpamBinSize);
-          if (EFI_ERROR (Status)) {
-            DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
-            break;
-          }
-          // TODO: Mark the region as supervisor read-only
-          SpamResponderFound = TRUE;
-        } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorAuxFileGuid)) {
-          Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawAuxFileData, &MmSupvAuxFileSize);
-          DEBUG ((DEBUG_INFO, "Find raw data from supv aux file - %r\n", Status));
-          if (EFI_ERROR (Status)) {
-            break;
+      do {
+        Status     =  FfsFindNextFile (
+                        EFI_FV_FILETYPE_FREEFORM,
+                        FwVolHeader,
+                        &FileHeader
+                        );
+        if (!EFI_ERROR (Status)) {
+          if (CompareGuid (&FileHeader->Name, &gMmiEntrySpamFileGuid)) {
+            if (MmiEntryFound) {
+              Status = EFI_ALREADY_STARTED;
+              break;
+            }
+            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawMmiEntryFileData, &mMmiEntrySize);
+            if (!EFI_ERROR (Status)) {
+              mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
+            } else {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySpamFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
+
+            DEBUG ((
+              DEBUG_INFO,
+              "[%a]   Discovered MMI Entry for SPAM [%g] in FV at 0x%p of %x bytes.\n",
+              __FUNCTION__,
+              &gMmiEntrySpamFileGuid,
+              mMmiEntryBaseAddress,
+              mMmiEntrySize
+              ));
+            MmiEntryFound = TRUE;
+          } else if (CompareGuid (&FileHeader->Name, &gSpamBinFileGuid)) {
+            if (SpamResponderFound) {
+              Status = EFI_ALREADY_STARTED;
+              break;
+            }
+            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawBinFileData, &SpamBinSize);
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SPAM data section [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
+            Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SpamBinSize);
+            // Moving the buffer like size field to our local variable
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
+            // TODO: Mark the region as supervisor read-only
+            SpamResponderFound = TRUE;
+          } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorAuxFileGuid)) {
+            if (AuxBinFound) {
+              Status = EFI_ALREADY_STARTED;
+              break;
+            }
+            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawAuxFileData, &MmSupvAuxFileSize);
+            DEBUG ((DEBUG_INFO, "Find raw data from supv aux file - %r\n", Status));
+            if (EFI_ERROR (Status)) {
+              break;
+            }
+
+            MmSupvAuxFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (MmSupvAuxFileSize));
+            if (MmSupvAuxFileBase == 0) {
+              Status = EFI_OUT_OF_RESOURCES;
+              break;
+            }
+
+            CopyMem ((VOID *)(UINTN)MmSupvAuxFileBase, (VOID *)(UINTN)RawAuxFileData, MmSupvAuxFileSize);
+            // TODO: Mark the region as supervisor read-only
+            AuxBinFound = TRUE;
           }
 
-          MmSupvAuxFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (MmSupvAuxFileSize));
-          if (MmSupvAuxFileBase == 0) {
-            Status = EFI_OUT_OF_RESOURCES;
+          if (MmiEntryFound && SpamResponderFound && AuxBinFound) {
+            // Job done, break out of the loop
+            Status = EFI_SUCCESS;
             break;
           }
-
-          CopyMem ((VOID *)(UINTN)MmSupvAuxFileBase, (VOID *)(UINTN)RawAuxFileData, MmSupvAuxFileSize);
         }
-
-        if (MmiEntryFound && SpamResponderFound) {
-          // Job done, break out of the loop
-          break;
-        }
-      }
+      } while (!EFI_ERROR (Status));
       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
     }
   } while (Hob.Raw != NULL);
 
-  if (!MmiEntryFound) {
-    DEBUG ((DEBUG_ERROR, "[%a]   MMI Entry for SPAM not found in any FV.\n", __FUNCTION__));
+  if (!MmiEntryFound || !SpamResponderFound || !AuxBinFound) {
+    DEBUG ((DEBUG_ERROR, "[%a]   Required entries for SPAM not found in any FV.\n", __FUNCTION__));
     Status = EFI_NOT_FOUND;
+  } else {
+    Status = EFI_SUCCESS;
   }
 
 Done:
@@ -325,10 +355,7 @@ Done:
 }
 
 /**
-  The constructor function for the Traditional MM library instance with STM.
-
-  @param[in]  ImageHandle  The firmware allocated handle for the EFI image.
-  @param[in]  SystemTable  A pointer to the EFI System Table.
+  The constructor function for the common MM library instance with STM.
 
   @retval EFI_SUCCESS      The constructor always returns EFI_SUCCESS.
 
@@ -336,22 +363,13 @@ Done:
 EFI_STATUS
 EFIAPI
 SmmCpuFeaturesLibStmConstructor (
-  IN EFI_HANDLE        ImageHandle,
-  IN EFI_SYSTEM_TABLE  *SystemTable
+  VOID
   )
 {
   EFI_STATUS              Status;
   CPUID_VERSION_INFO_ECX  RegEcx;
   EFI_HOB_GUID_TYPE       *GuidHob;
   EFI_SMRAM_DESCRIPTOR    *SmramDescriptor;
-
-  //
-  // First locate the MMI entry blob in the FV
-  Status = DiscoverSmiEntryInFvHobs ();
-  if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
 
   //
   // Perform library initialization common across all instances
@@ -395,6 +413,14 @@ SmmCpuFeaturesLibStmConstructor (
     if (mMsegBase > 0) {
       DEBUG ((DEBUG_INFO, "MsegBase: 0x%08x, MsegSize: 0x%08x\n", mMsegBase, mMsegSize));
     }
+  }
+
+  //
+  // First locate the MMI entry blob in the FV
+  Status = DiscoverSmiEntryInFvHobs ();
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    return Status;
   }
 
   return EFI_SUCCESS;

@@ -44,7 +44,5 @@ StandaloneMmCpuFeaturesLibConstructor (
   IN EFI_MM_SYSTEM_TABLE  *SystemTable
   )
 {
-  CpuFeaturesLibInitialization ();
-
-  return EFI_SUCCESS;
+  return SmmCpuFeaturesLibStmConstructor ();
 }

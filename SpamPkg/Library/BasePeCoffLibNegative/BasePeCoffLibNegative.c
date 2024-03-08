@@ -29,6 +29,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffExtraActionLib.h>
+#include <Library/SafeIntLib.h>
 #include <Library/PeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
 
@@ -133,17 +134,6 @@ PeCoffLoaderRevertRelocateImage (
   UINT32                               TeStrippedOffset;
 
   ASSERT (ImageContext != NULL);
-
-  // TODO: Clean up
-  // --------------------8<--------------------
-  EFI_IMAGE_OPTIONAL_HEADER_UNION      HdrData;
-
-  Hdr.Union = &HdrData;
-  Status = PeCoffLoaderGetPeHeader (ImageContext, Hdr);
-  if (RETURN_ERROR (Status)) {
-    return Status;
-  }
-  // -------------------->8--------------------
 
   //
   // Assume success
@@ -362,6 +352,9 @@ PeCoffLoaderRevertRelocateImage (
 
   @param  ImageContext              The pointer to the image context structure that describes the PE/COFF
                                     image that is being loaded.
+  @param  Buffer                    The pointer to the buffer used to host unloaded PE/COFF image.
+  @param  BufferSizePtr             On input, this holds the size of Buffer. On output, it holds the size
+                                    of the image that was actually unloaded into Buffer.
 
   @retval RETURN_SUCCESS            The PE/COFF image was loaded into the buffer specified by
                                     the ImageAddress and ImageSize fields of ImageContext.
@@ -377,8 +370,9 @@ PeCoffLoaderRevertRelocateImage (
 RETURN_STATUS
 EFIAPI
 PeCoffLoaderRevertLoadImage (
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT *ImageContext,
-  OUT   UINTN                         *Buffer
+  IN OUT  PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
+  OUT     UINTN                         *Buffer,
+  IN OUT  UINTN                         *BufferSizePtr
   )
 {
   RETURN_STATUS                        Status;
@@ -395,6 +389,8 @@ PeCoffLoaderRevertLoadImage (
   UINT32                               TempDebugEntryRva;
   UINT32                               NumberOfRvaAndSizes;
   UINT32                               TeStrippedOffset;
+  UINTN                                SizeOfImage;
+  UINTN                                BufferSize;
 
   ASSERT (ImageContext != NULL);
 
@@ -403,17 +399,11 @@ PeCoffLoaderRevertLoadImage (
   //
   ImageContext->ImageError = IMAGE_ERROR_SUCCESS;
 
-  // TODO: Clean up
-  // --------------------8<--------------------
-  // //
-  // // Make sure there is enough allocated space for the image being loaded
-  // //
-  // if (ImageContext->ImageSize < CheckContext.ImageSize) {
-  //   ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
-  //   return RETURN_BUFFER_TOO_SMALL;
-  // }
-  // -------------------->8--------------------
+  if ((Buffer == NULL) || (BufferSizePtr == NULL)) {
+    return RETURN_INVALID_PARAMETER;
+  }
 
+  BufferSize = *BufferSizePtr;
 
   if (ImageContext->ImageAddress == 0) {
     //
@@ -436,15 +426,6 @@ PeCoffLoaderRevertLoadImage (
       ImageContext->ImageError = IMAGE_ERROR_INVALID_SUBSYSTEM;
       return RETURN_LOAD_ERROR;
     }
-
-    //
-    // If the image does not contain relocations, and the requested load address
-    // is not the linked address, then return an error.
-    //
-    if (ImageContext->ImageAddress != ImageContext->ImageAddress) {
-      ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_ADDRESS;
-      return RETURN_INVALID_PARAMETER;
-    }
   }
 
   //
@@ -464,6 +445,11 @@ PeCoffLoaderRevertLoadImage (
   //
   // Read the entire PE/COFF header into memory
   //
+  if (ImageContext->SizeOfHeaders >= BufferSize) {
+    ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+    return RETURN_BUFFER_TOO_SMALL;
+  }
+
   Status = ImageContext->ImageRead (
                             ImageContext->Handle,
                             0,
@@ -471,6 +457,12 @@ PeCoffLoaderRevertLoadImage (
                             Buffer
                             );
 
+  if (RETURN_ERROR (Status)) {
+    ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
+    return RETURN_LOAD_ERROR;
+  }
+
+  SizeOfImage = ImageContext->SizeOfHeaders;
   Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)((UINTN)Buffer + ImageContext->PeCoffHeaderOffset);
 
   FirstSection = (EFI_IMAGE_SECTION_HEADER *)(
@@ -517,6 +509,11 @@ PeCoffLoaderRevertLoadImage (
 
     // MU_CHANGE - CodeQL change
     if ((Section->SizeOfRawData > 0) && (Base != NULL)) {
+      if (SizeOfImage + Size >= BufferSize) {
+        ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+        return RETURN_BUFFER_TOO_SMALL;
+      }
+
       // Now we copy the section data to the memory allocated for the image, compactly.
       Status = ImageContext->ImageRead (
                                ImageContext->Handle,
@@ -528,6 +525,7 @@ PeCoffLoaderRevertLoadImage (
         ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
         return Status;
       }
+      SizeOfImage += ALIGN_VALUE (Size, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
     }
 
     //
@@ -591,6 +589,11 @@ PeCoffLoaderRevertLoadImage (
 
       if (DebugEntry->RVA != 0) {
         Size   = DebugEntry->SizeOfData;
+        if (SizeOfImage + Size >= BufferSize) {
+          ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
+          return RETURN_BUFFER_TOO_SMALL;
+        }
+
         Status = ImageContext->ImageRead (
                                  ImageContext->Handle,
                                  (UINTN)ImageContext->CodeView,
@@ -607,6 +610,7 @@ PeCoffLoaderRevertLoadImage (
           ImageContext->ImageError = IMAGE_ERROR_IMAGE_READ;
           return RETURN_LOAD_ERROR;
         }
+        SizeOfImage += ALIGN_VALUE (Size, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
 
         DebugEntry->RVA = 0;
       }
@@ -644,6 +648,10 @@ PeCoffLoaderRevertLoadImage (
       }
     }
   }
+
+  // This seems redundant, but just in case...
+  SizeOfImage     = ALIGN_VALUE (SizeOfImage, Hdr.Pe32Plus->OptionalHeader.FileAlignment);
+  *BufferSizePtr  = SizeOfImage;
 
   //
   // Ignore Image's HII resource section
@@ -709,6 +717,61 @@ SmmGetMemoryAttributes (
   );
 
 /**
+  Helper function that will evaluate the page where the input address is located belongs to a
+  user page that is mapped inside MM.
+
+  @param  Address           Target address to be inspected.
+  @param  Size              Address range to be inspected.
+  @param  IsUserRange       Pointer to hold inspection result, TRUE if the region is in User pages, FALSE if
+                            the page is in supervisor pages. Should not be used if return value is not EFI_SUCCESS.
+
+  @return     The result of inspection operation.
+
+**/
+EFI_STATUS
+InspectTargetRangeAttribute (
+  IN  EFI_PHYSICAL_ADDRESS  Address,
+  IN  UINTN                 Size,
+  OUT UINT64                *MemAttribute
+  )
+{
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  AlignedAddress;
+  UINT64                Attributes;
+
+  if ((Address < EFI_PAGE_SIZE) || (Size == 0) || (MemAttribute == NULL)) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  AlignedAddress = ALIGN_VALUE (Address - EFI_PAGE_SIZE + 1, EFI_PAGE_SIZE);
+
+  // To cover head portion from "Address" alignment adjustment
+  Status = SafeUintnAdd (Size, Address - AlignedAddress, &Size);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  // To cover the tail portion of requested buffer range
+  Status = SafeUintnAdd (Size, EFI_PAGE_SIZE - 1, &Size);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  Size &= ~(EFI_PAGE_SIZE - 1);
+
+  // Go through page table and grab the entry attribute
+  Status = SmmGetMemoryAttributes (AlignedAddress, Size, &Attributes);
+  if (!EFI_ERROR (Status)) {
+    *MemAttribute = Attributes;
+    goto Done;
+  }
+
+Done:
+  return Status;
+}
+
+/**
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
 
@@ -736,6 +799,7 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_ENTRY_HEADER *NextImageValidationEntryHdr;
   IMAGE_VALIDATION_MEM_ATTR     *ImageValidationEntryMemAttr;
   IMAGE_VALIDATION_SELF_REF     *ImageValidationEntrySelfRef;
+  IMAGE_VALIDATION_CONTENT      *ImageValidationEntryContent;
   UINT64                        MemAttr;
   UINTN                         Index;
   EFI_STATUS                    Status;
@@ -743,19 +807,23 @@ PeCoffImageDiffValidation (
   EFI_PHYSICAL_ADDRESS          AddrInOrigin;
 
   if (TargetImageSize == 0 || ReferenceDataSize == 0) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input size 0x%x and 0x%x\n", __func__, TargetImageSize, ReferenceDataSize));
     return EFI_INVALID_PARAMETER;
   }
 
   if (TargetImage == NULL || ReferenceData == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ReferenceData));
     return EFI_INVALID_PARAMETER;
   }
 
   ImageValidationHdr = (IMAGE_VALIDATION_DATA_HEADER*)ReferenceData;
   if (ImageValidationHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid signature 0x%x at 0x%p\n", __func__, ImageValidationHdr->HeaderSignature, ImageValidationHdr));
     return EFI_INVALID_PARAMETER;
   }
 
   if (ImageValidationHdr->Size != ReferenceDataSize) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid size 0x%x vs. 0x%x\n", __func__, ImageValidationHdr->Size, ReferenceDataSize));
     return EFI_COMPROMISED_DATA;
   }
 
@@ -763,18 +831,17 @@ PeCoffImageDiffValidation (
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
     if ((UINT8*)(ImageValidationEntryHdr) >= ((UINT8*)ReferenceData + ReferenceDataSize)) {
+      DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8*)ReferenceData + ReferenceDataSize));
       return EFI_COMPROMISED_DATA;
     }
 
     if (ImageValidationEntryHdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) {
+      DEBUG ((DEBUG_ERROR, "%a: Invalid current signature 0x%x at 0x%p\n", __func__, ImageValidationEntryHdr->EntrySignature, ImageValidationEntryHdr));
       return EFI_COMPROMISED_DATA;
     }
 
     if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
-      return EFI_INVALID_PARAMETER;
-    }
-
-    if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
+      DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%x exceeds target image limit 0x%x\n", __func__, ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size, TargetImageSize));
       return EFI_INVALID_PARAMETER;
     }
 
@@ -785,14 +852,27 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
         if (IsZeroBuffer ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is all 0s\n", __func__, (UINT8*)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size));
           Status = EFI_SECURITY_VIOLATION;
         } else {
-          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)ImageValidationEntryHdr + sizeof (IMAGE_VALIDATION_MEM_ATTR));
+          NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryHdr + 1);
         }
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
-        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8*)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size) != 0) {
+        ImageValidationEntryContent = (IMAGE_VALIDATION_CONTENT*)(ImageValidationEntryHdr);
+        if (sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > ReferenceDataSize) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
+          __func__,
+          ImageValidationEntryContent,
+          sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size,
+          ReferenceDataSize));
           Status = EFI_COMPROMISED_DATA;
+          break;
+        }
+
+        if (CompareMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryContent->TargetContent, ImageValidationEntryHdr->Size) != 0) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x does not match input content at 0x%p\n", __func__, ImageValidationEntryContent, ImageValidationEntryHdr->Size, ImageValidationEntryContent->TargetContent));
+          Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINT8*)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
         }
@@ -800,22 +880,39 @@ PeCoffImageDiffValidation (
       case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
         ImageValidationEntryMemAttr = (IMAGE_VALIDATION_MEM_ATTR*)(ImageValidationEntryHdr);
         if (ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave == 0 && ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave == 0) {
-          Status = EFI_INVALID_PARAMETER;
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p has invalid must have 0x%x and must not have 0x%x\n",
+                  __func__, ImageValidationEntryMemAttr, ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave, ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave));
+          Status = EFI_COMPROMISED_DATA;
           break;
         }
 
         // Inspection of the memory attributes of the target image
-        Status = SmmGetMemoryAttributes (
-                   (EFI_PHYSICAL_ADDRESS)((UINTN)OriginalImageBaseAddress + ImageValidationEntryHdr->Offset),
-                   ImageValidationEntryHdr->Size,
+        AddrInTarget = 0;
+        CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+        Status = InspectTargetRangeAttribute (
+                   AddrInTarget,
+                   ImageValidationEntryMemAttr->TargetMemeorySize,
                    &MemAttr
                    );
         if (EFI_ERROR(Status)) {
+          DEBUG ((DEBUG_ERROR, "%a: Failed to read memory attribute of 0x%p: 0x%x for entry at 0x%p - %r\n",
+                  __func__,
+                  AddrInTarget,
+                  ImageValidationEntryMemAttr->TargetMemeorySize,
+                  ImageValidationEntryMemAttr,
+                  Status));
           break;
         }
         // Check if the memory attributes of the target image meet the requirements
         if (((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) != ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) &&
             ((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave) != 0)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x attribute 0x%x violated aux file specification must have 0x%x and must not have 0x%x\n",
+                  __func__,
+                  ImageValidationEntryHdr,
+                  ImageValidationEntryHdr->Size,
+                  MemAttr,
+                  ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave,
+                  ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave));
           Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntryMemAttr + 1);
@@ -824,20 +921,35 @@ PeCoffImageDiffValidation (
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
         ImageValidationEntrySelfRef = (IMAGE_VALIDATION_SELF_REF*)(ImageValidationEntryHdr);
         if (ImageValidationEntrySelfRef->Header.OffsetToDefault + ImageValidationEntrySelfRef->Header.Size > ReferenceDataSize) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
+                  __func__,
+                  ImageValidationEntrySelfRef->Header.OffsetToDefault ,
+                  ImageValidationEntrySelfRef->Header.Size,
+                  ReferenceDataSize));
           Status = EFI_COMPROMISED_DATA;
           break;
         }
 
-        // For now, self reference is only valid for address type in x64 mode
-        if (ImageValidationEntrySelfRef->Header.Size != sizeof (EFI_PHYSICAL_ADDRESS)) {
+        // For now, self reference is only valid for address type in x64 mode or below
+        if (ImageValidationEntrySelfRef->Header.Size > sizeof (EFI_PHYSICAL_ADDRESS)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is self reference type but not 64 bit value %d\n",
+                  __func__,
+                  ImageValidationEntrySelfRef,
+                  ImageValidationEntrySelfRef->Header.Size));
           Status = EFI_INVALID_PARAMETER;
           break;
         }
 
         // Check if the self-reference data of the target image meet the requirements
-        AddrInTarget = *(EFI_PHYSICAL_ADDRESS*)((UINTN)TargetImage + ImageValidationEntryHdr->Offset);
-        AddrInOrigin = *(EFI_PHYSICAL_ADDRESS*)((UINTN)OriginalImageBaseAddress + ImageValidationEntrySelfRef->TargetOffset);
+        AddrInTarget = 0;
+        CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+        AddrInOrigin = (EFI_PHYSICAL_ADDRESS)(UINTN)((UINT8*)OriginalImageBaseAddress + ImageValidationEntrySelfRef->TargetOffset);
         if (AddrInTarget != AddrInOrigin) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry at 0x%p regarding 0x%x should self reference 0x%x\n",
+                  __func__,
+                  ImageValidationEntryHdr,
+                  AddrInTarget,
+                  AddrInOrigin));
           Status = EFI_SECURITY_VIOLATION;
         } else {
           NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationEntrySelfRef + 1);
@@ -845,6 +957,9 @@ PeCoffImageDiffValidation (
         break;
       default:
         // Does not support unknown validation type
+        DEBUG ((DEBUG_ERROR, "%a: Entry validation type not supported 0x%x\n",
+                __func__,
+                ImageValidationEntryHdr->ValidationType));
         Status = EFI_INVALID_PARAMETER;
         break;
     }
