@@ -19,6 +19,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Services/CpuService/CpuService.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
 #include "Mem/Mem.h"
+#include "Services/MpService/MpService.h"
 
 #define          MM_SUPV_RETRY_CNT  1
 
@@ -183,13 +184,15 @@ SmmSupervisorMiscExceptionHandler (
 
   ReleaseSpinLock (mCpuExceptionToken);
 
+  TriggerFailFast (CpuIndex);
+
 HaltOrReboot:
   if (mSmmRebootOnException) {
     DEBUG ((DEBUG_ERROR, "%a - Reboot here in test mode.\n", __FUNCTION__));
     ResetWarm ();
   }
 
-  // Should not be here...
+  DEBUG ((DEBUG_ERROR, "%a - The platform elects to hard hang here...\n", __FUNCTION__));
   CpuDeadLoop ();
 }
 
