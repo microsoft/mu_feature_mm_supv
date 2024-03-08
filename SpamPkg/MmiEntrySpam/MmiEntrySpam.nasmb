@@ -160,11 +160,11 @@ EnableNxe:
     sub     esp, 8
 @XdDone:
 
-; Switch into @LongMode
+; Switch into @StmLongMode
     push    LONG_MODE_CS                ; push cs hardcore here
     call    Base                       ; push return address for retf later
 Base:
-    add     dword [rsp], @LongMode - Base; offset for far retf, seg is the 1st arg
+    add     dword [rsp], @StmLongMode - Base; offset for far retf, seg is the 1st arg
 
     mov     ecx, MSR_EFER
     rdmsr
@@ -174,7 +174,7 @@ Base:
     or      ebx, 0x80010023            ; enable paging + WP + NE + MP + PE
     mov     cr0, rbx
     retf
-@LongMode:                              ; long mode (64-bit code) starts here
+@StmLongMode:                          ; long mode (64-bit code) starts here
     mov     rax, [FIXUP64_SMI_HANDLER_IDTR - _SmiEntryPoint + 0x8000 + rdi]     ;  mov     rax, ASM_PFX(gSmiHandlerIdtr)
     lidt    [rax]
     lea     ebx, [rdi + DSC_OFFSET]
