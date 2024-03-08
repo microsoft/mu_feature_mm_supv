@@ -10,7 +10,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 
-use auxgen::{Symbol, AuxBuilder};
+use auxgen::{Symbol, AuxBuilder, KeySymbol};
 use validation::{ValidationRule, ValidationType};
 
 pub const POINTER_LENGTH: u64 = 8;
@@ -39,6 +39,9 @@ pub struct Args {
 /// Configuration options available in the config file.
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
+    /// A list of key symbols to be added to the auxillary file header.
+    #[serde(alias = "key", default = "Vec::new")]
+    pub key_symbols: Vec<KeySymbol>,
     /// A list of validation rules that ultimately create a validation entry in
     /// the auxillary file.
     #[serde(alias = "rule", default = "Vec::new")]

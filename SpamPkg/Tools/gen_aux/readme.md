@@ -10,6 +10,21 @@ Check the tool's help information by using the command `cargo run -- -h` or if t
 
 The configuration file, passed to the executable via the `-c` command, is used to specify which symbols should be reverted to their original value and/or tested using one of the supported testing methods. The config file uses the [toml](https://toml.io/en/) format for setting config options in the file. Currently, there are two configuration options: `rule` and `autogen`
 
+### key
+
+the key command (`[[key]]`) is a configuration option to tell the tool to generate signature / offset pairs for a specific symbol and add them to the the header (`IMAGE_VALIDATION_DATA_HEADER`).
+
+``` toml
+[[key]]
+signature = 'Required[u32]'
+symbol = 'Optional[String]'
+offset = 'Optional[u32]'
+```
+
+- `signature`: The 4 byte signature used by the firmware to determine how to use the offset
+- `symbol`: Used to calculate the offset value. Mutually exclusive to `offset`
+- `offset`: The offset used by the firmware. Mutually exclusive to `symbol`
+
 ### rule
 
 The rule command (`[[rule]]`) is a configuration option to tell the tool to generate an entry header for the specific symbol. The rule comes with the following standard options:

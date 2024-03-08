@@ -38,11 +38,18 @@
 #pragma pack(1)
 
 typedef struct {
+  UINT32 Signature;
+  UINT32 Offset;
+} KEY_SYMBOL
+
+typedef struct {
   UINT32  HeaderSignature;
   UINT32  Size;
   UINT32  EntryCount;
   UINT32  OffsetToFirstEntry;
   UINT32  OffsetToFirstDefault;
+  UINT32  SymbolListCount;
+  KEY_SYMBOL SymbolList[];
 } IMAGE_VALIDATION_DATA_HEADER;
 
 typedef struct {

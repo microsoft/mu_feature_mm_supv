@@ -1,8 +1,9 @@
 //! A module that contains the C-equivalent structs and final functions to
 //! generate the aux file.
-use std::{fmt, io::Write, mem::size_of};
+use std::{fmt, io::Write};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
+use serde::Deserialize;
 use crate::{Config, ValidationRule, ValidationType};
 
 /// A struct representing a symbol in the PDB file.
@@ -24,8 +25,29 @@ impl std::fmt::Debug for Symbol {
     }
 }
 
+/// A struct that represents an signature/address pair to be added to the
+/// auxillary file header.
+#[derive(Debug, Deserialize, Default)]
+pub struct KeySymbol {
+    /// The symbol name to calculate the offset of.
+    pub symbol: Option<String>,
+    /// The offset
+    pub offset: Option<u32>,
+    /// The signature that tells the firmware what to do with the address.
+    pub signature: u32,
+}
+
+impl KeySymbol {
+    pub fn resolve(&mut self, symbols: &Vec<Symbol>) -> anyhow::Result<()> {
+        if let Some(symbol) = symbols.iter().find(|&entry| &entry.name == self.symbol.as_ref().unwrap()) {
+            self.offset = Some(symbol.address as u32);
+        }
+        Ok(())
+    }
+}
+
 /// A struct representing the header of the aux file.
-#[derive(Debug, Pwrite, Pread)]
+#[derive(Debug)]
 pub struct ImageValidationDataHeader {
     /// The signature of the header. Must be 0x444C4156
     signature: u32,
@@ -38,16 +60,58 @@ pub struct ImageValidationDataHeader {
     offset_to_first_entry: u32,
     /// The offset to the first default value in the aux file.
     offset_to_first_default: u32,
+    /// A list of key symbols to be added to the auxillary file header.
+    key_symbols: Vec<KeySymbol>,
+}
+
+impl ImageValidationDataHeader {
+    /// Adds a list of key symbols to the header.
+    pub fn add_entries(&mut self, key_symbols: Vec<KeySymbol>, symbols: &Vec<Symbol>) -> anyhow::Result<()> {
+        for mut key_symbol in key_symbols {
+            key_symbol.resolve(&symbols)?;
+            self.key_symbols.push(key_symbol);
+            self.size += 8;
+        }
+        Ok(())
+    }
+
+    /// Returns the size of ImageValidationDataHeader in bytes. The C struct (IMAGE_VALIDATION_DATA_HEADER)
+    /// contains a field, SymbolListCount, that is not present in this struct. The extra 4 bytes of this
+    /// is accounted for when calculating the size of the header.
+    pub fn header_size(&self) -> u32 {
+        20 + 4 + (self.key_symbols.len() as u32 * 8)
+    }
+
+}
+
+impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationDataHeader {
+    type Error = scroll::Error;
+
+    fn try_into_ctx(self, this: &mut [u8], le: Endian) -> Result<usize, Self::Error> {
+        let mut offset = 0;
+        this.gwrite_with(self.signature, &mut offset, le)?;
+        this.gwrite_with(self.size, &mut offset, le)?;
+        this.gwrite_with(self.entry_count, &mut offset, le)?;
+        this.gwrite_with(self.offset_to_first_entry, &mut offset, le)?;
+        this.gwrite_with(self.offset_to_first_default, &mut offset, le)?;
+        this.gwrite_with(self.key_symbols.len() as u32, &mut offset, le)?;
+        for key_symbol in &self.key_symbols {
+            this.gwrite_with(key_symbol.signature, &mut offset, le)?;
+            this.gwrite_with(key_symbol.offset.expect("Offset should be resolved"), &mut offset, le)?;
+        }
+        Ok(offset)
+    }
 }
 
 impl Default for ImageValidationDataHeader {
     fn default() -> Self {
         ImageValidationDataHeader {
             signature: 0x444C4156,
-            size: 20,
+            size: 24,
             entry_count: 0,
             offset_to_first_entry: 0,
             offset_to_first_default: 0,
+            key_symbols: Vec::new(),
         }
     }
 }
@@ -161,7 +225,9 @@ pub struct AuxBuilder {
     loaded_image: Vec<u8>,
     /// A list of symbols to generate rules for
     symbols: Vec<Symbol>,
-    // A Map of rules that apply to a certain symbol
+    /// A list of key symbols to be added to the auxillary file header.
+    key_symbols: Vec<KeySymbol>,
+    // A list of rules that apply to a certain symbol
     rules: Vec<ValidationRule>,
     // Auto Generate rules for symbols that don't have any
     auto_generate: bool,
@@ -219,6 +285,7 @@ impl AuxBuilder {
             let config = toml::from_str::<Config>(&data)?;
             self.auto_generate = config.auto_gen;
             self.rules = config.rules;
+            self.key_symbols = config.key_symbols;
         }
         Ok(self)
     }
@@ -236,7 +303,8 @@ impl AuxBuilder {
     /// be generated, so that all symbols are reverted to their original value.
     pub fn generate(mut self, info: &TypeInformation) -> anyhow::Result<AuxFile> {
         let mut aux = AuxFile::default();
-        aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
+        aux.header.add_entries(self.key_symbols, &self.symbols)?;
+        aux.header.offset_to_first_entry = aux.header.header_size();
 
         let mut offset_in_default = 0;
 
@@ -274,7 +342,7 @@ impl AuxBuilder {
 
         // Now that all entries have been added, we can calculate the offset to
         // the raw data, and update the offset_to_default field in each entry.
-        let offset_to_default_start = size_of::<ImageValidationDataHeader>() as u32 
+        let offset_to_default_start = aux.header.header_size()
             + aux.entries.iter().fold(0, |acc, entry| { acc + entry.header_size()}); 
         aux.header.offset_to_first_default = offset_to_default_start;
         for entry_header in &mut aux.entries {
@@ -321,6 +389,20 @@ impl AuxFile {
 
         if aux_buffer.len() != self.header.size as usize {
             return Err(anyhow::anyhow!("Aux buffer size mismatch."))
+        }
+
+        for (i, symbol) in self.header.key_symbols.iter().enumerate() {
+            let start = 24 + (i * 8);
+            let aux_value = aux_buffer.get(
+                start .. start + 8
+            ).ok_or(anyhow::anyhow!("Failed to get Aux Value"))?;
+            
+            let sig: u32 = aux_value.gread(&mut 0)?;
+            let offset: u32 = aux_value.gread(&mut 4)?;
+
+            if sig != symbol.signature || offset != symbol.offset.unwrap_or_default() {
+                return Err(anyhow::anyhow!("Aux / Image mismatch."))
+            }
         }
 
         for entry in &self.entries {
