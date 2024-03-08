@@ -3,8 +3,7 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use serde::Deserialize;
-use crate::{Config, ValidationRule, ValidationType};
+use crate::{Config, ValidationRule, ValidationType, KeySymbol};
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -22,43 +21,6 @@ pub struct Symbol {
 impl std::fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Symbol {{ address: 0x{:08X}, size: 0x{:08X}, name: {}, type_index: {:?} }}", self.address, self.size, self.name, self.type_index)
-    }
-}
-
-/// A struct that represents an signature/address pair to be added to the
-/// auxillary file header.
-#[derive(Deserialize, Default)]
-pub struct KeySymbol {
-    /// The symbol name to calculate the offset of.
-    pub symbol: Option<String>,
-    /// The offset
-    pub offset: Option<u32>,
-    /// The signature that tells the firmware what to do with the address.
-    pub signature: u32,
-}
-
-impl KeySymbol {
-    pub fn resolve(&mut self, symbols: &Vec<Symbol>) -> anyhow::Result<()> {
-        if let Some(symbol) = symbols.iter().find(|&entry| &entry.name == self.symbol.as_ref().unwrap()) {
-            self.offset = Some(symbol.address as u32);
-        }
-
-        if self.offset.is_none() {
-            return Err(anyhow::anyhow!("Could not resolve offset for symbol {}.", self.symbol.as_ref().unwrap()))
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Debug for KeySymbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(offset) = &self.offset {
-            write!(f, "KeySymbol {{ offset: 0x{:08X}, signature: 0x{:4X} }}", offset, self.signature)
-        } else if let Some(symbol) = &self.symbol {
-            write!(f, "KeySymbol {{ symbol: {}, signature: 0x{:4X} }}", symbol, self.signature)
-        } else {
-            write!(f, "KeySymbol {{ signature: {} }}", self.signature)
-        }
     }
 }
 
