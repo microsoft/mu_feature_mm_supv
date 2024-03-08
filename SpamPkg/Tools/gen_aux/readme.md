@@ -12,7 +12,7 @@ This tool generates the binary file used to verify the state of a module after e
 +--------------------------------------------+
 +  IMAGE_VALIDATION_ENTRY_HEADER[]
 +--------------------------------------------+
-+  Raw Data
++  Defaults
 +--------------------------------------------+
 ```
 
