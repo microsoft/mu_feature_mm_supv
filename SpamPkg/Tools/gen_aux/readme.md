@@ -2,7 +2,21 @@
 
 This tool generates the binary file used to verify the state of a module after execution and revert it to it's original state. Any rule specified in the configuration file will be 1. Reverted and 2. Verified (depending on the verification type).
 
-# Usability
+## Auxillary File Format
+
+```
++--------------------------------------------+
++  IMAGE_VALIDATION_DATA_HEADER
++--------------------------------------------+
++  KEY_SYMBOL[]
++--------------------------------------------+
++  IMAGE_VALIDATION_ENTRY_HEADER[]
++--------------------------------------------+
++  Raw Data
++--------------------------------------------+
+```
+
+## Usability
 
 Check the tool's help information by using the command `cargo run -- -h` or if the tool is already compiled, `gen_aux -h`. It will provide you a list of options and a brief description of each option
 
