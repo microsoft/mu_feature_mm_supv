@@ -118,12 +118,6 @@ EFI_HANDLE                   mSmmExceptionTestProtocolHandle = NULL;
 BOOLEAN  mSmmRebootOnException = TRUE;
 // MSCHANGE [END]
 
-//
-// Control register contents saved for SMM S3 resume state initialization.
-//
-UINT32  mSmmCr0;
-UINT32  mSmmCr4;
-
 /**
   Initialize IDT to setup exception handlers for SMM.
 
@@ -346,11 +340,9 @@ SmmRelocateBases (
   //
   // Patch ASM code template with current CR0, CR3, and CR4 values
   //
-  mSmmCr0 = (UINT32)AsmReadCr0 ();
-  PatchInstructionX86 (gPatchSmmCr0, mSmmCr0, 4);
+  PatchInstructionX86 (gPatchSmmCr0, AsmReadCr0 (), 4);
   PatchInstructionX86 (gPatchSmmCr3, AsmReadCr3 (), 4);
-  mSmmCr4 = (UINT32)AsmReadCr4 ();
-  PatchInstructionX86 (gPatchSmmCr4, mSmmCr4 & (~CR4_CET_ENABLE), 4);
+  PatchInstructionX86 (gPatchSmmCr4, AsmReadCr4 () & (~CR4_CET_ENABLE), 4);
 
   //
   // Patch GDTR for SMM base relocation

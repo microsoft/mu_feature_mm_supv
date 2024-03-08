@@ -29,6 +29,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffExtraActionLib.h>
+#include <Library/SafeIntLib.h>
 #include <Library/PeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
 
@@ -133,17 +134,6 @@ PeCoffLoaderRevertRelocateImage (
   UINT32                               TeStrippedOffset;
 
   ASSERT (ImageContext != NULL);
-
-  // TODO: Clean up
-  // --------------------8<--------------------
-  EFI_IMAGE_OPTIONAL_HEADER_UNION      HdrData;
-
-  Hdr.Union = &HdrData;
-  Status = PeCoffLoaderGetPeHeader (ImageContext, Hdr);
-  if (RETURN_ERROR (Status)) {
-    return Status;
-  }
-  // -------------------->8--------------------
 
   //
   // Assume success
@@ -408,17 +398,6 @@ PeCoffLoaderRevertLoadImage (
   // Assume success
   //
   ImageContext->ImageError = IMAGE_ERROR_SUCCESS;
-
-  // TODO: Clean up
-  // --------------------8<--------------------
-  // //
-  // // Make sure there is enough allocated space for the image being loaded
-  // //
-  // if (ImageContext->ImageSize < CheckContext.ImageSize) {
-  //   ImageContext->ImageError = IMAGE_ERROR_INVALID_IMAGE_SIZE;
-  //   return RETURN_BUFFER_TOO_SMALL;
-  // }
-  // -------------------->8--------------------
 
   if ((Buffer == NULL) || (BufferSizePtr == NULL)) {
     return RETURN_INVALID_PARAMETER;
@@ -738,6 +717,61 @@ SmmGetMemoryAttributes (
   );
 
 /**
+  Helper function that will evaluate the page where the input address is located belongs to a
+  user page that is mapped inside MM.
+
+  @param  Address           Target address to be inspected.
+  @param  Size              Address range to be inspected.
+  @param  IsUserRange       Pointer to hold inspection result, TRUE if the region is in User pages, FALSE if
+                            the page is in supervisor pages. Should not be used if return value is not EFI_SUCCESS.
+
+  @return     The result of inspection operation.
+
+**/
+EFI_STATUS
+InspectTargetRangeAttribute (
+  IN  EFI_PHYSICAL_ADDRESS  Address,
+  IN  UINTN                 Size,
+  OUT UINT64                *MemAttribute
+  )
+{
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  AlignedAddress;
+  UINT64                Attributes;
+
+  if ((Address < EFI_PAGE_SIZE) || (Size == 0) || (MemAttribute == NULL)) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  AlignedAddress = ALIGN_VALUE (Address - EFI_PAGE_SIZE + 1, EFI_PAGE_SIZE);
+
+  // To cover head portion from "Address" alignment adjustment
+  Status = SafeUintnAdd (Size, Address - AlignedAddress, &Size);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  // To cover the tail portion of requested buffer range
+  Status = SafeUintnAdd (Size, EFI_PAGE_SIZE - 1, &Size);
+  if (EFI_ERROR (Status)) {
+    goto Done;
+  }
+
+  Size &= ~(EFI_PAGE_SIZE - 1);
+
+  // Go through page table and grab the entry attribute
+  Status = SmmGetMemoryAttributes (AlignedAddress, Size, &Attributes);
+  if (!EFI_ERROR (Status)) {
+    *MemAttribute = Attributes;
+    goto Done;
+  }
+
+Done:
+  return Status;
+}
+
+/**
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
 
@@ -853,16 +887,19 @@ PeCoffImageDiffValidation (
         }
 
         // Inspection of the memory attributes of the target image
-        Status = SmmGetMemoryAttributes (
-                   (EFI_PHYSICAL_ADDRESS)((UINTN)OriginalImageBaseAddress + ImageValidationEntryHdr->Offset),
-                   ImageValidationEntryHdr->Size,
+        AddrInTarget = 0;
+        CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+        Status = InspectTargetRangeAttribute (
+                   AddrInTarget,
+                   ImageValidationEntryMemAttr->TargetMemeorySize,
                    &MemAttr
                    );
         if (EFI_ERROR(Status)) {
-          DEBUG ((DEBUG_ERROR, "%a: Failed to read memory attribute of 0x%p: 0x%x - %r\n",
+          DEBUG ((DEBUG_ERROR, "%a: Failed to read memory attribute of 0x%p: 0x%x for entry at 0x%p - %r\n",
                   __func__,
-                  (UINT8*)OriginalImageBaseAddress + ImageValidationEntryHdr->Offset,
-                  ImageValidationEntryHdr->Size,
+                  AddrInTarget,
+                  ImageValidationEntryMemAttr->TargetMemeorySize,
+                  ImageValidationEntryMemAttr,
                   Status));
           break;
         }
@@ -871,8 +908,9 @@ PeCoffImageDiffValidation (
             ((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave) != 0)) {
           DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x attribute 0x%x violated aux file specification must have 0x%x and must not have 0x%x\n",
                   __func__,
-                  (UINT8*)TargetImage + ImageValidationEntryHdr->Offset,
+                  ImageValidationEntryHdr,
                   ImageValidationEntryHdr->Size,
+                  MemAttr,
                   ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave,
                   ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave));
           Status = EFI_SECURITY_VIOLATION;
