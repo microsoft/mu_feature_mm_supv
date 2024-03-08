@@ -42,6 +42,10 @@ impl KeySymbol {
         if let Some(symbol) = symbols.iter().find(|&entry| &entry.name == self.symbol.as_ref().unwrap()) {
             self.offset = Some(symbol.address as u32);
         }
+
+        if self.offset.is_none() {
+            return Err(anyhow::anyhow!("Could not resolve offset for symbol {}.", self.symbol.as_ref().unwrap()))
+        }
         Ok(())
     }
 }
