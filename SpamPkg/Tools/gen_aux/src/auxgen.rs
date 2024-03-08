@@ -1,6 +1,6 @@
 //! A module that contains the C-equivalent structs and final functions to
 //! generate the aux file.
-use std::{fmt, io::Write};
+use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use serde::Deserialize;
@@ -27,7 +27,7 @@ impl std::fmt::Debug for Symbol {
 
 /// A struct that represents an signature/address pair to be added to the
 /// auxillary file header.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Deserialize, Default)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
     pub symbol: Option<String>,
@@ -50,8 +50,20 @@ impl KeySymbol {
     }
 }
 
+impl fmt::Debug for KeySymbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(offset) = &self.offset {
+            write!(f, "KeySymbol {{ offset: 0x{:08X}, signature: 0x{:4X} }}", offset, self.signature)
+        } else if let Some(symbol) = &self.symbol {
+            write!(f, "KeySymbol {{ symbol: {}, signature: 0x{:4X} }}", symbol, self.signature)
+        } else {
+            write!(f, "KeySymbol {{ signature: {} }}", self.signature)
+        }
+    }
+}
+
 /// A struct representing the header of the aux file.
-#[derive(Debug)]
+#[derive(Debug, Pwrite)]
 pub struct ImageValidationDataHeader {
     /// The signature of the header. Must be 0x444C4156
     signature: u32,
@@ -64,58 +76,22 @@ pub struct ImageValidationDataHeader {
     offset_to_first_entry: u32,
     /// The offset to the first default value in the aux file.
     offset_to_first_default: u32,
-    /// A list of key symbols to be added to the auxillary file header.
-    key_symbols: Vec<KeySymbol>,
-}
-
-impl ImageValidationDataHeader {
-    /// Adds a list of key symbols to the header.
-    pub fn add_entries(&mut self, key_symbols: Vec<KeySymbol>, symbols: &Vec<Symbol>) -> anyhow::Result<()> {
-        for mut key_symbol in key_symbols {
-            key_symbol.resolve(&symbols)?;
-            self.key_symbols.push(key_symbol);
-            self.size += 8;
-        }
-        Ok(())
-    }
-
-    /// Returns the size of ImageValidationDataHeader in bytes. The C struct (IMAGE_VALIDATION_DATA_HEADER)
-    /// contains a field, SymbolListCount, that is not present in this struct. The extra 4 bytes of this
-    /// is accounted for when calculating the size of the header.
-    pub fn header_size(&self) -> u32 {
-        20 + 4 + (self.key_symbols.len() as u32 * 8)
-    }
-
-}
-
-impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationDataHeader {
-    type Error = scroll::Error;
-
-    fn try_into_ctx(self, this: &mut [u8], le: Endian) -> Result<usize, Self::Error> {
-        let mut offset = 0;
-        this.gwrite_with(self.signature, &mut offset, le)?;
-        this.gwrite_with(self.size, &mut offset, le)?;
-        this.gwrite_with(self.entry_count, &mut offset, le)?;
-        this.gwrite_with(self.offset_to_first_entry, &mut offset, le)?;
-        this.gwrite_with(self.offset_to_first_default, &mut offset, le)?;
-        this.gwrite_with(self.key_symbols.len() as u32, &mut offset, le)?;
-        for key_symbol in &self.key_symbols {
-            this.gwrite_with(key_symbol.signature, &mut offset, le)?;
-            this.gwrite_with(key_symbol.offset.expect("Offset should be resolved"), &mut offset, le)?;
-        }
-        Ok(offset)
-    }
+    /// The number of key symbols in the aux file.
+    key_symbol_count: u32,
+    /// The offset to the first key_sybol in the aux file.
+    offset_to_first_key_symbol: u32,
 }
 
 impl Default for ImageValidationDataHeader {
     fn default() -> Self {
         ImageValidationDataHeader {
             signature: 0x444C4156,
-            size: 24,
+            size: 28,
             entry_count: 0,
             offset_to_first_entry: 0,
             offset_to_first_default: 0,
-            key_symbols: Vec::new(),
+            key_symbol_count: 0,
+            offset_to_first_key_symbol: 0,
         }
     }
 }
@@ -307,8 +283,19 @@ impl AuxBuilder {
     /// be generated, so that all symbols are reverted to their original value.
     pub fn generate(mut self, info: &TypeInformation) -> anyhow::Result<AuxFile> {
         let mut aux = AuxFile::default();
-        aux.header.add_entries(self.key_symbols, &self.symbols)?;
-        aux.header.offset_to_first_entry = aux.header.header_size();
+        aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
+        
+        for mut symbol in self.key_symbols {
+            symbol.resolve(&self.symbols)?;
+            aux.key_symbols.push(symbol);
+            aux.header.key_symbol_count += 1;
+            aux.header.size += 8;
+            aux.header.offset_to_first_entry += 8;
+        }
+
+        if aux.key_symbols.len() > 0 {
+            aux.header.offset_to_first_key_symbol = size_of::<ImageValidationDataHeader>() as u32;
+        }
 
         let mut offset_in_default = 0;
 
@@ -346,8 +333,10 @@ impl AuxBuilder {
 
         // Now that all entries have been added, we can calculate the offset to
         // the raw data, and update the offset_to_default field in each entry.
-        let offset_to_default_start = aux.header.header_size()
-            + aux.entries.iter().fold(0, |acc, entry| { acc + entry.header_size()}); 
+        let offset_to_default_start = size_of::<ImageValidationDataHeader>() as u32
+            + aux.entries.iter().fold(0, |acc, entry| { acc + entry.header_size()})
+            + aux.key_symbols.len() as u32 * 8;
+
         aux.header.offset_to_first_default = offset_to_default_start;
         for entry_header in &mut aux.entries {
             entry_header.offset_to_default += offset_to_default_start;
@@ -362,6 +351,8 @@ impl AuxBuilder {
 pub struct AuxFile {
     /// The IMAGE_VALIDATION_DATA_HEADER that is written to the aux file.
     pub header: ImageValidationDataHeader,
+    /// a list of KEY_SYMBOL C structs to be written to the aux file.
+    pub key_symbols: Vec<KeySymbol>,
     /// A list of IMAGE_VALIDATION_ENTRY_HEADER's or derivations of it based on
     /// the validation_type field.
     pub entries: Vec<ImageValidationEntryHeader>,
@@ -375,6 +366,10 @@ impl <'a> ctx::TryIntoCtx<Endian> for &AuxFile {
     fn try_into_ctx(self, this: &mut [u8], le: Endian) -> Result<usize, Self::Error> {
         let mut offset = 0;
         this.gwrite_with(&self.header, &mut offset, le)?;
+        for symbol in &self.key_symbols {
+            this.gwrite_with(symbol.signature, &mut offset, le)?;
+            this.gwrite_with(symbol.offset.expect("Symbol offset should be resolved"), &mut offset, le)?;
+        }
         for entry in &self.entries {
             this.gwrite_with(entry, &mut offset, le)?;
         }
@@ -395,8 +390,8 @@ impl AuxFile {
             return Err(anyhow::anyhow!("Aux buffer size mismatch."))
         }
 
-        for (i, symbol) in self.header.key_symbols.iter().enumerate() {
-            let start = 24 + (i * 8);
+        for (i, symbol) in self.key_symbols.iter().enumerate() {
+            let start = self.header.offset_to_first_key_symbol as usize + (i * 8);
             let aux_value = aux_buffer.get(
                 start .. start + 8
             ).ok_or(anyhow::anyhow!("Failed to get Aux Value"))?;

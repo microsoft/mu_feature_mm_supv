@@ -92,6 +92,9 @@ pub fn main() -> Result<()> {
 
     if args.debug {
         println!("{:?}", aux.header);
+        for symbol in aux.key_symbols.iter() {
+            println!("  {:?}", symbol);
+        }
         for entry in aux.entries.iter() {
             println!("  {:?}", entry);
         }

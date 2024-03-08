@@ -48,8 +48,8 @@ typedef struct {
   UINT32  EntryCount;
   UINT32  OffsetToFirstEntry;
   UINT32  OffsetToFirstDefault;
-  UINT32  SymbolListCount;
-  KEY_SYMBOL SymbolList[];
+  UINT32  KeySymbolCount;
+  UINT32  OffsetToFirstKeySymbol;
 } IMAGE_VALIDATION_DATA_HEADER;
 
 typedef struct {
