@@ -63,11 +63,11 @@ ASM_PFX(gPatchSmmCr4):
     mov     eax, strict dword 0         ; source operand will be patched
 ASM_PFX(gPatchSmmCr0):
     mov     cr0, eax                    ; enable protected mode & paging
-    jmp     LONG_MODE_CS : dword 0      ; offset will be patched to @LongMode
+    jmp     LONG_MODE_CS : dword 0      ; offset will be patched to @InitLongMode
 @PatchLongModeOffset:
 
 BITS 64
-@LongMode:                              ; long-mode starts here
+@InitLongMode:                          ; long-mode starts here
     mov     rsp, strict qword 0         ; source operand will be patched
 ASM_PFX(gPatchSmmInitStack):
     and     sp, 0xfff0                  ; make sure RSP is 16-byte aligned
@@ -136,7 +136,7 @@ ASM_PFX(gPatchSmmRelocationOriginalAddressPtr32):
 BITS 64
 global ASM_PFX(PiSmmCpuSmmInitFixupAddress)
 ASM_PFX(PiSmmCpuSmmInitFixupAddress):
-    lea    rax, [@LongMode]
+    lea    rax, [@InitLongMode]
     lea    rcx, [@PatchLongModeOffset - 6]
     mov    dword [rcx], eax
 
