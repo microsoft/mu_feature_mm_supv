@@ -57,7 +57,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = None;
-            map.insert(name.clone(), crate::Symbol {
+            map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 size,
                 name,
@@ -69,6 +69,15 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = get_size_from_index(&info, data.type_index)? as u32;
             let name = data.name.to_string().to_string();
             let type_index = Some(data.type_index);
+            
+            // A data symbol should always take precedence over an existing
+            // symbol on a collision (typically label). If there is a collision
+            // and both are data symbols, take the custom type (one whose type
+            // index is greater than 0x1000).
+            if map.contains_key(&name) && data.type_index.0 < 0x1000 {
+                return Ok(())
+            }
+
             map.insert(name.clone(), crate::Symbol {
                 address,
                 size,
@@ -81,7 +90,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = Some(data.type_index);
-            map.insert(name.clone(), crate::Symbol {
+            map.entry(name.clone()).or_insert( crate::Symbol {
                 address,
                 size,
                 name,
@@ -93,7 +102,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = None;
-            map.insert(name.clone(), crate::Symbol {
+            map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 size,
                 name,
