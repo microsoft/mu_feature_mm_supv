@@ -36,9 +36,49 @@ pub struct Args {
     pub debug: bool
 }
 
+/// A struct that represents an signature/address pair to be added to the
+/// auxillary file header.
+#[derive(Deserialize, Default)]
+pub struct KeySymbol {
+    /// The symbol name to calculate the offset of.
+    pub symbol: Option<String>,
+    /// The offset
+    pub offset: Option<u32>,
+    /// The signature that tells the firmware what to do with the address.
+    pub signature: u32,
+}
+
+impl KeySymbol {
+    pub fn resolve(&mut self, symbols: &Vec<Symbol>) -> anyhow::Result<()> {
+        if let Some(symbol) = symbols.iter().find(|&entry| &entry.name == self.symbol.as_ref().unwrap()) {
+            self.offset = Some(symbol.address as u32);
+        }
+
+        if self.offset.is_none() {
+            return Err(anyhow::anyhow!("Could not resolve offset for symbol {}.", self.symbol.as_ref().unwrap()))
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for KeySymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(offset) = &self.offset {
+            write!(f, "KeySymbol {{ offset: 0x{:08X}, signature: 0x{:4X} }}", offset, self.signature)
+        } else if let Some(symbol) = &self.symbol {
+            write!(f, "KeySymbol {{ symbol: {}, signature: 0x{:4X} }}", symbol, self.signature)
+        } else {
+            write!(f, "KeySymbol {{ signature: {} }}", self.signature)
+        }
+    }
+}
+
 /// Configuration options available in the config file.
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
+    /// A list of key symbols to be added to the auxillary file header.
+    #[serde(alias = "key", default = "Vec::new")]
+    pub key_symbols: Vec<KeySymbol>,
     /// A list of validation rules that ultimately create a validation entry in
     /// the auxillary file.
     #[serde(alias = "rule", default = "Vec::new")]
@@ -89,6 +129,9 @@ pub fn main() -> Result<()> {
 
     if args.debug {
         println!("{:?}", aux.header);
+        for symbol in aux.key_symbols.iter() {
+            println!("  {:?}", symbol);
+        }
         for entry in aux.entries.iter() {
             println!("  {:?}", entry);
         }

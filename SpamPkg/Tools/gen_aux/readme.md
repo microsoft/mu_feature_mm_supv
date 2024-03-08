@@ -2,13 +2,42 @@
 
 This tool generates the binary file used to verify the state of a module after execution and revert it to it's original state. Any rule specified in the configuration file will be 1. Reverted and 2. Verified (depending on the verification type).
 
-# Usability
+## Auxillary File Format
+
+```
++--------------------------------------------+
++  IMAGE_VALIDATION_DATA_HEADER
++--------------------------------------------+
++  KEY_SYMBOL[]
++--------------------------------------------+
++  IMAGE_VALIDATION_ENTRY_HEADER[]
++--------------------------------------------+
++  Defaults
++--------------------------------------------+
+```
+
+## Usability
 
 Check the tool's help information by using the command `cargo run -- -h` or if the tool is already compiled, `gen_aux -h`. It will provide you a list of options and a brief description of each option
 
 ## The Configuration File
 
 The configuration file, passed to the executable via the `-c` command, is used to specify which symbols should be reverted to their original value and/or tested using one of the supported testing methods. The config file uses the [toml](https://toml.io/en/) format for setting config options in the file. Currently, there are two configuration options: `rule` and `autogen`
+
+### key
+
+the key command (`[[key]]`) is a configuration option to tell the tool to generate signature / offset pairs for a specific symbol and add them to the the header (`IMAGE_VALIDATION_DATA_HEADER`).
+
+``` toml
+[[key]]
+signature = 'Required[u32]'
+symbol = 'Optional[String]'
+offset = 'Optional[u32]'
+```
+
+- `signature`: The 4 byte signature used by the firmware to determine how to use the offset
+- `symbol`: Used to calculate the offset value. Mutually exclusive to `offset`
+- `offset`: The offset used by the firmware. Mutually exclusive to `symbol`
 
 ### rule
 
