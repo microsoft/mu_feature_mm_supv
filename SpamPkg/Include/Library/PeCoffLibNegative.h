@@ -40,7 +40,7 @@
 typedef struct {
   UINT32 Signature;
   UINT32 Offset;
-} KEY_SYMBOL
+} KEY_SYMBOL;
 
 typedef struct {
   UINT32  HeaderSignature;
