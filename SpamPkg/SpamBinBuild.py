@@ -4,13 +4,11 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 ##
-import datetime
 import glob
 import logging
 import os
 import sys
-import uuid
-from io import StringIO
+import hashlib
 from pathlib import Path
 from typing import Tuple
 
@@ -230,7 +228,6 @@ class PlatformBuilder(UefiBuilder, SettingsManager):
             "txt": logs to plain text file
         """
         return logging.INFO
-        return super().GetLoggingLevel(loggerType)
 
     def SetPlatformEnv(self):
         logging.debug("PlatformBuilder SetPlatformEnv")
@@ -249,15 +246,129 @@ class PlatformBuilder(UefiBuilder, SettingsManager):
 
     def PlatformPostBuild(self):
         # Add a post build step to build spam core bin and assemble the FD files
-        BaseToolsDir = os.environ['BASE_TOOLS_PATH']
-        cmd = os.path.join(BaseToolsDir, "Bin", "Win32", "GenStm")
-        args = "-e --debug 5 %s -o %s" % (
-            os.path.join(self.env.GetValue("BUILD_OUTPUT_BASE"), "X64", "SpamPkg", "Core", "Stm", "DEBUG", "Stm.dll"),
-            os.path.join(self.env.GetValue("BUILD_OUTPUT_BASE"), "X64", "SpamPkg", "Core", "Stm", "DEBUG", "Stm.bin")
-        )
-        ret = RunCmd(cmd, args)
-        return ret
+        build_output = Path(self.env.GetValue("BUILD_OUTPUT_BASE"))
+        mmsupv_dir = build_output / "X64" / "MmSupervisorPkg" / "Core" / "MmSupervisorCore" / "DEBUG"
+        stm_dir = build_output / "X64" / "SpamPkg" / "Core" / "Stm" / "DEBUG"
 
+        try:
+            # Calculate the hash of the MmSupervisorCore auxilary file
+            aux_file = mmsupv_dir / "MmSupervisorCore.aux"
+            aux_hash = calculate_aux_hash(aux_file)
+
+            # Find the offset of PcdAuxBinHash in the stm dll
+            stm_dir = build_output / "X64" / "SpamPkg" / "Core" / "Stm" / "DEBUG"
+            stm_map = stm_dir / "Stm.map"
+            stm_dll = stm_dir / "Stm.dll"
+            pcd = "PcdAuxBinHash"
+            pcd_addr = get_patch_pcd_address(stm_map, stm_dll, pcd)
+
+            if pcd_addr is None:
+                logging.error(f"Pcd {pcd} not found in {stm_map}.")
+                return -1
+
+            # Patch the hash value into the stm dll
+            patch_pcd_value(stm_dll, pcd_addr, aux_hash)
+        except FileNotFoundError as e:
+            logging.error(f"File {e} not found.")
+            return -1
+        except RuntimeError as e:
+            logging.error(e)
+            return -1
+
+        # Generate the stm binary
+        base_tools_dir = Path(os.environ['BASE_TOOLS_PATH'])
+        gen_stm = base_tools_dir / "Bin" / "Win32" / "GenStm.exe"
+        stm_dll = stm_dir / "Stm.dll"
+        stm_bin = stm_dir / "Stm.bin"
+        cmd = str(gen_stm)
+        args = f"-e --debug 5 {stm_dll} -o {stm_bin}"
+        return RunCmd(cmd, args)
+
+
+def calculate_aux_hash(file: Path) -> str:
+    """Calculates the hash of the given file.
+    
+    Returns:
+        str: The hex form of the hash as a string
+
+    Raises:    
+        FileNotFoundError: The file does not exist
+    """
+    if not file.exists():
+        raise FileNotFoundError(file)
+
+    hasher = hashlib.new("sha256")
+    with open(file, 'rb') as f:
+        while True:
+            data = f.read(65536)
+            if not data:
+                break
+            hasher.update(data)
+    return hasher.hexdigest()
+
+
+def get_patch_pcd_address(map: Path, dll: Path, pcd_name: str) -> int:
+    """Gets the address of the given PCD in the patch PCD table.
+
+    Args:
+        file (Path): the path to the patch PCD table
+        pcd_name (str): the name of the PCD to find
+
+    Returns:
+        int: the address of the PCD in the patch PCD table
+        None: The pcd does not exist in the table
+    
+    Raises:
+        FileNotFoundError: if map or dll do not exist
+        RuntimeError: if GenPatchPcdTable fails
+    """
+    if not map.exists():
+        raise FileNotFoundError(map)
+    if not dll.exists():
+        raise FileNotFoundError(dll)
+
+    cmd = "GenPatchPcdTable"
+    args = f"-m {map} -e {dll}"
+    RunCmd(cmd, args)
+
+    pcd_table = map.with_suffix(".BinaryPcdTable.txt")
+    if not pcd_table.exists():
+        RuntimeError("GenPatchPcdTable Failed")
+
+    offset = None
+    with open(pcd_table, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.startswith(pcd_name):
+                offset = int(line.split()[1], 16)
+                break
+    return offset
+
+
+def patch_pcd_value(file: Path, offset: int, value: Tuple[str, int]) -> int:
+    """Patches the value at the given offset in the file.
+
+    Args:
+        file (Path): the file to patch
+        offset (int): the offset to patch
+        value (str|int): the value to patch (hex string or int)
+
+    Raises:
+        FileNotFoundError: if the file does not exist
+    """
+    if not file.exists():
+        raise FileNotFoundError(file)
+
+    if isinstance(value, int):
+        hex_bytes = value.to_bytes(4, byteorder='little')
+    else:
+        hex_bytes = bytes.fromhex(value)
+    bytes.fromhex(value)
+    
+    with open(file, 'r+b') as f:
+        f.seek(offset)
+        f.write(hex_bytes)
+    
 
 if __name__ == "__main__":
     import argparse
