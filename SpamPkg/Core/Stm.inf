@@ -96,6 +96,9 @@
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
 
+[PatchPcd]
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
+
 [BuildOptions]
 #  MSFT:*_*_X64_CC_FLAGS  = /Od  /GL-
 
