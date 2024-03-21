@@ -13,9 +13,15 @@
 #include <Register/SmramSaveStateMap.h>
 #include <SpamResponder.h>
 
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/PeCoffLib.h>
+#include <Library/PeCoffLibNegative.h>
 #include <Library/Smx.h>
 #include <Library/SafeIntLib.h>
 #include <Library/TpmMeasurementLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
 
 // TODO: What is this PCR?
 #define SPAM_PCR_INDEX 0
@@ -135,7 +141,7 @@ VerifyAndMeasureImage (
 
   // Then need to copy the image over to MSEG
   InternalCopy = AllocatePages (
-    EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1),
+    EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1)
     );
 
   // TODO: Now need to unrelocate the image...
@@ -147,6 +153,12 @@ Exit:
   }
   return Status;
 }
+
+// TODO: Consume newly created key symbols
+extern UINT64 MmSupvEfiFileBase;
+extern UINT64 MmSupvEfiFileSize;
+extern UINT64 MmSupvAuxFileBase;
+extern UINT64 MmSupvAuxFileSize;
 
 EFI_STATUS
 EFIAPI
@@ -163,7 +175,7 @@ SpamResponderReport (
   UINT64      Length;
   UINT64      MtrrValidBitsMask;
   UINT64      MtrrValidAddressMask;
-  UINT64      Index;
+  // UINT64      Index;
   UINT16                    *FixStructPtr;
   UINT8                     *Fixup8Ptr;
   UINT32                    *Fixup32Ptr;
@@ -173,7 +185,7 @@ SpamResponderReport (
   PER_CORE_MMI_ENTRY_STRUCT_HDR   *MmiEntryStructHdr;
   UINT32                          MmiEntryStructHdrSize;
 
-  USER_MODULE_INFO                *UserModuleInfoArray;
+  // USER_MODULE_INFO                *UserModuleInfoArray;
 
   // TODO: Step 0: Disable MMI
 
@@ -251,7 +263,7 @@ SpamResponderReport (
   }
 
   // Step 3.1: Check entry fix up data region to be pointing inside the MMRAM region
-  MmiEntryStructHdrSize = (UINT32*)(UINTN)(SpamResponderData->MmEntryBase + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
+  MmiEntryStructHdrSize = *(UINT32*)(UINTN)(SpamResponderData->MmEntryBase + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
   MmiEntryStructHdr = (PER_CORE_MMI_ENTRY_STRUCT_HDR*)(UINTN)(SpamResponderData->MmEntryBase + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize);
 
   if (MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION) {
@@ -322,6 +334,52 @@ SpamResponderReport (
   }
 
   // Step 3.2: Measure MM Core code
+  //
+  // Get information about the image being loaded
+  //
+  PE_COFF_LOADER_IMAGE_CONTEXT ImageContext;
+
+  ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
+  VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (SpamResponderData->MmSupervisorSize));
+  CopyMem (Buffer, (VOID*)(UINTN)SpamResponderData->MmSupervisorBase, SpamResponderData->MmSupervisorSize);
+
+  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
+  ImageContext.Handle    = (VOID*)Buffer;
+
+  Status = PeCoffLoaderGetImageInfo (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+
+  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
+  Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+
+  Status = PeCoffImageDiffValidation ((VOID*)SpamResponderData->MmSupervisorBase, Buffer, SpamResponderData->MmSupervisorSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+
+  // Now prepare a new buffer to revert loading operations.
+  UINTN NewBufferSize = SpamResponderData->MmSupervisorSize;
+  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
+  ZeroMem (NewBuffer, NewBufferSize);
+
+  DEBUG ((DEBUG_INFO, "%p %p %p\n", SpamResponderData->MmSupervisorBase, Buffer, NewBuffer));
+
+  // At this point we dealt with the relocation, some data are still off.
+  // Next we unload the image in the copy.
+  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer, &NewBufferSize);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+
+  DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
+  ASSERT (MmSupvEfiFileSize == NewBufferSize);
+  ASSERT (CompareMem (NewBuffer, (VOID*)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
+
   Status = VerifyAndMeasureImage (
              SpamResponderData->MmSupervisorBase,
              SpamResponderData->MmSupervisorSize,
@@ -332,19 +390,19 @@ SpamResponderReport (
     goto Exit;
   }
 
-  // Step 4: Measure User mode MM code
-  UserModuleInfoArray = (USER_MODULE_INFO*)((UINTN)SpamResponderData + SpamResponderData->UserModuleOffset);
-  for (Index = 0; Index < SpamResponderData->UserModuleCount; Index++) {
-    Status = VerifyAndMeasureImage (
-               UserModuleInfoArray[Index].UserModuleBase,
-               UserModuleInfoArray[Index].UserModuleSize,
-               SPAM_PCR_INDEX,
-               SPAM_EVTYPE_MM_USER_MODULE_HASH
-               );
-    if (EFI_ERROR (Status)) {
-      goto Exit;
-    }
-  }
+  // // Step 4: Measure User mode MM code
+  // UserModuleInfoArray = (USER_MODULE_INFO*)((UINTN)SpamResponderData + SpamResponderData->UserModuleOffset);
+  // for (Index = 0; Index < SpamResponderData->UserModuleCount; Index++) {
+  //   Status = VerifyAndMeasureImage (
+  //              UserModuleInfoArray[Index].UserModuleBase,
+  //              UserModuleInfoArray[Index].UserModuleSize,
+  //              SPAM_PCR_INDEX,
+  //              SPAM_EVTYPE_MM_USER_MODULE_HASH
+  //              );
+  //   if (EFI_ERROR (Status)) {
+  //     goto Exit;
+  //   }
+  // }
 
   // Step 5: Report MM Secure Policy code
   // TODO: How to do this? I would like to keep the structure the same though...

@@ -79,6 +79,8 @@ typedef struct {
   UINT64                MmSupervisorSize;
   EFI_PHYSICAL_ADDRESS  MmSecurePolicyBase;
   UINT64                MmSecurePolicySize;
+  EFI_PHYSICAL_ADDRESS  MmSupervisorAuxBase;
+  UINT64                MmSupervisorAuxSize;
   UINT64                UserModuleOffset;
   UINT64                UserModuleCount;
   // USER_MODULE_INFO      UserModules[];
