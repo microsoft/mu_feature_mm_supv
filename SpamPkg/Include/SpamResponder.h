@@ -60,7 +60,7 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define SPAM_RESPONDER_STRUCT_SIGNATURE  SIGNATURE_32 ('S', 'P', 'A', 'M')  
+#define SPAM_RESPONDER_STRUCT_SIGNATURE  SIGNATURE_32 ('S', 'P', 'A', 'M')
 #define SPAM_REPSONDER_STRUCT_MAJOR_VER  0x0000
 #define SPAM_REPSONDER_STRUCT_MINOR_VER  0x0001
 
@@ -73,23 +73,11 @@ typedef struct {
   UINT32                Size;
   UINT32                Reserved;
   UINT64                CpuIndex;
-  EFI_PHYSICAL_ADDRESS  MmEntryBase;
   UINT64                MmEntrySize;
-  EFI_PHYSICAL_ADDRESS  MmSupervisorBase;
   UINT64                MmSupervisorSize;
-  EFI_PHYSICAL_ADDRESS  MmSecurePolicyBase;
-  UINT64                MmSecurePolicySize;
   EFI_PHYSICAL_ADDRESS  MmSupervisorAuxBase;
   UINT64                MmSupervisorAuxSize;
-  UINT64                UserModuleOffset;
-  UINT64                UserModuleCount;
-  // USER_MODULE_INFO      UserModules[];
 } SPAM_RESPONDER_DATA;
-
-typedef struct {
-  EFI_PHYSICAL_ADDRESS  UserModuleBase;
-  UINT64                UserModuleSize;
-} USER_MODULE_INFO;
 
 #pragma pack(pop)
 
