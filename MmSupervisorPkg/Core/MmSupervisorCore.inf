@@ -150,6 +150,7 @@
   CpuPageTableLib
   MmSaveStateLib
   PeCoffLibNegative
+  SmmCpuSyncLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
