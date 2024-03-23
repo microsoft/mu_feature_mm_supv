@@ -80,6 +80,7 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
+  SecurityPkg/SecurityPkg.dec
   SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
@@ -92,6 +93,8 @@
   StmLib
   PcdLib
   StmPlatformLib
+  PeCoffLibNegative
+  HashLib
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
