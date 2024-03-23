@@ -147,6 +147,7 @@
   PerformanceLib
   CpuPageTableLib
   MmSaveStateLib
+  SmmCpuSyncLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
