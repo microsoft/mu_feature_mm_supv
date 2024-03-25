@@ -827,7 +827,7 @@ PeCoffImageDiffValidation (
     return EFI_COMPROMISED_DATA;
   }
 
-  ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)(ImageValidationHdr + 1);
+  ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER*)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
     if ((UINT8*)(ImageValidationEntryHdr) >= ((UINT8*)ReferenceData + ReferenceDataSize)) {
