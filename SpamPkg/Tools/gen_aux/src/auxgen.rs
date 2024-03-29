@@ -277,7 +277,14 @@ impl AuxBuilder {
         }
 
         for rule in self.rules.iter_mut() {
-            let symbol = self.symbols.iter().find(|&entry| &entry.name == &rule.symbol).ok_or(anyhow::anyhow!("Could not find symbol {} for rule.", rule.symbol))?;
+            let symbol = self.symbols
+                .iter()
+                .find(|&entry| &entry.name == &rule.symbol)
+                .ok_or(
+                    anyhow::anyhow!(
+                        "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
+                        rule.symbol
+                ))?;
             rule.resolve(symbol, &self.symbols, info)?;
             
             let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
