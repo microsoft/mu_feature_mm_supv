@@ -180,6 +180,7 @@ SPAM_RESPONDER_DATA mSpamResponderTemplate = {
 // Variables used by SMI Handler
 //
 IA32_DESCRIPTOR  gStmSmiHandlerIdtr;
+IA32_DESCRIPTOR  *mGdtrPtr;
 
 //
 // MP Information HOB data
@@ -384,6 +385,15 @@ SmmCpuFeaturesLibStmConstructor (
   mMpInformationHobData = GET_GUID_HOB_DATA (GuidHob);
 
   //
+  // Use MP info hob to retrieve the number of processors
+  //
+  mGdtrPtr = AllocateZeroPool (sizeof (IA32_DESCRIPTOR) * mMpInformationHobData->NumberOfProcessors);
+  if (mGdtrPtr == NULL) {
+    DEBUG ((DEBUG_ERROR, "mGdtrPtr == NULL\n"));
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  //
   // If CPU supports VMX, then determine SMRAM range for MSEG.
   //
   AsmCpuid (CPUID_VERSION_INFO, NULL, NULL, &RegEcx.Uint32, NULL);
@@ -551,7 +561,7 @@ SmmCpuFeaturesInstallSmiHandler (
 
   CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &mPsdTemplate, sizeof (mPsdTemplate));
   Psd             = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET);
-  Psd->SmmGdtPtr  = GdtBase;
+  Psd->SmmGdtPtr  = (UINT64)(UINTN)&mGdtrPtr[CpuIndex];
   Psd->SmmGdtSize = (UINT32)GdtSize;
 
   //
@@ -591,11 +601,11 @@ SmmCpuFeaturesInstallSmiHandler (
 
   //Do the fixup
   Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp] = mCetPl0Ssp;
-  Fixup32Ptr[FIXUP32_GDTR] = (UINT32)GdtBase;
+  Fixup32Ptr[FIXUP32_GDTR] = (UINT32)(UINTN) &mGdtrPtr[CpuIndex];
   Fixup32Ptr[FIXUP32_CR3_OFFSET] = Cr3;
   Fixup32Ptr[FIXUP32_mPatchCetInterruptSsp] = mCetInterruptSsp;
   Fixup32Ptr[FIXUP32_mPatchCetInterruptSspTable] = mCetInterruptSspTable;
-  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0] = (UINT32)(UINTN)SmiStack;
+  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0] = (UINT32)(UINTN)tSmiStack;
   Fixup32Ptr[FIXUP32_MSR_SMM_BASE] = SmBase;
 
   Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = (UINT64)CpuSmmDebugEntry;
@@ -607,7 +617,7 @@ SmmCpuFeaturesInstallSmiHandler (
 
   Fixup8Ptr[FIXUP8_gPatchXdSupported] = gPatchXdSupported;
   Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
-  Fixup8Ptr[FIXUP8_gPatch5LevelPagingNeeded] = gPatch5LevelPagingNeeded;
+  Fixup8Ptr[FIXUP8_gPatch5LevelPagingNeeded] = m5LevelPagingNeeded;
   Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;
 
   // TODO: Sort out these values, if needed

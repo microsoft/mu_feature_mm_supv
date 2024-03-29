@@ -66,13 +66,9 @@
 
 BITS 16
 _SmiEntryPoint:
-    mov     bx, [cs:FIXUP32_GDTR - _SmiEntryPoint + 0x8000]
-    mov     ax,[cs:DSC_OFFSET + DSC_GDTSIZ]
-    dec     ax
-    mov     [cs:bx], ax
-    mov     eax, [cs:DSC_OFFSET + DSC_GDTPTR]
-    mov     [cs:bx + 2], eax
-o32 lgdt    [cs:bx]                       ; lgdt fword ptr cs:[bx]
+    mov     edi, [cs:FIXUP32_GDTR - _SmiEntryPoint + 0x8000]   ;EDI point to GDTR
+o32 lgdt    [ds:edi]
+    mov     bx, @ProtectedMode - _SmiEntryPoint + 0x8000
     mov     ax, PROTECT_MODE_CS
     mov     [cs:bx-0x2],ax
     mov     edi, [cs:FIXUP32_MSR_SMM_BASE - _SmiEntryPoint + 0x8000]   ; SMM Base
