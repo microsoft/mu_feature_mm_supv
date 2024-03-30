@@ -94,6 +94,8 @@
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize|50|UINT8|0x00000007
 
   ## This PCD is used to specify the size of stack for MM supervisor exceptions when MM supervisor enables
-  #  stack guard and/or control flow enforcement. The PCD is defined in the size of bytes and default to 8KB.
+  #  stack guard and/or control flow enforcement. The stack will NOT be separately allocated. Instead, it will
+  #  use the space from the top of supervisor stack space. The PCD is defined in the size of bytes and default
+  #  to 8KB.
   #  @Prompt Stack size for MM supervisor exceptions.
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize|0x2000|UINT32|0x00000008
