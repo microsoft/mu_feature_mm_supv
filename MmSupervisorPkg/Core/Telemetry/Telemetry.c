@@ -171,7 +171,7 @@ SmmSupervisorMiscExceptionHandler (
   }
 
   DumpCpuContext (InterruptType, SystemContext);
-  DEBUG ((DEBUG_INFO, "%a MM Supervisor fault here\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a MM Supervisor fault here\n", __func__));
   DEBUG_CODE (
     DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
     );
