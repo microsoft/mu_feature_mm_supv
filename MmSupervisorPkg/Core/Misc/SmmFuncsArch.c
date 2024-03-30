@@ -105,6 +105,7 @@ InitGdt (
       } else {
         IstStackSize = PcdGet32 (PcdMmSupervisorExceptionStackSize);
       }
+
       //
       // Setup top of known good stack as IST1 for each processor.
       //
