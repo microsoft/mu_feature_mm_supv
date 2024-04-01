@@ -69,7 +69,7 @@ EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
 extern BOOLEAN mCetSupported;
 extern BOOLEAN gPatchXdSupported;
 extern BOOLEAN gPatchMsrIa32MiscEnableSupported;
-extern BOOLEAN gPatch5LevelPagingNeeded;
+extern BOOLEAN m5LevelPagingNeeded;
 
 extern UINT32 mCetPl0Ssp;
 extern UINT32 mCetInterruptSsp;
@@ -617,7 +617,7 @@ SmmCpuFeaturesInstallSmiHandler (
 
   Fixup8Ptr[FIXUP8_gPatchXdSupported] = gPatchXdSupported;
   Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
-  Fixup8Ptr[FIXUP8_gPatch5LevelPagingNeeded] = m5LevelPagingNeeded;
+  Fixup8Ptr[FIXUP8_m5LevelPagingNeeded] = m5LevelPagingNeeded;
   Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;
 
   // TODO: Sort out these values, if needed
