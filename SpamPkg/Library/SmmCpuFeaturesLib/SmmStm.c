@@ -568,8 +568,13 @@ SmmCpuFeaturesInstallSmiHandler (
   // Initialize values in template before copy
   //
   tSmiStack                = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
-  gStmSmiHandlerIdtr.Base  = IdtBase;
-  gStmSmiHandlerIdtr.Limit = (UINT16)(IdtSize - 1);
+  if ((gStmSmiHandlerIdtr.Base == 0) && (gStmSmiHandlerIdtr.Limit == 0)) {
+    gStmSmiHandlerIdtr.Base  = IdtBase;
+    gStmSmiHandlerIdtr.Limit = (UINT16)(IdtSize - 1);
+  } else {
+    ASSERT (gStmSmiHandlerIdtr.Base == IdtBase);
+    ASSERT (gStmSmiHandlerIdtr.Limit == (UINT16)(IdtSize - 1));
+  }
 
   //
   // Set the value at the top of the CPU stack to the CPU Index
@@ -613,7 +618,7 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] = (UINT64)SmiRendezvous;
   Fixup64Ptr[FIXUP64_XD_SUPPORTED] = (UINT64)&gPatchXdSupported;
   Fixup64Ptr[FIXUP64_CET_SUPPORTED] = (UINT64)&mCetSupported;
-  Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = IdtBase;
+  Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)&gStmSmiHandlerIdtr;
 
   Fixup8Ptr[FIXUP8_gPatchXdSupported] = gPatchXdSupported;
   Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
