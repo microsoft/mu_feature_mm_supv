@@ -580,9 +580,9 @@ SpamResponderReport (
   UINT64                          FirmwarePolicyBase;
   UINT64                          SupvPageTableBase;
 
-  KEY_SYMBOL                      *FirmwarePolicySymbol;
-  KEY_SYMBOL                      *PageTableSymbol;
-  KEY_SYMBOL                      *MmiRendezvousSymbol;
+  KEY_SYMBOL                      *FirmwarePolicySymbol = NULL;
+  KEY_SYMBOL                      *PageTableSymbol = NULL;
+  KEY_SYMBOL                      *MmiRendezvousSymbol = NULL;
 
   // TODO: Step 0: Disable MMI
 
@@ -631,7 +631,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize, MmBase, Length, &IsInside);
+  Status = Range1InsideRange2 (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize, MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -642,7 +642,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize, MmBase, Length, &IsInside);
+  Status = Range1InsideRange2 (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize, MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -666,6 +666,11 @@ SpamResponderReport (
         MmiRendezvousSymbol = &KeySymbols[Index];
         break;
     }
+  }
+
+  if ((FirmwarePolicySymbol == NULL) || (PageTableSymbol == NULL) || (MmiRendezvousSymbol == NULL)) {
+    Status = EFI_SECURITY_VIOLATION;
+    goto Exit;
   }
 
   // Step 2.1: Measure MMI entry code
@@ -694,10 +699,10 @@ SpamResponderReport (
   // Step 3: Check MM Core code base and size to be inside the MMRAM region
   // Step 3.1: Check entry fix up data region to be pointing inside the MMRAM region
   MmiEntryStructHdrSize = *(UINT32*)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
-  MmiEntryStructHdr = (PER_CORE_MMI_ENTRY_STRUCT_HDR*)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize);
+  MmiEntryStructHdr = (PER_CORE_MMI_ENTRY_STRUCT_HDR*)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize));
 
   if ((MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION) ||
-      (MmiEntryStructHdrSize != SpamResponderData->MmEntrySize)) {
+      (MmiEntryStructHdrSize >= SpamResponderData->MmEntrySize)) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -717,29 +722,37 @@ SpamResponderReport (
     goto Exit;
   }
 
-  // GDTR should be pointing inside the MM CORE region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_GDTR], sizeof (UINT32), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
+  // GDTR and its content should be pointing inside the MMRAM region
+  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
+    DEBUG ((DEBUG_ERROR, "GDTR is not inside MMRAM region %x %x %x %x\n", Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length));
+    Status = EFI_SECURITY_VIOLATION;
+    goto Exit;
+  }
+
+  Status = Range1InsideRange2 (((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmRamBase, Length, &IsInside);
+  if (EFI_ERROR (Status) || !IsInside) {
+    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // CR3 should be pointing to the page table from symbol list in the aux file
-  SupvPageTableBase = MmSupervisorBase + PageTableSymbol->Offset;
+  SupvPageTableBase = *(UINT64*)(MmSupervisorBase + PageTableSymbol->Offset);
   if (Fixup32Ptr[FIXUP32_CR3_OFFSET] != SupvPageTableBase) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // CR3 should be pointing inside the MMRAM region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_CR3_OFFSET], sizeof (UINT32), MmBase, Length, &IsInside);
+  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_CR3_OFFSET], sizeof (UINT32), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // Supervisor stack should be pointing inside the MMRAM region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32), MmBase, Length, &IsInside);
+  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -774,7 +787,7 @@ SpamResponderReport (
 
   // Then also verify that the firmware policy is inside the MMRAM
   FirmwarePolicyBase = MmSupervisorBase + FirmwarePolicySymbol->Offset;
-  Status = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmBase, Length, &IsInside);
+  Status = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -786,8 +799,8 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorSize,
              MmSupvAuxFileBase,
              MmSupvAuxFileSize,
-             SPAM_PCR_INDEX,
-             SPAM_EVTYPE_MM_CORE_HASH
+             MmRamBase,
+             Length
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
