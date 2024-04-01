@@ -760,7 +760,9 @@ SetupSmiEntryExit (
     }
   } else {
     mCetSupported = FALSE;
-    PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    }
   }
 
   //
