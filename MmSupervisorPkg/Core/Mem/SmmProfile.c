@@ -875,11 +875,15 @@ CheckFeatureSupported (
       AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, NULL);
       if ((RegEcx & CPUID_CET_SS) == 0) {
         mCetSupported = FALSE;
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        }
       }
     } else {
       mCetSupported = FALSE;
-      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+      if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+      }
     }
   }
 
