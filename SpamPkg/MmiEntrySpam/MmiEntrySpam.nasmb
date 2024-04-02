@@ -98,7 +98,7 @@ ProtFlatMode:
     mov     cr3, rax
     mov     eax, 0x100E68                ; as cr4.PGE is not set here, refresh cr3
 
-    mov     cl, [rdi + FIXUP8_gPatch5LevelPagingNeeded - _SmiEntryPoint + 0x8000]      ; source operand will be patched
+    mov     cl, [rdi + FIXUP8_m5LevelPagingNeeded - _SmiEntryPoint + 0x8000]      ; source operand will be patched
     cmp     cl, 0
     je      SkipEnable5LevelPaging
     ;
@@ -390,7 +390,7 @@ FIXUP32_MSR_SMM_BASE                DD    0  ; FIXUP32_MSR_SMM_BASE
 ;--------------     UINT32   FixUp8[MAXNUM_FIXUP_VARIABLE]; ---------
 FIXUP8_gPatchXdSupported                DB    0  ; FIXUP8_gPatchXdSupported
 FIXUP8_gPatchMsrIa32MiscEnableSupported DB    0  ; FIXUP8_gPatchMsrIa32MiscEnableSupported
-FIXUP8_gPatch5LevelPagingNeeded         DB    0  ; FIXUP8_gPatch5LevelPagingNeeded
+FIXUP8_m5LevelPagingNeeded              DB    0  ; FIXUP8_m5LevelPagingNeeded
 FIXUP8_mPatchCetSupported               DB    0  ; FIXUP8_mPatchCetSupported
 FixUp8_4                                DB    0  ; FIXUP8_OFFSET4_RSVD
 FixUp8_5                                DB    0  ; FIXUP8_OFFSET5_RSVD
