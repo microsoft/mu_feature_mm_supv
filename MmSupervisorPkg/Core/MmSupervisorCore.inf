@@ -206,6 +206,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmMpTokenCountPerChunk               ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize       ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize      ## CONSUMES
 
 [FixedPcd.X64]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES
