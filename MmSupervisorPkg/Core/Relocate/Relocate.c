@@ -743,7 +743,9 @@ SetupSmiEntryExit (
       DEBUG ((DEBUG_INFO, "  CET_IBT - 0x%08x\n", RegEdx & CPUID_CET_IBT));
       if ((RegEcx & CPUID_CET_SS) == 0) {
         mCetSupported = FALSE;
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        }
       }
 
       if (mCetSupported) {
