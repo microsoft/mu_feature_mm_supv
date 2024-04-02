@@ -32,7 +32,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define FIXUP8_gPatchXdSupported                0
 #define FIXUP8_gPatchMsrIa32MiscEnableSupported 1
-#define FIXUP8_gPatch5LevelPagingNeeded         2
+#define FIXUP8_m5LevelPagingNeeded              2
 #define FIXUP8_mPatchCetSupported               3
 #define FIXUP8_OFFSET4_RSVD                     4
 #define FIXUP8_OFFSET5_RSVD                     5
