@@ -22,6 +22,8 @@
 
 #include <Library/PeCoffLibNegative.h>
 
+#include <SpamResponder.h>
+
 #include <Guid/MmCommonRegion.h>
 
 EFI_STATUS
@@ -323,6 +325,12 @@ extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileSize;
 
 EFI_STATUS
 EFIAPI
+SpamResponderReport (
+  IN SPAM_RESPONDER_DATA *SpamResponderData
+  );
+
+EFI_STATUS
+EFIAPI
 MmReadyToLockHandler (
   IN     EFI_HANDLE  DispatchHandle,
   IN     CONST VOID  *Context         OPTIONAL,
@@ -376,50 +384,27 @@ MmReadyToLockHandler (
   //
   // Get information about the image being loaded
   //
-  PE_COFF_LOADER_IMAGE_CONTEXT ImageContext;
+  SPAM_RESPONDER_DATA SpamData = {
+    SPAM_RESPONDER_STRUCT_SIGNATURE,
+    SPAM_REPSONDER_STRUCT_MINOR_VER,
+    SPAM_REPSONDER_STRUCT_MAJOR_VER,
+    sizeof (SPAM_RESPONDER_DATA),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  };
 
-  ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
-  VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
-  CopyMem (Buffer, (VOID*)(UINTN)gMmCorePrivate->MmCoreImageBase, gMmCorePrivate->MmCoreImageSize);
+  SpamData.MmEntrySize = GetSmiHandlerSize ();
+  SpamData.MmSupervisorSize = gMmCorePrivate->MmCoreImageSize;
+  SpamData.MmSupervisorAuxBase = MmSupvAuxFileBase;
+  SpamData.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
-  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
-  ImageContext.Handle    = (VOID*)Buffer;
+  Status = SpamResponderReport (&SpamData);
+  ASSERT_EFI_ERROR (Status);
 
-  Status = PeCoffLoaderGetImageInfo (&ImageContext);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
-  Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  Status = PeCoffImageDiffValidation ((VOID*)gMmCorePrivate->MmCoreImageBase, Buffer, gMmCorePrivate->MmCoreImageSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  // Now prepare a new buffer to revert loading operations.
-  UINTN NewBufferSize = gMmCorePrivate->MmCoreImageSize;
-  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
-  ZeroMem (NewBuffer, NewBufferSize);
-
-  DEBUG ((DEBUG_INFO, "%p %p %p\n", gMmCorePrivate->MmCoreImageBase, Buffer, NewBuffer));
-
-  // At this point we dealt with the relocation, some data are still off.
-  // Next we unload the image in the copy.
-  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer, &NewBufferSize);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
-  ASSERT (MmSupvEfiFileSize == NewBufferSize);
-  ASSERT (CompareMem (NewBuffer, (VOID*)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
-
-Done:
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
   return Status;
