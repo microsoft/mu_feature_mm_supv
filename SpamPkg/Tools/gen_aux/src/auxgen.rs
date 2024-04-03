@@ -336,7 +336,7 @@ impl <'a> ctx::TryIntoCtx<Endian> for &AuxFile {
         let mut offset = 0;
         this.gwrite_with(&self.header, &mut offset, le)?;
         for symbol in &self.key_symbols {
-            this.gwrite_with(symbol.signature_as_u32(), &mut offset, le)?;
+            this.gwrite_with(symbol.signature(), &mut offset, le)?;
             this.gwrite_with(symbol.offset.expect("Symbol offset should be resolved"), &mut offset, le)?;
         }
         for entry in &self.entries {
@@ -368,7 +368,7 @@ impl AuxFile {
             let sig: u32 = aux_value.gread(&mut 0)?;
             let offset: u32 = aux_value.gread(&mut 4)?;
 
-            if sig != symbol.signature_as_u32() || offset != symbol.offset.unwrap_or_default() {
+            if sig != symbol.signature() || offset != symbol.offset.unwrap_or_default() {
                 return Err(anyhow::anyhow!("Aux / Image mismatch."))
             }
         }

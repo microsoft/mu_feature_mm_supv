@@ -46,7 +46,7 @@ pub struct KeySymbol {
     /// The offset
     pub offset: Option<u32>,
     /// The signature that tells the firmware what to do with the address.
-    pub signature: [char; 4],
+    signature: [char; 4],
 }
 
 impl KeySymbol {
@@ -61,7 +61,7 @@ impl KeySymbol {
         Ok(())
     }
 
-    pub fn signature_as_u32(&self) -> u32 {
+    pub fn signature(&self) -> u32 {
         let buffer = self.signature.iter().map(|&c| c as u8).collect::<Vec<u8>>();
         buffer.pread::<u32>(0).unwrap()
     }
@@ -70,11 +70,11 @@ impl KeySymbol {
 impl std::fmt::Debug for KeySymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(offset) = &self.offset {
-            write!(f, "KeySymbol {{ offset: 0x{:08X}, signature: 0x{:4X} }}", offset, self.signature_as_u32())
+            write!(f, "KeySymbol {{ offset: 0x{:08X}, signature: 0x{:4X} }}", offset, self.signature())
         } else if let Some(symbol) = &self.symbol {
-            write!(f, "KeySymbol {{ symbol: {}, signature: 0x{:4X} }}", symbol, self.signature_as_u32())
+            write!(f, "KeySymbol {{ symbol: {}, signature: 0x{:4X} }}", symbol, self.signature())
         } else {
-            write!(f, "KeySymbol {{ signature: 0x{:4X} }}", self.signature_as_u32())
+            write!(f, "KeySymbol {{ signature: 0x{:4X} }}", self.signature())
         }
     }
 }
