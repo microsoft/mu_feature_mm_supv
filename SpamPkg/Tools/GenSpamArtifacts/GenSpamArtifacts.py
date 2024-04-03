@@ -1,3 +1,10 @@
+# @file
+# UEFI Helper plugin for generating SPAM artifacts based off of the MM Supervisor build.
+#
+# Copyright (c) Microsoft Corporation
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
 import os
 import hashlib
 import logging
