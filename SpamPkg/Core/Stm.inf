@@ -81,6 +81,7 @@
   MdeModulePkg/MdeModulePkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   SecurityPkg/SecurityPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
   SpamPkg/SpamPkg.dec
 
 [LibraryClasses]

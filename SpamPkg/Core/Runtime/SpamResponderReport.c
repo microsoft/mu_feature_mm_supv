@@ -13,6 +13,7 @@
 #include <Register/CpuId.h>
 #include <Register/SmramSaveStateMap.h>
 #include <SpamResponder.h>
+#include <SmmSecurePolicy.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
@@ -452,6 +453,26 @@ Finish:
   return Status;
 }
 
+// TODO: Place them in a common place?
+UINT8 DrtmSmmPolicyData[0x1000];
+
+EFI_STATUS
+EFIAPI
+PopulateMemoryPolicyEntries (
+  IN  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyBuffer,
+  IN  UINT64                            MaxPolicySize
+  );
+
+EFI_STATUS
+SecurityPolicyCheck (
+  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmSecurityPolicy
+  );
+
+VOID
+DumpSmmPolicyData (
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *Data
+  );
+
 // TODO: Consume newly created key symbols
 extern UINT64 MmSupvEfiFileBase;
 extern UINT64 MmSupvEfiFileSize;
@@ -786,7 +807,7 @@ SpamResponderReport (
   }
 
   // Then also verify that the firmware policy is inside the MMRAM
-  FirmwarePolicyBase = MmSupervisorBase + FirmwarePolicySymbol->Offset;
+  FirmwarePolicyBase = *(UINT64*)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
   Status = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
@@ -806,21 +827,30 @@ SpamResponderReport (
     goto Exit;
   }
 
-  // // Step 4: Measure User mode MM code
-  // UserModuleInfoArray = (USER_MODULE_INFO*)((UINTN)SpamResponderData + SpamResponderData->UserModuleOffset);
-  // for (Index = 0; Index < SpamResponderData->UserModuleCount; Index++) {
-  //   Status = VerifyAndMeasureImage (
-  //              UserModuleInfoArray[Index].UserModuleBase,
-  //              UserModuleInfoArray[Index].UserModuleSize,
-  //              SPAM_PCR_INDEX,
-  //              SPAM_EVTYPE_MM_USER_MODULE_HASH
-  //              );
-  //   if (EFI_ERROR (Status)) {
-  //     goto Exit;
-  //   }
-  // }
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)FirmwarePolicyBase;
 
-  // Step 5: Report MM Secure Policy code
+  // Step 4: Report MM Secure Policy code
+  ZeroMem (DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+
+  // First off, copy the firmware policy to the buffer
+  CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
+  while (loop) {}
+  // Then leave the heavy lifting job to the library
+  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
+    goto Exit;
+  }
+
+  Status = SecurityPolicyCheck ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __FUNCTION__, Status));
+    goto Exit;
+  }
+
+  DEBUG_CODE_BEGIN ();
+  DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData);
+  DEBUG_CODE_END ();
   // TODO: How to do this? I would like to keep the structure the same though...
 
 Exit:
