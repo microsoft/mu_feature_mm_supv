@@ -16,6 +16,9 @@ from edk2toolext.environment.plugintypes.uefi_helper_plugin import IUefiHelperPl
 from edk2toollib.utility_functions import RunCmd
 
 
+HASH_ALGORITHM = "sha256"
+
+
 class GenSpamArtifacts(IUefiHelperPlugin):
     def RegisterHelpers(self, obj):
       fp = os.path.abspath(__file__)
@@ -28,7 +31,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
         Generates the following artifacts:
         - MmSupervisorCore.aux (As build by gen_aux)
         - MmSupervisorCore.efi (As Build by edk2 build system)
-        - Stm.bin (With the patched SHA256 hash of the MmSupervisorCore.aux file)
+        - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore.aux file)
 
         Args:
             aux_config_path: Path to the aux gen config file.
@@ -109,7 +112,7 @@ def calculate_aux_hash(file: Path):
     if not file.exists():
         raise FileNotFoundError(file)
 
-    hasher = hashlib.new("sha256")
+    hasher = hashlib.new(HASH_ALGORITHM)
     with open(file, 'rb') as f:
         while True:
             data = f.read(65536)
