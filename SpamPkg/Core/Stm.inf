@@ -97,6 +97,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
 
 [PatchPcd]
+  # SHA256 Hash of the AuxBin file.
   gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
 
 [BuildOptions]

@@ -26,9 +26,9 @@ class GenSpamArtifacts(IUefiHelperPlugin):
         """Generates SPAM artifacts.
 
         Generates the following artifacts:
-        - MmSupervisorCore.aux
-        - MmSupervisorCore.efi
-        - Stm.bin
+        - MmSupervisorCore.aux (As build by gen_aux)
+        - MmSupervisorCore.efi (As Build by edk2 build system)
+        - Stm.bin (With the patched SHA256 hash of the MmSupervisorCore.aux file)
 
         Args:
             aux_config_path: Path to the aux gen config file.
