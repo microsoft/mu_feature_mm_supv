@@ -30,12 +30,12 @@ the key command (`[[key]]`) is a configuration option to tell the tool to genera
 
 ``` toml
 [[key]]
-signature = 'Required[u32]'
+signature = 'Required[[char; 4]]'
 symbol = 'Optional[String]'
 offset = 'Optional[u32]'
 ```
 
-- `signature`: The 4 byte signature used by the firmware to determine how to use the offset
+- `signature`: The 4 byte signature used by the firmware to determine how to use the offset (i.e. ['F', 'P', 'O', 'L'])
 - `symbol`: Used to calculate the offset value. Mutually exclusive to `offset`
 - `offset`: The offset used by the firmware. Mutually exclusive to `symbol`
 
