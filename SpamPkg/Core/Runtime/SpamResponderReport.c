@@ -834,7 +834,7 @@ SpamResponderReport (
 
   // First off, copy the firmware policy to the buffer
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
-  while (loop) {}
+
   // Then leave the heavy lifting job to the library
   Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
   if (EFI_ERROR (Status)) {
