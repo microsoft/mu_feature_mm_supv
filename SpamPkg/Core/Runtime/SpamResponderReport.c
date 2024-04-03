@@ -476,8 +476,6 @@ DumpSmmPolicyData (
 // TODO: Consume newly created key symbols
 extern UINT64 MmSupvEfiFileBase;
 extern UINT64 MmSupvEfiFileSize;
-extern UINT64 MmSupvAuxFileBase;
-extern UINT64 MmSupvAuxFileSize;
 
 EFI_STATUS
 EFIAPI
@@ -493,7 +491,7 @@ VerifyAndMeasureImage (
   EFI_STATUS          Status;
   BOOLEAN             IsInside;
   VOID                *InternalCopy;
-  TPML_DIGEST_VALUES  DigestList;
+  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
 
   // First need to make sure if this image is inside the MMRAM region
   Status = Range1InsideRange2 (ImageBase, ImageSize, MmBase, MmLength, &IsInside);
@@ -559,7 +557,7 @@ VerifyAndMeasureImage (
               SPAM_PCR_INDEX,
               (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
               (UINTN)NewBufferSize,
-              &DigestList
+              DigestList
               );
   if (!EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a Measured image at %p of size %x successfully.\n", __func__, NewBuffer, NewBufferSize, Status));
@@ -697,13 +695,13 @@ SpamResponderReport (
   // Step 2.1: Measure MMI entry code
   // Record SMI_ENTRY_HASH to PCR 0, just in case it is NOT TXT launch, we still need provide the evidence.
   // TCG_PCR_EVENT_HDR   NewEventHdr;
-  TPML_DIGEST_VALUES  DigestList;
+  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
 
   Status = HashAndExtend (
             SPAM_PCR_INDEX,
             (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
             (UINTN)SpamResponderData->MmEntrySize,
-            &DigestList
+            DigestList
             );
   if (!EFI_ERROR (Status)) {
     // TODO: Do we want to message with the event log?
@@ -712,7 +710,7 @@ SpamResponderReport (
     // NewEventHdr.EventType = SPAM_EVTYPE_MM_ENTRY_HASH;
     // NewEventHdr.EventSize = sizeof (EFI_TCG2_EVENT) - sizeof (NewEventHdr.Event) - sizeof (UINT32) - sizeof (EFI_TCG2_EVENT_HEADER);;
 
-    // Status = TcgDxeLogHashEvent (&DigestList, NewEventHdr, NewEventHdr.Event);
+    // Status = TcgDxeLogHashEvent (DigestList, NewEventHdr, NewEventHdr.Event);
   } else {
     goto Exit;
   }
@@ -818,8 +816,8 @@ SpamResponderReport (
   Status = VerifyAndMeasureImage (
              MmSupervisorBase,
              SpamResponderData->MmSupervisorSize,
-             MmSupvAuxFileBase,
-             MmSupvAuxFileSize,
+             SpamResponderData->MmSupervisorAuxBase,
+             SpamResponderData->MmSupervisorAuxSize,
              MmRamBase,
              Length
              );
