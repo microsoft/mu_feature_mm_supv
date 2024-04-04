@@ -199,7 +199,7 @@ def generate_stm_binary(stm_dll: Path, output_dir: Path):
     gen_stm = base_tools_dir / "Bin" / "Win32" / "GenStm.exe"
     cmd = str(gen_stm)
 
-    args = f"-e --debug 5 {stm_dll} -o {output_dir / "Stm.bin"}"
+    args = f"-e --debug 5 {stm_dll} -o {output_dir / 'Stm.bin'}"
     ret = RunCmd(cmd, args)
     if ret != 0:
         raise RuntimeError("GenStm failed. Review command output.")
