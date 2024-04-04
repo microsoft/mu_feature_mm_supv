@@ -17,6 +17,7 @@
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
+#include <Library/PcdLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/PeCoffLibNegative.h>
 #include <Library/Smx.h>
@@ -598,6 +599,7 @@ SpamResponderReport (
   UINT64                          MmSupervisorBase;
   UINT64                          FirmwarePolicyBase;
   UINT64                          SupvPageTableBase;
+  TPML_DIGEST_VALUES              DigestList[HASH_COUNT];
 
   KEY_SYMBOL                      *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL                      *PageTableSymbol = NULL;
@@ -672,6 +674,38 @@ SpamResponderReport (
     goto Exit;
   }
 
+  ZeroMem (DigestList, sizeof (DigestList));
+  Status = HashAndExtend (
+          SPAM_PCR_INDEX,
+          (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
+          (UINTN)SpamResponderData->MmSupervisorAuxSize,
+          DigestList
+          );
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  } else {
+    Status = EFI_NOT_FOUND;
+    for (Index = 0; Index < HASH_COUNT; Index++) {
+      if (DigestList[Index].count == 0) {
+        continue;
+      }
+
+      if (DigestList[Index].digests[0].hashAlg == TPM_ALG_SHA256) {
+        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID*)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
+          DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
+          Status = EFI_SECURITY_VIOLATION;
+          goto Exit;
+        } else {
+          Status = EFI_SUCCESS;
+          break;
+        }
+      }
+    }
+    if (EFI_ERROR (Status)) {
+      goto Exit;
+    }
+  }
+
   KEY_SYMBOL *KeySymbols = (KEY_SYMBOL*)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER*)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
   for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER*)SpamResponderData->MmSupervisorAuxBase)->KeySymbolCount; Index++) {
     switch (KeySymbols[Index].Signature) {
@@ -695,7 +729,6 @@ SpamResponderReport (
   // Step 2.1: Measure MMI entry code
   // Record SMI_ENTRY_HASH to PCR 0, just in case it is NOT TXT launch, we still need provide the evidence.
   // TCG_PCR_EVENT_HDR   NewEventHdr;
-  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
 
   Status = HashAndExtend (
             SPAM_PCR_INDEX,
