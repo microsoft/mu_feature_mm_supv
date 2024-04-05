@@ -25,7 +25,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
       obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
 
     @staticmethod
-    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, stm_build_dir: Path, output_dir: Path):
+    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path):
         """Generates SPAM artifacts.
 
         Generates the following artifacts:
@@ -36,10 +36,13 @@ class GenSpamArtifacts(IUefiHelperPlugin):
         Args:
             aux_config_path: Path to the aux gen config file.
             mm_supvervisor_build_dir: Path to the MM Supervisor build output.
-            stm_build_dir: Path to the STM build output.
+            spam_build_dir: Path to the Spam Package build output.
             output_dir: Path to place the artifacts.
         """
         try:
+            stm_build_dir = spam_build_dir / "Core" / "Stm" / "DEBUG"
+            mmi_build_dir = spam_build_dir / "MmiEntrySpam" / "MmiEntrySpam" / "OUTPUT"
+
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
             aux_hash = calculate_aux_hash(aux_path)
 
@@ -54,10 +57,42 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             patch_pcd_value(stm_dll, pcd_addr, aux_hash)
             generate_stm_binary(stm_dll, output_dir)
 
-            # Stm.bin and MmSuervisorCore.aux are already in the correct location
+            misc_dir = output_dir / "Misc"
+            misc_dir.mkdir(exist_ok=True)
+
+            # Copy over STM artifacts
+            shutil.copy2(
+                stm_build_dir / "Stm.map",
+                misc_dir / "Stm.map"
+            )
+
+            shutil.copy2(
+                stm_build_dir / "Stm.pdb",
+                misc_dir / "Stm.pdb"
+            )
+
+            # Copy over MmSupervisorCore artifacts
             shutil.copy2(
                 mm_supervisor_build_dir / "MmSupervisorCore.efi",
                 output_dir / "MmSupervisorCore.efi"
+            )
+            shutil.copy2(
+                mm_supervisor_build_dir / "MmSupervisorCore.map",
+                misc_dir / "MmSupervisorCore.map"
+            )
+            shutil.copy2(
+                mm_supervisor_build_dir / "MmSupervisorCore.pdb",
+                misc_dir / "MmSupervisorCore.pdb"
+            )
+
+            # Copy over MmiEntrySpam artifacts
+            shutil.copy2(
+                mmi_build_dir / "MmiEntrySpam.bin",
+                output_dir / "MmiEntrySpam.bin"
+            )
+            shutil.copy2(
+                mmi_build_dir / "MmiEntrySpam.lst",
+                misc_dir / "MmiEntrySpam.lst"
             )
 
         except FileNotFoundError as e:
