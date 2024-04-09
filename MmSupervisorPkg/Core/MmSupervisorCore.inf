@@ -11,7 +11,7 @@
 ##
 
 #Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 8b6b7f9000bbd3471ec17af24b35da63 | 2023-12-19T02-31-43 | 17ac308848f9bb64468030b5a8b5a78fe41e038f
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 5fbbc4f5ceefb10461111fdc474f3e06 | 2024-03-22T21-22-33 | 884e5da43136e0d56863ccb1c842fa74f10088ce
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | e9d4a69133813bbea71f4035493b26f6 | 2023-12-14T22-58-18 | 78db5a7c3d55d1389373187973bf2936f4bbe5fa
 
 [Defines]
@@ -151,6 +151,7 @@
   PerformanceLib
   CpuPageTableLib
   MmSaveStateLib
+  SmmCpuSyncLib
   PeCoffLibNegative
   HashLib
 
@@ -208,6 +209,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmMpTokenCountPerChunk               ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize       ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize      ## CONSUMES
 
 [FixedPcd.X64]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES
