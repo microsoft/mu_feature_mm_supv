@@ -15,6 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/SmmConfiguration.h>
 
 #include <Library/SynchronizationLib.h>
+#include <Library/SmmCpuSyncLib.h>
 
 #define INVALID_APIC_ID  0xFFFFFFFFFFFFFFFFULL
 
@@ -76,7 +77,6 @@ typedef struct {
   SPIN_LOCK                     *Busy;
   volatile EFI_AP_PROCEDURE2    Procedure;
   volatile VOID                 *Parameter;
-  volatile UINT32               *Run;
   volatile BOOLEAN              *Present;
   PROCEDURE_TOKEN               *Token;
   EFI_STATUS                    *Status;
@@ -94,7 +94,6 @@ typedef struct {
   // so that UC cache-ability can be set together.
   //
   SMM_CPU_DATA_BLOCK            *CpuData;
-  volatile UINT32               *Counter;
   volatile UINT32               BspIndex;
   volatile BOOLEAN              *InsideSmm;
   volatile BOOLEAN              *AllCpusInSync;
@@ -104,6 +103,7 @@ typedef struct {
   volatile BOOLEAN              AllApArrivedWithException;
   EFI_AP_PROCEDURE              StartupProcedure;
   VOID                          *StartupProcArgs;
+  SMM_CPU_SYNC_CONTEXT          *SyncContext;
 } SMM_DISPATCHER_MP_SYNC_DATA;
 
 extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
