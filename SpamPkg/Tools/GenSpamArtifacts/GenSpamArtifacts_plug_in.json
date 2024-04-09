@@ -1,0 +1,5 @@
+{
+  "scope": "global",
+  "name": "Spam Core Artifact File Generator",
+  "module": "GenSpamArtifacts"
+}
