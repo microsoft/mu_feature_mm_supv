@@ -590,6 +590,9 @@ SmmCpuFeaturesInstallSmiHandler (
     mMmiEntrySize
     );
 
+  mGdtrPtr[CpuIndex].Limit = (UINT16) GdtSize - 1;
+  mGdtrPtr[CpuIndex].Base = (UINTN) GdtBase;
+
   // Populate the fix up addresses
   // Get Whole structure size
   WholeStructSize = (UINT32)*(EFI_PHYSICAL_ADDRESS *)(UINTN)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof(UINT32));
