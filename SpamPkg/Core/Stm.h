@@ -622,7 +622,7 @@ DumpEventLog (
 
 **/
 VOID
-DumpVmxCapabillityMsr (
+DumpVmxCapabilityMsr (
   VOID
   );
 
@@ -980,7 +980,7 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
 
   //
   // TrustedRegionResource: This is MLE trusted region resource - no ResourceListContinuation
-  // TrustedRegionResource will be refered in software SMI only.
+  // TrustedRegionResource will be referred in software SMI only.
   //
   MLE_PROTECTED_RESOURCE_STRUCTURE    MleTrustedRegionResource;
 

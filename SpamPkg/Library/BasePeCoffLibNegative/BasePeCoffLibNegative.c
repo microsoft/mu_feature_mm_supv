@@ -886,14 +886,14 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
         ImageValidationEntryMemAttr = (IMAGE_VALIDATION_MEM_ATTR *)(ImageValidationEntryHdr);
-        if ((ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave == 0) && (ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave == 0)) {
+        if ((ImageValidationEntryMemAttr->TargetMemoryAttributeMustHave == 0) && (ImageValidationEntryMemAttr->TargetMemoryAttributeMustNotHave == 0)) {
           DEBUG ((
             DEBUG_ERROR,
             "%a: Current entry 0x%p has invalid must have 0x%x and must not have 0x%x\n",
             __func__,
             ImageValidationEntryMemAttr,
-            ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave,
-            ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave
+            ImageValidationEntryMemAttr->TargetMemoryAttributeMustHave,
+            ImageValidationEntryMemAttr->TargetMemoryAttributeMustNotHave
             ));
           Status = EFI_COMPROMISED_DATA;
           break;
@@ -904,7 +904,7 @@ PeCoffImageDiffValidation (
         CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
         Status = InspectTargetRangeAttribute (
                    AddrInTarget,
-                   ImageValidationEntryMemAttr->TargetMemeorySize,
+                   ImageValidationEntryMemAttr->TargetMemorySize,
                    &MemAttr
                    );
         if (EFI_ERROR (Status)) {
@@ -913,7 +913,7 @@ PeCoffImageDiffValidation (
             "%a: Failed to read memory attribute of 0x%p: 0x%x for entry at 0x%p - %r\n",
             __func__,
             AddrInTarget,
-            ImageValidationEntryMemAttr->TargetMemeorySize,
+            ImageValidationEntryMemAttr->TargetMemorySize,
             ImageValidationEntryMemAttr,
             Status
             ));
@@ -921,8 +921,8 @@ PeCoffImageDiffValidation (
         }
 
         // Check if the memory attributes of the target image meet the requirements
-        if (((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) != ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave) &&
-            ((MemAttr & ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave) != 0))
+        if (((MemAttr & ImageValidationEntryMemAttr->TargetMemoryAttributeMustHave) != ImageValidationEntryMemAttr->TargetMemoryAttributeMustHave) &&
+            ((MemAttr & ImageValidationEntryMemAttr->TargetMemoryAttributeMustNotHave) != 0))
         {
           DEBUG ((
             DEBUG_ERROR,
@@ -931,8 +931,8 @@ PeCoffImageDiffValidation (
             ImageValidationEntryHdr,
             ImageValidationEntryHdr->Size,
             MemAttr,
-            ImageValidationEntryMemAttr->TargetMemeoryAttributeMustHave,
-            ImageValidationEntryMemAttr->TargetMemeoryAttributeMustNotHave
+            ImageValidationEntryMemAttr->TargetMemoryAttributeMustHave,
+            ImageValidationEntryMemAttr->TargetMemoryAttributeMustNotHave
             ));
           Status = EFI_SECURITY_VIOLATION;
         } else {

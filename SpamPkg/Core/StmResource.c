@@ -1906,7 +1906,7 @@ RawFreeResource (
 
 /**
 
-  This functin duplicate STM resource list.
+  This function duplicate STM resource list.
 
   @param Resource STM resource list to be duplicated
 

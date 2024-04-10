@@ -1114,7 +1114,7 @@ InitializeSmmMonitor (
   Index = GetIndexFromStack (Register);
   if (Index == 0) {
     // The build process should make sure "virtual address" is same as "file pointer to raw data",
-    // in final PE/COFF image, so that we can let StmLoad load binrary to memory directly.
+    // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
     // If no, GenStm tool will "load image". So here, we just need "relocate image"
     RelocateStmImage (FALSE);
 

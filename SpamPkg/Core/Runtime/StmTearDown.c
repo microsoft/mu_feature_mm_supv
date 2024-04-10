@@ -77,7 +77,7 @@ StmTeardown (
 
   if (CurrentJoinedCpuNum == 0) {
     //
-    // If CurrentJoinedCpuNum is zero that means every CPUs has alraedy run code above, it is safe to clean up the environment.
+    // If CurrentJoinedCpuNum is zero that means every CPUs has already run code above, it is safe to clean up the environment.
     //
 
     STM_PERF_DUMP;

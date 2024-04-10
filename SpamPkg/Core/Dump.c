@@ -42,7 +42,7 @@ DATA_STR  mVmxCapabilityMsrStr[] = {
 
 **/
 VOID
-DumpVmxCapabillityMsr (
+DumpVmxCapabilityMsr (
   VOID
   )
 {

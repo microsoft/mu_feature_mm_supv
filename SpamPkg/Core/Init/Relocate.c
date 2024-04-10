@@ -263,7 +263,7 @@ RelocateStmImage (
 
     if (PeImageBase != 0) {
       //
-      // Build tool need gurantee it is 0-base address.
+      // Build tool need guarantee it is 0-base address.
       //
       CpuDeadLoop ();
     }

@@ -68,9 +68,9 @@ typedef struct {
 
 typedef struct {
   IMAGE_VALIDATION_ENTRY_HEADER    Header;
-  UINT64                           TargetMemeorySize;
-  UINT64                           TargetMemeoryAttributeMustHave;
-  UINT64                           TargetMemeoryAttributeMustNotHave;
+  UINT64                           TargetMemorySize;
+  UINT64                           TargetMemoryAttributeMustHave;
+  UINT64                           TargetMemoryAttributeMustNotHave;
 } IMAGE_VALIDATION_MEM_ATTR;
 
 typedef struct {

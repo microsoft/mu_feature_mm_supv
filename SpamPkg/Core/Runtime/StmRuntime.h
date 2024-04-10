@@ -677,7 +677,7 @@ IsResourceListOverlapWithNode (
 
 /**
 
-  This functin duplicate STM resource list.
+  This function duplicate STM resource list.
 
   @param Resource STM resource list to be duplicated
 
@@ -691,7 +691,7 @@ DuplicateResource (
 
 /**
 
-  This functin duplicate STM resource list.
+  This function duplicate STM resource list.
   This function will allocate page one by one, to duplicate resource
 
   @param Resource STM resource list to be duplicated

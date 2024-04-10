@@ -264,7 +264,7 @@ typedef enum {
   VmxFailErrorVmCallWithIncorrectMsegRevisionIdentifier,
   VmxFailErrorVmxOffUnderDualMonitorTreatmentOfSmisAndSmm,
   VmxFailErrorVmCallWithInvalidSmmMonitorFeatures,
-  VmxFailErrorVmEntryWithInvalidVmExectionControlFieldsInExecutiveVmcs,
+  VmxFailErrorVmEntryWithInvalidVmExecutionControlFieldsInExecutiveVmcs,
   VmxFailErrorVmEntryWithEventsBlockedByMovSs,
   VmxFailError27,
   VmxFailErrorInvalidOperandToInvEptInvVpid,
@@ -624,7 +624,7 @@ typedef union {
 #define INTERRUPT_TYPE_EXTERNAL_HARDWARE_EXCEPTION              3
 #define INTERRUPT_TYPE_EXTERNAL_SOFTWARE_INTERRUPT              4
 #define INTERRUPT_TYPE_EXTERNAL_PRIVILEDGED_SOFTWARE_EXCEPTION  5
-#define INTERRUPT_TYPE_EXTERNAL_SOFTWARE_EXCEPTIONT             6
+#define INTERRUPT_TYPE_EXTERNAL_SOFTWARE_EXCEPTION              6
 #define INTERRUPT_TYPE_OTHER_EVENT                              7
 
 typedef struct {

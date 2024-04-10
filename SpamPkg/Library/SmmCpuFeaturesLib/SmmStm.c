@@ -598,7 +598,7 @@ SmmCpuFeaturesInstallSmiHandler (
   SmiEntryStructHdrAddr = (UINT32)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof (UINT32) - WholeStructSize);
   SmiEntryStructHdrPtr  = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
 
-  // Navegiate to the fixup arrays
+  // Navigate to the fixup arrays
   FixStructPtr = (UINT16 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUpStructOffset);
   Fixup32Ptr   = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
   Fixup64Ptr   = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);

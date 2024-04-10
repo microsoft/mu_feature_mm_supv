@@ -60,7 +60,7 @@ AsmXRestore (
 
 /**
 
-  This function LOCK test and set bit, and return orginal bit.
+  This function LOCK test and set bit, and return original bit.
 
   @param BitIndex  Bit index
   @param Address   Bit string address
@@ -76,7 +76,7 @@ AsmTestAndSet (
 
 /**
 
-  This function LOCK test and reset (clear) bit, and return orginal bit.
+  This function LOCK test and reset (clear) bit, and return original bit.
 
   @param BitIndex  Bit index
   @param Address   Bit string address
@@ -627,7 +627,7 @@ typedef struct {
   This function invalidate EPT TLB.
 
   @param Type  INVEPT type
-  @param Addr  INVEPT desciptor
+  @param Addr  INVEPT descriptor
 
   @return RFLAGS if InvEpt fail
 
@@ -648,7 +648,7 @@ AsmInvEpt (
   This function invalidate VPID.
 
   @param Type  INVVPID type
-  @param Addr  INVVPID desciptor
+  @param Addr  INVVPID descriptor
 
   @return RFLAGS if InvVpid fail
 

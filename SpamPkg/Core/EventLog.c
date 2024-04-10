@@ -112,7 +112,7 @@ GetNextEmpty (
   }
 
   //
-  // Ohh, all the record are comsumed
+  // Ohh, all the record are consumed
   //
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];

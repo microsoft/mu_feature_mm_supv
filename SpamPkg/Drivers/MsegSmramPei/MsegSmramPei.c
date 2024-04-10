@@ -26,14 +26,14 @@
 #include <Library/PcdLib.h>
 
 /**
-  Retrieves the data structure associated witht he GUIDed HOB of type gEfiMmPeiMmramMemoryReserveGuid
+  Retrieves the data structure associated with the GUIDed HOB of type gEfiMmPeiMmramMemoryReserveGuid
 
   @retval NULL   A HOB of type gEfiMmPeiMmramMemoryReserveGuid could not be found.
   @retval !NULL  A pointer to the GUID data from a HIB of type gEfiMmPeiMmramMemoryReserveGuid
 
 **/
 EFI_SMRAM_HOB_DESCRIPTOR_BLOCK *
-GetSrmamHobData (
+GetSmramHobData (
   VOID
   )
 {
@@ -75,7 +75,7 @@ SplitSmramReserveHob (
   MsegSize = PcdGet32 (PcdCpuMsegSize);
 
   //
-  // Retrieve the GUID HOB data that contains the set of SMRAM descriptyors
+  // Retrieve the GUID HOB data that contains the set of SMRAM descriptors
   //
   GuidHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
   if (GuidHob == NULL) {
@@ -155,9 +155,9 @@ CreateMsegSmramHob (
   UINTN                           SmramRanges;
 
   //
-  // Retrieve the GUID HOB data that contains the set of SMRAM descriptyors
+  // Retrieve the GUID HOB data that contains the set of SMRAM descriptors
   //
-  DescriptorBlock = GetSrmamHobData ();
+  DescriptorBlock = GetSmramHobData ();
   if (DescriptorBlock == NULL) {
     return EFI_NOT_FOUND;
   }

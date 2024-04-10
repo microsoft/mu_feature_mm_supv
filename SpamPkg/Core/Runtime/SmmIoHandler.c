@@ -142,7 +142,7 @@ SmmIoHandler (
       LocalPciCfgDescPtr = (STM_RSC_PCI_CFG_DESC *)LocalPciCfgDescBuf;
       ZeroMem (LocalPciCfgDescBuf, sizeof (LocalPciCfgDescBuf));
       LocalPciCfgDescPtr->Hdr.RscType                  = PCI_CFG_RANGE;
-      LocalPciCfgDescPtr->Hdr.Length                   = sizeof (STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierachy here.
+      LocalPciCfgDescPtr->Hdr.Length                   = sizeof (STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierarchy here.
       LocalPciCfgDescPtr->RWAttributes                 = (Qualification.IoInstruction.Direction != 0) ? STM_RSC_PCI_CFG_R : STM_RSC_PCI_CFG_W;
       LocalPciCfgDescPtr->Base                         = REGISTER_FROM_CF8_ADDRESS (PciAddress) + (Port & 0x3);
       LocalPciCfgDescPtr->Length                       = (UINT16)(Qualification.IoInstruction.Size + 1);
