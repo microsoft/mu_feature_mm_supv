@@ -562,7 +562,7 @@ VerifyAndMeasureImage (
               DigestList
               );
   if (!EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a Measured image at %p of size %x successfully.\n", __func__, NewBuffer, NewBufferSize, Status));
+    DEBUG ((DEBUG_INFO, "%a Measured image at %p of size %x successfully.\n", __func__, NewBuffer, NewBufferSize));
   } else {
     DEBUG ((DEBUG_ERROR, "%a Failed to measure image at %p of size %x - %r\n", __func__, NewBuffer, NewBufferSize, Status));
   }
