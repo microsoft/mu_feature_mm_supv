@@ -2,7 +2,7 @@
 Defines necessary structures and constants for SMM supervisor usage.
 
 Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
-Copyright (C) Microsoft Corporation.
+Copyright (c) Microsoft Corporation.
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -60,9 +60,14 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define SPAM_RESPONDER_STRUCT_SIGNATURE  SIGNATURE_32 ('S', 'P', 'A', 'M')  
+#define SPAM_RESPONDER_STRUCT_SIGNATURE  SIGNATURE_32 ('S', 'P', 'A', 'M')
 #define SPAM_REPSONDER_STRUCT_MAJOR_VER  0x0000
 #define SPAM_REPSONDER_STRUCT_MINOR_VER  0x0001
+
+// Key Symbols for MmSupervisorCore
+#define KEY_SYMBOL_FW_POLICY_SIGNATURE   SIGNATURE_32 ('F', 'P', 'O', 'L')
+#define KEY_SYMBOL_PAGE_TBL_SIGNATURE    SIGNATURE_32 ('P', 'G', 'T', 'B')
+#define KEY_SYMBOL_MMI_RDV_SIGNATURE     SIGNATURE_32 ('M', 'R', 'D', 'V')
 
 #pragma pack(push,1)
 
@@ -73,21 +78,11 @@ typedef struct {
   UINT32                Size;
   UINT32                Reserved;
   UINT64                CpuIndex;
-  EFI_PHYSICAL_ADDRESS  MmEntryBase;
   UINT64                MmEntrySize;
-  EFI_PHYSICAL_ADDRESS  MmSupervisorBase;
   UINT64                MmSupervisorSize;
-  EFI_PHYSICAL_ADDRESS  MmSecurePolicyBase;
-  UINT64                MmSecurePolicySize;
-  UINT64                UserModuleOffset;
-  UINT64                UserModuleCount;
-  // USER_MODULE_INFO      UserModules[];
+  EFI_PHYSICAL_ADDRESS  MmSupervisorAuxBase;
+  UINT64                MmSupervisorAuxSize;
 } SPAM_RESPONDER_DATA;
-
-typedef struct {
-  EFI_PHYSICAL_ADDRESS  UserModuleBase;
-  UINT64                UserModuleSize;
-} USER_MODULE_INFO;
 
 #pragma pack(pop)
 
