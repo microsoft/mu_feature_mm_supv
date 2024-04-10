@@ -56,7 +56,7 @@ UINT64                MmSupvEfiFileSize;
 VOID   *mMmHobStart;
 UINTN  mMmHobSize;
 
-// Inidicator to check if this is the first MMI.
+// Indicator to check if this is the first MMI.
 STATIC BOOLEAN    mFirstMmi = TRUE;
 
 //

@@ -494,8 +494,6 @@ PopulateSpamInformation (
   mSpamResponderTemplate.MmSupervisorAuxBase = MmSupvAuxFileBase;
   mSpamResponderTemplate.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
-  CopyMem ((VOID *)(UINTN)(StackBase + StackSize - sizeof (SPAM_RESPONDER_DATA)), &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
-
   return EFI_SUCCESS;
 }
 
@@ -772,8 +770,7 @@ MmEndOfDxeEventNotify (
 
     StmHeader->SwStmHdr.PerProcDynamicMemorySize;
     SpamResponderData = (SPAM_RESPONDER_DATA*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
-                        sizeof (SPAM_RESPONDER_DATA) -
-                        (NoHandles - 1) * sizeof (USER_MODULE_INFO));
+                        sizeof (SPAM_RESPONDER_DATA));
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
     // TODO: Mark the region as supervisor read-only, or even read prevention...
