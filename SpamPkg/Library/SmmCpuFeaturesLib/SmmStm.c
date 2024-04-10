@@ -166,14 +166,10 @@ SPAM_RESPONDER_DATA mSpamResponderTemplate = {
   .Size = 0,
   .Reserved = 0,
   .CpuIndex = 0,
-  .MmEntryBase = 0,
   .MmEntrySize = 0,
-  .MmSupervisorBase = 0,
   .MmSupervisorSize = 0,
-  .MmSecurePolicyBase = 0,
-  .MmSecurePolicySize = 0,
-  .UserModuleOffset = sizeof (SPAM_RESPONDER_DATA),
-  .UserModuleCount = 0
+  .MmSupervisorAuxBase = 0,
+  .MmSupervisorAuxSize = 0
 };
 
 //
@@ -489,19 +485,14 @@ PopulateSpamInformation (
   IN UINTN                  StackSize
   )
 {
-  mSpamResponderTemplate.Signature          = SPAM_RESPONDER_STRUCT_SIGNATURE;
-  mSpamResponderTemplate.VersionMajor       = SPAM_REPSONDER_STRUCT_MAJOR_VER;
-  mSpamResponderTemplate.VersionMinor       = SPAM_REPSONDER_STRUCT_MINOR_VER;
-  mSpamResponderTemplate.Size               = sizeof (SPAM_RESPONDER_DATA);
-  mSpamResponderTemplate.CpuIndex           = CpuIndex;
-  mSpamResponderTemplate.MmEntryBase        = MmEntryBase;
-  mSpamResponderTemplate.MmEntrySize        = MmEntrySize;
-  mSpamResponderTemplate.MmSecurePolicyBase = (UINT64)FirmwarePolicy;
-  mSpamResponderTemplate.MmSecurePolicySize = FirmwarePolicy->Size;
-  mSpamResponderTemplate.UserModuleOffset   = 0;
-  mSpamResponderTemplate.UserModuleCount    = 0;
-
-  // TODO: Populate more user modules and fix up the size.
+  mSpamResponderTemplate.Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE;
+  mSpamResponderTemplate.VersionMajor        = SPAM_REPSONDER_STRUCT_MAJOR_VER;
+  mSpamResponderTemplate.VersionMinor        = SPAM_REPSONDER_STRUCT_MINOR_VER;
+  mSpamResponderTemplate.Size                = sizeof (SPAM_RESPONDER_DATA);
+  mSpamResponderTemplate.CpuIndex            = CpuIndex;
+  mSpamResponderTemplate.MmEntrySize         = MmEntrySize;
+  mSpamResponderTemplate.MmSupervisorAuxBase = MmSupvAuxFileBase;
+  mSpamResponderTemplate.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
   return EFI_SUCCESS;
 }
@@ -705,7 +696,6 @@ MmEndOfDxeEventNotify (
   EFI_HANDLE                         *HandleBuffer;
   EFI_STATUS                         Status;
   EFI_LOADED_IMAGE_PROTOCOL          *LoadedImage;
-  USER_MODULE_INFO                   *UserModuleBuffer = NULL;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   UINT32                             MsegBase;
   STM_HEADER                         *StmHeader;
@@ -771,25 +761,7 @@ MmEndOfDxeEventNotify (
                         &gEfiLoadedImageProtocolGuid,
                         (VOID **)&LoadedImage
                         );
-  mSpamResponderTemplate.MmSupervisorBase = (UINT64)(UINTN)LoadedImage->ImageBase;
   mSpamResponderTemplate.MmSupervisorSize = (UINT64)(UINTN)LoadedImage->ImageSize;
-
-  // Now we continue to the user modules information
-  mSpamResponderTemplate.UserModuleCount  = NoHandles - 1;
-  UserModuleBuffer = AllocateZeroPool ((NoHandles - 1) * sizeof (USER_MODULE_INFO));
-  for (Index = 1; Index < NoHandles; Index++) {
-    Status = gMmst->MmHandleProtocol (
-                           HandleBuffer[Index],
-                           &gEfiLoadedImageProtocolGuid,
-                           (VOID **)&LoadedImage
-                           );
-    if (EFI_ERROR (Status)) {
-      continue;
-    }
-
-    UserModuleBuffer[Index - 1].UserModuleBase = (UINT64)(UINTN)LoadedImage->ImageBase;
-    UserModuleBuffer[Index - 1].UserModuleSize = (UINT64)(UINTN)LoadedImage->ImageSize;
-  }
 
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
@@ -798,11 +770,9 @@ MmEndOfDxeEventNotify (
 
     StmHeader->SwStmHdr.PerProcDynamicMemorySize;
     SpamResponderData = (SPAM_RESPONDER_DATA*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
-                        sizeof (SPAM_RESPONDER_DATA) -
-                        (NoHandles - 1) * sizeof (USER_MODULE_INFO));
+                        sizeof (SPAM_RESPONDER_DATA));
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
-    CopyMem (SpamResponderData + 1, UserModuleBuffer, (NoHandles - 1) * sizeof (USER_MODULE_INFO));
     // TODO: Mark the region as supervisor read-only, or even read prevention...
 
     LongRsp = (VOID*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
@@ -817,9 +787,6 @@ Done:
     FreePool (HandleBuffer);
   }
 
-  if (UserModuleBuffer != NULL) {
-    FreePool (UserModuleBuffer);
-  }
   return Status;
 }
 
