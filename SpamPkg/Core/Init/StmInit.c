@@ -915,7 +915,7 @@ CommonInit (
   IA32_VMX_MISC_MSR  VmxMisc;
 
   AsmWriteCr4 (AsmReadCr4 () | CR4_OSFXSR | CR4_OSXMMEXCPT);
-  if (IsXStateSupoprted ()) {
+  if (IsXStateSupported ()) {
     AsmWriteCr4 (AsmReadCr4 () | CR4_OSXSAVE);
   }
 

@@ -81,7 +81,7 @@ IsBsp (
 
 **/
 BOOLEAN
-IsXStateSupoprted (
+IsXStateSupported (
   VOID
   )
 {
@@ -141,7 +141,7 @@ CalculateXStateSize (
   UINT32  Ecx;
   UINT32  Edx;
 
-  if (!IsXStateSupoprted ()) {
+  if (!IsXStateSupported ()) {
     // It is FxState size
     return 512;
   }

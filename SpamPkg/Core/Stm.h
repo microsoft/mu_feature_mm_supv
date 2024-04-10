@@ -181,7 +181,7 @@ IsBsp (
 
 **/
 BOOLEAN
-IsXStateSupoprted (
+IsXStateSupported (
   VOID
   );
 
