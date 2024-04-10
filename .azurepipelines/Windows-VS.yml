@@ -28,3 +28,7 @@ extends:
         Pkgs: 'MmSupervisorPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
         ArchList: $(arch_list)
+      TARGET_SPAM:
+        Pkgs: 'SpamPkg'
+        Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
+        ArchList: $(arch_list)
