@@ -36,8 +36,8 @@ StmPlatformLibSetMsrBitmaps (
 BOOLEAN
 EFIAPI
 StmPlatformLibMsrRead (
-  IN  UINT32     MsrIndex,
-  OUT UINT64     *Data
+  IN  UINT32  MsrIndex,
+  OUT UINT64  *Data
   );
 
 /**
@@ -52,8 +52,8 @@ StmPlatformLibMsrRead (
 BOOLEAN
 EFIAPI
 StmPlatformLibMsrWrite (
-  IN UINT32     MsrIndex,
-  IN UINT64     Data
+  IN UINT32  MsrIndex,
+  IN UINT64  Data
   );
 
 //
@@ -71,8 +71,8 @@ StmPlatformLibMsrWrite (
 VOID
 EFIAPI
 SetMsrBitmap (
-  IN UINT32  MsrIndex,
-  IN BOOLEAN MsrWrite
+  IN UINT32   MsrIndex,
+  IN BOOLEAN  MsrWrite
   );
 
 #endif

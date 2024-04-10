@@ -26,8 +26,8 @@ Is1GPageSupport (
   VOID
   )
 {
-  UINT32         RegEax;
-  UINT32         RegEdx;
+  UINT32  RegEax;
+  UINT32  RegEdx;
 
   AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
   if (RegEax >= 0x80000001) {
@@ -36,6 +36,7 @@ Is1GPageSupport (
       return TRUE;
     }
   }
+
   return FALSE;
 }
 
@@ -51,20 +52,20 @@ CreateIa32ePageTable (
   VOID
   )
 {
-  UINTN                             PageTable;
-  UINTN                             Index;
-  UINTN                             SubIndex;
-  UINT64                            *Pde;
-  UINT64                            *Pte;
-  UINT64                            *Pml4;
+  UINTN   PageTable;
+  UINTN   Index;
+  UINTN   SubIndex;
+  UINT64  *Pde;
+  UINT64  *Pte;
+  UINT64  *Pml4;
 
   PageTable = (UINTN)AllocatePages (6);
 
-  Pml4 = (UINT64*)(UINTN)PageTable;
+  Pml4       = (UINT64 *)(UINTN)PageTable;
   PageTable += SIZE_4KB;
-  *Pml4 = PageTable | IA32_PG_P;
+  *Pml4      = PageTable | IA32_PG_P;
 
-  Pde = (UINT64*)(UINTN)PageTable;
+  Pde = (UINT64 *)(UINTN)PageTable;
   Pte = Pde + SIZE_4KB / sizeof (*Pde);
 
   for (Index = 0; Index < 4; Index++) {
@@ -73,7 +74,7 @@ CreateIa32ePageTable (
 
     for (SubIndex = 0; SubIndex < SIZE_4KB / sizeof (*Pte); SubIndex++) {
       *Pte = (((Index << 9) + SubIndex) << 21) |
-        IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
+             IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
       Pte++;
     }
   }
@@ -95,14 +96,14 @@ CreateCompatiblePageTable (
   VOID
   )
 {
-  UINTN                             PageTable;
-  UINTN                             Index;
-  UINT32                            *Pte;
-  UINT32                            Address;
+  UINTN   PageTable;
+  UINTN   Index;
+  UINT32  *Pte;
+  UINT32  Address;
 
   PageTable = (UINTN)AllocatePages (1);
 
-  Pte = (UINT32*)(UINTN)PageTable;
+  Pte = (UINT32 *)(UINTN)PageTable;
 
   Address = 0;
   for (Index = 0; Index < SIZE_4KB / sizeof (*Pte); Index++) {
@@ -126,15 +127,15 @@ CreateCompatiblePaePageTable (
   VOID
   )
 {
-  UINTN                             PageTable;
-  UINTN                             Index;
-  UINTN                             SubIndex;
-  UINT64                            *Pde;
-  UINT64                            *Pte;
+  UINTN   PageTable;
+  UINTN   Index;
+  UINTN   SubIndex;
+  UINT64  *Pde;
+  UINT64  *Pte;
 
   PageTable = (UINTN)AllocatePages (5);
 
-  Pde = (UINT64*)(UINTN)PageTable;
+  Pde = (UINT64 *)(UINTN)PageTable;
   Pte = Pde + SIZE_4KB / sizeof (*Pde);
 
   for (Index = 0; Index < 4; Index++) {
@@ -143,7 +144,7 @@ CreateCompatiblePaePageTable (
 
     for (SubIndex = 0; SubIndex < SIZE_4KB / sizeof (*Pte); SubIndex++) {
       *Pte = (((Index << 9) + SubIndex) << 21) |
-        IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
+             IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
       Pte++;
     }
   }
@@ -163,54 +164,54 @@ CreateHostPaging (
   VOID
   )
 {
-  UINTN                             PageTable;
-  UINTN                             Index;
-  UINTN                             SubIndex;
-  UINTN                             Pml4Index;
-  UINT64                            *Pde;
-  UINT64                            *Pte;
-  UINT64                            *Pml4;
-  UINT64                            BaseAddress;
-  UINTN                             NumberOfPml4EntriesNeeded;
-  UINTN                             NumberOfPdpEntriesNeeded;
+  UINTN   PageTable;
+  UINTN   Index;
+  UINTN   SubIndex;
+  UINTN   Pml4Index;
+  UINT64  *Pde;
+  UINT64  *Pte;
+  UINT64  *Pml4;
+  UINT64  BaseAddress;
+  UINTN   NumberOfPml4EntriesNeeded;
+  UINTN   NumberOfPdpEntriesNeeded;
 
-  if (sizeof(UINTN) == sizeof(UINT64)) {
+  if (sizeof (UINTN) == sizeof (UINT64)) {
     PageTable = AsmReadCr3 ();
-    Pml4 = (UINT64 *)PageTable;
+    Pml4      = (UINT64 *)PageTable;
 
     if (mHostContextCommon.PhysicalAddressBits <= 39) {
       NumberOfPml4EntriesNeeded = 1;
-      NumberOfPdpEntriesNeeded = (UINTN)LShiftU64 (1, mHostContextCommon.PhysicalAddressBits - 30);
+      NumberOfPdpEntriesNeeded  = (UINTN)LShiftU64 (1, mHostContextCommon.PhysicalAddressBits - 30);
     } else {
       NumberOfPml4EntriesNeeded = (UINTN)LShiftU64 (1, mHostContextCommon.PhysicalAddressBits - 39);
-      NumberOfPdpEntriesNeeded = 512;
+      NumberOfPdpEntriesNeeded  = 512;
     }
 
     BaseAddress = BASE_4GB;
     for (Pml4Index = 0; Pml4Index < NumberOfPml4EntriesNeeded; Pml4Index++) {
       if (Pml4Index > 0) {
-        Pde = (UINT64 *)(UINTN)AllocatePages (1);
+        Pde             = (UINT64 *)(UINTN)AllocatePages (1);
         Pml4[Pml4Index] = (UINT64)(UINTN)Pde | IA32_PG_P;
-        Index = 0;
+        Index           = 0;
       } else {
         // Start from 4G - Pml4[0] already allocated.
-        Pde = (UINT64 *)(UINTN)(Pml4[0] & 0xFFFFF000);
+        Pde   = (UINT64 *)(UINTN)(Pml4[0] & 0xFFFFF000);
         Index = 4;
       }
 
-      if (Is1GPageSupport()) {
-        for (; Index < NumberOfPdpEntriesNeeded; Index++) {
-          Pde[Index] = (UINT64)(UINTN)BaseAddress | IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
+      if (Is1GPageSupport ()) {
+        for ( ; Index < NumberOfPdpEntriesNeeded; Index++) {
+          Pde[Index]   = (UINT64)(UINTN)BaseAddress | IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
           BaseAddress += SIZE_1GB;
         }
       } else {
-        for (; Index < NumberOfPdpEntriesNeeded; Index++) {
-          Pte = (UINT64 *)AllocatePages (1);
+        for ( ; Index < NumberOfPdpEntriesNeeded; Index++) {
+          Pte        = (UINT64 *)AllocatePages (1);
           Pde[Index] = (UINT64)(UINTN)Pte | IA32_PG_P;
 
-          for (SubIndex = 0; SubIndex < SIZE_4KB / sizeof(*Pte); SubIndex++) {
+          for (SubIndex = 0; SubIndex < SIZE_4KB / sizeof (*Pte); SubIndex++) {
             Pte[SubIndex] = BaseAddress | IA32_PG_PS | IA32_PG_RW | IA32_PG_P;
-            BaseAddress += SIZE_2MB;
+            BaseAddress  += SIZE_2MB;
           }
         }
       }

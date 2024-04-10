@@ -44,8 +44,8 @@ TxtPubRead32 (
 **/
 VOID
 TxtPubWrite32 (
-  IN UINTN  Offset,
-  IN UINT32 Data
+  IN UINTN   Offset,
+  IN UINT32  Data
   )
 {
   MmioWrite32 (TXT_PUBLIC_SPACE + Offset, Data);
@@ -78,8 +78,8 @@ TxtPubRead64 (
 **/
 VOID
 TxtPubWrite64 (
-  IN UINTN  Offset,
-  IN UINT64 Data
+  IN UINTN   Offset,
+  IN UINT64  Data
   )
 {
   MmioWrite64 (TXT_PUBLIC_SPACE + Offset, Data);
@@ -112,8 +112,8 @@ TxtPriRead32 (
 **/
 VOID
 TxtPriWrite32 (
-  IN UINTN  Offset,
-  IN UINT32 Data
+  IN UINTN   Offset,
+  IN UINT32  Data
   )
 {
   MmioWrite32 (TXT_PRIVATE_SPACE + Offset, Data);
@@ -146,8 +146,8 @@ TxtPriRead64 (
 **/
 VOID
 TxtPriWrite64 (
-  IN UINTN  Offset,
-  IN UINT64 Data
+  IN UINTN   Offset,
+  IN UINT64  Data
   )
 {
   MmioWrite64 (TXT_PRIVATE_SPACE + Offset, Data);
@@ -276,7 +276,7 @@ GetTxtHeap (
   VOID
   )
 {
-  VOID           *TxtHeap;
+  VOID  *TxtHeap;
 
   TxtHeap = (VOID *)(UINTN)TxtPubRead32 (TXT_HEAP_BASE);
 
@@ -314,8 +314,9 @@ GetTxtBiosToOsData (
   VOID
   )
 {
-  UINT64 *Data;
-  Data = GetTxtHeap ();
+  UINT64  *Data;
+
+  Data  = GetTxtHeap ();
   Data += 1; // Skip size
   return (TXT_BIOS_TO_OS_DATA *)Data;
 }
@@ -332,10 +333,11 @@ GetTxtOsToMleData (
   VOID
   )
 {
-  UINT64 *Data;
-  Data = (UINT64 *)GetTxtBiosToOsData ();
+  UINT64  *Data;
+
+  Data  = (UINT64 *)GetTxtBiosToOsData ();
   Data -= 1; // Ptr to size
-  Data = (UINT64 *)(UINTN)((UINTN)Data + *Data);
+  Data  = (UINT64 *)(UINTN)((UINTN)Data + *Data);
   Data += 1; // Skip size
   return (VOID *)Data;
 }
@@ -352,10 +354,11 @@ GetTxtOsToSinitData (
   VOID
   )
 {
-  UINT64 *Data;
-  Data = (UINT64 *)GetTxtOsToMleData ();
+  UINT64  *Data;
+
+  Data  = (UINT64 *)GetTxtOsToMleData ();
   Data -= 1; // Ptr to size
-  Data = (UINT64 *)(UINTN)((UINTN)Data + *Data);
+  Data  = (UINT64 *)(UINTN)((UINTN)Data + *Data);
   Data += 1; // Skip size
   return (TXT_OS_TO_SINIT_DATA *)Data;
 }
@@ -372,10 +375,11 @@ GetTxtSinitToMleData (
   VOID
   )
 {
-  UINT64 *Data;
-  Data = (UINT64 *)GetTxtOsToSinitData ();
+  UINT64  *Data;
+
+  Data  = (UINT64 *)GetTxtOsToSinitData ();
   Data -= 1; // Ptr to size
-  Data = (UINT64 *)(UINTN)((UINTN)Data + *Data);
+  Data  = (UINT64 *)(UINTN)((UINTN)Data + *Data);
   Data += 1; // Skip size
   return (TXT_SINIT_TO_MLE_DATA *)Data;
 }
@@ -392,10 +396,11 @@ GetTxtHeapOccupiedSize (
   VOID
   )
 {
-  UINT64 *Data;
-  Data = (UINT64 *)GetTxtSinitToMleData ();
+  UINT64  *Data;
+
+  Data  = (UINT64 *)GetTxtSinitToMleData ();
   Data -= 1; // Ptr to size
-  Data = (UINT64 *)(UINTN)((UINTN)Data + *Data);
+  Data  = (UINT64 *)(UINTN)((UINTN)Data + *Data);
 
   return (UINTN)Data - (UINTN)GetTxtHeap ();
 }

@@ -79,7 +79,7 @@ SmiVmcallStopHandler (
   IN UINT64  AddressParameter
   )
 {
-  X86_REGISTER                       *Reg;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
@@ -89,7 +89,7 @@ SmiVmcallStopHandler (
   DEBUG ((EFI_D_INFO, "STM_API_STOP:\n"));
   SmmTeardown (Index);
   WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
-  VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN(VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
+  VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
   StmTeardown (Index);
   CpuDeadLoop ();
 
@@ -112,10 +112,10 @@ SmiVmcallProtectResourceHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_RSC                            *StmResource;
-  STM_RSC                            *BiosResource;
-  STM_STATUS                         Status;
-  STM_RSC                            *LocalBuffer;
+  STM_RSC     *StmResource;
+  STM_RSC     *BiosResource;
+  STM_STATUS  Status;
+  STM_RSC     *LocalBuffer;
 
   // ECX:EBX - STM_RESOURCE_LIST
   AcquireSpinLock (&mHostContextCommon.SmiVmcallLock);
@@ -128,6 +128,7 @@ SmiVmcallProtectResourceHandler (
       ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
       return ERROR_STM_MALFORMED_RESOURCE_LIST;
     }
+
     mGuestContextCommonSmm.BiosHwResourceRequirementsPtr = (UINT64)(UINTN)DuplicateResource ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[0].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
     RegisterBiosResource ((STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr);
   }
@@ -151,6 +152,7 @@ SmiVmcallProtectResourceHandler (
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_MALFORMED_RESOURCE_LIST;
   }
+
   DEBUG ((EFI_D_INFO, "IsResourceListValid pass!\n"));
 
   BiosResource = (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr;
@@ -160,6 +162,7 @@ SmiVmcallProtectResourceHandler (
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_UNPROTECTABLE_RESOURCE;
   }
+
   DEBUG ((EFI_D_INFO, "IsResourceListOverlap pass!\n"));
 
   Status = AddProtectedResource (&mHostContextCommon.MleProtectedResource, StmResource);
@@ -169,6 +172,7 @@ SmiVmcallProtectResourceHandler (
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return Status;
   }
+
   AddProtectedResourceWithType (&mHostContextCommon.MleProtectedTrappedIoResource, StmResource, TRAPPED_IO_RANGE);
 
   RegisterProtectedResource (StmResource);
@@ -195,8 +199,8 @@ SmiVmcallUnprotectResourceHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_RSC                            *StmResource;
-  STM_RSC                            *LocalBuffer;
+  STM_RSC  *StmResource;
+  STM_RSC  *LocalBuffer;
 
   // ECX:EBX - STM_RESOURCE_LIST
   AcquireSpinLock (&mHostContextCommon.SmiVmcallLock);
@@ -219,6 +223,7 @@ SmiVmcallUnprotectResourceHandler (
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_MALFORMED_RESOURCE_LIST;
   }
+
   DEBUG ((EFI_D_INFO, "IsResourceListValid pass!\n"));
 
   DumpStmResource (StmResource);
@@ -249,10 +254,10 @@ SmiVmcallGetBiosResourcesHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_RSC                            *BiosResource;
-  UINTN                              BiosResourceSize;
-  UINT32                             PageNum;
-  X86_REGISTER                       *Reg;
+  STM_RSC       *BiosResource;
+  UINTN         BiosResourceSize;
+  UINT32        PageNum;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
@@ -268,27 +273,28 @@ SmiVmcallGetBiosResourcesHandler (
       ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
       return ERROR_STM_MALFORMED_RESOURCE_LIST;
     }
+
     mGuestContextCommonSmm.BiosHwResourceRequirementsPtr = (UINT64)(UINTN)DuplicateResource ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[0].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
     RegisterBiosResource ((STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr);
   }
 
   PageNum = (UINT32)Reg->Rdx;
 
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, STM_PAGES_TO_SIZE(PageNum + 1), TRUE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, STM_PAGES_TO_SIZE (PageNum + 1), TRUE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_SECURITY_VIOLATION;
   }
 
-  BiosResource = (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr;
+  BiosResource     = (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr;
   BiosResourceSize = GetSizeFromResource (BiosResource);
   if (BiosResourceSize == 0) {
-    ReleaseSpinLock(&mHostContextCommon.SmiVmcallLock);
+    ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_SECURITY_VIOLATION;
   }
 
   DEBUG ((EFI_D_INFO, "BiosResource (%d) - %016lx(%08x), PageCount - %d\n", (UINTN)Index, (UINT64)(UINTN)BiosResource, (UINTN)BiosResourceSize, (UINTN)PageNum));
-//  DumpStmResource (BiosResource);
+  //  DumpStmResource (BiosResource);
 
   ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
 
@@ -296,6 +302,7 @@ SmiVmcallGetBiosResourcesHandler (
     WriteUnaligned32 ((UINT32 *)&Reg->Rdx, 0);
     return ERROR_STM_PAGE_NOT_FOUND;
   }
+
   // Write data
   CopyMem (
     (VOID *)(UINTN)AddressParameter,
@@ -328,15 +335,15 @@ SmiVmcallManageVmcsDatabaseHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_VMCS_DATABASE_REQUEST          *VmcsDatabaseRequest;
-  STM_STATUS                         Status;
-  STM_VMCS_DATABASE_REQUEST          LocalBuffer;
+  STM_VMCS_DATABASE_REQUEST  *VmcsDatabaseRequest;
+  STM_STATUS                 Status;
+  STM_VMCS_DATABASE_REQUEST  LocalBuffer;
 
   // ECX:EBX - STM_VMCS_DATABASE_REQUEST
   AcquireSpinLock (&mHostContextCommon.SmiVmcallLock);
   DEBUG ((EFI_D_INFO, "STM_API_MANAGE_VMCS_DATABASE:\n"));
 
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof(STM_VMCS_DATABASE_REQUEST), TRUE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_VMCS_DATABASE_REQUEST), TRUE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_SECURITY_VIOLATION;
@@ -345,7 +352,7 @@ SmiVmcallManageVmcsDatabaseHandler (
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(LocalBuffer));
+  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (LocalBuffer));
 
   VmcsDatabaseRequest = (STM_VMCS_DATABASE_REQUEST *)&LocalBuffer;
 
@@ -378,10 +385,10 @@ SmiVmcallEventNewLogHandler (
   IN UINT64  AddressParameter
   )
 {
-  UINT32                             PageIndex;
-  STM_EVENT_LOG_MANAGEMENT_REQUEST   *EventLogRequest;
-  UINTN                              PageCount;
-  UINT8                              LocalBuffer[SIZE_4KB];
+  UINT32                            PageIndex;
+  STM_EVENT_LOG_MANAGEMENT_REQUEST  *EventLogRequest;
+  UINTN                             PageCount;
+  UINT8                             LocalBuffer[SIZE_4KB];
 
   //
   // SmiVmcallManageEventLogHandler already checked [AddressParameter, sizeof(STM_EVENT_LOG_MANAGEMENT_REQUEST)]
@@ -396,18 +403,20 @@ SmiVmcallEventNewLogHandler (
   if (PageCount == 0) {
     return ERROR_STM_INVALID_PAGECOUNT;
   }
-  if (PageCount > ((SIZE_4KB - sizeof(STM_EVENT_LOG_MANAGEMENT_REQUEST)) / sizeof(UINT64))) {
+
+  if (PageCount > ((SIZE_4KB - sizeof (STM_EVENT_LOG_MANAGEMENT_REQUEST)) / sizeof (UINT64))) {
     return ERROR_STM_INVALID_PAGECOUNT;
   }
-  if (!IsGuestAddressValid((UINTN)AddressParameter, sizeof(STM_EVENT_LOG_MANAGEMENT_REQUEST) + (PageCount - 1) * sizeof(UINT64), TRUE)) {
-    DEBUG((EFI_D_ERROR, "Security Violation!\n"));
+
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_EVENT_LOG_MANAGEMENT_REQUEST) + (PageCount - 1) * sizeof (UINT64), TRUE)) {
+    DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
 
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(STM_EVENT_LOG_MANAGEMENT_REQUEST) + (PageCount - 1) * sizeof(UINT64));
+  CopyMem (LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (STM_EVENT_LOG_MANAGEMENT_REQUEST) + (PageCount - 1) * sizeof (UINT64));
 
   // ECX:EBX - STM_EVENT_LOG_MANAGEMENT_REQUEST
   EventLogRequest = (STM_EVENT_LOG_MANAGEMENT_REQUEST *)LocalBuffer;
@@ -415,7 +424,7 @@ SmiVmcallEventNewLogHandler (
   // Check if local copy matches previous PageCount
   //
   if (PageCount != (UINTN)EventLogRequest->Data.LogBuffer.PageCount) {
-    DEBUG((EFI_D_ERROR, "Security Violation!\n"));
+    DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
 
@@ -427,6 +436,7 @@ SmiVmcallEventNewLogHandler (
       return ERROR_STM_SECURITY_VIOLATION;
     }
   }
+
   DEBUG ((EFI_D_INFO, "\n"));
 
   if (mHostContextCommon.EventLog.State != EvtInvalid) {
@@ -435,7 +445,7 @@ SmiVmcallEventNewLogHandler (
 
   mHostContextCommon.EventLog.PageCount = EventLogRequest->Data.LogBuffer.PageCount;
   // Check page in MLE memory
-  CopyMem (mHostContextCommon.EventLog.Pages, EventLogRequest->Data.LogBuffer.Pages, EventLogRequest->Data.LogBuffer.PageCount * sizeof(UINT64));
+  CopyMem (mHostContextCommon.EventLog.Pages, EventLogRequest->Data.LogBuffer.Pages, EventLogRequest->Data.LogBuffer.PageCount * sizeof (UINT64));
 
   mHostContextCommon.EventLog.State = EvtLogStopped;
 
@@ -458,13 +468,13 @@ SmiVmcallEventConfigureLogHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_EVENT_LOG_MANAGEMENT_REQUEST   *EventLogRequest;
-  STM_EVENT_LOG_MANAGEMENT_REQUEST   LocalBuffer;
+  STM_EVENT_LOG_MANAGEMENT_REQUEST  *EventLogRequest;
+  STM_EVENT_LOG_MANAGEMENT_REQUEST  LocalBuffer;
 
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(LocalBuffer));
+  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (LocalBuffer));
 
   // ECX:EBX - STM_EVENT_LOG_MANAGEMENT_REQUEST
   EventLogRequest = (STM_EVENT_LOG_MANAGEMENT_REQUEST *)&LocalBuffer;
@@ -473,12 +483,15 @@ SmiVmcallEventConfigureLogHandler (
   if (mHostContextCommon.EventLog.State == EvtInvalid) {
     return ERROR_STM_LOG_NOT_ALLOCATED;
   }
+
   if (mHostContextCommon.EventLog.State == EvtLogStarted) {
     return ERROR_STM_LOG_NOT_STOPPED;
   }
+
   if (EventLogRequest->Data.EventEnableBitmap >= (1 << EvtMleMax)) {
     return ERROR_STM_RESERVED_BIT_SET;
   }
+
   mHostContextCommon.EventLog.EventEnableBitmap = EventLogRequest->Data.EventEnableBitmap;
 
   return STM_SUCCESS;
@@ -500,21 +513,24 @@ SmiVmcallEventStartLogHandler (
   IN UINT64  AddressParameter
   )
 {
-  LOG_ENTRY_DATA                     LogEntryData;
+  LOG_ENTRY_DATA  LogEntryData;
 
   DEBUG ((EFI_D_INFO, "START_LOG:\n"));
   if (mHostContextCommon.EventLog.State == EvtInvalid) {
     return ERROR_STM_LOG_NOT_ALLOCATED;
   }
+
   if (mHostContextCommon.EventLog.State == EvtLogStarted) {
     return ERROR_STM_LOG_NOT_STOPPED;
   }
+
   if (mHostContextCommon.EventLog.EventEnableBitmap == 0) {
     return ERROR_STM_NO_EVENTS_ENABLED;
   }
+
   mHostContextCommon.EventLog.State = EvtLogStarted;
-  LogEntryData.Started.Reserved = 0;
-  AddEventLog (EvtLogStarted, &LogEntryData, sizeof(LogEntryData.Started), &mHostContextCommon.EventLog);
+  LogEntryData.Started.Reserved     = 0;
+  AddEventLog (EvtLogStarted, &LogEntryData, sizeof (LogEntryData.Started), &mHostContextCommon.EventLog);
 
   return STM_SUCCESS;
 }
@@ -535,17 +551,19 @@ SmiVmcallEventStopLogHandler (
   IN UINT64  AddressParameter
   )
 {
-  LOG_ENTRY_DATA                     LogEntryData;
+  LOG_ENTRY_DATA  LogEntryData;
 
   DEBUG ((EFI_D_INFO, "STOP_LOG:\n"));
   if (mHostContextCommon.EventLog.State == EvtInvalid) {
     return ERROR_STM_LOG_NOT_ALLOCATED;
   }
+
   if (mHostContextCommon.EventLog.State == EvtLogStopped) {
     return ERROR_STM_LOG_NOT_STARTED;
   }
+
   LogEntryData.Stopped.Reserved = 0;
-  AddEventLog (EvtLogStopped, &LogEntryData, sizeof(LogEntryData.Stopped), &mHostContextCommon.EventLog);
+  AddEventLog (EvtLogStopped, &LogEntryData, sizeof (LogEntryData.Stopped), &mHostContextCommon.EventLog);
   mHostContextCommon.EventLog.State = EvtLogStopped;
 
   return STM_SUCCESS;
@@ -571,9 +589,11 @@ SmiVmcallEventClearLogHandler (
   if (mHostContextCommon.EventLog.State == EvtInvalid) {
     return ERROR_STM_LOG_NOT_ALLOCATED;
   }
+
   if (mHostContextCommon.EventLog.State == EvtLogStarted) {
     return ERROR_STM_LOG_NOT_STOPPED;
   }
+
   ClearEventLog (&mHostContextCommon.EventLog);
 
   return STM_SUCCESS;
@@ -599,22 +619,23 @@ SmiVmcallEventDeleteLogHandler (
   if (mHostContextCommon.EventLog.State == EvtLogStarted) {
     return ERROR_STM_LOG_NOT_STOPPED;
   }
-  mHostContextCommon.EventLog.State = (UINT32)EvtInvalid;
+
+  mHostContextCommon.EventLog.State             = (UINT32)EvtInvalid;
   mHostContextCommon.EventLog.EventSerialNumber = 0;
   mHostContextCommon.EventLog.EventEnableBitmap = 0;
-  mHostContextCommon.EventLog.PageCount = 0;
-  ZeroMem (mHostContextCommon.EventLog.Pages, STM_PAGES_TO_SIZE(1));
+  mHostContextCommon.EventLog.PageCount         = 0;
+  ZeroMem (mHostContextCommon.EventLog.Pages, STM_PAGES_TO_SIZE (1));
 
   return STM_SUCCESS;
 }
 
 STM_VMCALL_HANDLER_STRUCT  mSmiVmcallEventLogHandler[] = {
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_NEW_LOG,        SmiVmcallEventNewLogHandler},
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_CONFIGURE_LOG,  SmiVmcallEventConfigureLogHandler},
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_START_LOG,      SmiVmcallEventStartLogHandler},
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_STOP_LOG,       SmiVmcallEventStopLogHandler},
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_CLEAR_LOG,      SmiVmcallEventClearLogHandler},
-  {STM_EVENT_LOG_MANAGEMENT_REQUEST_DELETE_LOG,     SmiVmcallEventDeleteLogHandler},
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_NEW_LOG,       SmiVmcallEventNewLogHandler       },
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_CONFIGURE_LOG, SmiVmcallEventConfigureLogHandler },
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_START_LOG,     SmiVmcallEventStartLogHandler     },
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_STOP_LOG,      SmiVmcallEventStopLogHandler      },
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_CLEAR_LOG,     SmiVmcallEventClearLogHandler     },
+  { STM_EVENT_LOG_MANAGEMENT_REQUEST_DELETE_LOG,    SmiVmcallEventDeleteLogHandler    },
 };
 
 /**
@@ -632,11 +653,13 @@ GetSmiVmcallEventLogHandlerByIndex (
   )
 {
   UINTN  Index;
-  for (Index = 0; Index < sizeof(mSmiVmcallEventLogHandler)/sizeof(mSmiVmcallEventLogHandler[0]); Index++) {
+
+  for (Index = 0; Index < sizeof (mSmiVmcallEventLogHandler)/sizeof (mSmiVmcallEventLogHandler[0]); Index++) {
     if (mSmiVmcallEventLogHandler[Index].FuncIndex == FuncIndex) {
       return mSmiVmcallEventLogHandler[Index].StmVmcallHandler;
     }
   }
+
   return NULL;
 }
 
@@ -656,9 +679,9 @@ SmiVmcallManageEventLogHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_EVENT_LOG_MANAGEMENT_REQUEST   *EventLogRequest;
-  STM_STATUS                         Status;
-  STM_VMCALL_HANDLER                 StmVmcallHandler;
+  STM_EVENT_LOG_MANAGEMENT_REQUEST  *EventLogRequest;
+  STM_STATUS                        Status;
+  STM_VMCALL_HANDLER                StmVmcallHandler;
 
   // ECX:EBX - STM_EVENT_LOG_MANAGEMENT_REQUEST
   AcquireSpinLock (&mHostContextCommon.SmiVmcallLock);
@@ -666,7 +689,7 @@ SmiVmcallManageEventLogHandler (
 
   EventLogRequest = (STM_EVENT_LOG_MANAGEMENT_REQUEST *)(UINTN)AddressParameter;
 
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof(STM_EVENT_LOG_MANAGEMENT_REQUEST), TRUE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_EVENT_LOG_MANAGEMENT_REQUEST), TRUE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     ReleaseSpinLock (&mHostContextCommon.SmiVmcallLock);
     return ERROR_STM_SECURITY_VIOLATION;
@@ -688,14 +711,14 @@ SmiVmcallManageEventLogHandler (
 }
 
 STM_VMCALL_HANDLER_STRUCT  mSmiVmcallHandler[] = {
-  {STM_API_START,                              SmiVmcallStartHandler},
-  {STM_API_STOP,                               SmiVmcallStopHandler},
-  {STM_API_PROTECT_RESOURCE,                   SmiVmcallProtectResourceHandler},
-  {STM_API_UNPROTECT_RESOURCE,                 SmiVmcallUnprotectResourceHandler},
-  {STM_API_GET_BIOS_RESOURCES,                 SmiVmcallGetBiosResourcesHandler},
-  {STM_API_MANAGE_VMCS_DATABASE,               SmiVmcallManageVmcsDatabaseHandler},
-  {STM_API_INITIALIZE_PROTECTION,              SmiVmcallInitializeProtectionHandler},
-  {STM_API_MANAGE_EVENT_LOG,                   SmiVmcallManageEventLogHandler},
+  { STM_API_START,                 SmiVmcallStartHandler                },
+  { STM_API_STOP,                  SmiVmcallStopHandler                 },
+  { STM_API_PROTECT_RESOURCE,      SmiVmcallProtectResourceHandler      },
+  { STM_API_UNPROTECT_RESOURCE,    SmiVmcallUnprotectResourceHandler    },
+  { STM_API_GET_BIOS_RESOURCES,    SmiVmcallGetBiosResourcesHandler     },
+  { STM_API_MANAGE_VMCS_DATABASE,  SmiVmcallManageVmcsDatabaseHandler   },
+  { STM_API_INITIALIZE_PROTECTION, SmiVmcallInitializeProtectionHandler },
+  { STM_API_MANAGE_EVENT_LOG,      SmiVmcallManageEventLogHandler       },
 };
 
 /**
@@ -713,11 +736,13 @@ GetSmiVmcallHandlerByIndex (
   )
 {
   UINTN  Index;
-  for (Index = 0; Index < sizeof(mSmiVmcallHandler)/sizeof(mSmiVmcallHandler[0]); Index++) {
+
+  for (Index = 0; Index < sizeof (mSmiVmcallHandler)/sizeof (mSmiVmcallHandler[0]); Index++) {
     if (mSmiVmcallHandler[Index].FuncIndex == FuncIndex) {
       return mSmiVmcallHandler[Index].StmVmcallHandler;
     }
   }
+
   return NULL;
 }
 
@@ -733,10 +758,10 @@ SmiVmcallHandler (
   IN UINT32  Index
   )
 {
-  X86_REGISTER                       *Reg;
-  STM_STATUS                         Status;
-  STM_VMCALL_HANDLER                 StmVmcallHandler;
-  UINT64                             AddressParameter;
+  X86_REGISTER        *Reg;
+  STM_STATUS          Status;
+  STM_VMCALL_HANDLER  StmVmcallHandler;
+  UINT64              AddressParameter;
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
@@ -748,17 +773,18 @@ SmiVmcallHandler (
     Status = ERROR_INVALID_API;
   } else {
     AddressParameter = ReadUnaligned32 ((UINT32 *)&Reg->Rbx) + LShiftU64 (ReadUnaligned32 ((UINT32 *)&Reg->Rcx), 32);
-    Status = StmVmcallHandler (Index, AddressParameter);
+    Status           = StmVmcallHandler (Index, AddressParameter);
   }
 
   if (Status == STM_SUCCESS) {
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN(VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
+    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
   } else {
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN(VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
+    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
     AddEventLogInvalidParameter (ReadUnaligned32 ((UINT32 *)&Reg->Rax));
   }
+
   WriteUnaligned32 ((UINT32 *)&Reg->Rax, Status);
   VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
 
-  return ;
+  return;
 }

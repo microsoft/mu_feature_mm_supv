@@ -14,8 +14,8 @@
 
 #include "BaseSynchronizationLibInternals.h"
 
-#define SPIN_LOCK_RELEASED          ((UINTN) 1)
-#define SPIN_LOCK_ACQUIRED          ((UINTN) 2)
+#define SPIN_LOCK_RELEASED  ((UINTN) 1)
+#define SPIN_LOCK_ACQUIRED  ((UINTN) 2)
 
 /**
   Retrieves the architecture specific spin lock alignment requirements for
@@ -61,7 +61,7 @@ GetSpinLockProperties (
 SPIN_LOCK *
 EFIAPI
 InitializeSpinLock (
-  OUT      SPIN_LOCK                 *SpinLock
+  OUT      SPIN_LOCK  *SpinLock
   )
 {
   ASSERT (SpinLock != NULL);
@@ -92,12 +92,13 @@ InitializeSpinLock (
 SPIN_LOCK *
 EFIAPI
 AcquireSpinLock (
-  IN OUT  SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK  *SpinLock
   )
 {
   while (!AcquireSpinLockOrFail (SpinLock)) {
     CpuPause ();
   }
+
   return SpinLock;
 }
 
@@ -121,10 +122,10 @@ AcquireSpinLock (
 BOOLEAN
 EFIAPI
 AcquireSpinLockOrFail (
-  IN OUT  SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK  *SpinLock
   )
 {
-  SPIN_LOCK    LockValue;
+  SPIN_LOCK  LockValue;
 
   ASSERT (SpinLock != NULL);
 
@@ -132,12 +133,12 @@ AcquireSpinLockOrFail (
   ASSERT (SPIN_LOCK_ACQUIRED == LockValue || SPIN_LOCK_RELEASED == LockValue);
 
   return (BOOLEAN)(
-           InterlockedCompareExchangePointer (
-             (VOID**)SpinLock,
-             (VOID*)SPIN_LOCK_RELEASED,
-             (VOID*)SPIN_LOCK_ACQUIRED
-             ) == (VOID*)SPIN_LOCK_RELEASED
-           );
+                   InterlockedCompareExchangePointer (
+                     (VOID **)SpinLock,
+                     (VOID *)SPIN_LOCK_RELEASED,
+                     (VOID *)SPIN_LOCK_ACQUIRED
+                     ) == (VOID *)SPIN_LOCK_RELEASED
+                   );
 }
 
 /**
@@ -157,10 +158,10 @@ AcquireSpinLockOrFail (
 SPIN_LOCK *
 EFIAPI
 ReleaseSpinLock (
-  IN OUT  SPIN_LOCK                 *SpinLock
+  IN OUT  SPIN_LOCK  *SpinLock
   )
 {
-  SPIN_LOCK    LockValue;
+  SPIN_LOCK  LockValue;
 
   ASSERT (SpinLock != NULL);
 
@@ -189,7 +190,7 @@ ReleaseSpinLock (
 UINT32
 EFIAPI
 InterlockedIncrement (
-  IN      UINT32                    *Value
+  IN      UINT32  *Value
   )
 {
   ASSERT (Value != NULL);
@@ -214,7 +215,7 @@ InterlockedIncrement (
 UINT32
 EFIAPI
 InterlockedDecrement (
-  IN      UINT32                    *Value
+  IN      UINT32  *Value
   )
 {
   ASSERT (Value != NULL);
@@ -243,9 +244,9 @@ InterlockedDecrement (
 UINT32
 EFIAPI
 InterlockedCompareExchange32 (
-  IN OUT  UINT32                    *Value,
-  IN      UINT32                    CompareValue,
-  IN      UINT32                    ExchangeValue
+  IN OUT  UINT32  *Value,
+  IN      UINT32  CompareValue,
+  IN      UINT32  ExchangeValue
   )
 {
   ASSERT (Value != NULL);
@@ -273,9 +274,9 @@ InterlockedCompareExchange32 (
 UINT64
 EFIAPI
 InterlockedCompareExchange64 (
-  IN OUT  UINT64                    *Value,
-  IN      UINT64                    CompareValue,
-  IN      UINT64                    ExchangeValue
+  IN OUT  UINT64  *Value,
+  IN      UINT64  CompareValue,
+  IN      UINT64  ExchangeValue
   )
 {
   ASSERT (Value != NULL);
@@ -303,9 +304,9 @@ InterlockedCompareExchange64 (
 VOID *
 EFIAPI
 InterlockedCompareExchangePointer (
-  IN OUT  VOID                      **Value,
-  IN      VOID                      *CompareValue,
-  IN      VOID                      *ExchangeValue
+  IN OUT  VOID  **Value,
+  IN      VOID  *CompareValue,
+  IN      VOID  *ExchangeValue
   )
 {
   UINT8  SizeOfValue;
@@ -314,17 +315,17 @@ InterlockedCompareExchangePointer (
 
   switch (SizeOfValue) {
     case sizeof (UINT32):
-      return (VOID*)(UINTN)InterlockedCompareExchange32 (
-                             (UINT32*)Value,
-                             (UINT32)(UINTN)CompareValue,
-                             (UINT32)(UINTN)ExchangeValue
-                             );
+      return (VOID *)(UINTN)InterlockedCompareExchange32 (
+                              (UINT32 *)Value,
+                              (UINT32)(UINTN)CompareValue,
+                              (UINT32)(UINTN)ExchangeValue
+                              );
     case sizeof (UINT64):
-      return (VOID*)(UINTN)InterlockedCompareExchange64 (
-                             (UINT64*)Value,
-                             (UINT64)(UINTN)CompareValue,
-                             (UINT64)(UINTN)ExchangeValue
-                             );
+      return (VOID *)(UINTN)InterlockedCompareExchange64 (
+                              (UINT64 *)Value,
+                              (UINT64)(UINTN)CompareValue,
+                              (UINT64)(UINTN)ExchangeValue
+                              );
     default:
       ASSERT (FALSE);
       return NULL;

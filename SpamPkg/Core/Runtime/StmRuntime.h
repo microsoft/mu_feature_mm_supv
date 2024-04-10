@@ -26,7 +26,7 @@
 **/
 typedef
 VOID
-(* STM_HANDLER) (
+(*STM_HANDLER) (
   IN UINT32  Index
   );
 
@@ -42,14 +42,14 @@ VOID
 **/
 typedef
 STM_STATUS
-(* STM_VMCALL_HANDLER) (
+(*STM_VMCALL_HANDLER) (
   IN UINT32  Index,
   IN UINT64  AddressParameter
   );
 
 typedef struct {
-  UINT32                 FuncIndex;
-  STM_VMCALL_HANDLER     StmVmcallHandler;
+  UINT32                FuncIndex;
+  STM_VMCALL_HANDLER    StmVmcallHandler;
 } STM_VMCALL_HANDLER_STRUCT;
 
 /**
@@ -61,7 +61,7 @@ typedef struct {
 **/
 VOID
 UnknownHandlerSmi (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -73,7 +73,7 @@ UnknownHandlerSmi (
 **/
 VOID
 SmiEventHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -85,7 +85,7 @@ SmiEventHandler (
 **/
 VOID
 SmiVmcallHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -97,7 +97,7 @@ SmiVmcallHandler (
 **/
 VOID
 UnknownHandlerSmm (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -109,7 +109,7 @@ UnknownHandlerSmm (
 **/
 VOID
 RsmHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -121,7 +121,7 @@ RsmHandler (
 **/
 VOID
 SmmVmcallHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -133,7 +133,7 @@ SmmVmcallHandler (
 **/
 VOID
 SmmExceptionHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -145,7 +145,7 @@ SmmExceptionHandler (
 **/
 VOID
 SmmIoHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -157,7 +157,7 @@ SmmIoHandler (
 **/
 VOID
 SmmInvdHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -169,7 +169,7 @@ SmmInvdHandler (
 **/
 VOID
 SmmWbinvdHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -181,7 +181,7 @@ SmmWbinvdHandler (
 **/
 VOID
 SmmTaskSwitchHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -193,7 +193,7 @@ SmmTaskSwitchHandler (
 **/
 VOID
 SmmCpuidHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -205,7 +205,7 @@ SmmCpuidHandler (
 **/
 VOID
 SmmCrHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -217,7 +217,7 @@ SmmCrHandler (
 **/
 VOID
 SmmEPTViolationHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -253,7 +253,7 @@ SmmInvEPTHandler (
 **/
 VOID
 SmmReadMsrHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -265,7 +265,7 @@ SmmReadMsrHandler (
 **/
 VOID
 SmmWriteMsrHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -291,7 +291,7 @@ ApicToIndex (
 **/
 VOID
 WaitAllProcessorRendezVous (
-  IN UINT32   CurrentIndex
+  IN UINT32  CurrentIndex
   );
 
 /**
@@ -303,7 +303,7 @@ WaitAllProcessorRendezVous (
 **/
 VOID
 WriteSyncSmmStateSaveArea (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -315,7 +315,7 @@ WriteSyncSmmStateSaveArea (
 **/
 VOID
 ReadSyncSmmStateSaveArea (
-  IN UINT32 Index
+  IN UINT32  Index
   );
 
 /**
@@ -391,9 +391,9 @@ SmmTeardown (
 **/
 STM_RSC_MEM_DESC *
 GetStmResourceMem (
-  IN STM_RSC   *Resource,
-  IN UINT64    Address,
-  IN UINT32    RWXAttributes
+  IN STM_RSC  *Resource,
+  IN UINT64   Address,
+  IN UINT32   RWXAttributes
   );
 
 /**
@@ -408,8 +408,8 @@ GetStmResourceMem (
 **/
 STM_RSC_IO_DESC *
 GetStmResourceIo (
-  IN STM_RSC   *Resource,
-  IN UINT16    IoPort
+  IN STM_RSC  *Resource,
+  IN UINT16   IoPort
   );
 
 /**
@@ -424,8 +424,8 @@ GetStmResourceIo (
 **/
 STM_RSC_TRAPPED_IO_DESC *
 GetStmResourceTrappedIo (
-  IN STM_RSC   *Resource,
-  IN UINT16    IoPort
+  IN STM_RSC  *Resource,
+  IN UINT16   IoPort
   );
 
 /**
@@ -444,12 +444,12 @@ GetStmResourceTrappedIo (
 **/
 STM_RSC_PCI_CFG_DESC *
 GetStmResourcePci (
-  IN STM_RSC   *Resource,
-  IN UINT8     Bus,
-  IN UINT8     Device,
-  IN UINT8     Function,
-  IN UINT16    Register,
-  IN UINT16    RWAttributes
+  IN STM_RSC  *Resource,
+  IN UINT8    Bus,
+  IN UINT8    Device,
+  IN UINT8    Function,
+  IN UINT16   Register,
+  IN UINT16   RWAttributes
   );
 
 /**
@@ -464,8 +464,8 @@ GetStmResourcePci (
 **/
 STM_RSC_MSR_DESC *
 GetStmResourceMsr (
-  IN STM_RSC   *Resource,
-  IN UINT32    MsrIndex
+  IN STM_RSC  *Resource,
+  IN UINT32   MsrIndex
   );
 
 /**
@@ -543,7 +543,7 @@ DeleteProtectedResourceWithType (
 **/
 VOID
 RegisterProtectedResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -555,7 +555,7 @@ RegisterProtectedResource (
 **/
 VOID
 UnRegisterProtectedResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -567,7 +567,7 @@ UnRegisterProtectedResource (
 **/
 VOID
 RegisterBiosResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -599,11 +599,11 @@ GuestLinearToGuestPhysical (
 **/
 UINT64
 LookupSmiGuestVirtualToGuestPhysical (
-  IN UINTN   SmiGuestCr3,
-  IN BOOLEAN SmiGuestCr4Pae,
-  IN BOOLEAN SmiGuestCr4Pse,
-  IN BOOLEAN SmiGuestIa32e,
-  IN UINTN   GuestVirtualAddress
+  IN UINTN    SmiGuestCr3,
+  IN BOOLEAN  SmiGuestCr4Pae,
+  IN BOOLEAN  SmiGuestCr4Pse,
+  IN BOOLEAN  SmiGuestIa32e,
+  IN UINTN    GuestVirtualAddress
   );
 
 /**
@@ -636,10 +636,10 @@ LookupSmiGuestPhysicalToHostPhysical (
 **/
 VOID
 MapVirtualAddressToPhysicalAddress (
-  IN UINT32   CpuIndex,
-  IN UINT64   PhysicalAddress,
-  IN UINTN    VirtualAddress,
-  IN UINTN    PageCount
+  IN UINT32  CpuIndex,
+  IN UINT64  PhysicalAddress,
+  IN UINTN   VirtualAddress,
+  IN UINTN   PageCount
   );
 
 /**
@@ -653,9 +653,9 @@ MapVirtualAddressToPhysicalAddress (
 **/
 VOID
 UnmapVirtualAddressToPhysicalAddress (
-  IN UINT32   CpuIndex,
-  IN UINTN    VirtualAddress,
-  IN UINTN    PageCount
+  IN UINT32  CpuIndex,
+  IN UINTN   VirtualAddress,
+  IN UINTN   PageCount
   );
 
 /**
@@ -671,8 +671,8 @@ UnmapVirtualAddressToPhysicalAddress (
 **/
 BOOLEAN
 IsResourceListOverlapWithNode (
-  IN STM_RSC   *ResourceNode1,
-  IN STM_RSC   *ResourceList2
+  IN STM_RSC  *ResourceNode1,
+  IN STM_RSC  *ResourceList2
   );
 
 /**
@@ -686,7 +686,7 @@ IsResourceListOverlapWithNode (
 **/
 STM_RSC *
 DuplicateResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -701,7 +701,7 @@ DuplicateResource (
 **/
 STM_RSC *
 RawDuplicateResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -713,7 +713,7 @@ RawDuplicateResource (
 **/
 VOID
 RawFreeResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 /**
@@ -726,8 +726,8 @@ RawFreeResource (
 **/
 VOID
 WriteSyncSmmStateSaveAreaSse2 (
-  IN UINT32                             Index,
-  IN BOOLEAN                            Scrub
+  IN UINT32   Index,
+  IN BOOLEAN  Scrub
   );
 
 /**
@@ -739,7 +739,7 @@ WriteSyncSmmStateSaveAreaSse2 (
 **/
 VOID
 ReadSyncSmmStateSaveAreaSse2 (
-  IN UINT32                             Index
+  IN UINT32  Index
   );
 
 /**

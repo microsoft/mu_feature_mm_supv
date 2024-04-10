@@ -28,27 +28,27 @@
 **/
 VOID
 PeCoffRelocateImageOnTheSpot (
-  IN  UINTN        ImageBase,
-  IN  UINTN        PeImageBase,
-  IN  BOOLEAN      IsTeardown
+  IN  UINTN    ImageBase,
+  IN  UINTN    PeImageBase,
+  IN  BOOLEAN  IsTeardown
   )
 {
-  EFI_IMAGE_DOS_HEADER                *DosHdr;
-  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION Hdr;
-  UINT32                              NumberOfRvaAndSizes;
-  EFI_IMAGE_DATA_DIRECTORY            *DataDirectory;
-  EFI_IMAGE_DATA_DIRECTORY            *RelocDir;
-  EFI_IMAGE_BASE_RELOCATION           *RelocBase;
-  EFI_IMAGE_BASE_RELOCATION           *RelocBaseEnd;
-  UINT16                              *Reloc;
-  UINT16                              *RelocEnd;
-  CHAR8                               *Fixup;
-  CHAR8                               *FixupBase;
-  UINT16                              *Fixup16;
-  UINT32                              *Fixup32;
-  UINT64                              *Fixup64;
-  UINTN                               Adjust;
-  UINT16                              Magic;
+  EFI_IMAGE_DOS_HEADER                 *DosHdr;
+  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr;
+  UINT32                               NumberOfRvaAndSizes;
+  EFI_IMAGE_DATA_DIRECTORY             *DataDirectory;
+  EFI_IMAGE_DATA_DIRECTORY             *RelocDir;
+  EFI_IMAGE_BASE_RELOCATION            *RelocBase;
+  EFI_IMAGE_BASE_RELOCATION            *RelocBaseEnd;
+  UINT16                               *Reloc;
+  UINT16                               *RelocEnd;
+  CHAR8                                *Fixup;
+  CHAR8                                *FixupBase;
+  UINT16                               *Fixup16;
+  UINT32                               *Fixup32;
+  UINT64                               *Fixup64;
+  UINTN                                Adjust;
+  UINT16                               Magic;
 
   if (!IsTeardown) {
     Adjust = ImageBase - PeImageBase;
@@ -76,7 +76,7 @@ PeCoffRelocateImageOnTheSpot (
     //
     // Not a valid PE image so Exit
     //
-    return ;
+    return;
   }
 
   Magic = Hdr.Pe32->OptionalHeader.Magic;
@@ -86,13 +86,13 @@ PeCoffRelocateImageOnTheSpot (
     // Use PE32 offset
     //
     NumberOfRvaAndSizes = Hdr.Pe32->OptionalHeader.NumberOfRvaAndSizes;
-    DataDirectory = (EFI_IMAGE_DATA_DIRECTORY *)&(Hdr.Pe32->OptionalHeader.DataDirectory[0]);
+    DataDirectory       = (EFI_IMAGE_DATA_DIRECTORY *)&(Hdr.Pe32->OptionalHeader.DataDirectory[0]);
   } else {
     //
     // Use PE32+ offset
     //
     NumberOfRvaAndSizes = Hdr.Pe32Plus->OptionalHeader.NumberOfRvaAndSizes;
-    DataDirectory = (EFI_IMAGE_DATA_DIRECTORY *)&(Hdr.Pe32Plus->OptionalHeader.DataDirectory[0]);
+    DataDirectory       = (EFI_IMAGE_DATA_DIRECTORY *)&(Hdr.Pe32Plus->OptionalHeader.DataDirectory[0]);
   }
 
   //
@@ -103,16 +103,16 @@ PeCoffRelocateImageOnTheSpot (
   // the optional header to verify a desired directory entry is there.
   //
   if (NumberOfRvaAndSizes > EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC) {
-    RelocDir      = DataDirectory + EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC;
-    RelocBase     = (EFI_IMAGE_BASE_RELOCATION *)(UINTN)(ImageBase + RelocDir->VirtualAddress);
-    RelocBaseEnd  = (EFI_IMAGE_BASE_RELOCATION *)(UINTN)(ImageBase + RelocDir->VirtualAddress + RelocDir->Size);
+    RelocDir     = DataDirectory + EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC;
+    RelocBase    = (EFI_IMAGE_BASE_RELOCATION *)(UINTN)(ImageBase + RelocDir->VirtualAddress);
+    RelocBaseEnd = (EFI_IMAGE_BASE_RELOCATION *)(UINTN)(ImageBase + RelocDir->VirtualAddress + RelocDir->Size);
   } else {
     //
     // Cannot find relocations, good just return.
     //
-    return ;
+    return;
   }
-  
+
   //
   // ASSERT for the invalid image when RelocBase and RelocBaseEnd are both NULL.
   //
@@ -126,65 +126,64 @@ PeCoffRelocateImageOnTheSpot (
   // defaults.
   //
   while (RelocBase < RelocBaseEnd) {
-
-    Reloc     = (UINT16 *) ((UINT8 *) RelocBase + sizeof (EFI_IMAGE_BASE_RELOCATION));
-    RelocEnd  = (UINT16 *) ((UINT8 *) RelocBase + RelocBase->SizeOfBlock);
-    FixupBase = (CHAR8 *) ((UINTN)ImageBase) + RelocBase->VirtualAddress;
+    Reloc     = (UINT16 *)((UINT8 *)RelocBase + sizeof (EFI_IMAGE_BASE_RELOCATION));
+    RelocEnd  = (UINT16 *)((UINT8 *)RelocBase + RelocBase->SizeOfBlock);
+    FixupBase = (CHAR8 *)((UINTN)ImageBase) + RelocBase->VirtualAddress;
 
     //
     // Run this relocation record
     //
     while (Reloc < RelocEnd) {
-
       Fixup = FixupBase + (*Reloc & 0xFFF);
       switch ((*Reloc) >> 12) {
+        case EFI_IMAGE_REL_BASED_ABSOLUTE:
+          break;
 
-      case EFI_IMAGE_REL_BASED_ABSOLUTE:
-        break;
+        case EFI_IMAGE_REL_BASED_HIGH:
+          Fixup16  = (UINT16 *)Fixup;
+          *Fixup16 = (UINT16)(*Fixup16 + ((UINT16)((UINT32)Adjust >> 16)));
+          break;
 
-      case EFI_IMAGE_REL_BASED_HIGH:
-        Fixup16  = (UINT16 *) Fixup;
-        *Fixup16 = (UINT16) (*Fixup16 + ((UINT16) ((UINT32) Adjust >> 16)));
-        break;
+        case EFI_IMAGE_REL_BASED_LOW:
+          Fixup16  = (UINT16 *)Fixup;
+          *Fixup16 = (UINT16)(*Fixup16 + ((UINT16)Adjust & 0xffff));
+          break;
 
-      case EFI_IMAGE_REL_BASED_LOW:
-        Fixup16  = (UINT16 *) Fixup;
-        *Fixup16 = (UINT16) (*Fixup16 + ((UINT16) Adjust & 0xffff));
-        break;
+        case EFI_IMAGE_REL_BASED_HIGHLOW:
+          Fixup32  = (UINT32 *)Fixup;
+          *Fixup32 = *Fixup32 + (UINT32)Adjust;
+          break;
 
-      case EFI_IMAGE_REL_BASED_HIGHLOW:
-        Fixup32  = (UINT32 *) Fixup;
-        *Fixup32 = *Fixup32 + (UINT32) Adjust;
-        break;
+        case EFI_IMAGE_REL_BASED_DIR64:
+          Fixup64  = (UINT64 *)Fixup;
+          *Fixup64 = *Fixup64 + (UINT64)Adjust;
+          break;
 
-      case EFI_IMAGE_REL_BASED_DIR64:
-        Fixup64  = (UINT64 *) Fixup;
-        *Fixup64 = *Fixup64 + (UINT64)Adjust;
-        break;
+        case EFI_IMAGE_REL_BASED_HIGHADJ:
+          //
+          // Not valid Relocation type for UEFI image, ASSERT
+          //
+          ASSERT (FALSE);
+          break;
 
-      case EFI_IMAGE_REL_BASED_HIGHADJ:
-        //
-        // Not valid Relocation type for UEFI image, ASSERT
-        //
-        ASSERT (FALSE);
-        break;
-
-      default:
-        //
-        // Only Itanium requires ConvertPeImage_Ex
-        //
-        ASSERT (FALSE);
-        break;
+        default:
+          //
+          // Only Itanium requires ConvertPeImage_Ex
+          //
+          ASSERT (FALSE);
+          break;
       }
+
       //
       // Next relocation record
       //
       Reloc += 1;
     }
+
     //
     // next reloc block
     //
-    RelocBase = (EFI_IMAGE_BASE_RELOCATION *) RelocEnd;
+    RelocBase = (EFI_IMAGE_BASE_RELOCATION *)RelocEnd;
   }
 }
 
@@ -199,20 +198,20 @@ PeCoffRelocateImageOnTheSpot (
 **/
 VOID
 RelocateStmImage (
-  IN BOOLEAN   IsTeardown
+  IN BOOLEAN  IsTeardown
   )
 {
-  UINTN                               StmImage;
-  UINTN                               ImageBase;
-  UINTN                               PeImageBase;
-  EFI_IMAGE_DOS_HEADER                *DosHdr;
-  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION Hdr;
-  UINT16                              Magic;
+  UINTN                                StmImage;
+  UINTN                                ImageBase;
+  UINTN                                PeImageBase;
+  EFI_IMAGE_DOS_HEADER                 *DosHdr;
+  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr;
+  UINT16                               Magic;
 
-  StmImage = (UINTN)((UINT32)AsmReadMsr64(IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
+  StmImage = (UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
 
   ImageBase = StmImage + STM_CODE_OFFSET;
-  
+
   //
   // Find the image's relocate dir info
   //
@@ -233,7 +232,7 @@ RelocateStmImage (
     //
     // Not a valid PE image so Exit
     //
-    return ;
+    return;
   }
 
   Magic = Hdr.Pe32->OptionalHeader.Magic;
@@ -259,8 +258,9 @@ RelocateStmImage (
       // Relocated
       //
       CpuDeadLoop ();
-      return ;
+      return;
     }
+
     if (PeImageBase != 0) {
       //
       // Build tool need gurantee it is 0-base address.
@@ -273,8 +273,9 @@ RelocateStmImage (
       // Already Relocated back
       //
       CpuDeadLoop ();
-      return ;
+      return;
     }
+
     //
     // relocated back
     //
@@ -317,5 +318,5 @@ RelocateStmImage (
     }
   }
 
-  return ;
+  return;
 }

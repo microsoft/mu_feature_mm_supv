@@ -15,7 +15,7 @@
 #include "StmRuntime.h"
 
 //
-// Error code flag indicating whether or not an error code will be 
+// Error code flag indicating whether or not an error code will be
 // pushed on the stack if an exception occurs.
 //
 // 1 means an error code will be pushed, otherwise 0
@@ -24,11 +24,11 @@
 // bit 1 - exception 1
 // etc.
 //
-UINT32 mErrorCodeFlag = 0x00027d00;
+UINT32  mErrorCodeFlag = 0x00027d00;
 
-EFI_EXCEPTION_CALLBACK          mExternalVectorTable[STM_MAX_IDT_NUM];
-extern EFI_EXCEPTION_CALLBACK   *mExternalVectorTablePtr;
-extern UINT32                   mExceptionHandlerLength;
+EFI_EXCEPTION_CALLBACK         mExternalVectorTable[STM_MAX_IDT_NUM];
+extern EFI_EXCEPTION_CALLBACK  *mExternalVectorTablePtr;
+extern UINT32                  mExceptionHandlerLength;
 
 /**
 
@@ -47,8 +47,8 @@ AsmExceptionHandlers (
 **/
 VOID
 DumpExceptionX64 (
-  IN EFI_EXCEPTION_TYPE   InterruptType, 
-  IN EFI_SYSTEM_CONTEXT   SystemContext
+  IN EFI_EXCEPTION_TYPE  InterruptType,
+  IN EFI_SYSTEM_CONTEXT  SystemContext
   )
 {
   //
@@ -73,6 +73,7 @@ DumpExceptionX64 (
       SystemContext.SystemContextX64->ExceptionData
       ));
   }
+
   DEBUG ((
     EFI_D_ERROR,
     "RAX - %016lx, RCX - %016lx, RDX - %016lx\n",
@@ -176,8 +177,8 @@ DumpExceptionX64 (
 **/
 VOID
 DumpExceptionIa32 (
-  IN EFI_EXCEPTION_TYPE   InterruptType, 
-  IN EFI_SYSTEM_CONTEXT   SystemContext
+  IN EFI_EXCEPTION_TYPE  InterruptType,
+  IN EFI_SYSTEM_CONTEXT  SystemContext
   )
 {
   DEBUG ((
@@ -199,6 +200,7 @@ DumpExceptionIa32 (
       SystemContext.SystemContextIa32->ExceptionData
       ));
   }
+
   DEBUG ((
     EFI_D_ERROR,
     "EAX - %08x, ECX - %08x, EDX - %08x, EBX - %08x\n",
@@ -278,11 +280,11 @@ DumpExceptionIa32 (
 VOID
 EFIAPI
 HostExceptionHandler (
-  IN EFI_EXCEPTION_TYPE   InterruptType, 
-  IN EFI_SYSTEM_CONTEXT   SystemContext
+  IN EFI_EXCEPTION_TYPE  InterruptType,
+  IN EFI_SYSTEM_CONTEXT  SystemContext
   )
 {
-  if (sizeof(UINTN) == sizeof(UINT64)) {
+  if (sizeof (UINTN) == sizeof (UINT64)) {
     DumpExceptionX64 (InterruptType, SystemContext);
   } else {
     DumpExceptionIa32 (InterruptType, SystemContext);
@@ -290,30 +292,31 @@ HostExceptionHandler (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }
 
 /**
 
   Registers a function to be called when a given processor exception occurs.
 
-  @param  ExceptionType         Specifies which processor exception to hook.                       
+  @param  ExceptionType         Specifies which processor exception to hook.
   @param  ExceptionCallback     A pointer to a function of type EXCEPTION_CALLBACK that is called
-                                when the processor exception specified by ExceptionType occurs.  
+                                when the processor exception specified by ExceptionType occurs.
 
-  @retval RETURN_SUCCESS           The function completed successfully.  
+  @retval RETURN_SUCCESS           The function completed successfully.
   @retval RETURN_UNSUPPORTED       The exception specified by ExceptionType is not supported.
 
 **/
 RETURN_STATUS
 RegisterExceptionHandler (
-  IN EFI_EXCEPTION_TYPE            ExceptionType,
-  IN EFI_EXCEPTION_CALLBACK        ExceptionCallback
+  IN EFI_EXCEPTION_TYPE      ExceptionType,
+  IN EFI_EXCEPTION_CALLBACK  ExceptionCallback
   )
 {
   if ((UINT32)ExceptionType >= STM_MAX_IDT_NUM) {
     return RETURN_UNSUPPORTED;
   }
+
   mExternalVectorTable[ExceptionType] = ExceptionCallback;
   return RETURN_SUCCESS;
 }
@@ -325,23 +328,23 @@ RegisterExceptionHandler (
 **/
 VOID
 InitializeExternalVectorTablePtr (
-  IN IA32_IDT_GATE_DESCRIPTOR       *IdtGate
+  IN IA32_IDT_GATE_DESCRIPTOR  *IdtGate
   )
 {
-  UINT32                         Index;
+  UINT32  Index;
 
   mExternalVectorTablePtr = mExternalVectorTable;
   for (Index = 0; Index < STM_MAX_IDT_NUM; Index++) {
-    IdtGate[Index].Bits.Selector = AsmReadCs ();
-    IdtGate[Index].Bits.GateType = IA32_IDT_GATE_TYPE_INTERRUPT_32;
-    IdtGate[Index].Bits.OffsetLow = (UINT16)((UINTN)AsmExceptionHandlers + Index * mExceptionHandlerLength);
+    IdtGate[Index].Bits.Selector   = AsmReadCs ();
+    IdtGate[Index].Bits.GateType   = IA32_IDT_GATE_TYPE_INTERRUPT_32;
+    IdtGate[Index].Bits.OffsetLow  = (UINT16)((UINTN)AsmExceptionHandlers + Index * mExceptionHandlerLength);
     IdtGate[Index].Bits.OffsetHigh = (UINT16)(((UINTN)AsmExceptionHandlers + Index * mExceptionHandlerLength) >> 16);
-    if (sizeof(UINTN) == sizeof(UINT64)) {
-#if defined (MDE_CPU_X64)
+    if (sizeof (UINTN) == sizeof (UINT64)) {
+ #if defined (MDE_CPU_X64)
       IdtGate[Index].Bits.OffsetUpper = (UINT32)RShiftU64 ((UINTN)AsmExceptionHandlers + Index * mExceptionHandlerLength, 32);
-#endif
+ #endif
     }
+
     RegisterExceptionHandler (Index, HostExceptionHandler);
   }
-
 }

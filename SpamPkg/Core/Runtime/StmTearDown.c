@@ -14,11 +14,11 @@
 
 #include "StmRuntime.h"
 
-extern volatile BOOLEAN         mIsBspInitialized;
-extern volatile BOOLEAN         *mCpuInitStatus;
-extern MRTT_INFO    mMtrrInfo;
-extern STM_HANDLER  mStmHandlerSmm[VmExitReasonMax];
-extern STM_HANDLER  mStmHandlerSmi[VmExitReasonMax];
+extern volatile BOOLEAN  mIsBspInitialized;
+extern volatile BOOLEAN  *mCpuInitStatus;
+extern MRTT_INFO         mMtrrInfo;
+extern STM_HANDLER       mStmHandlerSmm[VmExitReasonMax];
+extern STM_HANDLER       mStmHandlerSmi[VmExitReasonMax];
 
 /**
 
@@ -32,14 +32,14 @@ RestoreStmData (
   VOID
   )
 {
-  ZeroMem (&mMtrrInfo, sizeof(mMtrrInfo));
-  ZeroMem (&mStmHandlerSmm, sizeof(mStmHandlerSmm));
-  ZeroMem (&mStmHandlerSmi, sizeof(mStmHandlerSmi));
-  ZeroMem (&mGuestContextCommonSmm, sizeof(mGuestContextCommonSmm));
-  ZeroMem (&mHostContextCommon, sizeof(mHostContextCommon));
-  ZeroMem (&mGuestContextCommonSmi, sizeof(mGuestContextCommonSmi));
+  ZeroMem (&mMtrrInfo, sizeof (mMtrrInfo));
+  ZeroMem (&mStmHandlerSmm, sizeof (mStmHandlerSmm));
+  ZeroMem (&mStmHandlerSmi, sizeof (mStmHandlerSmi));
+  ZeroMem (&mGuestContextCommonSmm, sizeof (mGuestContextCommonSmm));
+  ZeroMem (&mHostContextCommon, sizeof (mHostContextCommon));
+  ZeroMem (&mGuestContextCommonSmi, sizeof (mGuestContextCommonSmi));
   mIsBspInitialized = FALSE;
-  mCpuInitStatus = NULL;
+  mCpuInitStatus    = NULL;
 }
 
 /**
@@ -54,16 +54,16 @@ StmTeardown (
   IN UINT32  Index
   )
 {
-  VM_ENTRY_CONTROLS VmEntryCtrls;
-  UINTN             Rflags;
-  X86_REGISTER      *Reg;
-  UINT32            CurrentJoinedCpuNum;
+  VM_ENTRY_CONTROLS  VmEntryCtrls;
+  UINTN              Rflags;
+  X86_REGISTER       *Reg;
+  UINT32             CurrentJoinedCpuNum;
 
   DEBUG ((EFI_D_INFO, "StmTeardown - %d\n", (UINTN)Index));
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
-  VmEntryCtrls.Uint32 = VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX);
+  VmEntryCtrls.Uint32                     = VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX);
   VmEntryCtrls.Bits.DeactivateDualMonitor = 1;
   VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX, VmEntryCtrls.Uint32);
 
@@ -111,7 +111,7 @@ StmTeardown (
     Rflags = AsmVmLaunch (Reg);
   }
 
-#if 1
+ #if 1
   //
   // Should not print debug message, because image has been relocated back, and NO global variable should be used.
   //
@@ -122,9 +122,9 @@ StmTeardown (
   DumpVmcsAllField ();
   DumpRegContext (Reg);
   ReleaseSpinLock (&mHostContextCommon.DebugLock);
-#endif
+ #endif
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }

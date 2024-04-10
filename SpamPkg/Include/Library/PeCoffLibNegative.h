@@ -33,49 +33,49 @@
 #define IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR  0x00000003
 #define IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF  0x00000004
 
-#define IMAGE_VALIDATION_DATA_SIGNATURE    SIGNATURE_32 ('V', 'A', 'L', 'D')
-#define IMAGE_VALIDATION_ENTRY_SIGNATURE   SIGNATURE_32 ('E', 'N', 'T', 'R')
+#define IMAGE_VALIDATION_DATA_SIGNATURE   SIGNATURE_32 ('V', 'A', 'L', 'D')
+#define IMAGE_VALIDATION_ENTRY_SIGNATURE  SIGNATURE_32 ('E', 'N', 'T', 'R')
 
 #pragma pack(1)
 
 typedef struct {
-  UINT32 Signature;
-  UINT32 Offset;
+  UINT32    Signature;
+  UINT32    Offset;
 } KEY_SYMBOL;
 
 typedef struct {
-  UINT32  HeaderSignature;
-  UINT32  Size;
-  UINT32  EntryCount;
-  UINT32  OffsetToFirstEntry;
-  UINT32  OffsetToFirstDefault;
-  UINT32  KeySymbolCount;
-  UINT32  OffsetToFirstKeySymbol;
+  UINT32    HeaderSignature;
+  UINT32    Size;
+  UINT32    EntryCount;
+  UINT32    OffsetToFirstEntry;
+  UINT32    OffsetToFirstDefault;
+  UINT32    KeySymbolCount;
+  UINT32    OffsetToFirstKeySymbol;
 } IMAGE_VALIDATION_DATA_HEADER;
 
 typedef struct {
-  UINT32  EntrySignature;
-  UINT32  Offset; // Offset to the start of the target image
-  UINT32  Size; // Size of this entry
-  UINT32  ValidationType;
-  UINT32  OffsetToDefault;
+  UINT32    EntrySignature;
+  UINT32    Offset; // Offset to the start of the target image
+  UINT32    Size;   // Size of this entry
+  UINT32    ValidationType;
+  UINT32    OffsetToDefault;
 } IMAGE_VALIDATION_ENTRY_HEADER;
 
 typedef struct {
-  IMAGE_VALIDATION_ENTRY_HEADER   Header;
-  UINT8                           TargetContent[];
+  IMAGE_VALIDATION_ENTRY_HEADER    Header;
+  UINT8                            TargetContent[];
 } IMAGE_VALIDATION_CONTENT;
 
 typedef struct {
-  IMAGE_VALIDATION_ENTRY_HEADER   Header;
-  UINT64                          TargetMemeorySize;
-  UINT64                          TargetMemeoryAttributeMustHave;
-  UINT64                          TargetMemeoryAttributeMustNotHave;
+  IMAGE_VALIDATION_ENTRY_HEADER    Header;
+  UINT64                           TargetMemeorySize;
+  UINT64                           TargetMemeoryAttributeMustHave;
+  UINT64                           TargetMemeoryAttributeMustNotHave;
 } IMAGE_VALIDATION_MEM_ATTR;
 
 typedef struct {
-  IMAGE_VALIDATION_ENTRY_HEADER   Header;
-  UINT32                          TargetOffset;
+  IMAGE_VALIDATION_ENTRY_HEADER    Header;
+  UINT32                           TargetOffset;
 } IMAGE_VALIDATION_SELF_REF;
 
 #pragma pack()

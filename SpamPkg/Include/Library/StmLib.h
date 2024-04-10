@@ -21,9 +21,9 @@
 // It must be 64-byte aligned
 typedef struct {
   // IA32_FX_BUFFER
-  UINT8  Buffer[512];
+  UINT8    Buffer[512];
   // Header
-  UINT8  Header[64];
+  UINT8    Header[64];
   // Ext_Save_Area_2
   // Ext_Save_Area_3
   // ......

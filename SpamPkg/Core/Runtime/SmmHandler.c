@@ -32,21 +32,21 @@ InitStmHandlerSmm (
     mStmHandlerSmm[Index] = UnknownHandlerSmm;
   }
 
-  mStmHandlerSmm[VmExitReasonRsm] = RsmHandler;
-  mStmHandlerSmm[VmExitReasonVmCall] = SmmVmcallHandler;
+  mStmHandlerSmm[VmExitReasonRsm]          = RsmHandler;
+  mStmHandlerSmm[VmExitReasonVmCall]       = SmmVmcallHandler;
   mStmHandlerSmm[VmExitReasonExceptionNmi] = SmmExceptionHandler;
 
-  mStmHandlerSmm[VmExitReasonCrAccess] = SmmCrHandler;
-  mStmHandlerSmm[VmExitReasonEptViolation] = SmmEPTViolationHandler;
+  mStmHandlerSmm[VmExitReasonCrAccess]            = SmmCrHandler;
+  mStmHandlerSmm[VmExitReasonEptViolation]        = SmmEPTViolationHandler;
   mStmHandlerSmm[VmExitReasonEptMisConfiguration] = SmmEPTMisconfigurationHandler;
-  mStmHandlerSmm[VmExitReasonInvEpt] = SmmInvEPTHandler;
-  mStmHandlerSmm[VmExitReasonIoInstruction] = SmmIoHandler;
-  mStmHandlerSmm[VmExitReasonCpuid] = SmmCpuidHandler;
-  mStmHandlerSmm[VmExitReasonRdmsr] = SmmReadMsrHandler;
-  mStmHandlerSmm[VmExitReasonWrmsr] = SmmWriteMsrHandler;
-  mStmHandlerSmm[VmExitReasonInvd] = SmmInvdHandler;
-  mStmHandlerSmm[VmExitReasonWbinvd] = SmmWbinvdHandler;
-  mStmHandlerSmm[VmExitReasonTaskSwitch] = SmmTaskSwitchHandler;
+  mStmHandlerSmm[VmExitReasonInvEpt]              = SmmInvEPTHandler;
+  mStmHandlerSmm[VmExitReasonIoInstruction]       = SmmIoHandler;
+  mStmHandlerSmm[VmExitReasonCpuid]               = SmmCpuidHandler;
+  mStmHandlerSmm[VmExitReasonRdmsr]               = SmmReadMsrHandler;
+  mStmHandlerSmm[VmExitReasonWrmsr]               = SmmWriteMsrHandler;
+  mStmHandlerSmm[VmExitReasonInvd]                = SmmInvdHandler;
+  mStmHandlerSmm[VmExitReasonWbinvd]              = SmmWbinvdHandler;
+  mStmHandlerSmm[VmExitReasonTaskSwitch]          = SmmTaskSwitchHandler;
 }
 
 /**
@@ -58,19 +58,21 @@ InitStmHandlerSmm (
 **/
 VOID
 UnknownHandlerSmm (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
   AcquireSpinLock (&mHostContextCommon.DebugLock);
 
   DEBUG ((EFI_D_ERROR, "!!!UnknownHandlerSmm - %d\n", (UINTN)Index));
   DumpVmcsAllField ();
-  DumpRegContext(&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
+  DumpRegContext (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
 
   {
     UINT8  *Buffer;
-    Buffer = (VOID *)VmReadN(VMCS_N_GUEST_RIP_INDEX);
-    DEBUG((EFI_D_INFO, "Guest Instr: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+    Buffer = (VOID *)VmReadN (VMCS_N_GUEST_RIP_INDEX);
+    DEBUG ((
+      EFI_D_INFO,
+      "Guest Instr: %02x %02x %02x %02x %02x %02x %02x %02x\n",
       Buffer[0],
       Buffer[1],
       Buffer[2],
@@ -96,7 +98,7 @@ UnknownHandlerSmm (
 **/
 VOID
 StmHandlerSmm (
-  IN X86_REGISTER *Register
+  IN X86_REGISTER  *Register
   )
 {
   UINT32              Index;
@@ -105,15 +107,15 @@ StmHandlerSmm (
   X86_REGISTER        *Reg;
 
   Index = ApicToIndex (ReadLocalApicId ());
-  
+
   STM_PERF_END (Index, "BiosSmmHandler", "StmHandlerSmm");
 
-  Reg = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
+  Reg           = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
   Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  CopyMem (Reg, Register, sizeof(X86_REGISTER));
-#if 0
+  CopyMem (Reg, Register, sizeof (X86_REGISTER));
+ #if 0
   DEBUG ((EFI_D_INFO, "!!!StmHandlerSmm - %d\n", (UINTN)Index));
-#endif
+ #endif
   //
   // Dispatch
   //
@@ -124,10 +126,11 @@ StmHandlerSmm (
 
     CpuDeadLoop ();
   }
+
   //
   // Call dispatch handler
   //
-  mStmHandlerSmm[InfoBasic.Bits.Reason] (Index);
+  mStmHandlerSmm[InfoBasic.Bits.Reason](Index);
 
   VmWriteN (VMCS_N_GUEST_RSP_INDEX, Reg->Rsp); // sync RSP
 
@@ -154,5 +157,5 @@ StmHandlerSmm (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }
