@@ -101,7 +101,6 @@
   Request/FetchPolicy.c
   Request/VersionInfo.c
   Request/UpdateCommBuffer.c
-  ../../SpamPkg/Core/Runtime/SpamResponderReport.c
 
   Telemetry/Telemetry.c
   Telemetry/Telemetry.h
@@ -116,8 +115,6 @@
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
-  SecurityPkg/SecurityPkg.dec
-  SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -152,8 +149,6 @@
   CpuPageTableLib
   MmSaveStateLib
   SmmCpuSyncLib
-  PeCoffLibNegative
-  HashLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -240,11 +235,6 @@
   gMmSupervisorRequestHandlerGuid               ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
-  gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
-
-[PatchPcd]
-  # SHA256 Hash of the AuxBin file.
-  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

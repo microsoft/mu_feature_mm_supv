@@ -20,10 +20,6 @@
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
 
-#include <Library/PeCoffLibNegative.h>
-
-#include <SpamResponder.h>
-
 #include <Guid/MmCommonRegion.h>
 
 EFI_STATUS
@@ -46,9 +42,6 @@ EFI_HANDLE  mMmCpuHandle = NULL;
 //
 MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
 MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
-
-EFI_PHYSICAL_ADDRESS  MmSupvEfiFileBase;
-UINT64                MmSupvEfiFileSize;
 
 //
 // Ring 3 Hob pointer
@@ -319,16 +312,6 @@ Exit:
   @return Status Code
 
 **/
-volatile BOOLEAN loop = TRUE;
-extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileBase;
-extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileSize;
-
-EFI_STATUS
-EFIAPI
-SpamResponderReport (
-  IN SPAM_RESPONDER_DATA *SpamResponderData
-  );
-
 EFI_STATUS
 EFIAPI
 MmReadyToLockHandler (
@@ -380,30 +363,6 @@ MmReadyToLockHandler (
   Status = PrepareMemPolicySnapshot ();
 
   mMmReadyToLockDone = TRUE;
-
-  //
-  // Get information about the image being loaded
-  //
-  SPAM_RESPONDER_DATA SpamData = {
-    SPAM_RESPONDER_STRUCT_SIGNATURE,
-    SPAM_REPSONDER_STRUCT_MINOR_VER,
-    SPAM_REPSONDER_STRUCT_MAJOR_VER,
-    sizeof (SPAM_RESPONDER_DATA),
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
-  };
-
-  SpamData.MmEntrySize = GetSmiHandlerSize ();
-  SpamData.MmSupervisorSize = gMmCorePrivate->MmCoreImageSize;
-  SpamData.MmSupervisorAuxBase = MmSupvAuxFileBase;
-  SpamData.MmSupervisorAuxSize = MmSupvAuxFileSize;
-
-  Status = SpamResponderReport (&SpamData);
-  ASSERT_EFI_ERROR (Status);
 
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
@@ -810,19 +769,6 @@ DiscoverStandaloneMmDriversInFvHobs (
             __FUNCTION__,
             &gEfiCallerIdGuid,
             (UINTN)FwVolHeader
-            ));
-
-          VOID *MmCoreImageBase = NULL;
-          Status = FfsFindSectionData (EFI_SECTION_PE32, FileHeader, &MmCoreImageBase, &MmSupvEfiFileSize);
-          ASSERT_EFI_ERROR (Status);
-          MmSupvEfiFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateCopyPool (MmSupvEfiFileSize, MmCoreImageBase);
-          ASSERT (MmSupvEfiFileBase != 0);
-          DEBUG ((
-            DEBUG_INFO,
-            "[%a]   reserved MmSupvEfiFileBase at %p for %x bytes.\n",
-            __FUNCTION__,
-            MmSupvEfiFileBase,
-            MmSupvEfiFileSize
             ));
         }
       } else {
