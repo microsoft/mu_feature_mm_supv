@@ -698,7 +698,6 @@ MmEndOfDxeEventNotify (
   EFI_HANDLE                         *HandleBuffer;
   EFI_STATUS                         Status;
   EFI_LOADED_IMAGE_PROTOCOL          *LoadedImage;
-  USER_MODULE_INFO                   *UserModuleBuffer = NULL;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   UINT32                             MsegBase;
   STM_HEADER                         *StmHeader;
@@ -764,25 +763,7 @@ MmEndOfDxeEventNotify (
                         &gEfiLoadedImageProtocolGuid,
                         (VOID **)&LoadedImage
                         );
-  mSpamResponderTemplate.MmSupervisorBase = (UINT64)(UINTN)LoadedImage->ImageBase;
   mSpamResponderTemplate.MmSupervisorSize = (UINT64)(UINTN)LoadedImage->ImageSize;
-
-  // Now we continue to the user modules information
-  mSpamResponderTemplate.UserModuleCount  = NoHandles - 1;
-  UserModuleBuffer = AllocateZeroPool ((NoHandles - 1) * sizeof (USER_MODULE_INFO));
-  for (Index = 1; Index < NoHandles; Index++) {
-    Status = gMmst->MmHandleProtocol (
-                           HandleBuffer[Index],
-                           &gEfiLoadedImageProtocolGuid,
-                           (VOID **)&LoadedImage
-                           );
-    if (EFI_ERROR (Status)) {
-      continue;
-    }
-
-    UserModuleBuffer[Index - 1].UserModuleBase = (UINT64)(UINTN)LoadedImage->ImageBase;
-    UserModuleBuffer[Index - 1].UserModuleSize = (UINT64)(UINTN)LoadedImage->ImageSize;
-  }
 
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
@@ -795,7 +776,6 @@ MmEndOfDxeEventNotify (
                         (NoHandles - 1) * sizeof (USER_MODULE_INFO));
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
-    CopyMem (SpamResponderData + 1, UserModuleBuffer, (NoHandles - 1) * sizeof (USER_MODULE_INFO));
     // TODO: Mark the region as supervisor read-only, or even read prevention...
 
     LongRsp = (VOID*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
@@ -810,9 +790,6 @@ Done:
     FreePool (HandleBuffer);
   }
 
-  if (UserModuleBuffer != NULL) {
-    FreePool (UserModuleBuffer);
-  }
   return Status;
 }
 
