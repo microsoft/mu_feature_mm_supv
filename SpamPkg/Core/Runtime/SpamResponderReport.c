@@ -15,13 +15,13 @@
 #include <Register/SmramSaveStateMap.h>
 #include <SpamResponder.h>
 #include <SmmSecurePolicy.h>
+#include <x64/Smx.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/PeCoffLibNegative.h>
-#include <Library/Smx.h>
 #include <Library/SafeIntLib.h>
 #include <Library/TpmMeasurementLib.h>
 #include <Library/BaseMemoryLib.h>

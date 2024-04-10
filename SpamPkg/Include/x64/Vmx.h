@@ -15,7 +15,7 @@
 #ifndef _VMX_H_
 #define _VMX_H_
 
-#include "CpuArchSpecific.h"
+#include <x64/CpuArchSpecific.h>
 
 #define IA32_SMM_MONITOR_CTL_MSR_INDEX                0x9B
 #define   IA32_SMM_MONITOR_VALID                      1u

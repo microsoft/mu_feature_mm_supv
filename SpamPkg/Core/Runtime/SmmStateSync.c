@@ -179,6 +179,8 @@ XStateScrub (
  #endif
 }
 
+#define STM_SMM_REV_ID  0x80001011
+
 /**
 
   This function write SMM state save area accroding to VMCS.

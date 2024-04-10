@@ -15,8 +15,8 @@
 #ifndef _STM_LIB_H_
 #define _STM_LIB_H_
 
-#include "Library/Vmx.h"
-#include "Library/Smx.h"
+#include <x64/Vmx.h>
+#include <x64/Smx.h>
 
 // It must be 64-byte aligned
 typedef struct {

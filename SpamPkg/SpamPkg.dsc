@@ -31,6 +31,13 @@
   RngLib|MdePkg/Library/BaseRngLib/BaseRngLib.inf
   StackCheckFailureHookLib|MdePkg/Library/StackCheckFailureHookLibNull/StackCheckFailureHookLibNull.inf
 
+[LibraryClasses.common.PEIM]
+  PeimEntryPoint|MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
+  MemoryAllocationLib|MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
+  HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
+  PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
+  PeiServicesTablePointerLib|MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
+
 [LibraryClasses.common.USER_DEFINED]
   StmLib|SpamPkg/Library/StmLib/StmLib.inf
   StmPlatformLib|SpamPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
@@ -45,13 +52,14 @@
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
 
 [Components]
+  SpamPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {
+    <LibraryClasses>
+      NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
+  }
+
   SpamPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
-  SpamPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
   SpamPkg/Library/StmLib/StmLib.inf
   SpamPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
-
-[Components.IA32]
-  SpamPkg/Drivers/MsegSmramPei/MsegSmramPei.inf
 
 [Components.X64]
   SpamPkg/Core/Stm.inf {
@@ -60,6 +68,7 @@
   }
   SpamPkg/MmiEntrySpam/MmiEntrySpam.inf
 
+  SpamPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
   SpamPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf
   SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   SpamPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
