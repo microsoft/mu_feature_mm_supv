@@ -51,7 +51,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             pcd_addr = get_patch_pcd_address(mm_supervisor_build_dir / "MmSupervisorCore.map", mm_efi, pcd)
 
             if pcd_addr is None:
-                logging.error(f"PCD {pcd} not found in STM PCD table.")
+                logging.error(f"PCD {pcd} not found in MmSupervisorCore Map file.")
                 return -1
             
             patch_pcd_value(mm_efi, pcd_addr, aux_hash)
