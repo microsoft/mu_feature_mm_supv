@@ -242,6 +242,10 @@
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
 
+[PatchPcd]
+  # SHA256 Hash of the AuxBin file.
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
+
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
   #Image version will be used as MmSupervisor security patch level(SPL) value
