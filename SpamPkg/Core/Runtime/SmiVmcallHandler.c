@@ -19,7 +19,7 @@
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -39,7 +39,7 @@ SmiVmcallInitializeProtectionHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -68,7 +68,7 @@ SmiVmcallStartHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -101,7 +101,7 @@ SmiVmcallStopHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -188,7 +188,7 @@ SmiVmcallProtectResourceHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -243,7 +243,7 @@ SmiVmcallUnprotectResourceHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -324,7 +324,7 @@ SmiVmcallGetBiosResourcesHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -374,7 +374,7 @@ SmiVmcallManageVmcsDatabaseHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -457,7 +457,7 @@ SmiVmcallEventNewLogHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -502,7 +502,7 @@ SmiVmcallEventConfigureLogHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -540,7 +540,7 @@ SmiVmcallEventStartLogHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -574,7 +574,7 @@ SmiVmcallEventStopLogHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -604,7 +604,7 @@ SmiVmcallEventClearLogHandler (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -668,7 +668,7 @@ GetSmiVmcallEventLogHandlerByIndex (
   This function is VMCALL handler for SMI.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 

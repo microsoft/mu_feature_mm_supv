@@ -136,7 +136,7 @@ IsGuestAddressValid (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -194,7 +194,7 @@ SmmVmcallMapAddressRangeHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -235,7 +235,7 @@ SmmVmcallUnmapAddressRangeHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -347,7 +347,7 @@ SmmVmcallAddressLookupHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 

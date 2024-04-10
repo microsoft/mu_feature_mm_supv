@@ -474,7 +474,7 @@ VmWrite64 (
 
 /**
 
-  This function write UINNN data to VMCS region.
+  This function write UINTN data to VMCS region.
 
   @param Index VMCS region index
   @param Data  VMCS region value

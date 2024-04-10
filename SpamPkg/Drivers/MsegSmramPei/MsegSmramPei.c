@@ -53,7 +53,7 @@ GetSrmamHobData (
 /**
   This routine will split SmramReserve hob to reserve Mseg page for SMRAM content.
 
-  @retval EFI_SUCCESS           The gEfiMmPeiMmramMemoryReserveGuid is splited successfully.
+  @retval EFI_SUCCESS           The gEfiMmPeiMmramMemoryReserveGuid is splitted successfully.
   @retval EFI_NOT_FOUND         The gEfiMmPeiMmramMemoryReserveGuid is not found.
 
 **/

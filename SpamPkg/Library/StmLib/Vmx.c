@@ -141,7 +141,7 @@ VmWrite32 (
 
 /**
 
-  This function write UINNT data to VMCS region.
+  This function write UINTN data to VMCS region.
 
   @param Index VMCS region index
   @param Data  VMCS region value

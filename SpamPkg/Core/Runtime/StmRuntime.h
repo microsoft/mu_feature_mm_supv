@@ -35,7 +35,7 @@ VOID
   This is STM VMCALL handler.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
