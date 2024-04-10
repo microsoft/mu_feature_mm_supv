@@ -166,14 +166,10 @@ SPAM_RESPONDER_DATA mSpamResponderTemplate = {
   .Size = 0,
   .Reserved = 0,
   .CpuIndex = 0,
-  .MmEntryBase = 0,
   .MmEntrySize = 0,
-  .MmSupervisorBase = 0,
   .MmSupervisorSize = 0,
-  .MmSecurePolicyBase = 0,
-  .MmSecurePolicySize = 0,
-  .UserModuleOffset = sizeof (SPAM_RESPONDER_DATA),
-  .UserModuleCount = 0
+  .MmSupervisorAuxBase = 0,
+  .MmSupervisorAuxSize = 0
 };
 
 //
@@ -489,19 +485,16 @@ PopulateSpamInformation (
   IN UINTN                  StackSize
   )
 {
-  mSpamResponderTemplate.Signature          = SPAM_RESPONDER_STRUCT_SIGNATURE;
-  mSpamResponderTemplate.VersionMajor       = SPAM_REPSONDER_STRUCT_MAJOR_VER;
-  mSpamResponderTemplate.VersionMinor       = SPAM_REPSONDER_STRUCT_MINOR_VER;
-  mSpamResponderTemplate.Size               = sizeof (SPAM_RESPONDER_DATA);
-  mSpamResponderTemplate.CpuIndex           = CpuIndex;
-  mSpamResponderTemplate.MmEntryBase        = MmEntryBase;
-  mSpamResponderTemplate.MmEntrySize        = MmEntrySize;
-  mSpamResponderTemplate.MmSecurePolicyBase = (UINT64)FirmwarePolicy;
-  mSpamResponderTemplate.MmSecurePolicySize = FirmwarePolicy->Size;
-  mSpamResponderTemplate.UserModuleOffset   = 0;
-  mSpamResponderTemplate.UserModuleCount    = 0;
+  mSpamResponderTemplate.Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE;
+  mSpamResponderTemplate.VersionMajor        = SPAM_REPSONDER_STRUCT_MAJOR_VER;
+  mSpamResponderTemplate.VersionMinor        = SPAM_REPSONDER_STRUCT_MINOR_VER;
+  mSpamResponderTemplate.Size                = sizeof (SPAM_RESPONDER_DATA);
+  mSpamResponderTemplate.CpuIndex            = CpuIndex;
+  mSpamResponderTemplate.MmEntrySize         = MmEntrySize;
+  mSpamResponderTemplate.MmSupervisorAuxBase = MmSupvAuxFileBase;
+  mSpamResponderTemplate.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
-  // TODO: Populate more user modules and fix up the size.
+  CopyMem ((VOID *)(UINTN)(StackBase + StackSize - sizeof (SPAM_RESPONDER_DATA)), &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
 
   return EFI_SUCCESS;
 }
