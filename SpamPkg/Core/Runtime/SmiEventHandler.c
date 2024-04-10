@@ -31,7 +31,7 @@ SmiEventHandler (
   UINT64  VmcsLinkPtr;
   UINT32  VmcsSize;
 
-  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Actived) {
+  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Active) {
     return;
   }
 

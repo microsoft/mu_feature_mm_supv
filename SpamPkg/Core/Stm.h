@@ -888,7 +888,7 @@ typedef struct _STM_GUEST_CONTEXT_PER_CPU {
   VM_EXIT_QUALIFICATION    Qualification;        // hold info since we need that when return to SMI guest.
   UINT32                   VmExitInstructionLength;
   BOOLEAN                  Launched;
-  BOOLEAN                  Actived;            // For SMM VMCS only, controlled by StartStmVMCALL
+  BOOLEAN                  Active;             // For SMM VMCS only, controlled by StartStmVMCALL
   UINT64                   Vmcs;
   UINT32                   GuestMsrEntryCount;
   UINT64                   GuestMsrEntryAddress;

@@ -762,8 +762,8 @@ BspInit (
 
   mCpuInitStatus = AllocatePages (STM_SIZE_TO_PAGES (mHostContextCommon.CpuNum));
 
-  mGuestContextCommonSmm.GuestContextPerCpu[0].Cr3     = (UINTN)TxtProcessorSmmDescriptor->SmmCr3;
-  mGuestContextCommonSmm.GuestContextPerCpu[0].Actived = FALSE;
+  mGuestContextCommonSmm.GuestContextPerCpu[0].Cr3    = (UINTN)TxtProcessorSmmDescriptor->SmmCr3;
+  mGuestContextCommonSmm.GuestContextPerCpu[0].Active = FALSE;
 
   //
   // CompatiblePageTable for IA32 flat mode only
@@ -1067,7 +1067,7 @@ LaunchBack (
  #endif
   if (ReadUnaligned32 ((UINT32 *)&Reg->Rax) == STM_API_START) {
     // We need do additional thing for STM_API_START
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Actived = TRUE;
+    mGuestContextCommonSmm.GuestContextPerCpu[Index].Active = TRUE;
     SmmSetup (Index);
   }
 

@@ -54,8 +54,8 @@ SmiVmcallStartHandler (
   // Let STM enable SMI for SMM guest
   //
   DEBUG ((EFI_D_INFO, "STM_API_START:\n"));
-  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Actived) {
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Actived = TRUE;
+  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Active) {
+    mGuestContextCommonSmm.GuestContextPerCpu[Index].Active = TRUE;
     SmmSetup (Index);
     return STM_SUCCESS;
   } else {

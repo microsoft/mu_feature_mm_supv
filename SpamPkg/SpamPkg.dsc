@@ -44,6 +44,15 @@
   PeCoffLibNegative|SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
 
+[Components]
+  SpamPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
+  SpamPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
+  SpamPkg/Library/StmLib/StmLib.inf
+  SpamPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
+
+[Components.IA32]
+  SpamPkg/Drivers/MsegSmramPei/MsegSmramPei.inf
+
 [Components.X64]
   SpamPkg/Core/Stm.inf {
     <LibraryClasses>
@@ -52,3 +61,5 @@
   SpamPkg/MmiEntrySpam/MmiEntrySpam.inf
 
   SpamPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf
+  SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
+  SpamPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf

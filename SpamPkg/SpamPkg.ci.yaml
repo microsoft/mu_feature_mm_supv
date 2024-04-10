@@ -25,7 +25,10 @@
             "MdeModulePkg/MdeModulePkg.dec",
             "StandaloneMmPkg/StandaloneMmPkg.dec",
             "UefiCpuPkg/UefiCpuPkg.dec",
-            "MmSupervisorPkg/MmSupervisorPkg.dec"
+            "SecurityPkg/SecurityPkg.dec",
+            "CryptoPkg/CryptoPkg.dec",
+            "MmSupervisorPkg/MmSupervisorPkg.dec",
+            "SpamPkg/SpamPkg.dec"
         ],
         "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
             "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
