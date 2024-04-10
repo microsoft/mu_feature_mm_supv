@@ -11,7 +11,7 @@
 #include <PiMm.h>
 #include <IndustryStandard/Tpm20.h>
 #include <Register/Msr.h>
-#include <Register/CpuId.h>
+#include <Register/Cpuid.h>
 #include <Register/SmramSaveStateMap.h>
 #include <SpamResponder.h>
 #include <SmmSecurePolicy.h>
@@ -592,8 +592,6 @@ SpamResponderReport (
   UINT64                          Length;
   UINT64                          MtrrValidBitsMask;
   UINT64                          MtrrValidAddressMask;
-  UINT16                          *FixStructPtr;
-  UINT8                           *Fixup8Ptr;
   UINT32                          *Fixup32Ptr;
   UINT64                          *Fixup64Ptr;
   BOOLEAN                         IsInside;
@@ -767,10 +765,8 @@ SpamResponderReport (
     goto Exit;
   }
 
-  FixStructPtr = (UINT16 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUpStructOffset);
   Fixup32Ptr   = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
   Fixup64Ptr   = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
-  Fixup8Ptr    = (UINT8 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp8Offset);
 
   // Step 3.1.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
   // Reverse engineer MM core region with MM rendezvous

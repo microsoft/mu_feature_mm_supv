@@ -371,34 +371,6 @@ IsResourceListOverlap (
 
 /**
 
-  This function allocate pages in MSEG.
-
-  @param Pages the requested pages number
-
-  @return pages address
-
-**/
-VOID *
-AllocatePages (
-  IN UINTN  Pages
-  );
-
-/**
-
-  This function free pages in MSEG.
-
-  @param Address pages address
-  @param Pages   pages number
-
-**/
-VOID
-FreePages (
-  IN VOID   *Address,
-  IN UINTN  Pages
-  );
-
-/**
-
   This function set EPT page table attribute by range.
 
   @param Base                     Memory base
@@ -457,6 +429,7 @@ UnSetIoBitmapRange (
 
 **/
 VOID
+EFIAPI
 SetMsrBitmap (
   IN UINT32   MsrIndex,
   IN BOOLEAN  MsrWrite

@@ -107,7 +107,6 @@ PeCoffLoaderCopiedImageAddress (
                               Extended status information is in the ImageError field of ImageContext.
 
 **/
-extern volatile BOOLEAN  loop;
 RETURN_STATUS
 EFIAPI
 PeCoffLoaderRevertRelocateImage (
@@ -129,7 +128,6 @@ PeCoffLoaderRevertRelocateImage (
   UINT32                               *Fixup32;
   UINT64                               *Fixup64;
   CHAR8                                *FixupData;
-  PHYSICAL_ADDRESS                     BaseAddress;
   UINT32                               NumberOfRvaAndSizes;
   UINT32                               TeStrippedOffset;
 
@@ -148,16 +146,6 @@ PeCoffLoaderRevertRelocateImage (
     // to a PE/COFF image if needed
     PeCoffLoaderRelocateImageExtraAction (ImageContext);
     return RETURN_SUCCESS;
-  }
-
-  //
-  // If the destination address is not 0, use that rather than the
-  // image address as the relocation target.
-  //
-  if (ImageContext->DestinationAddress != 0) {
-    BaseAddress = ImageContext->DestinationAddress;
-  } else {
-    BaseAddress = ImageContext->ImageAddress;
   }
 
   if (ImageContext->IsTeImage) {
@@ -383,11 +371,9 @@ PeCoffLoaderRevertLoadImage (
   UINTN                                Index;
   CHAR8                                *Base;
   CHAR8                                *End;
-  EFI_IMAGE_DATA_DIRECTORY             *DirectoryEntry;
   EFI_IMAGE_DEBUG_DIRECTORY_ENTRY      *DebugEntry;
   UINTN                                Size;
   UINT32                               TempDebugEntryRva;
-  UINT32                               NumberOfRvaAndSizes;
   UINT32                               TeStrippedOffset;
   UINTN                                SizeOfImage;
   UINTN                                BufferSize;
@@ -541,15 +527,6 @@ PeCoffLoaderRevertLoadImage (
   //
   // Determine the size of the fixup data
   //
-  // Per the PE/COFF spec, you can't assume that a given data directory
-  // is present in the image. You have to check the NumberOfRvaAndSizes in
-  // the optional header to verify a desired directory entry is there.
-  //
-  //
-  // Use PE32+ offset
-  //
-  NumberOfRvaAndSizes = Hdr.Pe32Plus->OptionalHeader.NumberOfRvaAndSizes;
-  DirectoryEntry      = (EFI_IMAGE_DATA_DIRECTORY *)&Hdr.Pe32Plus->OptionalHeader.DataDirectory[EFI_IMAGE_DIRECTORY_ENTRY_BASERELOC];
 
   //
   // Consumer must allocate a buffer for the relocation fixup log.

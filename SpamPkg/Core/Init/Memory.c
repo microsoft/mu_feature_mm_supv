@@ -24,6 +24,7 @@
 
 **/
 VOID *
+EFIAPI
 AllocatePages (
   IN UINTN  Pages
   )
@@ -60,12 +61,13 @@ AllocatePages (
 
 **/
 VOID
+EFIAPI
 FreePages (
-  IN VOID   *Address,
+  IN VOID   *Buffer,
   IN UINTN  Pages
   )
 {
-  if ((UINT64)(UINTN)Address == mHostContextCommon.HeapTop) {
+  if ((UINT64)(UINTN)Buffer == mHostContextCommon.HeapTop) {
     mHostContextCommon.HeapTop += STM_PAGES_TO_SIZE (Pages);
   }
 

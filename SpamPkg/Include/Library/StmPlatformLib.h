@@ -56,23 +56,4 @@ StmPlatformLibMsrWrite (
   IN UINT64  Data
   );
 
-//
-// External function
-//
-
-/**
-
-  This function set MSR bitmap.
-
-  @param MsrIndex MSR index
-  @param MsrWrite TRUE means MsrWrite, FALSE means MsrRead
-
-**/
-VOID
-EFIAPI
-SetMsrBitmap (
-  IN UINT32   MsrIndex,
-  IN BOOLEAN  MsrWrite
-  );
-
 #endif

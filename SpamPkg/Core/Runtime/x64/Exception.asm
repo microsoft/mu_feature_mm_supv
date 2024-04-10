@@ -18,7 +18,7 @@
 EXTERNDEF      mExceptionHandlerLength:DWORD
 EXTERNDEF      mExternalVectorTablePtr:QWORD
 
-EXTRN mErrorCodeFlag:DWORD ; Error code flags for exceptions
+ASM_GLOBAL ASM_PFX(mErrorCodeFlag)  ; Error code flags for exceptions
 
 .DATA
 mExceptionHandlerLength DD 8
