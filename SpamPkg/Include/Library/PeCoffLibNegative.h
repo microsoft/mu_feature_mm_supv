@@ -35,10 +35,6 @@
 #define IMAGE_VALIDATION_DATA_SIGNATURE    SIGNATURE_32 ('V', 'A', 'L', 'D')
 #define IMAGE_VALIDATION_ENTRY_SIGNATURE   SIGNATURE_32 ('E', 'N', 'T', 'R')
 
-#define KEY_SYMBOL_FW_POLICY_SIGNATURE   SIGNATURE_32 ('F', 'P', 'O', 'L')
-#define KEY_SYMBOL_PAGE_TBL_SIGNATURE    SIGNATURE_32 ('P', 'G', 'T', 'B')
-#define KEY_SYMBOL_MMI_RDV_SIGNATURE     SIGNATURE_32 ('M', 'R', 'D', 'V')
-
 #pragma pack(1)
 
 typedef struct {

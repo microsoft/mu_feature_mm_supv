@@ -64,6 +64,11 @@ typedef struct {
 #define SPAM_REPSONDER_STRUCT_MAJOR_VER  0x0000
 #define SPAM_REPSONDER_STRUCT_MINOR_VER  0x0001
 
+// Key Symbols for MmSupervisorCore
+#define KEY_SYMBOL_FW_POLICY_SIGNATURE   SIGNATURE_32 ('F', 'P', 'O', 'L')
+#define KEY_SYMBOL_PAGE_TBL_SIGNATURE    SIGNATURE_32 ('P', 'G', 'T', 'B')
+#define KEY_SYMBOL_MMI_RDV_SIGNATURE     SIGNATURE_32 ('M', 'R', 'D', 'V')
+
 #pragma pack(push,1)
 
 typedef struct {
