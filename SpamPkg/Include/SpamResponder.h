@@ -2,7 +2,7 @@
 Defines necessary structures and constants for SMM supervisor usage.
 
 Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
-Copyright (C) Microsoft Corporation.
+Copyright (c) Microsoft Corporation.
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
