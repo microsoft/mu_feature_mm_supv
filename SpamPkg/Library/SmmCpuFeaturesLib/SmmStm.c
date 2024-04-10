@@ -122,9 +122,18 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
   .SmmDescriptorVerMajor         = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
   .SmmDescriptorVerMinor         = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
   .LocalApicId                   = 0,
-  .SmmEntryState                 = 0x0F, // Cr4Pse;Cr4Pae;Intel64Mode;ExecutionDisableOutsideSmrr
-  .SmmResumeState                = 0,    // BIOS to STM
-  .StmSmmState                   = 0,    // STM to BIOS
+  .SmmEntryState                 = {
+    .ExecutionDisableOutsideSmrr = 1,
+    .Intel64Mode                 = 1,
+    .Cr4Pae                      = 1,
+    .Cr4Pse                      = 1
+  },
+  .SmmResumeState = {
+    0,
+  },                         // BIOS to STM
+  .StmSmmState  = {
+    0
+  },                         // STM to BIOS
   .Reserved4                     = 0,
   .SmmCs                         = CODE_SEL,
   .SmmDs                         = DATA_SEL,
@@ -550,7 +559,6 @@ SmmCpuFeaturesInstallSmiHandler (
   PER_CORE_MMI_ENTRY_STRUCT_HDR  *SmiEntryStructHdrPtr = NULL;
   UINT32                         SmiEntryStructHdrAddr;
   UINT32                         WholeStructSize;
-  UINT16                         *FixStructPtr;
   UINT32                         *Fixup32Ptr;
   UINT64                         *Fixup64Ptr;
   UINT8                          *Fixup8Ptr;
@@ -599,7 +607,6 @@ SmmCpuFeaturesInstallSmiHandler (
   SmiEntryStructHdrPtr  = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
 
   // Navigate to the fixup arrays
-  FixStructPtr = (UINT16 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUpStructOffset);
   Fixup32Ptr   = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
   Fixup64Ptr   = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
   Fixup8Ptr    = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
@@ -698,7 +705,6 @@ MmEndOfDxeEventNotify (
   UINTN                              Index = 0;
   TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
   SPAM_RESPONDER_DATA                *SpamResponderData;
-  UINTN                              NoHandles;
   UINTN                              HandleBufferSize;
   EFI_HANDLE                         *HandleBuffer;
   EFI_STATUS                         Status;
@@ -753,7 +759,6 @@ MmEndOfDxeEventNotify (
     goto Done;
   }
 
-  NoHandles = HandleBufferSize/sizeof (EFI_HANDLE);
   Status    = gMmst->MmLocateHandle (
                        ByProtocol,
                        &gEfiLoadedImageProtocolGuid,
@@ -775,7 +780,6 @@ MmEndOfDxeEventNotify (
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
 
-    StmHeader->SwStmHdr.PerProcDynamicMemorySize;
     SpamResponderData = (SPAM_RESPONDER_DATA *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
                                                 sizeof (SPAM_RESPONDER_DATA));
 
