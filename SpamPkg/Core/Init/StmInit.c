@@ -22,6 +22,7 @@ STM_GUEST_CONTEXT_COMMON        mGuestContextCommonSmm;
 volatile BOOLEAN                mIsBspInitialized;
 
 extern volatile BOOLEAN         *mCpuInitStatus;
+volatile UINT8                  *mMyValue;
 
 /*++
   STM runtime:
@@ -801,7 +802,10 @@ BspInit (
   }
   // TODO
   // PcdSet64S(PcdPciExpressBaseAddress, mHostContextCommon.PciExpressBaseAddress);
-
+  mMyValue = PatchPcdGet8(PcdAuxBinHash);
+  if (mMyValue != 0) {
+    DEBUG((EFI_D_INFO, "PcdAuxBinHash - %x\n", (UINTN)mMyValue));
+  }
   for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
     mHostContextCommon.HostContextPerCpu[SubIndex].HostMsrEntryCount = 1;
     mGuestContextCommonSmi.GuestContextPerCpu[SubIndex].GuestMsrEntryCount = 1;

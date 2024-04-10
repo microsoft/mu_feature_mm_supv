@@ -113,6 +113,7 @@ pub fn main() -> Result<()> {
     // Add symbols from the individual modules
     let mut modules = debug_information.modules()?;
     while let Some(module) = modules.next()? {
+        println!("{:?}", module);
         let module_info = pdb.module_info(&module)?.unwrap();
         let mut symbols = module_info.symbols()?;
         while let Some(symbol) = symbols.next()? {
