@@ -14,13 +14,13 @@
 #include "Handler/Handler.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
 #include "Telemetry/Telemetry.h"
-#include "Policy/Policy.h"
 #include "Test/Test.h"
 
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
 
 #include <Guid/MmCommonRegion.h>
+#include <Library/SecurePolicyLib.h>
 
 EFI_STATUS
 MmCoreFfsFindMmDriver (
@@ -115,14 +115,15 @@ MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
   { NULL,                    NULL,                              NULL, FALSE },
 };
 
-EFI_SYSTEM_TABLE            *mEfiSystemTable;
-UINTN                       mMmramRangeCount;
-EFI_MMRAM_DESCRIPTOR        *mMmramRanges;
-EFI_MM_DRIVER_ENTRY         *mMmCoreDriverEntry;
-MM_SUPV_USER_COMMON_BUFFER  *SupervisorToUserDataBuffer = NULL;
-BOOLEAN                     mMmReadyToLockDone          = FALSE;
-BOOLEAN                     mCoreInitializationComplete = FALSE;
-VOID                        *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
+EFI_SYSTEM_TABLE                  *mEfiSystemTable;
+UINTN                             mMmramRangeCount;
+EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
+EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
+BOOLEAN                           mMmReadyToLockDone          = FALSE;
+BOOLEAN                           mCoreInitializationComplete = FALSE;
+VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
+SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = NULL;
 
 /**
   Place holder function until all the MM System Table Service are available.
@@ -360,7 +361,7 @@ MmReadyToLockHandler (
     SmmReadyToLockInSmiHandlerProfile (NULL, NULL, NULL);
   }
 
-  Status = PrepareMemPolicySnapshot ();
+  Status = PrepareMemPolicySnapshot (MemPolicySnapshot);
 
   mMmReadyToLockDone = TRUE;
 
@@ -796,6 +797,133 @@ DiscoverStandaloneMmDriversInFvHobs (
   } while (Hob.Raw != NULL);
 
   return EFI_SUCCESS;
+}
+
+/**
+  Routine for initializing policy data provided by firmware.
+
+  @retval EFI_SUCCESS           The handler for the processor interrupt was successfully installed or uninstalled.
+  @retval Errors                The supervisor is unable to locate or protect the policy from firmware.
+
+**/
+EFI_STATUS
+InitializePolicy (
+  VOID
+  )
+{
+  EFI_STATUS           Status;
+  EFI_FFS_FILE_HEADER  *FileHeader;
+  VOID                 *SectionData;
+  UINTN                SectionDataSize;
+  UINTN                PolicySize;
+
+  FirmwarePolicy = NULL;
+
+  //
+  // First try to find the policy file based on the GUID specified.
+  //
+  FileHeader = NULL;
+  do {
+    Status =  FfsFindNextFile (
+                EFI_FV_FILETYPE_FREEFORM,
+                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate->StandaloneBfvAddress,
+                &FileHeader
+                );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "[%a] Failed to locate firmware policy file from given FV - %r\n",
+        __FUNCTION__,
+        Status
+        ));
+      break;
+    }
+
+    if (!CompareGuid (&FileHeader->Name, &gMmSupervisorPolicyFileGuid)) {
+      continue;
+    }
+
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a] Discovered policy file in FV at 0x%p.\n",
+      __FUNCTION__,
+      FileHeader
+      ));
+
+    Status = FfsFindSectionData (
+               EFI_SECTION_RAW,
+               FileHeader,
+               &SectionData,
+               &SectionDataSize
+               );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "[%a] Failed to find raw section from discovered policy file - %r\n",
+        __FUNCTION__,
+        Status
+        ));
+      break;
+    }
+
+    PolicySize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)SectionData)->Size;
+    if (PolicySize > SectionDataSize) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "[%a] Policy data size 0x%x > blob size 0x%x.\n",
+        __FUNCTION__,
+        PolicySize,
+        SectionDataSize
+        ));
+      Status = EFI_BAD_BUFFER_SIZE;
+      break;
+    }
+
+    FirmwarePolicy = AllocateAlignedPages (EFI_SIZE_TO_PAGES (PolicySize), EFI_PAGE_SIZE);
+    if (FirmwarePolicy == NULL) {
+      Status = EFI_OUT_OF_RESOURCES;
+      DEBUG ((
+        DEBUG_ERROR,
+        "[%a] Cannot allocate page for firmware provided policy - %r\n",
+        __FUNCTION__,
+        Status
+        ));
+      break;
+    }
+
+    CopyMem (FirmwarePolicy, SectionData, PolicySize);
+
+    DEBUG_CODE_BEGIN ();
+    DumpSmmPolicyData (FirmwarePolicy);
+    DEBUG_CODE_END ();
+
+    // We found one valid firmware policy, do not need to proceed further on this FV.
+    break;
+  } while (TRUE);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Unable to locate a valid firmware policy from given FV, bail here - %r\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    goto Done;
+  }
+
+  // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
+  Status = AllocateMemForPolicySnapshot (&MemPolicySnapshot);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    goto Done;
+  }
+
+  Status = SecurityPolicyCheck (FirmwarePolicy);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Policy check failed on policy blob from firmware - %r\n", __FUNCTION__, Status));
+    ASSERT_EFI_ERROR (Status);
+    goto Done;
+  }
+
+Done:
+  return Status;
 }
 
 /**

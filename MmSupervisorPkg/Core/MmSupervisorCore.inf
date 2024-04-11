@@ -83,10 +83,6 @@
   Services/MpService/MpService.c
   Services/MpService/SyncTimer.c
 
-  Policy/GeneralPolicy.c
-  Policy/MemPolicy.c
-  Policy/Policy.h
-
   PrivilegeMgmt/PrivilegeMgmt.h
   PrivilegeMgmt/CallGateTransfer.c
   PrivilegeMgmt/AsmCallGateTransfer.nasm
@@ -148,6 +144,7 @@
   CpuPageTableLib
   MmSaveStateLib
   SmmCpuSyncLib
+  SecurePolicyLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES

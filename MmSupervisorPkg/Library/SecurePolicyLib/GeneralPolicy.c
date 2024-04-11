@@ -11,10 +11,10 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <PiMm.h>
 #include <SmmSecurePolicy.h>
 
-#include "MmSupervisorCore.h"
-#include "Policy/Policy.h"
-
-SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/SecurePolicyLib.h>
 
 /**
   Check overlap status between two region.
@@ -79,6 +79,7 @@ OverlapStatus (
                                   checking.
 **/
 EFI_STATUS
+EFIAPI
 SecurityPolicyCheck (
   IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmSecurityPolicy
   )
@@ -380,6 +381,7 @@ Exit:
   Dump the smm policy data.
 **/
 VOID
+EFIAPI
 DumpSmmPolicyData (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *Data
   )
@@ -469,131 +471,4 @@ DumpSmmPolicyData (
       }
     }
   }
-}
-
-/**
-  Routine for initializing policy data provided by firmware.
-
-  @retval EFI_SUCCESS           The handler for the processor interrupt was successfully installed or uninstalled.
-  @retval Errors                The supervisor is unable to locate or protect the policy from firmware.
-
-**/
-EFI_STATUS
-InitializePolicy (
-  VOID
-  )
-{
-  EFI_STATUS           Status;
-  EFI_FFS_FILE_HEADER  *FileHeader;
-  VOID                 *SectionData;
-  UINTN                SectionDataSize;
-  UINTN                PolicySize;
-
-  FirmwarePolicy = NULL;
-
-  //
-  // First try to find the policy file based on the GUID specified.
-  //
-  FileHeader = NULL;
-  do {
-    Status =  FfsFindNextFile (
-                EFI_FV_FILETYPE_FREEFORM,
-                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate->StandaloneBfvAddress,
-                &FileHeader
-                );
-    if (EFI_ERROR (Status)) {
-      DEBUG ((
-        DEBUG_ERROR,
-        "[%a] Failed to locate firmware policy file from given FV - %r\n",
-        __FUNCTION__,
-        Status
-        ));
-      break;
-    }
-
-    if (!CompareGuid (&FileHeader->Name, &gMmSupervisorPolicyFileGuid)) {
-      continue;
-    }
-
-    DEBUG ((
-      DEBUG_INFO,
-      "[%a] Discovered policy file in FV at 0x%p.\n",
-      __FUNCTION__,
-      FileHeader
-      ));
-
-    Status = FfsFindSectionData (
-               EFI_SECTION_RAW,
-               FileHeader,
-               &SectionData,
-               &SectionDataSize
-               );
-    if (EFI_ERROR (Status)) {
-      DEBUG ((
-        DEBUG_ERROR,
-        "[%a] Failed to find raw section from discovered policy file - %r\n",
-        __FUNCTION__,
-        Status
-        ));
-      break;
-    }
-
-    PolicySize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)SectionData)->Size;
-    if (PolicySize > SectionDataSize) {
-      DEBUG ((
-        DEBUG_ERROR,
-        "[%a] Policy data size 0x%x > blob size 0x%x.\n",
-        __FUNCTION__,
-        PolicySize,
-        SectionDataSize
-        ));
-      Status = EFI_BAD_BUFFER_SIZE;
-      break;
-    }
-
-    FirmwarePolicy = AllocateAlignedPages (EFI_SIZE_TO_PAGES (PolicySize), EFI_PAGE_SIZE);
-    if (FirmwarePolicy == NULL) {
-      Status = EFI_OUT_OF_RESOURCES;
-      DEBUG ((
-        DEBUG_ERROR,
-        "[%a] Cannot allocate page for firmware provided policy - %r\n",
-        __FUNCTION__,
-        Status
-        ));
-      break;
-    }
-
-    CopyMem (FirmwarePolicy, SectionData, PolicySize);
-
-    DEBUG_CODE_BEGIN ();
-    DumpSmmPolicyData (FirmwarePolicy);
-    DEBUG_CODE_END ();
-
-    // We found one valid firmware policy, do not need to proceed further on this FV.
-    break;
-  } while (TRUE);
-
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Unable to locate a valid firmware policy from given FV, bail here - %r\n", __FUNCTION__, Status));
-    ASSERT_EFI_ERROR (Status);
-    goto Done;
-  }
-
-  // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
-  Status = AllocateMemForPolicySnapshot ();
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __FUNCTION__, Status));
-    ASSERT_EFI_ERROR (Status);
-    goto Done;
-  }
-
-  Status = SecurityPolicyCheck (FirmwarePolicy);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Policy check failed on policy blob from firmware - %r\n", __FUNCTION__, Status));
-    ASSERT_EFI_ERROR (Status);
-    goto Done;
-  }
-
-Done:
-  return Status;
 }

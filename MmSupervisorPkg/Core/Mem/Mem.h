@@ -656,6 +656,7 @@ InspectTargetRangeOwnership (
   @retval FALSE This buffer is from MMRAM.
 **/
 BOOLEAN
+EFIAPI
 IsBufferInsideMmram (
   IN EFI_PHYSICAL_ADDRESS  Buffer,
   IN UINT64                Length
