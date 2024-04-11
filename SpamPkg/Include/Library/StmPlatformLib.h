@@ -36,8 +36,8 @@ StmPlatformLibSetMsrBitmaps (
 BOOLEAN
 EFIAPI
 StmPlatformLibMsrRead (
-  IN  UINT32     MsrIndex,
-  OUT UINT64     *Data
+  IN  UINT32  MsrIndex,
+  OUT UINT64  *Data
   );
 
 /**
@@ -52,27 +52,8 @@ StmPlatformLibMsrRead (
 BOOLEAN
 EFIAPI
 StmPlatformLibMsrWrite (
-  IN UINT32     MsrIndex,
-  IN UINT64     Data
-  );
-
-//
-// External function
-//
-
-/**
-
-  This function set MSR bitmap.
-
-  @param MsrIndex MSR index
-  @param MsrWrite TRUE means MsrWrite, FALSE means MsrRead
-
-**/
-VOID
-EFIAPI
-SetMsrBitmap (
   IN UINT32  MsrIndex,
-  IN BOOLEAN MsrWrite
+  IN UINT64  Data
   );
 
 #endif

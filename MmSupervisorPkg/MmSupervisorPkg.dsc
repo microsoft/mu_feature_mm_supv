@@ -21,7 +21,6 @@
   SKUID_IDENTIFIER               = DEFAULT
 
 [LibraryClasses.common]
-  PeCoffLibNegative|SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
   PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf

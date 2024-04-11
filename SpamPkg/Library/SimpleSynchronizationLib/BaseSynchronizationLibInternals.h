@@ -37,9 +37,8 @@
 UINT32
 EFIAPI
 InternalSyncIncrement (
-  IN      volatile UINT32           *Value
+  IN      volatile UINT32  *Value
   );
-
 
 /**
   Performs an atomic decrement of an 32-bit unsigned integer.
@@ -57,9 +56,8 @@ InternalSyncIncrement (
 UINT32
 EFIAPI
 InternalSyncDecrement (
-  IN      volatile UINT32           *Value
+  IN      volatile UINT32  *Value
   );
-
 
 /**
   Performs an atomic compare exchange operation on a 32-bit unsigned integer.
@@ -81,11 +79,10 @@ InternalSyncDecrement (
 UINT32
 EFIAPI
 InternalSyncCompareExchange32 (
-  IN      volatile UINT32           *Value,
-  IN      UINT32                    CompareValue,
-  IN      UINT32                    ExchangeValue
+  IN      volatile UINT32  *Value,
+  IN      UINT32           CompareValue,
+  IN      UINT32           ExchangeValue
   );
-
 
 /**
   Performs an atomic compare exchange operation on a 64-bit unsigned integer.
@@ -106,9 +103,9 @@ InternalSyncCompareExchange32 (
 UINT64
 EFIAPI
 InternalSyncCompareExchange64 (
-  IN      volatile UINT64           *Value,
-  IN      UINT64                    CompareValue,
-  IN      UINT64                    ExchangeValue
+  IN      volatile UINT64  *Value,
+  IN      UINT64           CompareValue,
+  IN      UINT64           ExchangeValue
   );
 
 #endif

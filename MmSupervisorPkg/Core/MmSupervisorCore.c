@@ -20,8 +20,6 @@
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
 
-#include <Library/PeCoffLibNegative.h>
-
 #include <Guid/MmCommonRegion.h>
 
 EFI_STATUS
@@ -45,17 +43,14 @@ EFI_HANDLE  mMmCpuHandle = NULL;
 MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
 MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
 
-EFI_PHYSICAL_ADDRESS  MmSupvEfiFileBase;
-UINT64                MmSupvEfiFileSize;
-
 //
 // Ring 3 Hob pointer
 //
 VOID   *mMmHobStart;
 UINTN  mMmHobSize;
 
-// Inidicator to check if this is the first MMI.
-STATIC BOOLEAN    mFirstMmi = TRUE;
+// Indicator to check if this is the first MMI.
+STATIC BOOLEAN  mFirstMmi = TRUE;
 
 //
 // MM Core global variable for MM System Table.  Only accessed as a physical structure in MMRAM.
@@ -317,10 +312,6 @@ Exit:
   @return Status Code
 
 **/
-volatile BOOLEAN loop = TRUE;
-extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileBase;
-extern EFI_PHYSICAL_ADDRESS MmSupvAuxFileSize;
-
 EFI_STATUS
 EFIAPI
 MmReadyToLockHandler (
@@ -373,53 +364,6 @@ MmReadyToLockHandler (
 
   mMmReadyToLockDone = TRUE;
 
-  //
-  // Get information about the image being loaded
-  //
-  PE_COFF_LOADER_IMAGE_CONTEXT ImageContext;
-
-  ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
-  VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (gMmCorePrivate->MmCoreImageSize));
-  CopyMem (Buffer, (VOID*)(UINTN)gMmCorePrivate->MmCoreImageBase, gMmCorePrivate->MmCoreImageSize);
-
-  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
-  ImageContext.Handle    = (VOID*)Buffer;
-
-  Status = PeCoffLoaderGetImageInfo (&ImageContext);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
-  Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  Status = PeCoffImageDiffValidation ((VOID*)gMmCorePrivate->MmCoreImageBase, Buffer, gMmCorePrivate->MmCoreImageSize, (VOID*)(UINTN)MmSupvAuxFileBase, MmSupvAuxFileSize);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  // Now prepare a new buffer to revert loading operations.
-  UINTN NewBufferSize = gMmCorePrivate->MmCoreImageSize;
-  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
-  ZeroMem (NewBuffer, NewBufferSize);
-
-  DEBUG ((DEBUG_INFO, "%p %p %p\n", gMmCorePrivate->MmCoreImageBase, Buffer, NewBuffer));
-
-  // At this point we dealt with the relocation, some data are still off.
-  // Next we unload the image in the copy.
-  Status = PeCoffLoaderRevertLoadImage (&ImageContext, NewBuffer, &NewBufferSize);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
-  ASSERT (MmSupvEfiFileSize == NewBufferSize);
-  ASSERT (CompareMem (NewBuffer, (VOID*)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
-
-Done:
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
   return Status;
@@ -825,19 +769,6 @@ DiscoverStandaloneMmDriversInFvHobs (
             __FUNCTION__,
             &gEfiCallerIdGuid,
             (UINTN)FwVolHeader
-            ));
-
-          VOID *MmCoreImageBase = NULL;
-          Status = FfsFindSectionData (EFI_SECTION_PE32, FileHeader, &MmCoreImageBase, &MmSupvEfiFileSize);
-          ASSERT_EFI_ERROR (Status);
-          MmSupvEfiFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateCopyPool (MmSupvEfiFileSize, MmCoreImageBase);
-          ASSERT (MmSupvEfiFileBase != 0);
-          DEBUG ((
-            DEBUG_INFO,
-            "[%a]   reserved MmSupvEfiFileBase at %p for %x bytes.\n",
-            __FUNCTION__,
-            MmSupvEfiFileBase,
-            MmSupvEfiFileSize
             ));
         }
       } else {

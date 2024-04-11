@@ -32,9 +32,9 @@ InitStmHandlerSmi (
     mStmHandlerSmi[Index] = UnknownHandlerSmi;
   }
 
-  mStmHandlerSmi[VmExitReasonIoSmi] = SmiEventHandler;
+  mStmHandlerSmi[VmExitReasonIoSmi]    = SmiEventHandler;
   mStmHandlerSmi[VmExitReasonOtherSmi] = SmiEventHandler;
-  mStmHandlerSmi[VmExitReasonVmCall] = SmiVmcallHandler;
+  mStmHandlerSmi[VmExitReasonVmCall]   = SmiVmcallHandler;
 }
 
 /**
@@ -46,7 +46,7 @@ InitStmHandlerSmi (
 **/
 VOID
 UnknownHandlerSmi (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
   AcquireSpinLock (&mHostContextCommon.DebugLock);
@@ -71,13 +71,13 @@ CheckPendingMtf (
   IN UINT32  Index
   )
 {
-  VM_EXIT_INFO_INTERRUPTION           VmEntryControlInterrupt;
+  VM_EXIT_INFO_INTERRUPTION  VmEntryControlInterrupt;
 
   //
   // Check pending MTF
   //
   if (mGuestContextCommonSmi.GuestContextPerCpu[Index].InfoBasic.Bits.PendingMtf == 0) {
-    return ;
+    return;
   }
 
   //
@@ -90,9 +90,9 @@ CheckPendingMtf (
   // than one, before the MTF VMEXIT occurs. This may have undesirable effects on the
   // MLE and must be avoided.
   //
-  VmEntryControlInterrupt.Uint32 = 0;
+  VmEntryControlInterrupt.Uint32             = 0;
   VmEntryControlInterrupt.Bits.InterruptType = INTERRUPT_TYPE_OTHER_EVENT;
-  VmEntryControlInterrupt.Bits.Valid = 1;
+  VmEntryControlInterrupt.Bits.Valid         = 1;
   VmWrite32 (VMCS_32_CONTROL_VMENTRY_INTERRUPTION_INFO_INDEX, VmEntryControlInterrupt.Uint32);
 }
 
@@ -105,7 +105,7 @@ CheckPendingMtf (
 **/
 VOID
 StmHandlerSmi (
-  IN X86_REGISTER *Register
+  IN X86_REGISTER  *Register
   )
 {
   UINT32              Index;
@@ -113,17 +113,17 @@ StmHandlerSmi (
   VM_EXIT_INFO_BASIC  InfoBasic;
   X86_REGISTER        *Reg;
 
-  Index = ApicToIndex (ReadLocalApicId ());
+  Index            = ApicToIndex (ReadLocalApicId ());
   InfoBasic.Uint32 = VmRead32 (VMCS_32_RO_EXIT_REASON_INDEX);
 
   STM_PERF_START (Index, InfoBasic.Bits.Reason, "OsSmiHandler", "StmHandlerSmi");
 
-  Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
+  Reg           = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
   Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  CopyMem (Reg, Register, sizeof(X86_REGISTER));
-#if 0
+  CopyMem (Reg, Register, sizeof (X86_REGISTER));
+ #if 0
   DEBUG ((EFI_D_INFO, "!!!StmHandlerSmi - %d\n", (UINTN)Index));
-#endif
+ #endif
   //
   // Dispatch
   //
@@ -139,7 +139,7 @@ StmHandlerSmi (
   //
   // Call dispatch handler
   //
-  mStmHandlerSmi[InfoBasic.Bits.Reason] (Index);
+  mStmHandlerSmi[InfoBasic.Bits.Reason](Index);
 
   VmWriteN (VMCS_N_GUEST_RSP_INDEX, Reg->Rsp); // sync RSP
 
@@ -168,5 +168,5 @@ StmHandlerSmi (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }

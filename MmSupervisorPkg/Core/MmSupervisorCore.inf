@@ -39,7 +39,6 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
-  aux_config.spam.cfg
   MmSupervisorCore.c
   MmSupervisorCore.h
 
@@ -115,7 +114,6 @@
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
-  SpamPkg/SpamPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -149,7 +147,6 @@
   PerformanceLib
   CpuPageTableLib
   MmSaveStateLib
-  PeCoffLibNegative
   SmmCpuSyncLib
 
 [Protocols]
@@ -237,7 +234,6 @@
   gMmSupervisorRequestHandlerGuid               ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
-  gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

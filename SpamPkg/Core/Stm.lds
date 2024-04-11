@@ -2,7 +2,7 @@
   STM GCC linker scriptor
   
   NOTE: We need to make sure "virtual address" is same as "file pointer to raw data"
-  in final PE/COFF image, so that we can let StmLoad load binrary to memory directly.
+  in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
 
   Copyright (c) 2015, Intel Corporation. All rights reserved.<BR>
   This program and the accompanying materials

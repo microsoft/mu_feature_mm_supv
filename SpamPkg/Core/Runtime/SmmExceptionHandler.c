@@ -27,7 +27,7 @@ SmmExceptionHandler (
   )
 {
   //
-  // Resume to BIOS Exceptin Handler
+  // Resume to BIOS Exception Handler
   //
   ResumeToBiosExceptionHandler (Index);
   //
