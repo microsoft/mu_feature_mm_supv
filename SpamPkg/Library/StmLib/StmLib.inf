@@ -60,12 +60,8 @@
   x64/Vmx64.c
   x64/AsmXSave.asm
   x64/AsmXRestore.asm
-  x64/AsmXGetBv.asm
-  x64/AsmXSetBv.asm
   x64/AsmXSave.s
   x64/AsmXRestore.s
-  x64/AsmXGetBv.s
-  x64/AsmXSetBv.s
   x64/AsmTestAndSet.asm
   x64/AsmTestAndReset.asm
   x64/AsmTestAndSet.s

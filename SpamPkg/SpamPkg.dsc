@@ -46,7 +46,7 @@
   Tpm2CommandLib|SecurityPkg/Library/Tpm2CommandLib/Tpm2CommandLib.inf
   Tpm2DeviceLib|SecurityPkg/Library/Tpm2DeviceLibDTpm/Tpm2DeviceLibDTpmStandaloneMm.inf
   Tpm2DebugLib|SecurityPkg/Library/Tpm2DebugLib/Tpm2DebugLibNull.inf
-  MemoryAllocationLib|MdeModulePkg/Library/BaseMemoryAllocationLibNull/BaseMemoryAllocationLibNull.inf
+  MemoryAllocationLib|SpamPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
   PeCoffLibNegative|SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
@@ -72,3 +72,4 @@
   SpamPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf
   SpamPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   SpamPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+  SpamPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf
