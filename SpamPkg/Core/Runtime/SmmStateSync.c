@@ -14,7 +14,7 @@
 
 #include "StmRuntime.h"
 
-#define STM_SMM_REV_ID 0x80
+#define STM_SMM_REV_ID  0x80
 
 // #define DOMAIN_TYPE_CHECK
 

@@ -231,7 +231,7 @@ InterlockedIncrement (
 UINT32
 EFIAPI
 InterlockedDecrement (
-  IN volatile UINT32 *Value
+  IN volatile UINT32  *Value
   )
 {
   ASSERT (Value != NULL);

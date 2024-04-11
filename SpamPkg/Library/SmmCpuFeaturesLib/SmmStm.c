@@ -117,21 +117,21 @@ OnException (
 // This structure serves as a template for all processors.
 //
 CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
-  .Signature                     = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
-  .Size                          = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
-  .SmmDescriptorVerMajor         = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
-  .SmmDescriptorVerMinor         = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
-  .LocalApicId                   = 0,
-  .SmmEntryState                 = {
+  .Signature             = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
+  .Size                  = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
+  .SmmDescriptorVerMajor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
+  .SmmDescriptorVerMinor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
+  .LocalApicId           = 0,
+  .SmmEntryState         = {
     .ExecutionDisableOutsideSmrr = 1,
     .Intel64Mode                 = 1,
     .Cr4Pae                      = 1,
     .Cr4Pse                      = 1
   },
-  .SmmResumeState = {
+  .SmmResumeState                = {
     0,
   },                         // BIOS to STM
-  .StmSmmState  = {
+  .StmSmmState                   = {
     0
   },                         // STM to BIOS
   .Reserved4                     = 0,
@@ -607,9 +607,9 @@ SmmCpuFeaturesInstallSmiHandler (
   SmiEntryStructHdrPtr  = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
 
   // Navigate to the fixup arrays
-  Fixup32Ptr   = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
-  Fixup64Ptr   = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
-  Fixup8Ptr    = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
+  Fixup32Ptr = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
+  Fixup64Ptr = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
+  Fixup8Ptr  = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
 
   // Do the fixup
   Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp]            = mCetPl0Ssp;
@@ -759,13 +759,13 @@ MmEndOfDxeEventNotify (
     goto Done;
   }
 
-  Status    = gMmst->MmLocateHandle (
-                       ByProtocol,
-                       &gEfiLoadedImageProtocolGuid,
-                       NULL,
-                       &HandleBufferSize,
-                       HandleBuffer
-                       );
+  Status = gMmst->MmLocateHandle (
+                    ByProtocol,
+                    &gEfiLoadedImageProtocolGuid,
+                    NULL,
+                    &HandleBufferSize,
+                    HandleBuffer
+                    );
 
   // Let's be honest, the first one will be the core...
   Status = gMmst->MmHandleProtocol (
