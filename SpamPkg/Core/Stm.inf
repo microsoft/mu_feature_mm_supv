@@ -94,8 +94,11 @@
   StmLib
   PcdLib
   StmPlatformLib
+  PeCoffLib
   PeCoffLibNegative
   HashLib
+  SafeIntLib
+  SecurePolicyLib
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES

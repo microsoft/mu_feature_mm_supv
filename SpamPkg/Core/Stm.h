@@ -394,6 +394,37 @@ EPTSetPageAttributeRange (
   );
 
 /**
+  This function retrieves the attributes of the memory region specified by
+  BaseAddress and Length. If different attributes are got from different part
+  of the memory region, EFI_NO_MAPPING will be returned.
+
+  @param  PageTableBase     The base address of the page table.
+  @param  BaseAddress       The physical address that is the start address of
+                            a memory region.
+  @param  Length            The size in bytes of the memory region.
+  @param  Attributes        Pointer to attributes returned.
+
+  @retval EFI_SUCCESS           The attributes got for the memory region.
+  @retval EFI_INVALID_PARAMETER Length is zero.
+                                Attributes is NULL.
+                                Length is larger than MAX_INT64. // MU_CHANGE: Avoid Length overflow for INT64
+  @retval EFI_NO_MAPPING        Attributes are not consistent cross the memory
+                                region.
+  @retval EFI_UNSUPPORTED       The processor does not support one or more
+                                bytes of the memory resource range specified
+                                by BaseAddress and Length.
+
+**/
+EFI_STATUS
+EFIAPI
+SmmGetMemoryAttributes (
+  IN  EFI_PHYSICAL_ADDRESS  PageTableBase,
+  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64                Length,
+  OUT UINT64                *Attributes
+  );
+
+/**
 
   This function set IO bitmap.
 
