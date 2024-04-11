@@ -250,6 +250,7 @@ SmmInitPageTable (
   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
     PatchInstructionX86 (gPatch5LevelPagingNeeded, m5LevelPagingNeeded, 1);
   }
+
   if (m5LevelPagingNeeded) {
     mPagingMode = m1GPageTableSupport ? Paging5Level1GB : Paging5Level;
   } else {

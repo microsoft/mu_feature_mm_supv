@@ -24,14 +24,14 @@
 **/
 VOID
 SmmSetup (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
   UINTN  JumpFlag;
   UINTN  Rflags;
 
   if (mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->SmmStmSetupRip == 0) {
-    return ;
+    return;
   }
 
   AsmVmPtrStore (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs);
@@ -48,21 +48,20 @@ SmmSetup (
   //
   // We need update HOST_RSP to save context for SetJump.
   //
-  VmWriteN  (VMCS_N_HOST_RSP_INDEX,         mHostContextCommon.HostContextPerCpu[Index].Stack - (mHostContextCommon.StmHeader->SwStmHdr.PerProcDynamicMemorySize / 2));
+  VmWriteN (VMCS_N_HOST_RSP_INDEX, mHostContextCommon.HostContextPerCpu[Index].Stack - (mHostContextCommon.StmHeader->SwStmHdr.PerProcDynamicMemorySize / 2));
 
   JumpFlag = SetJump (&mHostContextCommon.HostContextPerCpu[Index].JumpBuffer);
   if (JumpFlag == 0) {
-
     WriteSyncSmmStateSaveAreaSse2 (Index, FALSE);
 
     STM_PERF_START (Index, 0, "BiosSmmHandler", "SmmSetup");
 
     DEBUG ((EFI_D_INFO, "SmmStmSetupRip start (%d) ...\n", (UINTN)Index));
-    DEBUG ((EFI_D_INFO, "New HostStack (%d) - %08x\n", (UINTN)Index, VmReadN  (VMCS_N_HOST_RSP_INDEX)));
+    DEBUG ((EFI_D_INFO, "New HostStack (%d) - %08x\n", (UINTN)Index, VmReadN (VMCS_N_HOST_RSP_INDEX)));
     mHostContextCommon.HostContextPerCpu[Index].JumpBufferValid = TRUE;
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched = TRUE;
-    Rflags = AsmVmLaunch (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched = FALSE;
+    mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched   = TRUE;
+    Rflags                                                      = AsmVmLaunch (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
+    mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched   = FALSE;
     AcquireSpinLock (&mHostContextCommon.DebugLock);
     DEBUG ((EFI_D_ERROR, "!!!SmmSetup FAIL!!!\n"));
     DEBUG ((EFI_D_ERROR, "Rflags: %08x\n", Rflags));
@@ -70,12 +69,13 @@ SmmSetup (
     ReleaseSpinLock (&mHostContextCommon.DebugLock);
     CpuDeadLoop ();
   }
+
   DEBUG ((EFI_D_INFO, "SmmStmSetupRip end (%d)\n", (UINTN)Index));
 
   //
   // Restore HOST_RSP
   //
-  VmWriteN  (VMCS_N_HOST_RSP_INDEX,         mHostContextCommon.HostContextPerCpu[Index].Stack);
+  VmWriteN (VMCS_N_HOST_RSP_INDEX, mHostContextCommon.HostContextPerCpu[Index].Stack);
 
   AsmVmPtrStore (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs);
 

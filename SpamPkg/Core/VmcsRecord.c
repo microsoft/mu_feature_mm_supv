@@ -29,6 +29,7 @@ GetVmcsRecord (
   IN UINT64  VmcsDatabase,
   IN UINT64  Vmcs
   )
+
 /*
   VMCS Database ---->+----------------------+
                      | VMCS Database Table  |
@@ -39,8 +40,8 @@ GetVmcsRecord (
                      +----------------------+
 */
 {
-  VMCS_RECORD_STRUCTURE              *VmcsDatabaseTable;
-  UINTN                              Index;
+  VMCS_RECORD_STRUCTURE  *VmcsDatabaseTable;
+  UINTN                  Index;
 
   if (VmcsDatabase == 0) {
     return NULL;
@@ -73,11 +74,11 @@ GetVmcsRecord (
 **/
 STM_STATUS
 RequestVmcsDatabaseEntry (
-  IN STM_VMCS_DATABASE_REQUEST          *VmcsDatabaseRequest,
-  IN VMCS_RECORD_STRUCTURE              *VmcsDatabaseTable
+  IN STM_VMCS_DATABASE_REQUEST  *VmcsDatabaseRequest,
+  IN VMCS_RECORD_STRUCTURE      *VmcsDatabaseTable
   )
 {
-  UINTN                              Index;
+  UINTN  Index;
 
   if (VmcsDatabaseTable == NULL) {
     return ERROR_STM_INVALID_VMCS_DATABASE;
@@ -129,35 +130,35 @@ RequestVmcsDatabaseEntry (
 **/
 VOID
 DumpVmcsRecord (
-  IN UINT64                             VmcsDatabase
+  IN UINT64  VmcsDatabase
   )
 {
-  VMCS_RECORD_STRUCTURE              *VmcsDatabaseTable;
-  UINTN                              Index;
+  VMCS_RECORD_STRUCTURE  *VmcsDatabaseTable;
+  UINTN                  Index;
 
   //
   // Should be physical address
   //
   if (VmcsDatabase == 0) {
-    return ;
+    return;
   }
 
   VmcsDatabaseTable = (VMCS_RECORD_STRUCTURE *)(UINTN)(VmcsDatabase);
 
   for (Index = 0; ; Index++) {
     if (VmcsDatabaseTable[Index].Type == VMCS_RECORD_EMPTY) {
-      continue ;
+      continue;
     }
 
     if (VmcsDatabaseTable[Index].Type == VMCS_RECORD_LAST) {
-      return ;
+      return;
     }
 
     if (VmcsDatabaseTable[Index].Type != VMCS_RECORD_OCCUPIED) {
       // Something wrong
       DEBUG ((EFI_D_ERROR, "Invalid VMCS_RECORD %08x - %08x\n", Index, (UINTN)VmcsDatabaseTable[Index].Type));
       CpuDeadLoop ();
-      return ;
+      return;
     }
 
     DEBUG ((EFI_D_INFO, "VmcsRecord:\n"));

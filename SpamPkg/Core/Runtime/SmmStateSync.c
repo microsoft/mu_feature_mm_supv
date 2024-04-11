@@ -14,7 +14,7 @@
 
 #include "StmRuntime.h"
 
-//#define DOMAIN_TYPE_CHECK
+// #define DOMAIN_TYPE_CHECK
 
 /**
   =================================================================================================================================
@@ -23,7 +23,7 @@
   UNPROTECTED                  All                                               All
 
   INTEGRITY_PROT_OUT_IN        All                                               No change propagation for IN from port not on BIOS
-                                                                                   trap list 
+                                                                                   trap list
                                                                                  Changes to EAX/AX/AL propagated for IN from port
                                                                                    on BIOS IO trap list.
                                                                                  No change propagation for OUT
@@ -35,7 +35,7 @@
                                Only SM_REVID, IO_MISC, IO_MEM_ADDR, and DX       Changes to EAX/AX/AL propagated for IN from port
                                  register populated for IN on BIOS trap list       on BIOS IO trap list.
                                Only SM_REVID, IO_MISC, IO_MEM_ADDR, DX, and      No changes propagated for OUT
-                                 EAX/AX/AL populated for OUT on BIOS trap list 
+                                 EAX/AX/AL populated for OUT on BIOS trap list
 
 //FULLY_PROT_IN                Only SM_REVID populated for IN not on BIOS trap   Changes to EAX/AX/AL propagated for IN from port
                                  list or for any trapped OUT.                      on BIOS IO trap list.
@@ -45,14 +45,14 @@
 //FULLY_PROT_OUT               Only SM_REVID populated for OUT not on BIOS trap  No changes propagated
                                  list or for any trapped IN
                                Only SM_REVID, IO_MISC, IO_MEM_ADDR, DX and
-                                 EAX/AX/AL populated for OUT on BIOS trap list 
+                                 EAX/AX/AL populated for OUT on BIOS trap list
 
   FULLY_PROT                   Only SM_REVID populated                           No changes propagated
   =================================================================================================================================
 
 **/
 
-VMCS_RECORD_STRUCTURE              mDefaultVmcsRecord = {
+VMCS_RECORD_STRUCTURE  mDefaultVmcsRecord = {
   0x0,
   DOMAIN_UNPROTECTED,
   XSTATE_READWRITE,
@@ -70,9 +70,9 @@ VMCS_RECORD_STRUCTURE              mDefaultVmcsRecord = {
 **/
 VOID
 WriteSyncSmmStateSaveAreaIa32eGpr (
-  IN UINT32                             Index,
-  IN STM_SMM_CPU_STATE                  *CpuState,
-  IN BOOLEAN                            Scrub
+  IN UINT32             Index,
+  IN STM_SMM_CPU_STATE  *CpuState,
+  IN BOOLEAN            Scrub
   );
 
 /**
@@ -85,8 +85,8 @@ WriteSyncSmmStateSaveAreaIa32eGpr (
 **/
 VOID
 ReadSyncSmmStateSaveAreaIa32eGpr (
-  IN UINT32                             Index,
-  IN STM_SMM_CPU_STATE                  *CpuState
+  IN UINT32             Index,
+  IN STM_SMM_CPU_STATE  *CpuState
   );
 
 /**
@@ -98,24 +98,25 @@ ReadSyncSmmStateSaveAreaIa32eGpr (
 **/
 VOID
 XStateSave (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-#if 0 // TBD - workaround
-  if (IsXStateEnabled()) {
+ #if 0 // TBD - workaround
+  if (IsXStateEnabled ()) {
     AsmXSave (
       0xFFFFFFFFFFFFFFFFull,
       (IA32_X_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer
       );
   } else {
-#if defined (MDE_CPU_IA32)
+ #if defined (MDE_CPU_IA32)
     AsmFxSave ((IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer);
-#endif
-#if defined (MDE_CPU_X64)
-    CopyMem ((IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer, &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, sizeof(IA32_FX_BUFFER))
-#endif
+ #endif
+ #if defined (MDE_CPU_X64)
+    CopyMem ((IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer, &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, sizeof (IA32_FX_BUFFER))
+ #endif
   }
-#endif
+
+ #endif
 }
 
 /**
@@ -127,24 +128,25 @@ XStateSave (
 **/
 VOID
 XStateRestore (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-#if 0 // TBD - workaround
-  if (IsXStateEnabled()) {
+ #if 0 // TBD - workaround
+  if (IsXStateEnabled ()) {
     AsmXRestore (
       0xFFFFFFFFFFFFFFFFull,
       (IA32_X_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer
       );
   } else {
-#if defined (MDE_CPU_IA32)
+ #if defined (MDE_CPU_IA32)
     AsmFxRestore ((IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer);
-#endif
-#if defined (MDE_CPU_X64)
-    CopyMem (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, (IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer, sizeof(IA32_FX_BUFFER))
-#endif
+ #endif
+ #if defined (MDE_CPU_X64)
+    CopyMem (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, (IA32_FX_BUFFER *)mGuestContextCommonSmi.GuestContextPerCpu[Index].XStateBuffer, sizeof (IA32_FX_BUFFER))
+ #endif
   }
-#endif
+
+ #endif
 }
 
 /**
@@ -156,24 +158,25 @@ XStateRestore (
 **/
 VOID
 XStateScrub (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-#if 0 // TBD - workaround
-  if (IsXStateEnabled()) {
+ #if 0 // TBD - workaround
+  if (IsXStateEnabled ()) {
     AsmXRestore (
       0xFFFFFFFFFFFFFFFFull,
       (IA32_X_BUFFER *)mGuestContextCommonSmi.ZeroXStateBuffer
       );
   } else {
-#if defined (MDE_CPU_IA32)
+ #if defined (MDE_CPU_IA32)
     AsmFxRestore ((IA32_FX_BUFFER *)mGuestContextCommonSmi.ZeroXStateBuffer);
-#endif
-#if defined (MDE_CPU_X64)
-    ZeroMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof(IA32_FX_BUFFER))
-#endif
+ #endif
+ #if defined (MDE_CPU_X64)
+    ZeroMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof (IA32_FX_BUFFER))
+ #endif
   }
-#endif
+
+ #endif
 }
 
 /**
@@ -185,32 +188,34 @@ XStateScrub (
 **/
 VOID
 WriteSyncSmmStateSaveArea (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  STM_SMM_CPU_STATE                  *CpuState;
-  SMM_SAVE_STATE_IO_MISC             IOMisc;
-  VM_EXIT_QUALIFICATION              Qualification;
-  UINT64                             ExecutiveVmcsPtr;
-  VMCS_RECORD_STRUCTURE              *VmcsRecord;
-  TXT_PROCESSOR_SMM_DESCRIPTOR       *TxtProcessorSmmDescriptor;
-  X86_REGISTER                       *Reg;
-#ifdef DOMAIN_TYPE_CHECK
-  STM_RSC_TRAPPED_IO_DESC            *TrappedIoDesc;
-#endif
+  STM_SMM_CPU_STATE             *CpuState;
+  SMM_SAVE_STATE_IO_MISC        IOMisc;
+  VM_EXIT_QUALIFICATION         Qualification;
+  UINT64                        ExecutiveVmcsPtr;
+  VMCS_RECORD_STRUCTURE         *VmcsRecord;
+  TXT_PROCESSOR_SMM_DESCRIPTOR  *TxtProcessorSmmDescriptor;
+  X86_REGISTER                  *Reg;
+
+ #ifdef DOMAIN_TYPE_CHECK
+  STM_RSC_TRAPPED_IO_DESC  *TrappedIoDesc;
+ #endif
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
   ExecutiveVmcsPtr = VmRead64 (VMCS_64_CONTROL_EXECUTIVE_VMCS_PTR_INDEX);
-  VmcsRecord = GetVmcsRecord (mHostContextCommon.VmcsDatabase, ExecutiveVmcsPtr);
+  VmcsRecord       = GetVmcsRecord (mHostContextCommon.VmcsDatabase, ExecutiveVmcsPtr);
   if (VmcsRecord == NULL) {
     VmcsRecord = &mDefaultVmcsRecord;
   }
+
   VmcsRecord->DegradedDomainType = VmcsRecord->DomainType;
-#if 0
+ #if 0
   DEBUG ((EFI_D_INFO, "GetVmcsRecord - %08x\n", VmcsRecord));
-#endif
-  TxtProcessorSmmDescriptor = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor;
+ #endif
+  TxtProcessorSmmDescriptor                                            = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor;
   TxtProcessorSmmDescriptor->SmmResumeState.SmramToVmcsRestoreRequired = 0;
 
   CpuState = (STM_SMM_CPU_STATE *)(UINTN)(mHostContextCommon.HostContextPerCpu[Index].Smbase + SMM_CPU_STATE_OFFSET);
@@ -221,6 +226,7 @@ WriteSyncSmmStateSaveArea (
   if (CpuState->Smbase != mHostContextCommon.HostContextPerCpu[Index].Smbase) {
     CpuDeadLoop ();
   }
+
   CpuState->SMMRevId = STM_SMM_REV_ID;
 
   //
@@ -231,15 +237,15 @@ WriteSyncSmmStateSaveArea (
     // Additionally, the register state has been scrubbed.
     CpuState->GdtBaseHiDword = (UINT32)RShiftU64 (VmReadN (VMCS_N_GUEST_GDTR_BASE_INDEX), 32);
     CpuState->GdtBaseLoDword = (UINT32)VmReadN (VMCS_N_GUEST_GDTR_BASE_INDEX);
-//    CpuState->GdtLimit = VmRead32 (VMCS_32_GUEST_GDTR_LIMIT_INDEX);
+    //    CpuState->GdtLimit = VmRead32 (VMCS_32_GUEST_GDTR_LIMIT_INDEX);
 
     CpuState->LdtBaseHiDword = (UINT32)RShiftU64 (VmReadN (VMCS_N_GUEST_LDTR_BASE_INDEX), 32);
     CpuState->LdtBaseLoDword = (UINT32)VmReadN (VMCS_N_GUEST_LDTR_BASE_INDEX);
-//    CpuState->LdtLimit = VmRead32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX);
+    //    CpuState->LdtLimit = VmRead32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX);
 
     CpuState->IdtBaseHiDword = (UINT32)RShiftU64 (VmReadN (VMCS_N_GUEST_IDTR_BASE_INDEX), 32);
     CpuState->IdtBaseLoDword = (UINT32)VmReadN (VMCS_N_GUEST_IDTR_BASE_INDEX);
-//    CpuState->IdtLimit = VmRead32 (VMCS_32_GUEST_IDTR_LIMIT_INDEX);
+    //    CpuState->IdtLimit = VmRead32 (VMCS_32_GUEST_IDTR_LIMIT_INDEX);
 
     CpuState->Rax = Reg->Rax;
     CpuState->Rcx = Reg->Rcx;
@@ -277,15 +283,15 @@ WriteSyncSmmStateSaveArea (
   } else {
     CpuState->GdtBaseHiDword = 0;
     CpuState->GdtBaseLoDword = 0;
-//    CpuState->GdtLimit = 0;
+    //    CpuState->GdtLimit = 0;
 
     CpuState->LdtBaseHiDword = 0;
     CpuState->LdtBaseLoDword = 0;
-//    CpuState->LdtLimit = 0;
+    //    CpuState->LdtLimit = 0;
 
     CpuState->IdtBaseHiDword = 0;
     CpuState->IdtBaseLoDword = 0;
-//    CpuState->IdtLimit = 0;
+    //    CpuState->IdtLimit = 0;
 
     CpuState->Rax = 0;
     CpuState->Rcx = 0;
@@ -317,7 +323,8 @@ WriteSyncSmmStateSaveArea (
     CpuState->Cr3 = 0;
     CpuState->Cr0 = 0;
   }
-  mGuestContextCommonSmi.GuestContextPerCpu[Index].InfoBasic.Uint32 = VmRead32 (VMCS_32_RO_EXIT_REASON_INDEX);
+
+  mGuestContextCommonSmi.GuestContextPerCpu[Index].InfoBasic.Uint32    = VmRead32 (VMCS_32_RO_EXIT_REASON_INDEX);
   mGuestContextCommonSmi.GuestContextPerCpu[Index].Qualification.UintN = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
 
   CpuState->IOMisc = 0;
@@ -329,7 +336,7 @@ WriteSyncSmmStateSaveArea (
   if (mGuestContextCommonSmi.GuestContextPerCpu[Index].InfoBasic.Bits.Reason == VmExitReasonIoSmi) {
     if ((VmcsRecord->DomainType & DOMAIN_CONFIDENTIALITY) == 0) {
       CpuState->IoEip = VmReadN (VMCS_N_GUEST_RIP_INDEX) - VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX);
-      //CpuState->IoEip = VmReadN (VMCS_N_RO_IO_RIP_INDEX);
+      // CpuState->IoEip = VmReadN (VMCS_N_RO_IO_RIP_INDEX);
       CpuState->IoRcx = VmReadN (VMCS_N_RO_IO_RCX_INDEX);
       CpuState->IoRsi = VmReadN (VMCS_N_RO_IO_RSI_INDEX);
       CpuState->IoRdi = VmReadN (VMCS_N_RO_IO_RDI_INDEX);
@@ -342,35 +349,38 @@ WriteSyncSmmStateSaveArea (
 
     Qualification.UintN = mGuestContextCommonSmi.GuestContextPerCpu[Index].Qualification.UintN;
 
-    IOMisc.Uint32 = 0;
-    IOMisc.Bits.IoSmi = 1;
-    IOMisc.Bits.Length = Qualification.IoInstruction.Size + 1;
-    IOMisc.Bits.Direction = Qualification.IoInstruction.Direction;
-    IOMisc.Bits.String = Qualification.IoInstruction.String;
-    IOMisc.Bits.Rep = Qualification.IoInstruction.Rep;
+    IOMisc.Uint32          = 0;
+    IOMisc.Bits.IoSmi      = 1;
+    IOMisc.Bits.Length     = Qualification.IoInstruction.Size + 1;
+    IOMisc.Bits.Direction  = Qualification.IoInstruction.Direction;
+    IOMisc.Bits.String     = Qualification.IoInstruction.String;
+    IOMisc.Bits.Rep        = Qualification.IoInstruction.Rep;
     IOMisc.Bits.OpEncoding = Qualification.IoInstruction.Operand;
-    IOMisc.Bits.Port = Qualification.IoInstruction.PortNum;
+    IOMisc.Bits.Port       = Qualification.IoInstruction.PortNum;
     if ((VmcsRecord->DomainType & DOMAIN_CONFIDENTIALITY) == 0) {
       CpuState->IOMisc = IOMisc.Uint32;
     }
 
-#ifdef DOMAIN_TYPE_CHECK
+ #ifdef DOMAIN_TYPE_CHECK
     //
     // Consult DomainType to decide if populate IO_MISC
     //
     TrappedIoDesc = GetStmResourceTrappedIo (mHostContextCommon.MleProtectedTrappedIoResource.Base, (UINT16)Qualification.IoInstruction.PortNum);
     if ((((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_IN) == 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->In != 0) && (Qualification.IoInstruction.Direction != 0)) ||
-        (((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_OUT) == 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->Out != 0) && (Qualification.IoInstruction.Direction == 0))) {
+        (((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_OUT) == 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->Out != 0) && (Qualification.IoInstruction.Direction == 0)))
+    {
       CpuState->IOMisc = IOMisc.Uint32;
     }
+
     //
     // Handle 2 special cases on populating DX EAX/AX/AL
     //
     if (((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_IN) == 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->In != 0) && (Qualification.IoInstruction.Direction != 0)) {
-      CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof(UINT16));
+      CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof (UINT16));
     }
+
     if (((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_OUT) == 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->Out != 0) && (Qualification.IoInstruction.Direction == 0)) {
-      CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof(UINT16));
+      CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof (UINT16));
       CopyMem (&CpuState->Rax, &Reg->Rax, Qualification.IoInstruction.Size + 1);
     }
 
@@ -393,7 +403,7 @@ WriteSyncSmmStateSaveArea (
         DEBUG ((EFI_D_INFO, "Degrade IN for %02x\n", (UINTN)VmcsRecord->DomainType));
         if (VmcsRecord->DegradationPolicy <= (VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_IN)) {
           // Allow
-          CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof(UINT16));
+          CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof (UINT16));
           AddEventLogDomainDegration (ExecutiveVmcsPtr, (UINT8)(VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_IN), (UINT8)VmcsRecord->DegradationPolicy);
           VmcsRecord->DegradedDomainType = VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_IN;
         } else {
@@ -401,12 +411,13 @@ WriteSyncSmmStateSaveArea (
           StmTxtReset (STM_CRASH_DOMAIN_DEGRADATION_FAILURE);
         }
       }
+
       if (((VmcsRecord->DomainType & DOMAIN_DISALLOWED_IO_OUT) != 0) && (TrappedIoDesc != NULL) && (TrappedIoDesc->Out != 0) && (Qualification.IoInstruction.Direction == 0)) {
         // Degrade OUT
         DEBUG ((EFI_D_INFO, "Degrade OUT for %02x\n", (UINTN)VmcsRecord->DomainType));
         if (VmcsRecord->DegradationPolicy <= (VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_OUT)) {
           // Allow
-          CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof(UINT16));
+          CopyMem (&CpuState->Rdx, &Reg->Rdx, sizeof (UINT16));
           CopyMem (&CpuState->Rax, &Reg->Rax, Qualification.IoInstruction.Size + 1);
           AddEventLogDomainDegration (ExecutiveVmcsPtr, (UINT8)(VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_OUT), (UINT8)VmcsRecord->DegradationPolicy);
           VmcsRecord->DegradedDomainType = VmcsRecord->DomainType & ~DOMAIN_DISALLOWED_IO_OUT;
@@ -416,6 +427,7 @@ WriteSyncSmmStateSaveArea (
         }
       }
     }
+
     if ((TrappedIoDesc != NULL) && (TrappedIoDesc->Api != 0)) {
       if (VmcsRecord->DomainType != DOMAIN_UNPROTECTED) {
         DEBUG ((EFI_D_INFO, "Degrade API for %02x\n", (UINTN)VmcsRecord->DomainType));
@@ -438,7 +450,8 @@ WriteSyncSmmStateSaveArea (
         }
       }
     }
-#endif
+
+ #endif
   }
 
   //
@@ -450,22 +463,23 @@ WriteSyncSmmStateSaveArea (
     CpuState->AutoHALTRestart = 0x0;
   }
 
-  if (sizeof(UINTN) == sizeof(UINT64)) {
-    CpuState->Ia32Efer = VmRead64 (VMCS_64_GUEST_IA32_EFER_INDEX);
+  if (sizeof (UINTN) == sizeof (UINT64)) {
+    CpuState->Ia32Efer                                    = VmRead64 (VMCS_64_GUEST_IA32_EFER_INDEX);
     mGuestContextCommonSmi.GuestContextPerCpu[Index].Efer = CpuState->Ia32Efer;
   }
 
-  TxtProcessorSmmDescriptor->StmSmmState.EptEnabled = 1;
-  TxtProcessorSmmDescriptor->StmSmmState.DomainType = (UINT8)VmcsRecord->DomainType;
+  TxtProcessorSmmDescriptor->StmSmmState.EptEnabled   = 1;
+  TxtProcessorSmmDescriptor->StmSmmState.DomainType   = (UINT8)VmcsRecord->DomainType;
   TxtProcessorSmmDescriptor->StmSmmState.XStatePolicy = (UINT8)VmcsRecord->XStatePolicy;
   if (VmcsRecord->XStatePolicy != XSTATE_READWRITE) {
     XStateSave (Index);
   }
+
   if (VmcsRecord->XStatePolicy == XSTATE_SCRUB) {
     XStateScrub (Index);
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -477,29 +491,31 @@ WriteSyncSmmStateSaveArea (
 **/
 VOID
 ReadSyncSmmStateSaveArea (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  STM_SMM_CPU_STATE                  *CpuState;
-  UINT64                             ExecutiveVmcsPtr;
-  VMCS_RECORD_STRUCTURE              *VmcsRecord;
-  TXT_PROCESSOR_SMM_DESCRIPTOR       *TxtProcessorSmmDescriptor;
-  X86_REGISTER                       *Reg;
-#ifdef DOMAIN_TYPE_CHECK
-  VM_EXIT_QUALIFICATION              Qualification;
-  STM_RSC_TRAPPED_IO_DESC            *TrappedIoDesc;
-#endif
+  STM_SMM_CPU_STATE             *CpuState;
+  UINT64                        ExecutiveVmcsPtr;
+  VMCS_RECORD_STRUCTURE         *VmcsRecord;
+  TXT_PROCESSOR_SMM_DESCRIPTOR  *TxtProcessorSmmDescriptor;
+  X86_REGISTER                  *Reg;
+
+ #ifdef DOMAIN_TYPE_CHECK
+  VM_EXIT_QUALIFICATION    Qualification;
+  STM_RSC_TRAPPED_IO_DESC  *TrappedIoDesc;
+ #endif
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
   ExecutiveVmcsPtr = VmRead64 (VMCS_64_CONTROL_EXECUTIVE_VMCS_PTR_INDEX);
-  VmcsRecord = GetVmcsRecord (mHostContextCommon.VmcsDatabase, ExecutiveVmcsPtr);
+  VmcsRecord       = GetVmcsRecord (mHostContextCommon.VmcsDatabase, ExecutiveVmcsPtr);
   if (VmcsRecord == NULL) {
     VmcsRecord = &mDefaultVmcsRecord;
   }
-#if 0
+
+ #if 0
   DEBUG ((EFI_D_INFO, "GetVmcsRecord - %08x\n", VmcsRecord));
-#endif
+ #endif
   TxtProcessorSmmDescriptor = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor;
 
   CpuState = (STM_SMM_CPU_STATE *)(UINTN)(mHostContextCommon.HostContextPerCpu[Index].Smbase + SMM_CPU_STATE_OFFSET);
@@ -510,7 +526,7 @@ ReadSyncSmmStateSaveArea (
   if (CpuState->Smbase != mHostContextCommon.HostContextPerCpu[Index].Smbase) {
     CpuDeadLoop ();
   }
-  
+
   // If this bit is not set by the SMM guest, the STM will not attempt to propagate any
   // changes the SMI handler has made to the SMRAM state save area to the
   // interrupted context's VMCS or process register state.
@@ -539,7 +555,7 @@ ReadSyncSmmStateSaveArea (
       VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, (UINTN)CpuState->Rflags);
     }
 
-#ifdef DOMAIN_TYPE_CHECK
+ #ifdef DOMAIN_TYPE_CHECK
     Qualification.UintN = mGuestContextCommonSmi.GuestContextPerCpu[Index].Qualification.UintN;
     //
     // Consult DomainType to decide if propagate EAX
@@ -550,7 +566,8 @@ ReadSyncSmmStateSaveArea (
         CopyMem (&Reg->Rax, &CpuState->Rax, Qualification.IoInstruction.Size + 1);
       }
     }
-#endif
+
+ #endif
   }
 
   if (mGuestContextCommonSmi.GuestContextPerCpu[Index].InfoBasic.Bits.Reason == VmExitReasonIoSmi) {
@@ -578,5 +595,5 @@ ReadSyncSmmStateSaveArea (
     XStateRestore (Index);
   }
 
-  return ;
+  return;
 }

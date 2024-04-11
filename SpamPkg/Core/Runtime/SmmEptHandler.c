@@ -19,7 +19,7 @@
 #define FUNCTION_FROM_PCIE_ADDRESS(PcieAddress)  (UINT8)(((UINTN)(PcieAddress) & 0x00007000) >> 12)
 #define REGISTER_FROM_PCIE_ADDRESS(PcieAddress)  (UINT16)((UINTN)(PcieAddress) & 0x00000FFF)
 
-#define PAGE_PROGATE_BITS           (BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5)
+#define PAGE_PROGATE_BITS  (BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5)
 
 #define PAGING_4K_MASK  0xFFF
 #define PAGING_2M_MASK  0x1FFFFF
@@ -27,9 +27,9 @@
 
 #define PAGING_PAE_INDEX_MASK  0x1FF
 
-#define PAGING_4K_ADDRESS_MASK_64 0x000FFFFFFFFFF000ull
-#define PAGING_2M_ADDRESS_MASK_64 0x000FFFFFFFE00000ull
-#define PAGING_1G_ADDRESS_MASK_64 0x000FFFFFC0000000ull
+#define PAGING_4K_ADDRESS_MASK_64  0x000FFFFFFFFFF000ull
+#define PAGING_2M_ADDRESS_MASK_64  0x000FFFFFFFE00000ull
+#define PAGING_1G_ADDRESS_MASK_64  0x000FFFFFC0000000ull
 
 typedef enum {
   PageNone,
@@ -39,15 +39,15 @@ typedef enum {
 } PAGE_ATTRIBUTE;
 
 typedef struct {
-  PAGE_ATTRIBUTE   Attribute;
-  UINT64           Length;
-  UINT64           AddressMask;
+  PAGE_ATTRIBUTE    Attribute;
+  UINT64            Length;
+  UINT64            AddressMask;
 } PAGE_ATTRIBUTE_TABLE;
 
-PAGE_ATTRIBUTE_TABLE mPageAttributeTable[] = {
-  {Page4K,  SIZE_4KB, PAGING_4K_ADDRESS_MASK_64},
-  {Page2M,  SIZE_2MB, PAGING_2M_ADDRESS_MASK_64},
-  {Page1G,  SIZE_1GB, PAGING_1G_ADDRESS_MASK_64},
+PAGE_ATTRIBUTE_TABLE  mPageAttributeTable[] = {
+  { Page4K, SIZE_4KB, PAGING_4K_ADDRESS_MASK_64 },
+  { Page2M, SIZE_2MB, PAGING_2M_ADDRESS_MASK_64 },
+  { Page1G, SIZE_1GB, PAGING_1G_ADDRESS_MASK_64 },
 };
 
 /**
@@ -63,11 +63,13 @@ PageAttributeToLength (
   )
 {
   UINTN  Index;
-  for (Index = 0; Index < sizeof(mPageAttributeTable)/sizeof(mPageAttributeTable[0]); Index++) {
+
+  for (Index = 0; Index < sizeof (mPageAttributeTable)/sizeof (mPageAttributeTable[0]); Index++) {
     if (PageAttribute == mPageAttributeTable[Index].Attribute) {
       return (UINTN)mPageAttributeTable[Index].Length;
     }
   }
+
   return 0;
 }
 
@@ -84,11 +86,13 @@ PageAttributeToMask (
   )
 {
   UINTN  Index;
-  for (Index = 0; Index < sizeof(mPageAttributeTable)/sizeof(mPageAttributeTable[0]); Index++) {
+
+  for (Index = 0; Index < sizeof (mPageAttributeTable)/sizeof (mPageAttributeTable[0]); Index++) {
     if (PageAttribute == mPageAttributeTable[Index].Attribute) {
       return (UINTN)mPageAttributeTable[Index].AddressMask;
     }
   }
+
   return 0;
 }
 
@@ -102,26 +106,26 @@ PageAttributeToMask (
 **/
 EPT_ENTRY *
 GetPageTableEntry (
-  IN  PHYSICAL_ADDRESS                  Address,
-  OUT PAGE_ATTRIBUTE                    *PageAttribute
+  IN  PHYSICAL_ADDRESS  Address,
+  OUT PAGE_ATTRIBUTE    *PageAttribute
   )
 {
-  UINTN                 Index1;
-  UINTN                 Index2;
-  UINTN                 Index3;
-  UINTN                 Index4;
-  EPT_ENTRY             *L1PageTable;
-  EPT_ENTRY             *L2PageTable;
-  EPT_ENTRY             *L3PageTable;
-  EPT_ENTRY             *L4PageTable;
+  UINTN      Index1;
+  UINTN      Index2;
+  UINTN      Index3;
+  UINTN      Index4;
+  EPT_ENTRY  *L1PageTable;
+  EPT_ENTRY  *L2PageTable;
+  EPT_ENTRY  *L3PageTable;
+  EPT_ENTRY  *L4PageTable;
 
-//  DEBUG ((EFI_D_INFO, "GetPageTableEntry: %x\n", (UINTN)Address));
+  //  DEBUG ((EFI_D_INFO, "GetPageTableEntry: %x\n", (UINTN)Address));
 
   Index4 = ((UINTN)RShiftU64 (Address, 39)) & PAGING_PAE_INDEX_MASK;
   Index3 = ((UINTN)Address >> 30) & PAGING_PAE_INDEX_MASK;
   Index2 = ((UINTN)Address >> 21) & PAGING_PAE_INDEX_MASK;
   Index1 = ((UINTN)Address >> 12) & PAGING_PAE_INDEX_MASK;
-//  DEBUG ((EFI_D_INFO, "Index: %x %x %x %x\n", Index4, Index3, Index2, Index1));
+  //  DEBUG ((EFI_D_INFO, "Index: %x %x %x %x\n", Index4, Index3, Index2, Index1));
 
   L4PageTable = (EPT_ENTRY *)(UINTN)(mGuestContextCommonSmm.EptPointer.Uint64 & PAGING_4K_ADDRESS_MASK_64);
   if (L4PageTable[Index4].Uint64 == 0) {
@@ -134,6 +138,7 @@ GetPageTableEntry (
     *PageAttribute = PageNone;
     return NULL;
   }
+
   if (L3PageTable[Index3].Bits32.Sp != 0) {
     // 1G
     *PageAttribute = Page1G;
@@ -145,6 +150,7 @@ GetPageTableEntry (
     *PageAttribute = PageNone;
     return NULL;
   }
+
   if (L2PageTable[Index2].Bits32.Sp != 0) {
     // 2M
     *PageAttribute = Page2M;
@@ -157,6 +163,7 @@ GetPageTableEntry (
     *PageAttribute = PageNone;
     return NULL;
   }
+
   *PageAttribute = Page4K;
   return &L1PageTable[Index1];
 }
@@ -171,36 +178,37 @@ GetPageTableEntry (
 **/
 VOID
 ConvertPageEntryAttribute (
-  IN EPT_ENTRY                          *PageEntry,
-  IN UINT32                             Ra,
-  IN UINT32                             Wa,
-  IN UINT32                             Xa,
-  IN EPT_PAGE_ATTRIBUTE_SETTING         EptPageAttributeSetting
+  IN EPT_ENTRY                   *PageEntry,
+  IN UINT32                      Ra,
+  IN UINT32                      Wa,
+  IN UINT32                      Xa,
+  IN EPT_PAGE_ATTRIBUTE_SETTING  EptPageAttributeSetting
   )
 {
   UINT64  CurrentPageEntry;
 
   CurrentPageEntry = PageEntry->Uint64;
   switch (EptPageAttributeSetting) {
-  case EptPageAttributeSet:
-    PageEntry->Bits32.Ra = (UINT32)Ra;
-    PageEntry->Bits32.Wa = (UINT32)Wa;
-    PageEntry->Bits32.Xa = (UINT32)Xa;
-    break;
-  case EptPageAttributeAnd:
-    PageEntry->Bits32.Ra &= (UINT32)Ra;
-    PageEntry->Bits32.Wa &= (UINT32)Wa;
-    PageEntry->Bits32.Xa &= (UINT32)Xa;
-    break;
-  case EptPageAttributeOr:
-    PageEntry->Bits32.Ra |= (UINT32)Ra;
-    PageEntry->Bits32.Wa |= (UINT32)Wa;
-    PageEntry->Bits32.Xa |= (UINT32)Xa;
-    break;
-  default:
-    CpuDeadLoop ();
-    break;
+    case EptPageAttributeSet:
+      PageEntry->Bits32.Ra = (UINT32)Ra;
+      PageEntry->Bits32.Wa = (UINT32)Wa;
+      PageEntry->Bits32.Xa = (UINT32)Xa;
+      break;
+    case EptPageAttributeAnd:
+      PageEntry->Bits32.Ra &= (UINT32)Ra;
+      PageEntry->Bits32.Wa &= (UINT32)Wa;
+      PageEntry->Bits32.Xa &= (UINT32)Xa;
+      break;
+    case EptPageAttributeOr:
+      PageEntry->Bits32.Ra |= (UINT32)Ra;
+      PageEntry->Bits32.Wa |= (UINT32)Wa;
+      PageEntry->Bits32.Xa |= (UINT32)Xa;
+      break;
+    default:
+      CpuDeadLoop ();
+      break;
   }
+
   if (CurrentPageEntry != PageEntry->Uint64) {
     DEBUG ((EFI_D_INFO, "ConvertPageEntryAttribute 0x%lx", CurrentPageEntry));
     DEBUG ((EFI_D_INFO, "->0x%lx\n", PageEntry->Uint64));
@@ -218,12 +226,12 @@ ConvertPageEntryAttribute (
 **/
 PAGE_ATTRIBUTE
 NeedSplitPage (
-  IN  PHYSICAL_ADDRESS                  BaseAddress,
-  IN  UINT64                            Length,
-  IN  PAGE_ATTRIBUTE                    PageAttribute
+  IN  PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64            Length,
+  IN  PAGE_ATTRIBUTE    PageAttribute
   )
 {
-  UINT64                PageEntryLength;
+  UINT64  PageEntryLength;
 
   PageEntryLength = PageAttributeToLength (PageAttribute);
 
@@ -251,14 +259,14 @@ NeedSplitPage (
 **/
 RETURN_STATUS
 SplitPage (
-  IN  EPT_ENTRY                         *PageEntry,
-  IN  PAGE_ATTRIBUTE                    PageAttribute,
-  IN  PAGE_ATTRIBUTE                    SplitAttribute
+  IN  EPT_ENTRY       *PageEntry,
+  IN  PAGE_ATTRIBUTE  PageAttribute,
+  IN  PAGE_ATTRIBUTE  SplitAttribute
   )
 {
-  UINT64      BaseAddress;
-  EPT_ENTRY   *NewPageEntry;
-  UINTN       Index;
+  UINT64     BaseAddress;
+  EPT_ENTRY  *NewPageEntry;
+  UINTN      Index;
 
   ASSERT (PageAttribute == Page2M || PageAttribute == Page1G);
 
@@ -273,11 +281,13 @@ SplitPage (
       if (NewPageEntry == NULL) {
         return RETURN_OUT_OF_RESOURCES;
       }
+
       BaseAddress = PageEntry->Uint64 & PAGING_2M_ADDRESS_MASK_64;
-      for (Index = 0; Index < SIZE_4KB / sizeof(UINT64); Index++) {
+      for (Index = 0; Index < SIZE_4KB / sizeof (UINT64); Index++) {
         NewPageEntry[Index].Uint64 = BaseAddress + SIZE_4KB * Index + (PageEntry->Uint64 & PAGE_PROGATE_BITS);
       }
-      PageEntry->Uint64 = (UINT64)(UINTN)NewPageEntry;
+
+      PageEntry->Uint64    = (UINT64)(UINTN)NewPageEntry;
       PageEntry->Bits32.Ra = 1;
       PageEntry->Bits32.Wa = 1;
       PageEntry->Bits32.Xa = 1;
@@ -291,18 +301,20 @@ SplitPage (
     // No need support 1G->4K directly, we should use 1G->2M, then 2M->4K to get more compact page table.
     //
     ASSERT (SplitAttribute == Page2M || SplitAttribute == Page4K);
-    if ((SplitAttribute == Page2M || SplitAttribute == Page4K)) {
+    if (((SplitAttribute == Page2M) || (SplitAttribute == Page4K))) {
       NewPageEntry = (EPT_ENTRY *)AllocatePages (1);
       DEBUG ((EFI_D_INFO, "Split - 0x%x\n", NewPageEntry));
       if (NewPageEntry == NULL) {
         return RETURN_OUT_OF_RESOURCES;
       }
+
       BaseAddress = PageEntry->Uint64 & PAGING_1G_ADDRESS_MASK_64;
-      for (Index = 0; Index < SIZE_4KB / sizeof(UINT64); Index++) {
+      for (Index = 0; Index < SIZE_4KB / sizeof (UINT64); Index++) {
         NewPageEntry[Index].Uint64    = BaseAddress + SIZE_2MB * Index + (PageEntry->Uint64 & PAGE_PROGATE_BITS);
         NewPageEntry[Index].Bits32.Sp = 1;
       }
-      PageEntry->Uint64 = (UINT64)(UINTN)NewPageEntry;
+
+      PageEntry->Uint64    = (UINT64)(UINTN)NewPageEntry;
       PageEntry->Bits32.Ra = 1;
       PageEntry->Bits32.Wa = 1;
       PageEntry->Bits32.Xa = 1;
@@ -351,7 +363,7 @@ LookupSmiGuestPhysicalToHostPhysical (
 {
   EPT_ENTRY  *EptEntry;
 
-  EptEntry = NULL;
+  EptEntry             = NULL;
   *HostPhysicalAddress = TranslateEPTGuestToHost (GuestPhysicalAddress, &EptEntry);
   if (EptEntry == NULL) {
     return FALSE;
@@ -375,7 +387,7 @@ GuestLinearToHostPhysical (
   IN UINTN   GuestLinearAddress
   )
 {
-  UINTN   GuestPhysicalAddress;
+  UINTN  GuestPhysicalAddress;
 
   GuestPhysicalAddress = (UINTN)GuestLinearToGuestPhysical (CpuIndex, GuestLinearAddress);
   return TranslateEPTGuestToHost (GuestPhysicalAddress, NULL);
@@ -397,15 +409,15 @@ TranslateEPTGuestToHost (
   OUT EPT_ENTRY  **EntryPtr  OPTIONAL
   )
 {
-  EPT_ENTRY                *L1PageTable;
-  EPT_ENTRY                *L2PageTable;
-  EPT_ENTRY                *L3PageTable;
-  EPT_ENTRY                *L4PageTable;
-  UINTN                    Index1;
-  UINTN                    Index2;
-  UINTN                    Index3;
-  UINTN                    Index4;
-  UINTN                    Offset;
+  EPT_ENTRY  *L1PageTable;
+  EPT_ENTRY  *L2PageTable;
+  EPT_ENTRY  *L3PageTable;
+  EPT_ENTRY  *L4PageTable;
+  UINTN      Index1;
+  UINTN      Index2;
+  UINTN      Index3;
+  UINTN      Index4;
+  UINTN      Offset;
 
   Index4 = ((UINTN)RShiftU64 (Addr, 39)) & 0x1ff;
   Index3 = ((UINTN)Addr >> 30) & 0x1ff;
@@ -416,38 +428,48 @@ TranslateEPTGuestToHost (
   if (EntryPtr != NULL) {
     *EntryPtr = NULL;
   }
+
   L4PageTable = (EPT_ENTRY *)(UINTN)((UINTN)mGuestContextCommonSmm.EptPointer.Uint64 & PAGING_4K_ADDRESS_MASK_64);
   if ((L4PageTable[Index4].Bits32.Ra == 0) &&
       (L4PageTable[Index4].Bits32.Wa == 0) &&
-      (L4PageTable[Index4].Bits32.Xa == 0)) {
+      (L4PageTable[Index4].Bits32.Xa == 0))
+  {
     if (EntryPtr != NULL) {
       *EntryPtr = &L4PageTable[Index4];
     }
+
     return 0;
   }
+
   L3PageTable = (EPT_ENTRY *)(UINTN)((UINTN)L4PageTable[Index4].Uint64 & PAGING_4K_ADDRESS_MASK_64);
   if ((L3PageTable[Index3].Bits32.Ra == 0) &&
       (L3PageTable[Index3].Bits32.Wa == 0) &&
-      (L3PageTable[Index3].Bits32.Xa == 0)) {
+      (L3PageTable[Index3].Bits32.Xa == 0))
+  {
     if (EntryPtr != NULL) {
       *EntryPtr = &L3PageTable[Index3];
     }
+
     return 0;
   }
+
   if (L3PageTable[Index2].Bits32.Sp == 1) {
     if (EntryPtr != NULL) {
       *EntryPtr = &L3PageTable[Index3];
     }
+
     return ((UINTN)L3PageTable[Index3].Uint64 & PAGING_1G_ADDRESS_MASK_64) + ((UINTN)Addr & PAGING_1G_MASK);
   }
 
   L2PageTable = (EPT_ENTRY *)(UINTN)((UINTN)L3PageTable[Index3].Uint64 & PAGING_4K_ADDRESS_MASK_64);
   if ((L2PageTable[Index2].Bits32.Ra == 0) &&
       (L2PageTable[Index2].Bits32.Wa == 0) &&
-      (L2PageTable[Index2].Bits32.Xa == 0)) {
+      (L2PageTable[Index2].Bits32.Xa == 0))
+  {
     if (EntryPtr != NULL) {
       *EntryPtr = &L2PageTable[Index2];
     }
+
     return 0;
   }
 
@@ -455,20 +477,23 @@ TranslateEPTGuestToHost (
     if (EntryPtr != NULL) {
       *EntryPtr = &L2PageTable[Index2];
     }
+
     return ((UINTN)L2PageTable[Index2].Uint64 & PAGING_2M_ADDRESS_MASK_64) + ((UINTN)Addr & PAGING_2M_MASK);
   }
 
   L1PageTable = (EPT_ENTRY *)(UINTN)((UINTN)L2PageTable[Index2].Uint64 & PAGING_4K_ADDRESS_MASK_64);
   if ((L1PageTable[Index1].Bits32.Ra == 0) &&
       (L1PageTable[Index1].Bits32.Wa == 0) &&
-      (L1PageTable[Index1].Bits32.Xa == 0)) {
+      (L1PageTable[Index1].Bits32.Xa == 0))
+  {
     // not check last one, since user may update it
-//    return 0;
+    //    return 0;
   }
 
   if (EntryPtr != NULL) {
     *EntryPtr = &L1PageTable[Index1];
   }
+
   return ((UINTN)L1PageTable[Index1].Uint64 & PAGING_4K_ADDRESS_MASK_64) + Offset;
 }
 
@@ -486,37 +511,38 @@ TranslateEPTGuestToHost (
 **/
 RETURN_STATUS
 EPTSetPageAttributeRange (
-  IN UINT64                     Base,
-  IN UINT64                     Length,
-  IN UINT32                     Ra,
-  IN UINT32                     Wa,
-  IN UINT32                     Xa,
-  IN EPT_PAGE_ATTRIBUTE_SETTING EptPageAttributeSetting
+  IN UINT64                      Base,
+  IN UINT64                      Length,
+  IN UINT32                      Ra,
+  IN UINT32                      Wa,
+  IN UINT32                      Xa,
+  IN EPT_PAGE_ATTRIBUTE_SETTING  EptPageAttributeSetting
   )
 {
-  EPT_ENTRY                         *PageEntry;
-  PAGE_ATTRIBUTE                    PageAttribute;
-  UINTN                             PageEntryLength;
-  PAGE_ATTRIBUTE                    SplitAttribute;
-  RETURN_STATUS                     Status;
-  UINT_128   Data128;
+  EPT_ENTRY       *PageEntry;
+  PAGE_ATTRIBUTE  PageAttribute;
+  UINTN           PageEntryLength;
+  PAGE_ATTRIBUTE  SplitAttribute;
+  RETURN_STATUS   Status;
+  UINT_128        Data128;
 
-//  DEBUG ((EFI_D_INFO, "EPTSetPageAttributeRange - 0x%016lx - 0x%016lx\n", Base, Length));
-  
+  //  DEBUG ((EFI_D_INFO, "EPTSetPageAttributeRange - 0x%016lx - 0x%016lx\n", Base, Length));
+
   while (Length != 0) {
     PageEntry = GetPageTableEntry (Base, &PageAttribute);
     if (PageEntry == NULL) {
       DEBUG ((EFI_D_INFO, "PageEntry == NULL\n"));
       return RETURN_UNSUPPORTED;
     }
+
     PageEntryLength = PageAttributeToLength (PageAttribute);
-    SplitAttribute = NeedSplitPage (Base, Length, PageAttribute);
+    SplitAttribute  = NeedSplitPage (Base, Length, PageAttribute);
     if (SplitAttribute == PageNone) {
       ConvertPageEntryAttribute (PageEntry, Ra, Wa, Xa, EptPageAttributeSetting);
       //
       // Convert success, move to next
       //
-      Base += PageEntryLength;
+      Base   += PageEntryLength;
       Length -= PageEntryLength;
     } else {
       Status = SplitPage (PageEntry, PageAttribute, SplitAttribute);
@@ -524,6 +550,7 @@ EPTSetPageAttributeRange (
         DEBUG ((EFI_D_INFO, "SplitPage - %r\n", Status));
         return RETURN_UNSUPPORTED;
       }
+
       //
       // Just split current page
       // Convert success in next around
@@ -535,7 +562,7 @@ EPTSetPageAttributeRange (
   Data128.Hi = 0;
   AsmInvEpt (INVEPT_TYPE_SINGLE_CONTEXT_INVALIDATION, &Data128);
 
-  //DEBUG ((EFI_D_INFO, "EPTSetPageAttributeRange - %r\n", RETURN_SUCCESS));
+  // DEBUG ((EFI_D_INFO, "EPTSetPageAttributeRange - %r\n", RETURN_SUCCESS));
   return RETURN_SUCCESS;
 }
 
@@ -548,17 +575,17 @@ EPTSetPageAttributeRange (
 **/
 VOID
 SmmEPTViolationHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  VM_EXIT_QUALIFICATION   Qualification;
-  STM_RSC_MEM_DESC        *MemDesc;
-  UINT64                  Address;
-  STM_RSC_PCI_CFG_DESC    *PciCfgDesc;
-  UINT64                  PciExpressAddress;
-  STM_RSC_MEM_DESC        LocalMemDesc;
-  STM_RSC_PCI_CFG_DESC    *LocalPciCfgDescPtr;
-  UINT8                   LocalPciCfgDescBuf[STM_LOG_ENTRY_SIZE];
+  VM_EXIT_QUALIFICATION  Qualification;
+  STM_RSC_MEM_DESC       *MemDesc;
+  UINT64                 Address;
+  STM_RSC_PCI_CFG_DESC   *PciCfgDesc;
+  UINT64                 PciExpressAddress;
+  STM_RSC_MEM_DESC       LocalMemDesc;
+  STM_RSC_PCI_CFG_DESC   *LocalPciCfgDescPtr;
+  UINT8                  LocalPciCfgDescBuf[STM_LOG_ENTRY_SIZE];
 
   Qualification.UintN = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
 
@@ -593,19 +620,19 @@ SmmEPTViolationHandler (
         SmmExceptionHandler (Index);
         CpuDeadLoop ();
       }
-      
+
       MemDesc = GetStmResourceMem (
                   (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr,
                   Address,
                   (UINT32)(Qualification.UintN & 0x7)
                   );
       if (MemDesc == NULL) {
-        DEBUG((EFI_D_ERROR, "Add unclaimed MEM_RSC!\n"));
-        ZeroMem (&LocalMemDesc, sizeof(LocalMemDesc));
-        LocalMemDesc.Hdr.RscType = MEM_RANGE;
-        LocalMemDesc.Hdr.Length = sizeof(LocalMemDesc);
-        LocalMemDesc.Base = Address;
-        LocalMemDesc.Length = 1;
+        DEBUG ((EFI_D_ERROR, "Add unclaimed MEM_RSC!\n"));
+        ZeroMem (&LocalMemDesc, sizeof (LocalMemDesc));
+        LocalMemDesc.Hdr.RscType   = MEM_RANGE;
+        LocalMemDesc.Hdr.Length    = sizeof (LocalMemDesc);
+        LocalMemDesc.Base          = Address;
+        LocalMemDesc.Length        = 1;
         LocalMemDesc.RWXAttributes = (UINT8)(Qualification.UintN & 0x7);
         AddEventLogForResource (EvtBiosAccessToUnclaimedResource, (STM_RSC *)&LocalMemDesc);
         // BUGBUG: it should not happen?
@@ -616,16 +643,17 @@ SmmEPTViolationHandler (
       // Check PCIE MMIO.
       if ((mHostContextCommon.PciExpressBaseAddress != 0) &&
           (Address >= mHostContextCommon.PciExpressBaseAddress) &&
-          (Address < (mHostContextCommon.PciExpressBaseAddress + mHostContextCommon.PciExpressLength))) {
+          (Address < (mHostContextCommon.PciExpressBaseAddress + mHostContextCommon.PciExpressLength)))
+      {
         PciExpressAddress = Address - mHostContextCommon.PciExpressBaseAddress;
-        PciCfgDesc = GetStmResourcePci (
-                       mHostContextCommon.MleProtectedResource.Base,
-                       BUS_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       DEVICE_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       FUNCTION_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       REGISTER_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       (UINT8)(Qualification.UintN & 0x3)
-                       );
+        PciCfgDesc        = GetStmResourcePci (
+                              mHostContextCommon.MleProtectedResource.Base,
+                              BUS_FROM_PCIE_ADDRESS (PciExpressAddress),
+                              DEVICE_FROM_PCIE_ADDRESS (PciExpressAddress),
+                              FUNCTION_FROM_PCIE_ADDRESS (PciExpressAddress),
+                              REGISTER_FROM_PCIE_ADDRESS (PciExpressAddress),
+                              (UINT8)(Qualification.UintN & 0x3)
+                              );
         if (PciCfgDesc != NULL) {
           DEBUG ((EFI_D_ERROR, "EPT (PCIE) violation!\n"));
           AddEventLogForResource (EvtHandledProtectionException, (STM_RSC *)PciCfgDesc);
@@ -635,38 +663,37 @@ SmmEPTViolationHandler (
 
         PciCfgDesc = GetStmResourcePci (
                        (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr,
-                       BUS_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       DEVICE_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       FUNCTION_FROM_PCIE_ADDRESS(PciExpressAddress),
-                       REGISTER_FROM_PCIE_ADDRESS(PciExpressAddress),
+                       BUS_FROM_PCIE_ADDRESS (PciExpressAddress),
+                       DEVICE_FROM_PCIE_ADDRESS (PciExpressAddress),
+                       FUNCTION_FROM_PCIE_ADDRESS (PciExpressAddress),
+                       REGISTER_FROM_PCIE_ADDRESS (PciExpressAddress),
                        (UINT8)(Qualification.UintN & 0x3)
                        );
         if (PciCfgDesc == NULL) {
-          DEBUG((EFI_D_ERROR, "Add unclaimed PCIE_RSC!\n"));
+          DEBUG ((EFI_D_ERROR, "Add unclaimed PCIE_RSC!\n"));
           LocalPciCfgDescPtr = (STM_RSC_PCI_CFG_DESC *)LocalPciCfgDescBuf;
-          ZeroMem (LocalPciCfgDescBuf, sizeof(LocalPciCfgDescBuf));
-          LocalPciCfgDescPtr->Hdr.RscType = PCI_CFG_RANGE;
-          LocalPciCfgDescPtr->Hdr.Length = sizeof(STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierachy here.
-          LocalPciCfgDescPtr->RWAttributes = (UINT8)(Qualification.UintN & 0x3);
-          LocalPciCfgDescPtr->Base = REGISTER_FROM_PCIE_ADDRESS(PciExpressAddress);
-          LocalPciCfgDescPtr->Length = 1;
-          LocalPciCfgDescPtr->OriginatingBusNumber = BUS_FROM_PCIE_ADDRESS(PciExpressAddress);
-          LocalPciCfgDescPtr->LastNodeIndex = 0;
-          LocalPciCfgDescPtr->PciDevicePath[0].Type = 1;
-          LocalPciCfgDescPtr->PciDevicePath[0].Subtype = 1;
-          LocalPciCfgDescPtr->PciDevicePath[0].Length = sizeof(STM_PCI_DEVICE_PATH_NODE);
-          LocalPciCfgDescPtr->PciDevicePath[0].PciFunction = FUNCTION_FROM_PCIE_ADDRESS(PciExpressAddress);
-          LocalPciCfgDescPtr->PciDevicePath[0].PciDevice = DEVICE_FROM_PCIE_ADDRESS(PciExpressAddress);
+          ZeroMem (LocalPciCfgDescBuf, sizeof (LocalPciCfgDescBuf));
+          LocalPciCfgDescPtr->Hdr.RscType                  = PCI_CFG_RANGE;
+          LocalPciCfgDescPtr->Hdr.Length                   = sizeof (STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierarchy here.
+          LocalPciCfgDescPtr->RWAttributes                 = (UINT8)(Qualification.UintN & 0x3);
+          LocalPciCfgDescPtr->Base                         = REGISTER_FROM_PCIE_ADDRESS (PciExpressAddress);
+          LocalPciCfgDescPtr->Length                       = 1;
+          LocalPciCfgDescPtr->OriginatingBusNumber         = BUS_FROM_PCIE_ADDRESS (PciExpressAddress);
+          LocalPciCfgDescPtr->LastNodeIndex                = 0;
+          LocalPciCfgDescPtr->PciDevicePath[0].Type        = 1;
+          LocalPciCfgDescPtr->PciDevicePath[0].Subtype     = 1;
+          LocalPciCfgDescPtr->PciDevicePath[0].Length      = sizeof (STM_PCI_DEVICE_PATH_NODE);
+          LocalPciCfgDescPtr->PciDevicePath[0].PciFunction = FUNCTION_FROM_PCIE_ADDRESS (PciExpressAddress);
+          LocalPciCfgDescPtr->PciDevicePath[0].PciDevice   = DEVICE_FROM_PCIE_ADDRESS (PciExpressAddress);
           AddEventLogForResource (EvtBiosAccessToUnclaimedResource, (STM_RSC *)LocalPciCfgDescPtr);
         }
-
       }
     }
   }
 
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
 
-  return ;
+  return;
 }
 
 /**
@@ -689,7 +716,7 @@ SmmEPTMisconfigurationHandler (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }
 
 /**
@@ -709,7 +736,7 @@ SmmInvEPTHandler (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }
 
 /**
@@ -724,9 +751,9 @@ Ia32PAESync (
   IN UINT32  Index
   )
 {
-  UINTN              Cr0;
-  UINTN              Cr3;
-  UINTN              Cr4;
+  UINTN  Cr0;
+  UINTN  Cr3;
+  UINTN  Cr4;
 
   //
   // If EPT is enabled and Guest is in IA32 PAE Mode, we need to write PDPTR.
@@ -736,12 +763,13 @@ Ia32PAESync (
   Cr4 = VmReadN (VMCS_N_GUEST_CR4_INDEX);
   if (((Cr4 & CR4_PAE) != 0) &&
       ((Cr0 & CR0_PG) != 0) &&
-      ((mGuestContextCommonSmm.GuestContextPerCpu[Index].Efer & IA32_EFER_MSR_MLA) == 0)) {
-    VmWrite64 (VMCS_64_GUEST_PDPTE0_INDEX, *(UINT64 *)(Cr3 + sizeof(UINT64) * 0));
-    VmWrite64 (VMCS_64_GUEST_PDPTE1_INDEX, *(UINT64 *)(Cr3 + sizeof(UINT64) * 1));
-    VmWrite64 (VMCS_64_GUEST_PDPTE2_INDEX, *(UINT64 *)(Cr3 + sizeof(UINT64) * 2));
-    VmWrite64 (VMCS_64_GUEST_PDPTE3_INDEX, *(UINT64 *)(Cr3 + sizeof(UINT64) * 3));
+      ((mGuestContextCommonSmm.GuestContextPerCpu[Index].Efer & IA32_EFER_MSR_MLA) == 0))
+  {
+    VmWrite64 (VMCS_64_GUEST_PDPTE0_INDEX, *(UINT64 *)(Cr3 + sizeof (UINT64) * 0));
+    VmWrite64 (VMCS_64_GUEST_PDPTE1_INDEX, *(UINT64 *)(Cr3 + sizeof (UINT64) * 1));
+    VmWrite64 (VMCS_64_GUEST_PDPTE2_INDEX, *(UINT64 *)(Cr3 + sizeof (UINT64) * 2));
+    VmWrite64 (VMCS_64_GUEST_PDPTE3_INDEX, *(UINT64 *)(Cr3 + sizeof (UINT64) * 3));
   }
 
-  return ;
+  return;
 }

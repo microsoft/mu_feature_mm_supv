@@ -23,15 +23,16 @@
 **/
 VOID
 ClearEventLog (
-  IN MLE_EVENT_LOG_STRUCTURE   *EventLog
+  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
   )
 {
-  UINT32 Index;
+  UINT32  Index;
 
   for (Index = 0; Index < EventLog->PageCount; Index++) {
-    ZeroMem ((VOID *)(UINTN)EventLog->Pages[Index], STM_PAGES_TO_SIZE(1));
+    ZeroMem ((VOID *)(UINTN)EventLog->Pages[Index], STM_PAGES_TO_SIZE (1));
   }
-  return ;
+
+  return;
 }
 
 /**
@@ -45,12 +46,12 @@ ClearEventLog (
 **/
 STM_LOG_ENTRY *
 GetNextEmpty (
-  IN MLE_EVENT_LOG_STRUCTURE   *EventLog
+  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
   )
 {
-  STM_LOG_ENTRY             *LogEntry;
-  UINTN                     EventIndex;
-  UINT32                    Index;
+  STM_LOG_ENTRY  *LogEntry;
+  UINTN          EventIndex;
+  UINT32         Index;
 
   //
   // Or just use EventSerialNumber as Index?
@@ -61,10 +62,11 @@ GetNextEmpty (
   //
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];
-    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE(1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
+    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE (1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
       if (AsmTestAndSet (16, &LogEntry->Hdr.Type) == 1) {
         continue;
       }
+
       if (LogEntry->Hdr.Valid == 0) {
         return LogEntry;
       } else {
@@ -72,15 +74,17 @@ GetNextEmpty (
       }
     }
   }
+
   //
   // If we come here no empty slot is found, so we try to find the record ReadByMle
   //
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];
-    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE(1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
+    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE (1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
       if (AsmTestAndSet (16, &LogEntry->Hdr.Type) == 1) {
         continue;
       }
+
       if (LogEntry->Hdr.ReadByMle == 1) {
         return LogEntry;
       } else {
@@ -88,15 +92,17 @@ GetNextEmpty (
       }
     }
   }
+
   //
   // No lucky. We have to override an event not read by MLE
   //
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];
-    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE(1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
+    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE (1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
       if (AsmTestAndSet (16, &LogEntry->Hdr.Type) == 1) {
         continue;
       }
+
       if (LogEntry->Hdr.Wrapped == 0) {
         return LogEntry;
       } else {
@@ -104,18 +110,21 @@ GetNextEmpty (
       }
     }
   }
+
   //
-  // Ohh, all the record are comsumed
+  // Ohh, all the record are consumed
   //
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];
-    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE(1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
+    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE (1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
       if (AsmTestAndSet (16, &LogEntry->Hdr.Type) == 1) {
         continue;
       }
+
       return LogEntry;
     }
   }
+
   //
   // No chance. :-(
   //
@@ -134,25 +143,27 @@ GetNextEmpty (
 **/
 VOID
 AddEventLog (
-  IN UINT16                    EventType,
-  IN LOG_ENTRY_DATA            *LogEntryData,
-  IN UINTN                     LogEntryDataSize,
-  IN MLE_EVENT_LOG_STRUCTURE   *EventLog
+  IN UINT16                   EventType,
+  IN LOG_ENTRY_DATA           *LogEntryData,
+  IN UINTN                    LogEntryDataSize,
+  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
   )
 {
-  STM_LOG_ENTRY             *LogEntry;
+  STM_LOG_ENTRY  *LogEntry;
 
   if (EventLog->State != EvtLogStarted) {
-    return ;
+    return;
   }
+
   if ((EventLog->EventEnableBitmap & (1 << EventType)) == 0) {
-    return ;
+    return;
   }
+
   //
   // Check total length, truncate any STM_LOG_ENTRY that is greater than 256 bytes.
   //
-  if (sizeof(LogEntry->Hdr) + LogEntryDataSize > STM_LOG_ENTRY_SIZE) {
-    LogEntryDataSize =  STM_LOG_ENTRY_SIZE - sizeof(LogEntry->Hdr);
+  if (sizeof (LogEntry->Hdr) + LogEntryDataSize > STM_LOG_ENTRY_SIZE) {
+    LogEntryDataSize =  STM_LOG_ENTRY_SIZE - sizeof (LogEntry->Hdr);
   }
 
   AcquireSpinLock (&mHostContextCommon.EventLog.EventLogLock);
@@ -160,23 +171,25 @@ AddEventLog (
   LogEntry = GetNextEmpty (EventLog);
   if (LogEntry == NULL) {
     ReleaseSpinLock (&mHostContextCommon.EventLog.EventLogLock);
-    return ;
+    return;
   }
+
   if ((LogEntry->Hdr.Valid == 1) && (LogEntry->Hdr.ReadByMle == 0)) {
     LogEntry->Hdr.Wrapped = 1;
   } else {
     LogEntry->Hdr.Wrapped = 0;
   }
-  LogEntry->Hdr.Valid = 1;
+
+  LogEntry->Hdr.Valid     = 1;
   LogEntry->Hdr.ReadByMle = 0;
 
-  LogEntry->Hdr.EventSerialNumber = EventLog->EventSerialNumber ++;
-  LogEntry->Hdr.Type = EventType;
+  LogEntry->Hdr.EventSerialNumber = EventLog->EventSerialNumber++;
+  LogEntry->Hdr.Type              = EventType;
   CopyMem (&LogEntry->Data, LogEntryData, LogEntryDataSize);
   AsmTestAndReset (16, &LogEntry->Hdr.Type);
 
   ReleaseSpinLock (&mHostContextCommon.EventLog.EventLogLock);
-  return ;
+  return;
 }
 
 /**
@@ -188,13 +201,13 @@ AddEventLog (
 **/
 VOID
 AddEventLogInvalidParameter (
-  IN UINT32 VmcallApiNumber
+  IN UINT32  VmcallApiNumber
   )
 {
-  LOG_ENTRY_DATA                     LogEntryData;
+  LOG_ENTRY_DATA  LogEntryData;
 
-  LogEntryData.InvalidParam.VmcallApiNumber    = VmcallApiNumber;
-  AddEventLog (EvtLogInvalidParameterDetected, &LogEntryData, sizeof(LogEntryData.InvalidParam), &mHostContextCommon.EventLog);
+  LogEntryData.InvalidParam.VmcallApiNumber = VmcallApiNumber;
+  AddEventLog (EvtLogInvalidParameterDetected, &LogEntryData, sizeof (LogEntryData.InvalidParam), &mHostContextCommon.EventLog);
 }
 
 /**
@@ -213,11 +226,11 @@ AddEventLogForResource (
   IN STM_RSC     *Resource
   )
 {
-  LOG_ENTRY_DATA                     LogEntryData;
+  LOG_ENTRY_DATA  LogEntryData;
 
   if (!IsResourceNodeValid (Resource, FALSE, TRUE)) {
     DEBUG ((EFI_D_ERROR, "AddEventLogForResource - Invalid Resource!!!\n"));
-    return ;
+    return;
   }
 
   CopyMem (&LogEntryData.HandledProtectionException.Resource, Resource, Resource->Header.Length);
@@ -235,17 +248,17 @@ AddEventLogForResource (
 **/
 VOID
 AddEventLogDomainDegration (
-  IN UINT64 VmcsPhysPointer,
-  IN UINT8  ExpectedDomainType,
-  IN UINT8  DegradedDomainType
+  IN UINT64  VmcsPhysPointer,
+  IN UINT8   ExpectedDomainType,
+  IN UINT8   DegradedDomainType
   )
 {
-  LOG_ENTRY_DATA                     LogEntryData;
+  LOG_ENTRY_DATA  LogEntryData;
 
   LogEntryData.MleDomainTypeDegraded.VmcsPhysPointer    = VmcsPhysPointer;
   LogEntryData.MleDomainTypeDegraded.ExpectedDomainType = ExpectedDomainType;
   LogEntryData.MleDomainTypeDegraded.DegradedDomainType = DegradedDomainType;
-  AddEventLog (EvtMleDomainTypeDegraded, &LogEntryData, sizeof(LogEntryData.MleDomainTypeDegraded), &mHostContextCommon.EventLog);
+  AddEventLog (EvtMleDomainTypeDegraded, &LogEntryData, sizeof (LogEntryData.MleDomainTypeDegraded), &mHostContextCommon.EventLog);
 }
 
 /**
@@ -259,12 +272,12 @@ InitializeEventLog (
   )
 {
   InitializeSpinLock (&mHostContextCommon.EventLog.EventLogLock);
-  mHostContextCommon.EventLog.State = (UINT32)EvtInvalid;
+  mHostContextCommon.EventLog.State             = (UINT32)EvtInvalid;
   mHostContextCommon.EventLog.EventSerialNumber = 0;
   mHostContextCommon.EventLog.EventEnableBitmap = 0;
-  mHostContextCommon.EventLog.PageCount = 0;
-  mHostContextCommon.EventLog.Pages = AllocatePages (1);
-  ZeroMem (mHostContextCommon.EventLog.Pages, STM_PAGES_TO_SIZE(1));
+  mHostContextCommon.EventLog.PageCount         = 0;
+  mHostContextCommon.EventLog.Pages             = AllocatePages (1);
+  ZeroMem (mHostContextCommon.EventLog.Pages, STM_PAGES_TO_SIZE (1));
 }
 
 /**
@@ -276,7 +289,7 @@ InitializeEventLog (
 **/
 VOID
 DumpEventLogHeader (
-  IN STM_LOG_ENTRY             *LogEntry
+  IN STM_LOG_ENTRY  *LogEntry
   )
 {
   DEBUG ((EFI_D_INFO, "  EventSerialNumber : %08x\n", LogEntry->Hdr.EventSerialNumber));
@@ -291,62 +304,62 @@ DumpEventLogHeader (
 **/
 VOID
 DumpEventLogEntry (
-  IN STM_LOG_ENTRY             *LogEntry
+  IN STM_LOG_ENTRY  *LogEntry
   )
 {
   switch (LogEntry->Hdr.Type) {
-  case EvtLogStarted:
-    DEBUG ((EFI_D_INFO, "EVT_LOG_STARTED:\n"));
-    DumpEventLogHeader (LogEntry);
-    break;
-  case EvtLogStopped:
-    DEBUG ((EFI_D_INFO, "EVT_LOG_STOPPED:\n"));
-    DumpEventLogHeader (LogEntry);
-    break;
-  case EvtLogInvalidParameterDetected:
-    DEBUG ((EFI_D_INFO, "EVT_LOG_INVALID_PARAMETER_DETECTED:\n"));
-    DumpEventLogHeader (LogEntry);
-    DEBUG ((EFI_D_INFO, "  VmcallApiNumber   : %08x\n", LogEntry->Data.InvalidParam.VmcallApiNumber));
-    break;
-  case EvtHandledProtectionException:
-    DEBUG ((EFI_D_INFO, "EVT_HANDLED_PROTECTION_EXCEPTION:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.HandledProtectionException.Resource);
-    break;
-  case EvtBiosAccessToUnclaimedResource:
-    DEBUG ((EFI_D_INFO, "EVT_BIOS_ACCESS_TO_UNCLAIMED_RESOURCE:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.BiosUnclaimedRsc.Resource);
-    break;
-  case EvtMleResourceProtectionGranted:
-    DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_GRANTED:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.MleRscProtGranted.Resource);
-    break;
-  case EvtMleResourceProtectionDenied:
-    DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_DENIED:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.MleRscProtDenied.Resource);
-    break;
-  case EvtMleResourceUnprotect:
-    DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.MleRscUnprot.Resource);
-    break;
-  case EvtMleResourceUnprotectError:
-    DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT_ERROR:\n"));
-    DumpEventLogHeader (LogEntry);
-    DumpStmResourceNode (&LogEntry->Data.MleRscUnprotError.Resource);
-    break;
-  case EvtMleDomainTypeDegraded:
-    DEBUG ((EFI_D_INFO, "EVT_MLE_DOMAIN_TYPE_DEGRADED:\n"));
-    DumpEventLogHeader (LogEntry);
-    DEBUG ((EFI_D_INFO, "  VmcsPhysPointer    : 0x%016lx:\n", LogEntry->Data.MleDomainTypeDegraded.VmcsPhysPointer));
-    DEBUG ((EFI_D_INFO, "  ExpectedDomainType : 0x%02x:\n",   (UINTN)LogEntry->Data.MleDomainTypeDegraded.ExpectedDomainType));
-    DEBUG ((EFI_D_INFO, "  DegradedDomainType : 0x%02x:\n",   (UINTN)LogEntry->Data.MleDomainTypeDegraded.DegradedDomainType));
-    break;
-  default:
-    break;
+    case EvtLogStarted:
+      DEBUG ((EFI_D_INFO, "EVT_LOG_STARTED:\n"));
+      DumpEventLogHeader (LogEntry);
+      break;
+    case EvtLogStopped:
+      DEBUG ((EFI_D_INFO, "EVT_LOG_STOPPED:\n"));
+      DumpEventLogHeader (LogEntry);
+      break;
+    case EvtLogInvalidParameterDetected:
+      DEBUG ((EFI_D_INFO, "EVT_LOG_INVALID_PARAMETER_DETECTED:\n"));
+      DumpEventLogHeader (LogEntry);
+      DEBUG ((EFI_D_INFO, "  VmcallApiNumber   : %08x\n", LogEntry->Data.InvalidParam.VmcallApiNumber));
+      break;
+    case EvtHandledProtectionException:
+      DEBUG ((EFI_D_INFO, "EVT_HANDLED_PROTECTION_EXCEPTION:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.HandledProtectionException.Resource);
+      break;
+    case EvtBiosAccessToUnclaimedResource:
+      DEBUG ((EFI_D_INFO, "EVT_BIOS_ACCESS_TO_UNCLAIMED_RESOURCE:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.BiosUnclaimedRsc.Resource);
+      break;
+    case EvtMleResourceProtectionGranted:
+      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_GRANTED:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.MleRscProtGranted.Resource);
+      break;
+    case EvtMleResourceProtectionDenied:
+      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_DENIED:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.MleRscProtDenied.Resource);
+      break;
+    case EvtMleResourceUnprotect:
+      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.MleRscUnprot.Resource);
+      break;
+    case EvtMleResourceUnprotectError:
+      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT_ERROR:\n"));
+      DumpEventLogHeader (LogEntry);
+      DumpStmResourceNode (&LogEntry->Data.MleRscUnprotError.Resource);
+      break;
+    case EvtMleDomainTypeDegraded:
+      DEBUG ((EFI_D_INFO, "EVT_MLE_DOMAIN_TYPE_DEGRADED:\n"));
+      DumpEventLogHeader (LogEntry);
+      DEBUG ((EFI_D_INFO, "  VmcsPhysPointer    : 0x%016lx:\n", LogEntry->Data.MleDomainTypeDegraded.VmcsPhysPointer));
+      DEBUG ((EFI_D_INFO, "  ExpectedDomainType : 0x%02x:\n", (UINTN)LogEntry->Data.MleDomainTypeDegraded.ExpectedDomainType));
+      DEBUG ((EFI_D_INFO, "  DegradedDomainType : 0x%02x:\n", (UINTN)LogEntry->Data.MleDomainTypeDegraded.DegradedDomainType));
+      break;
+    default:
+      break;
   }
 }
 
@@ -359,19 +372,20 @@ DumpEventLogEntry (
 **/
 VOID
 DumpEventLog (
-  IN MLE_EVENT_LOG_STRUCTURE   *EventLog
+  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
   )
 {
-  STM_LOG_ENTRY             *LogEntry;
-  UINTN                     EventIndex;
-  UINT32                    Index;
+  STM_LOG_ENTRY  *LogEntry;
+  UINTN          EventIndex;
+  UINT32         Index;
 
   for (Index = 0; Index < EventLog->PageCount; Index++) {
     LogEntry = (STM_LOG_ENTRY *)(UINTN)EventLog->Pages[Index];
-    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE(1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
+    for (EventIndex = 0; EventIndex < STM_PAGES_TO_SIZE (1) / STM_LOG_ENTRY_SIZE; EventIndex++, LogEntry = (STM_LOG_ENTRY *)((UINTN)LogEntry + STM_LOG_ENTRY_SIZE)) {
       if (LogEntry->Hdr.Valid == 0) {
-        continue ;
+        continue;
       }
+
       DumpEventLogEntry (LogEntry);
     }
   }

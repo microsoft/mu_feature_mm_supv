@@ -26,14 +26,14 @@
 #include <Library/PcdLib.h>
 
 /**
-  Retrieves the data structure associated witht he GUIDed HOB of type gEfiMmPeiMmramMemoryReserveGuid
-  
+  Retrieves the data structure associated with the GUIDed HOB of type gEfiMmPeiMmramMemoryReserveGuid
+
   @retval NULL   A HOB of type gEfiMmPeiMmramMemoryReserveGuid could not be found.
   @retval !NULL  A pointer to the GUID data from a HIB of type gEfiMmPeiMmramMemoryReserveGuid
 
 **/
 EFI_SMRAM_HOB_DESCRIPTOR_BLOCK *
-GetSrmamHobData (
+GetSmramHobData (
   VOID
   )
 {
@@ -46,13 +46,14 @@ GetSrmamHobData (
   if (GuidHob == NULL) {
     return NULL;
   }
+
   return (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK *)GET_GUID_HOB_DATA (GuidHob);
 }
 
 /**
   This routine will split SmramReserve hob to reserve Mseg page for SMRAM content.
-  
-  @retval EFI_SUCCESS           The gEfiMmPeiMmramMemoryReserveGuid is splited successfully.
+
+  @retval EFI_SUCCESS           The gEfiMmPeiMmramMemoryReserveGuid is splitted successfully.
   @retval EFI_NOT_FOUND         The gEfiMmPeiMmramMemoryReserveGuid is not found.
 
 **/
@@ -62,19 +63,19 @@ SplitSmramReserveHob (
   VOID
   )
 {
-  EFI_HOB_GUID_TYPE                *GuidHob;
-  EFI_PEI_HOB_POINTERS             Hob;
-  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK   *DescriptorBlock;
-  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK   *NewDescriptorBlock;
-  UINTN                            BufferSize;
-  UINTN                            SmramRanges;
-  UINT32                           MsegSize;
-  UINT32                           MsegBase;
+  EFI_HOB_GUID_TYPE               *GuidHob;
+  EFI_PEI_HOB_POINTERS            Hob;
+  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *DescriptorBlock;
+  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *NewDescriptorBlock;
+  UINTN                           BufferSize;
+  UINTN                           SmramRanges;
+  UINT32                          MsegSize;
+  UINT32                          MsegBase;
 
   MsegSize = PcdGet32 (PcdCpuMsegSize);
 
   //
-  // Retrieve the GUID HOB data that contains the set of SMRAM descriptyors
+  // Retrieve the GUID HOB data that contains the set of SMRAM descriptors
   //
   GuidHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
   if (GuidHob == NULL) {
@@ -88,7 +89,7 @@ SplitSmramReserveHob (
   // to the SMM Services Table that is required on the S3 resume path
   //
   SmramRanges = DescriptorBlock->NumberOfSmmReservedRegions;
-  BufferSize = sizeof (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK) + (SmramRanges * sizeof (EFI_SMRAM_DESCRIPTOR));
+  BufferSize  = sizeof (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK) + (SmramRanges * sizeof (EFI_SMRAM_DESCRIPTOR));
 
   Hob.Raw = BuildGuidHob (
               &gEfiMmPeiMmramMemoryReserveGuid,
@@ -100,7 +101,7 @@ SplitSmramReserveHob (
   //
   // Copy old EFI_SMRAM_HOB_DESCRIPTOR_BLOCK to new allocated region
   //
-  CopyMem ((VOID *)Hob.Raw, DescriptorBlock, BufferSize - sizeof(EFI_SMRAM_DESCRIPTOR));
+  CopyMem ((VOID *)Hob.Raw, DescriptorBlock, BufferSize - sizeof (EFI_SMRAM_DESCRIPTOR));
 
   //
   // Increase the number of SMRAM descriptors by 1 to make room for the ALLOCATED descriptor of size EFI_PAGE_SIZE
@@ -111,34 +112,34 @@ SplitSmramReserveHob (
   //
   // Copy last entry to the end - we assume TSEG is last entry, which is same assumption as R8 CPU/SMM driver
   //
-  CopyMem (&NewDescriptorBlock->Descriptor[SmramRanges], &NewDescriptorBlock->Descriptor[SmramRanges - 1], sizeof(EFI_SMRAM_DESCRIPTOR));
+  CopyMem (&NewDescriptorBlock->Descriptor[SmramRanges], &NewDescriptorBlock->Descriptor[SmramRanges - 1], sizeof (EFI_SMRAM_DESCRIPTOR));
 
   //
   // Reduce the size of the last entry with MsegSize.
   //
   ASSERT (NewDescriptorBlock->Descriptor[SmramRanges].PhysicalSize > MsegSize);
-  NewDescriptorBlock->Descriptor[SmramRanges].PhysicalSize   -= MsegSize;
+  NewDescriptorBlock->Descriptor[SmramRanges].PhysicalSize -= MsegSize;
 
   //
   // Add the last but 1 entry with size of MsegSize and put into the ALLOCATED state
   //
-  MsegBase = (UINT32)(NewDescriptorBlock->Descriptor[SmramRanges].CpuStart + NewDescriptorBlock->Descriptor[SmramRanges].PhysicalSize);
-  NewDescriptorBlock->Descriptor[SmramRanges - 1].PhysicalStart  = MsegBase;
-  NewDescriptorBlock->Descriptor[SmramRanges - 1].CpuStart       = MsegBase;
-  NewDescriptorBlock->Descriptor[SmramRanges - 1].PhysicalSize   = MsegSize;
-  NewDescriptorBlock->Descriptor[SmramRanges - 1].RegionState   |= EFI_ALLOCATED;
+  MsegBase                                                      = (UINT32)(NewDescriptorBlock->Descriptor[SmramRanges].CpuStart + NewDescriptorBlock->Descriptor[SmramRanges].PhysicalSize);
+  NewDescriptorBlock->Descriptor[SmramRanges - 1].PhysicalStart = MsegBase;
+  NewDescriptorBlock->Descriptor[SmramRanges - 1].CpuStart      = MsegBase;
+  NewDescriptorBlock->Descriptor[SmramRanges - 1].PhysicalSize  = MsegSize;
+  NewDescriptorBlock->Descriptor[SmramRanges - 1].RegionState  |= EFI_ALLOCATED;
 
   //
   // Last step, we can scrub old one
   //
-  ZeroMem (&GuidHob->Name, sizeof(GuidHob->Name));
+  ZeroMem (&GuidHob->Name, sizeof (GuidHob->Name));
 
   return EFI_SUCCESS;
 }
 
 /**
   This routine will create MsegSmram hob to hold MsegSmramInfo.
-  
+
   @retval EFI_SUCCESS           The MsegSmramHob is created successfully.
   @retval EFI_NOT_FOUND         The gEfiMmPeiMmramMemoryReserveGuid is not found.
 
@@ -149,14 +150,14 @@ CreateMsegSmramHob (
   VOID
   )
 {
-  EFI_PEI_HOB_POINTERS             Hob;
-  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK   *DescriptorBlock;
-  UINTN                            SmramRanges;
+  EFI_PEI_HOB_POINTERS            Hob;
+  EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *DescriptorBlock;
+  UINTN                           SmramRanges;
 
   //
-  // Retrieve the GUID HOB data that contains the set of SMRAM descriptyors
+  // Retrieve the GUID HOB data that contains the set of SMRAM descriptors
   //
-  DescriptorBlock = GetSrmamHobData ();
+  DescriptorBlock = GetSmramHobData ();
   if (DescriptorBlock == NULL) {
     return EFI_NOT_FOUND;
   }
@@ -181,10 +182,10 @@ CreateMsegSmramHob (
 
 /**
   Driver Entry for MsegSmram PEIM
-  
+
   @param   FileHandle       Handle of the file being invoked.
   @param   PeiServices      Describes the list of possible PEI Services.
-  
+
   @retval EFI_SUCCESS      Success create gMsegSmramGuid and
                            split gEfiMmPeiMmramMemoryReserveGuid.
   @retval EFI_NOT_FOUND    Can not get gEfiMmPeiMmramMemoryReserveGuid hob

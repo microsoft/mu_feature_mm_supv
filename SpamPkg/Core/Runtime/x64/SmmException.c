@@ -23,7 +23,7 @@
 **/
 VOID
 ResumeToBiosExceptionHandler (
-  UINT32 Index
+  UINT32  Index
   )
 {
   STM_PROTECTION_EXCEPTION_HANDLER          *StmProtectionExceptionHandler;
@@ -41,13 +41,13 @@ ResumeToBiosExceptionHandler (
   if (StmProtectionExceptionHandler->SpeRip == 0) {
     DEBUG ((EFI_D_INFO, "SpeRip unsupported!\n"));
     // Unsupported;
-    return ;
+    return;
   }
 
   //
   // Fill exception stack
   //
-  StackFrame = (STM_PROTECTION_EXCEPTION_STACK_FRAME_X64 *)(UINTN)StmProtectionExceptionHandler->SpeRsp;
+  StackFrame  = (STM_PROTECTION_EXCEPTION_STACK_FRAME_X64 *)(UINTN)StmProtectionExceptionHandler->SpeRsp;
   StackFrame -= 1;
 
   //
@@ -60,55 +60,59 @@ ResumeToBiosExceptionHandler (
 
   mGuestContextCommonSmm.GuestContextPerCpu[Index].VmExitInstructionLength = VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX);
 
-  StackFrame->VmcsExitQualification = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
+  StackFrame->VmcsExitQualification     = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
   StackFrame->VmcsExitInstructionLength = VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX);
-  StackFrame->VmcsExitInstructionInfo = VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_INFO_INDEX);
+  StackFrame->VmcsExitInstructionInfo   = VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_INFO_INDEX);
   switch (mGuestContextCommonSmm.GuestContextPerCpu[Index].InfoBasic.Bits.Reason) {
-  case VmExitReasonExceptionNmi:
-  case VmExitReasonEptViolation:
-    if (StmProtectionExceptionHandler->PageViolationException) {
-      StackFrame->ErrorCode = TxtSmmPageViolation;
-    } else {
-      return ;
-    }
-    break;
-  case VmExitReasonRdmsr:
-  case VmExitReasonWrmsr:
-    if (StmProtectionExceptionHandler->MsrViolationException) {
-      StackFrame->ErrorCode = TxtSmmMsrViolation;
-    } else {
-      return ;
-    }
-    break;
-  case VmExitReasonIoInstruction:
-    if (StmProtectionExceptionHandler->IoViolationException) {
-      StackFrame->ErrorCode = TxtSmmIoViolation;
-    } else {
-      VM_EXIT_QUALIFICATION   Qualification;
-      UINT16                  Port;
-
-      Qualification.UintN = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
-      Port = (UINT16)Qualification.IoInstruction.PortNum;
-      if ((Port >= 0xCFC) && (Port <= 0xCFF)) {
-        if (StmProtectionExceptionHandler->PciViolationException) {
-          StackFrame->ErrorCode = TxtSmmPciViolation;
-        } else {
-          return ;
-        }
+    case VmExitReasonExceptionNmi:
+    case VmExitReasonEptViolation:
+      if (StmProtectionExceptionHandler->PageViolationException) {
+        StackFrame->ErrorCode = TxtSmmPageViolation;
       } else {
-        return ;
+        return;
       }
-    }
-    break;
-  case VmExitReasonCrAccess:
-    if (StmProtectionExceptionHandler->RegisterViolationException) {
-      StackFrame->ErrorCode = TxtSmmRegisterViolation;
-    } else {
-      return ;
-    }
-    break;
-  default:
-    return;
+
+      break;
+    case VmExitReasonRdmsr:
+    case VmExitReasonWrmsr:
+      if (StmProtectionExceptionHandler->MsrViolationException) {
+        StackFrame->ErrorCode = TxtSmmMsrViolation;
+      } else {
+        return;
+      }
+
+      break;
+    case VmExitReasonIoInstruction:
+      if (StmProtectionExceptionHandler->IoViolationException) {
+        StackFrame->ErrorCode = TxtSmmIoViolation;
+      } else {
+        VM_EXIT_QUALIFICATION  Qualification;
+        UINT16                 Port;
+
+        Qualification.UintN = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
+        Port                = (UINT16)Qualification.IoInstruction.PortNum;
+        if ((Port >= 0xCFC) && (Port <= 0xCFF)) {
+          if (StmProtectionExceptionHandler->PciViolationException) {
+            StackFrame->ErrorCode = TxtSmmPciViolation;
+          } else {
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+
+      break;
+    case VmExitReasonCrAccess:
+      if (StmProtectionExceptionHandler->RegisterViolationException) {
+        StackFrame->ErrorCode = TxtSmmRegisterViolation;
+      } else {
+        return;
+      }
+
+      break;
+    default:
+      return;
   }
 
   StackFrame->R15 = Reg->R15;
@@ -130,16 +134,17 @@ ResumeToBiosExceptionHandler (
   StackFrame->Cr3 = VmReadN (VMCS_N_GUEST_CR3_INDEX);
   if (mGuestContextCommonSmm.GuestContextPerCpu[Index].InfoBasic.Bits.Reason == VmExitReasonEptViolation) {
     // For SMM handle, linear addr == physical addr
-    StackFrame->Cr2 = (UINTN)VmRead64(VMCS_64_RO_GUEST_PHYSICAL_ADDR_INDEX);
+    StackFrame->Cr2 = (UINTN)VmRead64 (VMCS_64_RO_GUEST_PHYSICAL_ADDR_INDEX);
   } else {
-    StackFrame->Cr2 = AsmReadCr2();
+    StackFrame->Cr2 = AsmReadCr2 ();
   }
-  StackFrame->Cr0 = VmReadN (VMCS_N_GUEST_CR0_INDEX);
-  StackFrame->Rip = VmReadN (VMCS_N_GUEST_RIP_INDEX);
-  StackFrame->Cs = VmRead16 (VMCS_16_GUEST_CS_INDEX);
+
+  StackFrame->Cr0    = VmReadN (VMCS_N_GUEST_CR0_INDEX);
+  StackFrame->Rip    = VmReadN (VMCS_N_GUEST_RIP_INDEX);
+  StackFrame->Cs     = VmRead16 (VMCS_16_GUEST_CS_INDEX);
   StackFrame->Rflags = VmReadN (VMCS_N_GUEST_RFLAGS_INDEX);
-  StackFrame->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  StackFrame->Ss = VmRead16 (VMCS_16_GUEST_SS_INDEX);
+  StackFrame->Rsp    = VmReadN (VMCS_N_GUEST_RSP_INDEX);
+  StackFrame->Ss     = VmRead16 (VMCS_16_GUEST_SS_INDEX);
 
   DEBUG ((EFI_D_INFO, "ResumeToBiosExceptionHandler - %d\n", (UINTN)Index));
 
@@ -157,6 +162,7 @@ ResumeToBiosExceptionHandler (
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
     Rflags = AsmVmLaunch (Reg);
   }
+
   AcquireSpinLock (&mHostContextCommon.DebugLock);
   DEBUG ((EFI_D_ERROR, "!!!ResumeToBiosExceptionHandler FAIL!!!\n"));
   DEBUG ((EFI_D_ERROR, "Rflags: %08x\n", Rflags));
@@ -165,7 +171,7 @@ ResumeToBiosExceptionHandler (
   DumpRegContext (Reg);
   ReleaseSpinLock (&mHostContextCommon.DebugLock);
   CpuDeadLoop ();
-  return ;
+  return;
 }
 
 /**
@@ -177,7 +183,7 @@ ResumeToBiosExceptionHandler (
 **/
 VOID
 ReturnFromBiosExceptionHandler (
-  UINT32 Index
+  UINT32  Index
   )
 {
   STM_PROTECTION_EXCEPTION_HANDLER          *StmProtectionExceptionHandler;
@@ -194,13 +200,13 @@ ReturnFromBiosExceptionHandler (
   //
   if (StmProtectionExceptionHandler->SpeRip == 0) {
     // Unsupported;
-    return ;
+    return;
   }
 
   //
   // Get exception stack
   //
-  StackFrame = (STM_PROTECTION_EXCEPTION_STACK_FRAME_X64 *)(UINTN)StmProtectionExceptionHandler->SpeRsp;
+  StackFrame  = (STM_PROTECTION_EXCEPTION_STACK_FRAME_X64 *)(UINTN)StmProtectionExceptionHandler->SpeRsp;
   StackFrame -= 1;
 
   //
@@ -224,7 +230,7 @@ ReturnFromBiosExceptionHandler (
   Reg->Rcx = StackFrame->Rcx;
   Reg->Rbx = StackFrame->Rbx;
   Reg->Rax = StackFrame->Rax;
-//  AsmWriteCr8 (StackFrame->Cr8);
+  //  AsmWriteCr8 (StackFrame->Cr8);
   VmWriteN (VMCS_N_GUEST_CR3_INDEX, StackFrame->Cr3);
   AsmWriteCr2 (StackFrame->Cr2);
   VmWriteN (VMCS_N_GUEST_CR0_INDEX, StackFrame->Cr0);
@@ -246,6 +252,7 @@ ReturnFromBiosExceptionHandler (
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
     Rflags = AsmVmLaunch (Reg);
   }
+
   AcquireSpinLock (&mHostContextCommon.DebugLock);
   DEBUG ((EFI_D_ERROR, "!!!ReturnFromBiosExceptionHandler FAIL!!!\n"));
   DEBUG ((EFI_D_ERROR, "Rflags: %08x\n", Rflags));
@@ -254,5 +261,5 @@ ReturnFromBiosExceptionHandler (
   DumpRegContext (Reg);
   ReleaseSpinLock (&mHostContextCommon.DebugLock);
   CpuDeadLoop ();
-  return ;
+  return;
 }

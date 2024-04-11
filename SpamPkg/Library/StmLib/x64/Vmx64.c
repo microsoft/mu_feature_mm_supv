@@ -17,8 +17,8 @@
 #include <Library/DebugLib.h>
 #include "Library/StmLib.h"
 
-#define RFLAGS_CF   1u
-#define RFLAGS_ZF   (1u << 6)
+#define RFLAGS_CF  1u
+#define RFLAGS_ZF  (1u << 6)
 
 /**
 
@@ -34,13 +34,14 @@ VmRead64 (
   IN UINT32  Index
   )
 {
-  UINT64 Data;
-  UINTN  Rflags;
+  UINT64  Data;
+  UINTN   Rflags;
 
   Rflags = AsmVmRead (Index, &Data);
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
     DEBUG ((EFI_D_ERROR, "ERROR: AsmVmRead(0x%x) : %08x\n", (UINTN)Index, Rflags));
   }
+
   return Data;
 }
 
@@ -65,4 +66,3 @@ VmWrite64 (
     DEBUG ((EFI_D_ERROR, "ERROR: AsmVmWrite(0x%x - 0x%016lx) : %08x\n", (UINTN)Index, (UINT64)Data, Rflags));
   }
 }
-

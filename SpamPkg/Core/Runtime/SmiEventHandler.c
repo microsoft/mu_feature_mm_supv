@@ -26,28 +26,28 @@ SmiEventHandler (
   IN UINT32  Index
   )
 {
-  UINTN                          Rflags;
-  UINT64                         ExecutiveVmcsPtr;
-  UINT64                         VmcsLinkPtr;
-  UINT32                         VmcsSize;
+  UINTN   Rflags;
+  UINT64  ExecutiveVmcsPtr;
+  UINT64  VmcsLinkPtr;
+  UINT32  VmcsSize;
 
-  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Actived) {
-    return ;
+  if (!mGuestContextCommonSmm.GuestContextPerCpu[Index].Active) {
+    return;
   }
 
-  VmcsSize = GetVmcsSize();
+  VmcsSize         = GetVmcsSize ();
   ExecutiveVmcsPtr = VmRead64 (VMCS_64_CONTROL_EXECUTIVE_VMCS_PTR_INDEX);
   if (IsOverlap (ExecutiveVmcsPtr, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
     // Overlap TSEG
     DEBUG ((EFI_D_ERROR, "ExecutiveVmcsPtr violation (SmiEventHandler) - %016lx\n", ExecutiveVmcsPtr));
-    return ;
+    return;
   }
 
   VmcsLinkPtr = VmRead64 (VMCS_64_GUEST_VMCS_LINK_PTR_INDEX);
   if (IsOverlap (VmcsLinkPtr, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
     // Overlap TSEG
     DEBUG ((EFI_D_ERROR, "VmcsLinkPtr violation (SmiEventHandler) - %016lx\n", VmcsLinkPtr));
-    return ;
+    return;
   }
 
   STM_PERF_START (Index, 0, "WriteSyncSmmStateSaveArea", "SmiEventHandler");
@@ -64,9 +64,9 @@ SmiEventHandler (
   VmWriteN (VMCS_N_GUEST_RIP_INDEX, (UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->SmmSmiHandlerRip);
   VmWriteN (VMCS_N_GUEST_RSP_INDEX, (UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->SmmSmiHandlerRsp);
   VmWriteN (VMCS_N_GUEST_CR3_INDEX, mGuestContextCommonSmm.GuestContextPerCpu[Index].Cr3);
-#if 0
+ #if 0
   DEBUG ((EFI_D_INFO, "!!!Enter SmmHandler - %d\n", (UINTN)Index));
-#endif
+ #endif
 
   STM_PERF_START (Index, 0, "BiosSmmHandler", "SmiEventHandler");
 
@@ -81,7 +81,7 @@ SmiEventHandler (
     }
   } else {
     mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched = TRUE;
-    Rflags = AsmVmLaunch (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
+    Rflags                                                    = AsmVmLaunch (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register);
     mGuestContextCommonSmm.GuestContextPerCpu[Index].Launched = FALSE;
   }
 
@@ -91,6 +91,7 @@ SmiEventHandler (
   } else {
     DEBUG ((EFI_D_ERROR, "!!!LaunchSmm FAIL!!!\n"));
   }
+
   DEBUG ((EFI_D_ERROR, "Rflags: %08x\n", Rflags));
   DEBUG ((EFI_D_ERROR, "VMCS_32_RO_VM_INSTRUCTION_ERROR: %08x\n", (UINTN)VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX)));
 
@@ -99,5 +100,5 @@ SmiEventHandler (
   ReleaseSpinLock (&mHostContextCommon.DebugLock);
 
   CpuDeadLoop ();
-  return ;
+  return;
 }

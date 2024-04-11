@@ -15,7 +15,7 @@
 #include "Stm.h"
 #include <Library/PcdLib.h>
 
-#define STM_PERF_DATA_LENGTH_MAX              (SIZE_4KB * 16)
+#define STM_PERF_DATA_LENGTH_MAX  (SIZE_4KB * 16)
 
 //
 // Performance library propery mask bits
@@ -23,8 +23,8 @@
 #define STM_PERFORMANCE_LIBRARY_PROPERTY_MEASUREMENT_ENABLED  0x00000001
 
 /**
-  Creates a record for the beginning of a performance measurement. 
-  
+  Creates a record for the beginning of a performance measurement.
+
   Creates a record that contains the CpuIndex and Token.
   This function reads the current time stamp and adds that time stamp value to the record as the start time.
 
@@ -42,15 +42,15 @@
 RETURN_STATUS
 EFIAPI
 StmStartPerformanceMeasurement (
-  IN UINT32                      CpuIndex,
-  IN UINT32                      Reason,
-  IN CONST CHAR8                 *Token,
-  IN CONST CHAR8                 *Description OPTIONAL
+  IN UINT32       CpuIndex,
+  IN UINT32       Reason,
+  IN CONST CHAR8  *Token,
+  IN CONST CHAR8  *Description OPTIONAL
   )
 {
-  UINT32                Index;
-  STM_PERF_DATA_ENTRY   *DataEntry;
-  RETURN_STATUS         Status;
+  UINT32               Index;
+  STM_PERF_DATA_ENTRY  *DataEntry;
+  RETURN_STATUS        Status;
 
   //
   // BUGBUG: Just record CPU0 data, filter others - too many data collected :(
@@ -66,9 +66,9 @@ StmStartPerformanceMeasurement (
 
   AcquireSpinLock (&mHostContextCommon.PerfData.PerfLock);
 
-  Index = mHostContextCommon.PerfData.EntryCount;
+  Index  = mHostContextCommon.PerfData.EntryCount;
   Status = RETURN_OUT_OF_RESOURCES;
-  if (Index < mHostContextCommon.PerfData.TotalSize / sizeof(*DataEntry)) {
+  if (Index < mHostContextCommon.PerfData.TotalSize / sizeof (*DataEntry)) {
     //
     // Creates a record that contains the CpuIndex and Token.
     //
@@ -76,19 +76,20 @@ StmStartPerformanceMeasurement (
     DataEntry[Index].EndTimeStamp   = 0;
     DataEntry[Index].CpuIndex       = CpuIndex;
     DataEntry[Index].Reason         = Reason;
-    AsciiStrnCpyS (DataEntry[Index].Token, sizeof(DataEntry[Index].Token), Token, sizeof(DataEntry[Index].Token) - 1);
-    DataEntry[Index].Token[sizeof(DataEntry[Index].Token) - 1] = 0;
+    AsciiStrnCpyS (DataEntry[Index].Token, sizeof (DataEntry[Index].Token), Token, sizeof (DataEntry[Index].Token) - 1);
+    DataEntry[Index].Token[sizeof (DataEntry[Index].Token) - 1] = 0;
     if (Description != NULL) {
-      AsciiStrnCpyS (DataEntry[Index].StartDescription, sizeof(DataEntry[Index].StartDescription), Description, sizeof(DataEntry[Index].StartDescription) - 1);
-      DataEntry[Index].StartDescription[sizeof(DataEntry[Index].StartDescription) - 1] = 0;
+      AsciiStrnCpyS (DataEntry[Index].StartDescription, sizeof (DataEntry[Index].StartDescription), Description, sizeof (DataEntry[Index].StartDescription) - 1);
+      DataEntry[Index].StartDescription[sizeof (DataEntry[Index].StartDescription) - 1] = 0;
     }
-    mHostContextCommon.PerfData.EntryCount ++;
+
+    mHostContextCommon.PerfData.EntryCount++;
     Status = RETURN_SUCCESS;
   }
 
   ReleaseSpinLock (&mHostContextCommon.PerfData.PerfLock);
 
-#if 0
+ #if 0
   if (Status != RETURN_SUCCESS) {
     AcquireSpinLock (&mHostContextCommon.DebugLock);
     DEBUG ((EFI_D_ERROR, "StmStartPerformanceMeasurement(%x) - %a, %a\n", (UINTN)CpuIndex, Token, Description));
@@ -96,14 +97,15 @@ StmStartPerformanceMeasurement (
     ReleaseSpinLock (&mHostContextCommon.DebugLock);
     CpuDeadLoop ();
   }
-#endif
+
+ #endif
 
   return Status;
 }
 
 /**
-  Fills in the end time of a performance measurement. 
-  
+  Fills in the end time of a performance measurement.
+
   Looks up the last record that matches CpuIndex and Token.
   If the record can not be found then return RETURN_NOT_FOUND.
   If the record is found then TimeStamp is added to the record as the end time.
@@ -122,14 +124,14 @@ StmStartPerformanceMeasurement (
 RETURN_STATUS
 EFIAPI
 StmEndPerformanceMeasurement (
-  IN UINT32                      CpuIndex,
-  IN CONST CHAR8                 *Token,
-  IN CONST CHAR8                 *Description OPTIONAL
+  IN UINT32       CpuIndex,
+  IN CONST CHAR8  *Token,
+  IN CONST CHAR8  *Description OPTIONAL
   )
 {
-  INT64                 Index;
-  STM_PERF_DATA_ENTRY   *DataEntry;
-  RETURN_STATUS         Status;
+  INT64                Index;
+  STM_PERF_DATA_ENTRY  *DataEntry;
+  RETURN_STATUS        Status;
 
   //
   // BUGBUG: Just record CPU0 data, filter others - too many data collected :(
@@ -151,17 +153,19 @@ StmEndPerformanceMeasurement (
   Status = RETURN_NOT_FOUND;
   for (Index = (INT64)(UINT64)(mHostContextCommon.PerfData.EntryCount - 1); Index >= 0; Index--) {
     if ((DataEntry[Index].CpuIndex == CpuIndex) &&
-        (AsciiStrnCmp (DataEntry[Index].Token, Token, sizeof(DataEntry[Index].Token) - 1) == 0)) {
+        (AsciiStrnCmp (DataEntry[Index].Token, Token, sizeof (DataEntry[Index].Token) - 1) == 0))
+    {
       //
       // Need check EndTimeStamp to not override old data, because StmStartPerformanceMeasurement may return OUT_OF_RESOURCES
       //
       if (DataEntry[Index].EndTimeStamp == 0) {
-        DataEntry[Index].EndTimeStamp = AsmReadTsc ();
+        DataEntry[Index].EndTimeStamp     = AsmReadTsc ();
         DataEntry[Index].DeltaOfTimeStamp = DataEntry[Index].EndTimeStamp - DataEntry[Index].StartTimeStamp;
         if (Description != NULL) {
-          AsciiStrnCpyS (DataEntry[Index].EndDescription, sizeof(DataEntry[Index].EndDescription), Description, sizeof(DataEntry[Index].EndDescription) - 1);
-          DataEntry[Index].EndDescription[sizeof(DataEntry[Index].EndDescription) - 1] = 0;
+          AsciiStrnCpyS (DataEntry[Index].EndDescription, sizeof (DataEntry[Index].EndDescription), Description, sizeof (DataEntry[Index].EndDescription) - 1);
+          DataEntry[Index].EndDescription[sizeof (DataEntry[Index].EndDescription) - 1] = 0;
         }
+
         Status = RETURN_SUCCESS;
         break;
       }
@@ -170,7 +174,7 @@ StmEndPerformanceMeasurement (
 
   ReleaseSpinLock (&mHostContextCommon.PerfData.PerfLock);
 
-#if 0
+ #if 0
   if (Status != RETURN_SUCCESS) {
     AcquireSpinLock (&mHostContextCommon.DebugLock);
     DEBUG ((EFI_D_ERROR, "StmEndPerformanceMeasurement(%x) - %a, %a\n", (UINTN)CpuIndex, Token, Description));
@@ -178,14 +182,15 @@ StmEndPerformanceMeasurement (
     ReleaseSpinLock (&mHostContextCommon.DebugLock);
     CpuDeadLoop ();
   }
-#endif
+
+ #endif
 
   return Status;
 }
 
 /**
-  Returns TRUE if the performance measurement macros are enabled. 
-  
+  Returns TRUE if the performance measurement macros are enabled.
+
   This function returns TRUE if the PERFORMANCE_LIBRARY_PROPERTY_MEASUREMENT_ENABLED bit of
   PcdPerformanceLibraryPropertyMask is set.  Otherwise FALSE is returned.
 
@@ -201,7 +206,7 @@ StmPerformanceMeasurementEnabled (
   VOID
   )
 {
-  return (BOOLEAN) ((PcdGet8(PcdPerformanceLibraryPropertyMask) & STM_PERFORMANCE_LIBRARY_PROPERTY_MEASUREMENT_ENABLED) != 0);
+  return (BOOLEAN)((PcdGet8 (PcdPerformanceLibraryPropertyMask) & STM_PERFORMANCE_LIBRARY_PROPERTY_MEASUREMENT_ENABLED) != 0);
 }
 
 /**
@@ -218,7 +223,7 @@ StmInitPerformanceMeasurement (
   )
 {
   InitializeSpinLock (&mHostContextCommon.PerfData.PerfLock);
-  mHostContextCommon.PerfData.Address = (UINT64)(UINTN)AllocatePages (STM_SIZE_TO_PAGES(STM_PERF_DATA_LENGTH_MAX));
+  mHostContextCommon.PerfData.Address   = (UINT64)(UINTN)AllocatePages (STM_SIZE_TO_PAGES (STM_PERF_DATA_LENGTH_MAX));
   mHostContextCommon.PerfData.TotalSize = STM_PERF_DATA_LENGTH_MAX;
 
   if (mHostContextCommon.PerfData.Address != 0) {
@@ -241,8 +246,8 @@ StmDumpPerformanceMeasurement (
   VOID
   )
 {
-  UINT32                Index;
-  STM_PERF_DATA_ENTRY   *DataEntry;
+  UINT32               Index;
+  STM_PERF_DATA_ENTRY  *DataEntry;
 
   DataEntry = (STM_PERF_DATA_ENTRY *)(UINTN)mHostContextCommon.PerfData.Address;
   if (DataEntry == NULL) {
@@ -259,11 +264,11 @@ StmDumpPerformanceMeasurement (
     DEBUG ((EFI_D_INFO, "  StartTimeStamp   : %016lx\n", DataEntry[Index].StartTimeStamp));
     DEBUG ((EFI_D_INFO, "  EndTimeStamp     : %016lx\n", DataEntry[Index].EndTimeStamp));
     DEBUG ((EFI_D_INFO, "  DeltaOfTimeStamp : %016lx\n", DataEntry[Index].DeltaOfTimeStamp));
-    DEBUG ((EFI_D_INFO, "  CpuIndex         : %08x\n",   (UINTN)DataEntry[Index].CpuIndex));
-    DEBUG ((EFI_D_INFO, "  Reason           : %08x\n",   (UINTN)DataEntry[Index].Reason));
-    DEBUG ((EFI_D_INFO, "  Token            : %a\n",     DataEntry[Index].Token));
-    DEBUG ((EFI_D_INFO, "  StartDesc        : %a\n",     DataEntry[Index].StartDescription));
-    DEBUG ((EFI_D_INFO, "  EndDesc          : %a\n",     DataEntry[Index].EndDescription));
+    DEBUG ((EFI_D_INFO, "  CpuIndex         : %08x\n", (UINTN)DataEntry[Index].CpuIndex));
+    DEBUG ((EFI_D_INFO, "  Reason           : %08x\n", (UINTN)DataEntry[Index].Reason));
+    DEBUG ((EFI_D_INFO, "  Token            : %a\n", DataEntry[Index].Token));
+    DEBUG ((EFI_D_INFO, "  StartDesc        : %a\n", DataEntry[Index].StartDescription));
+    DEBUG ((EFI_D_INFO, "  EndDesc          : %a\n", DataEntry[Index].EndDescription));
   }
 
   ReleaseSpinLock (&mHostContextCommon.PerfData.PerfLock);

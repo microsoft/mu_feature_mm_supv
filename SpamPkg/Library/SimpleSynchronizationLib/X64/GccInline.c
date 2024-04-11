@@ -1,8 +1,8 @@
 /** @file
   GCC inline implementation of BaseSynchronizationLib processor specific functions.
-  
+
   Copyright (c) 2006 - 2010, Intel Corporation. All rights reserved.<BR>
-  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR> 
+  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
   This program and the accompanying materials
   are licensed and made available under the terms and conditions of the BSD License
   which accompanies this distribution.  The full text of the license may be found at
@@ -12,9 +12,6 @@
   WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
-
-
-
 
 /**
   Performs an atomic increment of an 32-bit unsigned integer.
@@ -32,7 +29,7 @@
 UINT32
 EFIAPI
 InternalSyncIncrement (
-  IN      volatile UINT32    *Value
+  IN      volatile UINT32  *Value
   )
 {
   UINT32  Result;
@@ -43,14 +40,13 @@ InternalSyncIncrement (
     "mov     %2, %%eax      "
     : "=a" (Result),          // %0
       "=m" (*Value)           // %1
-    : "m"  (*Value)           // %2 
+    : "m"  (*Value)           // %2
     : "memory",
       "cc"
-    );
-    
-  return Result;    
-}
+  );
 
+  return Result;
+}
 
 /**
   Performs an atomic decrement of an 32-bit unsigned integer.
@@ -68,25 +64,24 @@ InternalSyncIncrement (
 UINT32
 EFIAPI
 InternalSyncDecrement (
-  IN      volatile UINT32       *Value
+  IN      volatile UINT32  *Value
   )
 {
-   UINT32  Result;
-  
+  UINT32  Result;
+
   __asm__ __volatile__ (
     "lock               \n\t"
     "decl    %2         \n\t"
     "mov     %2, %%eax      "
     : "=a" (Result),          // %0
       "=m" (*Value)           // %1
-    : "m"  (*Value)           // %2 
+    : "m"  (*Value)           // %2
     : "memory",
       "cc"
-    );
-    
+  );
+
   return Result;
 }
-
 
 /**
   Performs an atomic compare exchange operation on a 32-bit unsigned integer.
@@ -109,28 +104,25 @@ InternalSyncDecrement (
 UINT32
 EFIAPI
 InternalSyncCompareExchange32 (
-  IN OUT volatile  UINT32           *Value,
-  IN      UINT32                    CompareValue,
-  IN      UINT32                    ExchangeValue
+  IN OUT volatile  UINT32  *Value,
+  IN      UINT32           CompareValue,
+  IN      UINT32           ExchangeValue
   )
 {
-
-
   __asm__ __volatile__ (
     "lock                 \n\t"
     "cmpxchgl    %3, %1       "
     : "=a" (CompareValue),    // %0
       "=m" (*Value)           // %1
     : "a"  (CompareValue),    // %2
-      "r"  (ExchangeValue),   // %3 
+      "r"  (ExchangeValue),   // %3
       "m"  (*Value)
     : "memory",
       "cc"
-    );
-    
+  );
+
   return CompareValue;
 }
-
 
 /**
   Performs an atomic compare exchange operation on a 64-bit unsigned integer.
@@ -152,25 +144,22 @@ InternalSyncCompareExchange32 (
 UINT64
 EFIAPI
 InternalSyncCompareExchange64 (
-  IN OUT  volatile UINT64           *Value,
-  IN      UINT64                    CompareValue,
-  IN      UINT64                    ExchangeValue
+  IN OUT  volatile UINT64  *Value,
+  IN      UINT64           CompareValue,
+  IN      UINT64           ExchangeValue
   )
 {
-
   __asm__ __volatile__ (
     "lock                 \n\t"
     "cmpxchgq    %3, %1       "
     : "=a" (CompareValue),    // %0
       "=m" (*Value)           // %1
     : "a"  (CompareValue),    // %2
-      "r"  (ExchangeValue),   // %3 
+      "r"  (ExchangeValue),   // %3
       "m"  (*Value)
     : "memory",
       "cc"
-    );
-  
+  );
+
   return CompareValue;
 }
-
-

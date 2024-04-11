@@ -28,17 +28,19 @@ ApicToIndex (
   IN UINT32  ApicId
   )
 {
-  UINT32 Index;
+  UINT32  Index;
 
   for (Index = 0; Index < mHostContextCommon.CpuNum; Index++) {
     if (mHostContextCommon.HostContextPerCpu[Index].ApicId == ApicId) {
       return Index;
     }
   }
+
   if (ApicId == 0xFF) {
     // standard PC
     return 0;
   }
+
   DEBUG ((EFI_D_ERROR, "ApicToIndex fail\n"));
   CpuDeadLoop ();
   return 0;
@@ -55,7 +57,7 @@ volatile BOOLEAN  *mCpuInitStatus;
 **/
 VOID
 WaitAllProcessorRendezVous (
-  IN UINT32   CurrentIndex
+  IN UINT32  CurrentIndex
   )
 {
   UINTN  Index;
@@ -92,6 +94,7 @@ WaitAllProcessorRendezVous (
     for (Index = 1; Index < mHostContextCommon.CpuNum; Index++) {
       mCpuInitStatus[Index] = FALSE;
     }
+
     //
     // BSP leave this routine
     //
@@ -104,6 +107,7 @@ WaitAllProcessorRendezVous (
       // Wait here
       //
     }
+
     //
     // BSP done, AP initialize itself
     //
@@ -121,9 +125,11 @@ WaitAllProcessorRendezVous (
       // Wait here
       //
     }
+
     //
     // AP leave this routine
     //
   }
-  return ;
+
+  return;
 }

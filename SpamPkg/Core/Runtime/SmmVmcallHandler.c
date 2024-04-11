@@ -26,11 +26,12 @@ StmTxtReset (
   IN UINT32  ErrorCode
   )
 {
-  if (IsSentryEnabled()) {
+  if (IsSentryEnabled ()) {
     // TXT reset
     TxtPriWrite32 (TXT_ERRORCODE, ErrorCode);
     TxtPriWrite32 (TXT_CMD_SYS_RESET, 1);
   }
+
   // Power Cycle reset
   IoWrite8 (0xCF9, 0xE);
   // Should not run here
@@ -67,7 +68,8 @@ IsGuestAddressValid (
   //
   if ((Length > mHostContextCommon.MaximumSupportAddress) ||
       (Address > mHostContextCommon.MaximumSupportAddress) ||
-      ((Length != 0) && (Address > (mHostContextCommon.MaximumSupportAddress - (Length - 1)))) ) {
+      ((Length != 0) && (Address > (mHostContextCommon.MaximumSupportAddress - (Length - 1)))))
+  {
     //
     // Overflow happen
     // NOTE: (B:0->L:4G) is invalid for IA32, but (B:1->L:4G-1)/(B:4G-1->L:1) is valid.
@@ -79,6 +81,7 @@ IsGuestAddressValid (
     DEBUG ((EFI_D_ERROR, "IsGuestAddressValid - Check max address\n"));
     return FALSE;
   }
+
   if (IsOverlap (Address, Length, (UINTN)mHostContextCommon.StmHeader, mHostContextCommon.StmSize)) {
     // Overlap MSEG
     DEBUG ((EFI_D_ERROR, "IsGuestAddressValid - Overlap MSEG\n"));
@@ -101,11 +104,11 @@ IsGuestAddressValid (
   //
   // Check MLE protected resource
   //
-  ZeroMem (&ResourceNode, sizeof(ResourceNode.Mem));
-  ResourceNode.Mem.Hdr.RscType = MEM_RANGE;
-  ResourceNode.Mem.Hdr.Length = (UINT16)sizeof(ResourceNode.Mem);
-  ResourceNode.Mem.Base = Address;
-  ResourceNode.Mem.Length = Length;
+  ZeroMem (&ResourceNode, sizeof (ResourceNode.Mem));
+  ResourceNode.Mem.Hdr.RscType   = MEM_RANGE;
+  ResourceNode.Mem.Hdr.Length    = (UINT16)sizeof (ResourceNode.Mem);
+  ResourceNode.Mem.Base          = Address;
+  ResourceNode.Mem.Length        = Length;
   ResourceNode.Mem.RWXAttributes = STM_RSC_MEM_R | STM_RSC_MEM_W | STM_RSC_MEM_X;
   if (IsResourceListOverlapWithNode (&ResourceNode, mHostContextCommon.MleProtectedResource.Base)) {
     DEBUG ((EFI_D_ERROR, "IsGuestAddressValid - MLE protected resource\n"));
@@ -115,13 +118,13 @@ IsGuestAddressValid (
   //
   // Besides MEM_RANGE, we also need check MMIO_RANGE because MEM and MMIO use same way for protection.
   //
-  ResourceNode.Mmio.Hdr.RscType = MMIO_RANGE;
-  ResourceNode.Mmio.Hdr.Length = (UINT16)sizeof(ResourceNode.Mem);
-  ResourceNode.Mmio.Base = Address;
-  ResourceNode.Mmio.Length = Length;
+  ResourceNode.Mmio.Hdr.RscType   = MMIO_RANGE;
+  ResourceNode.Mmio.Hdr.Length    = (UINT16)sizeof (ResourceNode.Mem);
+  ResourceNode.Mmio.Base          = Address;
+  ResourceNode.Mmio.Length        = Length;
   ResourceNode.Mmio.RWXAttributes = STM_RSC_MMIO_R | STM_RSC_MMIO_W | STM_RSC_MMIO_X;
   if (IsResourceListOverlapWithNode (&ResourceNode, mHostContextCommon.MleProtectedResource.Base)) {
-    DEBUG((EFI_D_ERROR, "IsGuestAddressValid - MLE protected resource\n"));
+    DEBUG ((EFI_D_ERROR, "IsGuestAddressValid - MLE protected resource\n"));
     return FALSE;
   }
 
@@ -133,7 +136,7 @@ IsGuestAddressValid (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -144,12 +147,12 @@ SmmVmcallMapAddressRangeHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_MAP_ADDRESS_RANGE_DESCRIPTOR   *MapAddressRangeDescriptor;
-  STM_MAP_ADDRESS_RANGE_DESCRIPTOR   LocalBuffer;
+  STM_MAP_ADDRESS_RANGE_DESCRIPTOR  *MapAddressRangeDescriptor;
+  STM_MAP_ADDRESS_RANGE_DESCRIPTOR  LocalBuffer;
 
   // EBX:ECX - STM_MAP_ADDRESS_RANGE_DESCRIPTOR
   DEBUG ((EFI_D_INFO, "STM_API_MAP_ADDRESS_RANGE:\n"));
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof(STM_MAP_ADDRESS_RANGE_DESCRIPTOR), FALSE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_MAP_ADDRESS_RANGE_DESCRIPTOR), FALSE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
@@ -157,10 +160,10 @@ SmmVmcallMapAddressRangeHandler (
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(LocalBuffer));
+  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (LocalBuffer));
   MapAddressRangeDescriptor = (STM_MAP_ADDRESS_RANGE_DESCRIPTOR *)&LocalBuffer;
 
-  if (!IsGuestAddressValid ((UINTN)MapAddressRangeDescriptor->PhysicalAddress, STM_PAGES_TO_SIZE(MapAddressRangeDescriptor->PageCount), FALSE)) {
+  if (!IsGuestAddressValid ((UINTN)MapAddressRangeDescriptor->PhysicalAddress, STM_PAGES_TO_SIZE (MapAddressRangeDescriptor->PageCount), FALSE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
@@ -171,16 +174,17 @@ SmmVmcallMapAddressRangeHandler (
 
   if (((MapAddressRangeDescriptor->PatCacheType > STM_MAP_ADDRESS_RANGE_PAT_CACHE_TYPE_UC) && (MapAddressRangeDescriptor->PatCacheType != STM_MAP_ADDRESS_RANGE_PAT_CACHE_TYPE_FOLLOW_MTRR)) ||
       (MapAddressRangeDescriptor->PatCacheType == 2) ||
-      (MapAddressRangeDescriptor->PatCacheType == 3) ) {
+      (MapAddressRangeDescriptor->PatCacheType == 3))
+  {
     return ERROR_STM_CACHE_TYPE_NOT_SUPPORTED;
   }
 
   MapVirtualAddressToPhysicalAddress (
-      Index,
-      MapAddressRangeDescriptor->PhysicalAddress,
-      (UINTN)MapAddressRangeDescriptor->VirtualAddress,
-      MapAddressRangeDescriptor->PageCount
-      );
+    Index,
+    MapAddressRangeDescriptor->PhysicalAddress,
+    (UINTN)MapAddressRangeDescriptor->VirtualAddress,
+    MapAddressRangeDescriptor->PageCount
+    );
 
   return STM_SUCCESS;
 }
@@ -190,7 +194,7 @@ SmmVmcallMapAddressRangeHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -201,12 +205,12 @@ SmmVmcallUnmapAddressRangeHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR *UnmapAddressRangeDescriptor;
-  STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR LocalBuffer;
+  STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR  *UnmapAddressRangeDescriptor;
+  STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR  LocalBuffer;
 
   // EBX:ECX - STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR
   DEBUG ((EFI_D_INFO, "STM_API_UNMAP_ADDRESS_RANGE:\n"));
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof(STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR), FALSE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR), FALSE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
@@ -214,14 +218,14 @@ SmmVmcallUnmapAddressRangeHandler (
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(LocalBuffer));
+  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (LocalBuffer));
   UnmapAddressRangeDescriptor = (STM_UNMAP_ADDRESS_RANGE_DESCRIPTOR *)&LocalBuffer;
 
   UnmapVirtualAddressToPhysicalAddress (
-      Index,
-      (UINTN)UnmapAddressRangeDescriptor->VirtualAddress,
-      STM_SIZE_TO_PAGES (UnmapAddressRangeDescriptor->Length)
-      );
+    Index,
+    (UINTN)UnmapAddressRangeDescriptor->VirtualAddress,
+    STM_SIZE_TO_PAGES (UnmapAddressRangeDescriptor->Length)
+    );
 
   return STM_SUCCESS;
 }
@@ -231,7 +235,7 @@ SmmVmcallUnmapAddressRangeHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -242,14 +246,14 @@ SmmVmcallAddressLookupHandler (
   IN UINT64  AddressParameter
   )
 {
-  STM_ADDRESS_LOOKUP_DESCRIPTOR      *AddressLookupDescriptor;
-  UINTN                              PhysicalAddress;
-  BOOLEAN                            AddressFound;
-  STM_ADDRESS_LOOKUP_DESCRIPTOR      LocalBuffer;
+  STM_ADDRESS_LOOKUP_DESCRIPTOR  *AddressLookupDescriptor;
+  UINTN                          PhysicalAddress;
+  BOOLEAN                        AddressFound;
+  STM_ADDRESS_LOOKUP_DESCRIPTOR  LocalBuffer;
 
   // EBX:ECX - STM_ADDRESS_LOOKUP_DESCRIPTOR
   DEBUG ((EFI_D_INFO, "STM_API_ADDRESS_LOOKUP:\n"));
-  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof(STM_ADDRESS_LOOKUP_DESCRIPTOR), FALSE)) {
+  if (!IsGuestAddressValid ((UINTN)AddressParameter, sizeof (STM_ADDRESS_LOOKUP_DESCRIPTOR), FALSE)) {
     DEBUG ((EFI_D_ERROR, "Security Violation!\n"));
     return ERROR_STM_SECURITY_VIOLATION;
   }
@@ -257,17 +261,17 @@ SmmVmcallAddressLookupHandler (
   //
   // Copy data to local, to prevent time of check VS time of use attack
   //
-  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof(LocalBuffer));
+  CopyMem (&LocalBuffer, (VOID *)(UINTN)AddressParameter, sizeof (LocalBuffer));
   AddressLookupDescriptor = (STM_ADDRESS_LOOKUP_DESCRIPTOR *)&LocalBuffer;
 
   DEBUG ((EFI_D_INFO, "  InterruptedGuestVirtualAddress: 0x%016lx\n", AddressLookupDescriptor->InterruptedGuestVirtualAddress));
-  DEBUG ((EFI_D_INFO, "  Length:                         0x%08x\n",   AddressLookupDescriptor->Length));
-  DEBUG ((EFI_D_INFO, "  InterruptedCr3:                 0x%016x\n",  AddressLookupDescriptor->InterruptedCr3));
-  DEBUG ((EFI_D_INFO, "  InterruptedEptp:                0x%016x\n",  AddressLookupDescriptor->InterruptedEptp));
-  DEBUG ((EFI_D_INFO, "  MapToSmmGuest:                  0x%08x\n",   AddressLookupDescriptor->MapToSmmGuest));
-  DEBUG ((EFI_D_INFO, "  InterruptedCr4Pae:              0x%08x\n",   AddressLookupDescriptor->InterruptedCr4Pae));
-  DEBUG ((EFI_D_INFO, "  InterruptedCr4Pse:              0x%08x\n",   AddressLookupDescriptor->InterruptedCr4Pse));
-  DEBUG ((EFI_D_INFO, "  InterruptedIa32eMode:           0x%08x\n",   AddressLookupDescriptor->InterruptedIa32eMode));
+  DEBUG ((EFI_D_INFO, "  Length:                         0x%08x\n", AddressLookupDescriptor->Length));
+  DEBUG ((EFI_D_INFO, "  InterruptedCr3:                 0x%016x\n", AddressLookupDescriptor->InterruptedCr3));
+  DEBUG ((EFI_D_INFO, "  InterruptedEptp:                0x%016x\n", AddressLookupDescriptor->InterruptedEptp));
+  DEBUG ((EFI_D_INFO, "  MapToSmmGuest:                  0x%08x\n", AddressLookupDescriptor->MapToSmmGuest));
+  DEBUG ((EFI_D_INFO, "  InterruptedCr4Pae:              0x%08x\n", AddressLookupDescriptor->InterruptedCr4Pae));
+  DEBUG ((EFI_D_INFO, "  InterruptedCr4Pse:              0x%08x\n", AddressLookupDescriptor->InterruptedCr4Pse));
+  DEBUG ((EFI_D_INFO, "  InterruptedIa32eMode:           0x%08x\n", AddressLookupDescriptor->InterruptedIa32eMode));
   DEBUG ((EFI_D_INFO, "  PhysicalAddress:                0x%016lx\n", AddressLookupDescriptor->PhysicalAddress));
   DEBUG ((EFI_D_INFO, "  SmmGuestVirtualAddress:         0x%016lx\n", AddressLookupDescriptor->SmmGuestVirtualAddress));
 
@@ -281,6 +285,7 @@ SmmVmcallAddressLookupHandler (
   if (AddressLookupDescriptor->PhysicalAddress == 0) {
     return ERROR_STM_BAD_CR3;
   }
+
   //
   // Guest physical to host physical
   //
@@ -295,41 +300,44 @@ SmmVmcallAddressLookupHandler (
   }
 
   switch (AddressLookupDescriptor->MapToSmmGuest) {
-  case STM_ADDRESS_LOOKUP_DESCRIPTOR_DO_NOT_MAP:
-    // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
-    break;
-  case STM_ADDRESS_LOOKUP_DESCRIPTOR_ONE_TO_ONE:
-    // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
-    //   If PhysicalAddress is > 4G, the function fails and returns with CF=1 and EAX = ERROR_STM_PHYSICAL_OVER_4G.
-    // SmmGuestVirtualAddress is modified to contain the SMM guest's virtual mapping on output, which is the same as PhysicalAddress
-    AddressLookupDescriptor->SmmGuestVirtualAddress = AddressLookupDescriptor->PhysicalAddress;
-    if (AddressLookupDescriptor->PhysicalAddress >= BASE_4GB) {
-      return ERROR_STM_PHYSICAL_OVER_4G;
-    }
-    break;
-  case STM_ADDRESS_LOOKUP_DESCRIPTOR_VIRTUAL_ADDRESS_SPECIFIED:
-    // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
-    // and mapped to the SMM guest virtual address specified by the SmmGuestVirtualAddress input.
-    if (((mGuestContextCommonSmi.GuestContextPerCpu[Index].Efer & IA32_EFER_MSR_MLA) == 0) &&
-        ((AddressLookupDescriptor->SmmGuestVirtualAddress >= BASE_4GB) ||
-         (AddressLookupDescriptor->SmmGuestVirtualAddress + AddressLookupDescriptor->Length >= BASE_4GB))) {
-      return ERROR_STM_VIRTUAL_SPACE_TOO_SMALL;
-    }
-    MapVirtualAddressToPhysicalAddress (
-      Index,
-      AddressLookupDescriptor->PhysicalAddress,
-      (UINTN)AddressLookupDescriptor->SmmGuestVirtualAddress,
-      STM_SIZE_TO_PAGES (AddressLookupDescriptor->Length)
-      );
-    break;
-  default:
-    return ERROR_INVALID_API;
+    case STM_ADDRESS_LOOKUP_DESCRIPTOR_DO_NOT_MAP:
+      // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
+      break;
+    case STM_ADDRESS_LOOKUP_DESCRIPTOR_ONE_TO_ONE:
+      // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
+      //   If PhysicalAddress is > 4G, the function fails and returns with CF=1 and EAX = ERROR_STM_PHYSICAL_OVER_4G.
+      // SmmGuestVirtualAddress is modified to contain the SMM guest's virtual mapping on output, which is the same as PhysicalAddress
+      AddressLookupDescriptor->SmmGuestVirtualAddress = AddressLookupDescriptor->PhysicalAddress;
+      if (AddressLookupDescriptor->PhysicalAddress >= BASE_4GB) {
+        return ERROR_STM_PHYSICAL_OVER_4G;
+      }
+
+      break;
+    case STM_ADDRESS_LOOKUP_DESCRIPTOR_VIRTUAL_ADDRESS_SPECIFIED:
+      // PhysicalAddress is populated with the address determined by walking the interrupted environment's page tables
+      // and mapped to the SMM guest virtual address specified by the SmmGuestVirtualAddress input.
+      if (((mGuestContextCommonSmi.GuestContextPerCpu[Index].Efer & IA32_EFER_MSR_MLA) == 0) &&
+          ((AddressLookupDescriptor->SmmGuestVirtualAddress >= BASE_4GB) ||
+           (AddressLookupDescriptor->SmmGuestVirtualAddress + AddressLookupDescriptor->Length >= BASE_4GB)))
+      {
+        return ERROR_STM_VIRTUAL_SPACE_TOO_SMALL;
+      }
+
+      MapVirtualAddressToPhysicalAddress (
+        Index,
+        AddressLookupDescriptor->PhysicalAddress,
+        (UINTN)AddressLookupDescriptor->SmmGuestVirtualAddress,
+        STM_SIZE_TO_PAGES (AddressLookupDescriptor->Length)
+        );
+      break;
+    default:
+      return ERROR_INVALID_API;
   }
 
   //
   // CopyData back
   //
-  ((STM_ADDRESS_LOOKUP_DESCRIPTOR *)(UINTN)AddressParameter)->PhysicalAddress = AddressLookupDescriptor->PhysicalAddress;
+  ((STM_ADDRESS_LOOKUP_DESCRIPTOR *)(UINTN)AddressParameter)->PhysicalAddress        = AddressLookupDescriptor->PhysicalAddress;
   ((STM_ADDRESS_LOOKUP_DESCRIPTOR *)(UINTN)AddressParameter)->SmmGuestVirtualAddress = AddressLookupDescriptor->SmmGuestVirtualAddress;
   return STM_SUCCESS;
 }
@@ -339,7 +347,7 @@ SmmVmcallAddressLookupHandler (
   This function is VMCALL handler for SMM.
 
   @param Index             CPU index
-  @param AddressParameter  Addresss parameter
+  @param AddressParameter  Address parameter
 
   @return VMCALL status
 
@@ -350,7 +358,7 @@ SmmVmcallReturnFromProtectionExceptionHandler (
   IN UINT64  AddressParameter
   )
 {
-  X86_REGISTER                       *Reg;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
 
@@ -373,10 +381,10 @@ SmmVmcallReturnFromProtectionExceptionHandler (
 }
 
 STM_VMCALL_HANDLER_STRUCT  mSmmVmcallHandler[] = {
-  {STM_API_MAP_ADDRESS_RANGE,                  SmmVmcallMapAddressRangeHandler},
-  {STM_API_UNMAP_ADDRESS_RANGE,                SmmVmcallUnmapAddressRangeHandler},
-  {STM_API_ADDRESS_LOOKUP,                     SmmVmcallAddressLookupHandler},
-  {STM_API_RETURN_FROM_PROTECTION_EXCEPTION,   SmmVmcallReturnFromProtectionExceptionHandler},
+  { STM_API_MAP_ADDRESS_RANGE,                SmmVmcallMapAddressRangeHandler               },
+  { STM_API_UNMAP_ADDRESS_RANGE,              SmmVmcallUnmapAddressRangeHandler             },
+  { STM_API_ADDRESS_LOOKUP,                   SmmVmcallAddressLookupHandler                 },
+  { STM_API_RETURN_FROM_PROTECTION_EXCEPTION, SmmVmcallReturnFromProtectionExceptionHandler },
 };
 
 /**
@@ -394,11 +402,13 @@ GetSmmVmcallHandlerByIndex (
   )
 {
   UINTN  Index;
-  for (Index = 0; Index < sizeof(mSmmVmcallHandler)/sizeof(mSmmVmcallHandler[0]); Index++) {
+
+  for (Index = 0; Index < sizeof (mSmmVmcallHandler)/sizeof (mSmmVmcallHandler[0]); Index++) {
     if (mSmmVmcallHandler[Index].FuncIndex == FuncIndex) {
       return mSmmVmcallHandler[Index].StmVmcallHandler;
     }
   }
+
   return NULL;
 }
 
@@ -414,10 +424,10 @@ SmmVmcallHandler (
   IN UINT32  Index
   )
 {
-  X86_REGISTER                       *Reg;
-  STM_STATUS                         Status;
-  STM_VMCALL_HANDLER                 StmVmcallHandler;
-  UINT64                             AddressParameter;
+  X86_REGISTER        *Reg;
+  STM_STATUS          Status;
+  STM_VMCALL_HANDLER  StmVmcallHandler;
+  UINT64              AddressParameter;
 
   Reg = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
 
@@ -429,16 +439,17 @@ SmmVmcallHandler (
     Status = ERROR_INVALID_API;
   } else {
     AddressParameter = ReadUnaligned32 ((UINT32 *)&Reg->Rbx) + LShiftU64 (ReadUnaligned32 ((UINT32 *)&Reg->Rcx), 32);
-    Status = StmVmcallHandler (Index, AddressParameter);
+    Status           = StmVmcallHandler (Index, AddressParameter);
   }
 
   WriteUnaligned32 ((UINT32 *)&Reg->Rax, Status);
   if (Status == STM_SUCCESS) {
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN(VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
+    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
   } else {
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN(VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
+    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
   }
+
   VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
 
-  return ;
+  return;
 }

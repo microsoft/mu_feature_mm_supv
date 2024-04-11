@@ -15,7 +15,7 @@
 #include "StmRuntime.h"
 
 GLOBAL_REMOVE_IF_UNREFERENCED
-CHAR8 *mTaskTypeStr[] = {
+CHAR8  *mTaskTypeStr[] = {
   "TASK_SWITCH_SOURCE_CALL",
   "TASK_SWITCH_SOURCE_IRET",
   "TASK_SWITCH_SOURCE_JMP",
@@ -31,23 +31,23 @@ CHAR8 *mTaskTypeStr[] = {
 **/
 VOID
 SmmTaskSwitchHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  VM_EXIT_QUALIFICATION   Qualification;
-  GDT_ENTRY               *GdtEntry;
-  UINTN                   Gdtr;
-  TASK_STATE              *Tss;
-  UINT16                  CurrentTr;
-  TASK_STATE              *CurrentTss;
+  VM_EXIT_QUALIFICATION  Qualification;
+  GDT_ENTRY              *GdtEntry;
+  UINTN                  Gdtr;
+  TASK_STATE             *Tss;
+  UINT16                 CurrentTr;
+  TASK_STATE             *CurrentTss;
 
-//  DEBUG ((EFI_D_INFO, "!!!TaskSwitchHandler - %08x\n", (UINTN)Index));
+  //  DEBUG ((EFI_D_INFO, "!!!TaskSwitchHandler - %08x\n", (UINTN)Index));
   DEBUG ((EFI_D_INFO, "T"));
 
   Qualification.UintN = VmReadN (VMCS_N_RO_EXIT_QUALIFICATION_INDEX);
 
-//  DEBUG ((EFI_D_INFO, "!!!TaskType - %x, %a\n", (UINTN)Qualification.TaskSwitch.TaskType, mTaskTypeStr[Qualification.TaskSwitch.TaskType]));
-//  DEBUG ((EFI_D_INFO, "!!!TSS - %04x\n", (UINTN)Qualification.TaskSwitch.TSS));
+  //  DEBUG ((EFI_D_INFO, "!!!TaskType - %x, %a\n", (UINTN)Qualification.TaskSwitch.TaskType, mTaskTypeStr[Qualification.TaskSwitch.TaskType]));
+  //  DEBUG ((EFI_D_INFO, "!!!TSS - %04x\n", (UINTN)Qualification.TaskSwitch.TSS));
 
   Gdtr = VmReadN (VMCS_N_GUEST_GDTR_BASE_INDEX);
   Gdtr = (UINTN)GuestLinearToGuestPhysical (Index, Gdtr);
@@ -55,13 +55,14 @@ SmmTaskSwitchHandler (
   //
   // Current task
   //
-  CurrentTr = VmRead16 (VMCS_16_GUEST_TR_INDEX);
-  GdtEntry = (GDT_ENTRY *)(Gdtr + (CurrentTr & ~0x7));
-  CurrentTss = (TASK_STATE *)(UINTN)BaseFromGdtEntry(GdtEntry);
+  CurrentTr  = VmRead16 (VMCS_16_GUEST_TR_INDEX);
+  GdtEntry   = (GDT_ENTRY *)(Gdtr + (CurrentTr & ~0x7));
+  CurrentTss = (TASK_STATE *)(UINTN)BaseFromGdtEntry (GdtEntry);
   CurrentTss = (TASK_STATE *)(UINTN)GuestLinearToGuestPhysical (Index, (UINTN)CurrentTss);
 
   if ((Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_IRET) ||
-      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_JMP)) {
+      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_JMP))
+  {
     GdtEntry->Attribute &= ~DESCRIPTOR_TSS_BUSY; // Clear busy flag
   }
 
@@ -69,8 +70,8 @@ SmmTaskSwitchHandler (
   // New task
   //
   GdtEntry = (GDT_ENTRY *)(Gdtr + (Qualification.TaskSwitch.Tss & ~0x7));
-//  DEBUG ((EFI_D_INFO, "!!!Gdt - %016lx\n", *(UINT64 *)GdtEntry));
-  Tss = (TASK_STATE *)(UINTN)BaseFromGdtEntry(GdtEntry);
+  //  DEBUG ((EFI_D_INFO, "!!!Gdt - %016lx\n", *(UINT64 *)GdtEntry));
+  Tss = (TASK_STATE *)(UINTN)BaseFromGdtEntry (GdtEntry);
   Tss = (TASK_STATE *)(UINTN)GuestLinearToGuestPhysical (Index, (UINTN)Tss);
 
   if (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_IRET) {
@@ -81,14 +82,15 @@ SmmTaskSwitchHandler (
   }
 
   VmWrite16 (VMCS_16_GUEST_TR_INDEX, (UINT16)Qualification.TaskSwitch.Tss);
-  VmWriteN (VMCS_N_GUEST_TR_BASE_INDEX, BaseFromGdtEntry(GdtEntry));
-  VmWrite32 (VMCS_32_GUEST_TR_LIMIT_INDEX, LimitFromGdtEntry(GdtEntry));
+  VmWriteN (VMCS_N_GUEST_TR_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+  VmWrite32 (VMCS_32_GUEST_TR_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
   //
   // Save old data
   //
   if ((Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_CALL) ||
-      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE)) {
+      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE))
+  {
     CurrentTss->Eax = (UINT32)mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rax;
     CurrentTss->Ebx = (UINT32)mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rbx;
     CurrentTss->Ecx = (UINT32)mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rcx;
@@ -100,7 +102,7 @@ SmmTaskSwitchHandler (
 
     CurrentTss->Eip = (UINT32)VmReadN (VMCS_N_GUEST_RIP_INDEX);
     if (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_CALL) {
-      CurrentTss->Eip += VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX); // Next instruction
+      CurrentTss->Eip += VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX); // Next instruction
     }
 
     CurrentTss->Es = VmRead16 (VMCS_16_GUEST_ES_INDEX);
@@ -110,9 +112,8 @@ SmmTaskSwitchHandler (
     CurrentTss->Fs = VmRead16 (VMCS_16_GUEST_FS_INDEX);
     CurrentTss->Gs = VmRead16 (VMCS_16_GUEST_GS_INDEX);
 
-    CurrentTss->Cr3 = (UINT32)VmReadN (VMCS_N_GUEST_CR3_INDEX);
+    CurrentTss->Cr3            = (UINT32)VmReadN (VMCS_N_GUEST_CR3_INDEX);
     CurrentTss->LdtSegSelector = VmRead16 (VMCS_16_GUEST_LDTR_INDEX);
-
   }
 
   CurrentTss->Eflags = (UINT32)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX);
@@ -124,9 +125,11 @@ SmmTaskSwitchHandler (
   // Prepare new data
   //
   if ((Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_CALL) ||
-      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE)) {
+      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE))
+  {
     Tss->Link = CurrentTr;
   }
+
   mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rax = Tss->Eax;
   mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rbx = Tss->Ebx;
   mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.Rcx = Tss->Ecx;
@@ -149,18 +152,21 @@ SmmTaskSwitchHandler (
   VmWrite16 (VMCS_16_GUEST_LDTR_INDEX, Tss->LdtSegSelector);
 
   GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->LdtSegSelector & ~0x7));
-  VmWriteN (VMCS_N_GUEST_LDTR_BASE_INDEX,             BaseFromGdtEntry(GdtEntry));
+  VmWriteN (VMCS_N_GUEST_LDTR_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
   if (Tss->LdtSegSelector == 0) {
     VmWrite32 (VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX, 0x1082);
   } else {
-    VmWrite32 (VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry));
+    VmWrite32 (VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry));
   }
-  VmWrite32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX,          LimitFromGdtEntry(GdtEntry));
+
+  VmWrite32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
   if ((Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_CALL) ||
-      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE)) {
+      (Qualification.TaskSwitch.TaskType == TASK_SWITCH_SOURCE_TASK_GATE))
+  {
     Tss->Eflags |= RFLAGS_NT;
   }
+
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, Tss->Eflags | 0x2); // set reserved bit.
 
   GdtEntry = (GDT_ENTRY *)(Gdtr + (Qualification.TaskSwitch.Tss & ~0x7));
@@ -188,51 +194,51 @@ SmmTaskSwitchHandler (
     VmWrite32 (VMCS_32_GUEST_GS_LIMIT_INDEX, 0x0000ffff);
 
     VmWrite32 (VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX, DESCRIPTOR_PRESENT | DESCRIPTOR_TSS_N_BUSY);
-
   } else if (((GdtEntry->Attribute & DESCRIPTOR_TYPE_MASK) | DESCRIPTOR_TSS_BUSY) == DESCRIPTOR_TSS_N_BUSY) {
     // 32 bit
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Es & ~0x7));
-    VmWriteN (VMCS_N_GUEST_ES_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    VmWrite32 (VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_DATA_ACCESS);
-    VmWrite32 (VMCS_32_GUEST_ES_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_ES_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    VmWrite32 (VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_DATA_ACCESS);
+    VmWrite32 (VMCS_32_GUEST_ES_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Cs & ~0x7));
-    VmWriteN (VMCS_N_GUEST_CS_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    VmWrite32 (VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_CODE_ACCESS);
-    VmWrite32 (VMCS_32_GUEST_CS_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_CS_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    VmWrite32 (VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_CODE_ACCESS);
+    VmWrite32 (VMCS_32_GUEST_CS_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Ss & ~0x7));
-    VmWriteN (VMCS_N_GUEST_SS_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    VmWrite32 (VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_DATA_ACCESS);
-    VmWrite32 (VMCS_32_GUEST_SS_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_SS_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    VmWrite32 (VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_DATA_ACCESS);
+    VmWrite32 (VMCS_32_GUEST_SS_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Ds & ~0x7));
-    VmWriteN (VMCS_N_GUEST_DS_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    VmWrite32 (VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_DATA_ACCESS);
-    VmWrite32 (VMCS_32_GUEST_DS_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_DS_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    VmWrite32 (VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_DATA_ACCESS);
+    VmWrite32 (VMCS_32_GUEST_DS_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Fs & ~0x7));
-    VmWriteN (VMCS_N_GUEST_FS_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    AsmWriteMsr64 (IA32_FS_BASE_MSR_INDEX,          BaseFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_FS_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    AsmWriteMsr64 (IA32_FS_BASE_MSR_INDEX, BaseFromGdtEntry (GdtEntry));
     if (Tss->Fs == 0) {
       VmWrite32 (VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX, 0x10000);
     } else {
-      VmWrite32 (VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_DATA_ACCESS);
+      VmWrite32 (VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_DATA_ACCESS);
     }
-    VmWrite32 (VMCS_32_GUEST_FS_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+
+    VmWrite32 (VMCS_32_GUEST_FS_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     GdtEntry = (GDT_ENTRY *)(Gdtr + (Tss->Gs & ~0x7));
-    VmWriteN (VMCS_N_GUEST_GS_BASE_INDEX,           BaseFromGdtEntry(GdtEntry));
-    AsmWriteMsr64 (IA32_GS_BASE_MSR_INDEX,          BaseFromGdtEntry(GdtEntry));
+    VmWriteN (VMCS_N_GUEST_GS_BASE_INDEX, BaseFromGdtEntry (GdtEntry));
+    AsmWriteMsr64 (IA32_GS_BASE_MSR_INDEX, BaseFromGdtEntry (GdtEntry));
     if (Tss->Gs == 0) {
       VmWrite32 (VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX, 0x10000);
     } else {
-      VmWrite32 (VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX, ArFromGdtEntry(GdtEntry) | DESCRIPTOR_DATA_ACCESS);
+      VmWrite32 (VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX, ArFromGdtEntry (GdtEntry) | DESCRIPTOR_DATA_ACCESS);
     }
-    VmWrite32 (VMCS_32_GUEST_GS_LIMIT_INDEX,        LimitFromGdtEntry(GdtEntry));
+
+    VmWrite32 (VMCS_32_GUEST_GS_LIMIT_INDEX, LimitFromGdtEntry (GdtEntry));
 
     VmWrite32 (VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX, DESCRIPTOR_PRESENT | DESCRIPTOR_TSS_N_BUSY);
-
   } else {
     DEBUG ((EFI_D_INFO, "!!!Other TSS\n"));
     DumpVmcsAllField ();
@@ -241,5 +247,5 @@ SmmTaskSwitchHandler (
 
   VmWriteN (VMCS_N_GUEST_CR0_INDEX, VmReadN (VMCS_N_GUEST_CR0_INDEX) | CR0_TS);
 
-  return ;
+  return;
 }

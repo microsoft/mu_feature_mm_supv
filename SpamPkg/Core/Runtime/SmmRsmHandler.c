@@ -26,26 +26,26 @@ RsmHandler (
   IN UINT32  Index
   )
 {
-  UINTN                          Rflags;
-  UINT64                         ExecutiveVmcsPtr;
-  UINT64                         VmcsLinkPtr;
-  UINT32                         VmcsSize;
-  
-  VmcsSize = GetVmcsSize();
+  UINTN   Rflags;
+  UINT64  ExecutiveVmcsPtr;
+  UINT64  VmcsLinkPtr;
+  UINT32  VmcsSize;
+
+  VmcsSize         = GetVmcsSize ();
   ExecutiveVmcsPtr = VmRead64 (VMCS_64_CONTROL_EXECUTIVE_VMCS_PTR_INDEX);
   if (IsOverlap (ExecutiveVmcsPtr, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
     // Overlap TSEG
     DEBUG ((EFI_D_ERROR, "ExecutiveVmcsPtr violation (RsmHandler) - %016lx\n", ExecutiveVmcsPtr));
-    CpuDeadLoop() ;
+    CpuDeadLoop ();
   }
 
   VmcsLinkPtr = VmRead64 (VMCS_64_GUEST_VMCS_LINK_PTR_INDEX);
   if (IsOverlap (VmcsLinkPtr, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
     // Overlap TSEG
     DEBUG ((EFI_D_ERROR, "VmcsLinkPtr violation (RsmHandler) - %016lx\n", VmcsLinkPtr));
-    CpuDeadLoop() ;
+    CpuDeadLoop ();
   }
-  
+
   if (mHostContextCommon.HostContextPerCpu[Index].JumpBufferValid) {
     //
     // return from Setup/TearDown
@@ -67,12 +67,12 @@ RsmHandler (
   ReadSyncSmmStateSaveArea (Index);
   STM_PERF_END (Index, "ReadSyncSmmStateSaveArea", "RsmHandler");
 
-#if 0
+ #if 0
   DEBUG ((EFI_D_INFO, "Exit SmmHandler - %d\n", (UINTN)Index));
-#endif
+ #endif
 
   // We should not WaitAllProcessorRendezVous() because we can not assume SMM will bring all CPU into BIOS SMM handler.
-//  WaitAllProcessorRendezVous (Index);
+  //  WaitAllProcessorRendezVous (Index);
 
   STM_PERF_END (Index, "OsSmiHandler", "RsmHandler");
 
@@ -97,5 +97,5 @@ RsmHandler (
 
   CpuDeadLoop ();
 
-  return ;
+  return;
 }

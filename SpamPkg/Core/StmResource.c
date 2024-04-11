@@ -26,7 +26,7 @@
 **/
 VOID
 DumpStmResourceHeader (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   DEBUG ((EFI_D_INFO, "  RscType       : %08x\n", Resource->Header.RscType));
@@ -44,84 +44,85 @@ DumpStmResourceHeader (
 **/
 VOID
 DumpStmResourceNode (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  UINT8   PciIndex;
+  UINT8  PciIndex;
 
   switch (Resource->Header.RscType) {
-  case END_OF_RESOURCES:
-    DEBUG ((EFI_D_INFO, "END_OF_RESOURCES:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  ResourceListContinuation : %016lx\n", Resource->End.ResourceListContinuation));
-    break;
-  case MEM_RANGE:
-    DEBUG ((EFI_D_INFO, "MEM_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  Base          : %016lx\n", Resource->Mem.Base));
-    DEBUG ((EFI_D_INFO, "  Length        : %016lx\n", Resource->Mem.Length));
-    DEBUG ((EFI_D_INFO, "  RWXAttributes : %08x\n",   (UINTN)Resource->Mem.RWXAttributes));
-    break;
-  case IO_RANGE:
-    DEBUG ((EFI_D_INFO, "IO_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  Base          : %04x\n",   (UINTN)Resource->Io.Base));
-    DEBUG ((EFI_D_INFO, "  Length        : %04x\n",   (UINTN)Resource->Io.Length));
-    break;
-  case MMIO_RANGE:
-    DEBUG ((EFI_D_INFO, "MMIO_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  Base          : %016lx\n", Resource->Mmio.Base));
-    DEBUG ((EFI_D_INFO, "  Length        : %016lx\n", Resource->Mmio.Length));
-    DEBUG ((EFI_D_INFO, "  RWXAttributes : %08x\n",   (UINTN)Resource->Mmio.RWXAttributes));
-    break;
-  case MACHINE_SPECIFIC_REG:
-    DEBUG ((EFI_D_INFO, "MSR_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  MsrIndex      : %08x\n",   (UINTN)Resource->Msr.MsrIndex));
-    DEBUG ((EFI_D_INFO, "  KernelModeProc: %08x\n",   (UINTN)Resource->Msr.KernelModeProcessing));
-    DEBUG ((EFI_D_INFO, "  ReadMask      : %016lx\n", Resource->Msr.ReadMask));
-    DEBUG ((EFI_D_INFO, "  WriteMask     : %016lx\n", Resource->Msr.WriteMask));
-    break;
-  case PCI_CFG_RANGE:
-    DEBUG ((EFI_D_INFO, "PCI_CFG_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  RWAttributes  : %04x\n",   (UINTN)Resource->PciCfg.RWAttributes));
-    DEBUG ((EFI_D_INFO, "  Base          : %04x\n",   (UINTN)Resource->PciCfg.Base));
-    DEBUG ((EFI_D_INFO, "  Length        : %04x\n",   (UINTN)Resource->PciCfg.Length));
-    DEBUG ((EFI_D_INFO, "  OriginatingBus: %02x\n",   (UINTN)Resource->PciCfg.OriginatingBusNumber));
-    DEBUG ((EFI_D_INFO, "  LastNodeIndex : %02x\n",   (UINTN)Resource->PciCfg.LastNodeIndex));
-    for (PciIndex = 0; PciIndex < Resource->PciCfg.LastNodeIndex + 1; PciIndex++) {
-      DEBUG ((EFI_D_INFO, "  Type          : %02x\n",   (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Type));
-      DEBUG ((EFI_D_INFO, "  Subtype       : %02x\n",   (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Subtype));
-      DEBUG ((EFI_D_INFO, "  Length        : %04x\n",   (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Length));
-      DEBUG ((EFI_D_INFO, "  PciDevice     : %02x\n",   (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].PciDevice));
-      DEBUG ((EFI_D_INFO, "  PciFunction   : %02x\n",   (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].PciFunction));
-    }
-    break;
-  case TRAPPED_IO_RANGE:
-    DEBUG ((EFI_D_INFO, "TRAPPED_IO_RANGE:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  Base          : %04x\n",   (UINTN)Resource->TrappedIo.Base));
-    DEBUG ((EFI_D_INFO, "  Length        : %04x\n",   (UINTN)Resource->TrappedIo.Length));
-    DEBUG ((EFI_D_INFO, "  In            : %04x\n",   (UINTN)Resource->TrappedIo.In));
-    DEBUG ((EFI_D_INFO, "  Out           : %04x\n",   (UINTN)Resource->TrappedIo.Out));
-    DEBUG ((EFI_D_INFO, "  Api           : %04x\n",   (UINTN)Resource->TrappedIo.Api));
-    break;
-  case ALL_RESOURCES:
-    DEBUG ((EFI_D_INFO, "ALL_RESOURCES:\n"));
-    DumpStmResourceHeader (Resource);
-    break;
-  case REGISTER_VIOLATION:
-    DEBUG ((EFI_D_INFO, "REGISTER_VIOLATION:\n"));
-    DumpStmResourceHeader (Resource);
-    DEBUG ((EFI_D_INFO, "  RegisterType  : %08x\n",   (UINTN)Resource->RegisterViolation.RegisterType));
-    DEBUG ((EFI_D_INFO, "  ReadMask      : %016lx\n", Resource->RegisterViolation.ReadMask));
-    DEBUG ((EFI_D_INFO, "  WriteMask     : %016lx\n", Resource->RegisterViolation.WriteMask));
-    break;
-  default:
-    DumpStmResourceHeader (Resource);
-    break;
+    case END_OF_RESOURCES:
+      DEBUG ((EFI_D_INFO, "END_OF_RESOURCES:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  ResourceListContinuation : %016lx\n", Resource->End.ResourceListContinuation));
+      break;
+    case MEM_RANGE:
+      DEBUG ((EFI_D_INFO, "MEM_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  Base          : %016lx\n", Resource->Mem.Base));
+      DEBUG ((EFI_D_INFO, "  Length        : %016lx\n", Resource->Mem.Length));
+      DEBUG ((EFI_D_INFO, "  RWXAttributes : %08x\n", (UINTN)Resource->Mem.RWXAttributes));
+      break;
+    case IO_RANGE:
+      DEBUG ((EFI_D_INFO, "IO_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  Base          : %04x\n", (UINTN)Resource->Io.Base));
+      DEBUG ((EFI_D_INFO, "  Length        : %04x\n", (UINTN)Resource->Io.Length));
+      break;
+    case MMIO_RANGE:
+      DEBUG ((EFI_D_INFO, "MMIO_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  Base          : %016lx\n", Resource->Mmio.Base));
+      DEBUG ((EFI_D_INFO, "  Length        : %016lx\n", Resource->Mmio.Length));
+      DEBUG ((EFI_D_INFO, "  RWXAttributes : %08x\n", (UINTN)Resource->Mmio.RWXAttributes));
+      break;
+    case MACHINE_SPECIFIC_REG:
+      DEBUG ((EFI_D_INFO, "MSR_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  MsrIndex      : %08x\n", (UINTN)Resource->Msr.MsrIndex));
+      DEBUG ((EFI_D_INFO, "  KernelModeProc: %08x\n", (UINTN)Resource->Msr.KernelModeProcessing));
+      DEBUG ((EFI_D_INFO, "  ReadMask      : %016lx\n", Resource->Msr.ReadMask));
+      DEBUG ((EFI_D_INFO, "  WriteMask     : %016lx\n", Resource->Msr.WriteMask));
+      break;
+    case PCI_CFG_RANGE:
+      DEBUG ((EFI_D_INFO, "PCI_CFG_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  RWAttributes  : %04x\n", (UINTN)Resource->PciCfg.RWAttributes));
+      DEBUG ((EFI_D_INFO, "  Base          : %04x\n", (UINTN)Resource->PciCfg.Base));
+      DEBUG ((EFI_D_INFO, "  Length        : %04x\n", (UINTN)Resource->PciCfg.Length));
+      DEBUG ((EFI_D_INFO, "  OriginatingBus: %02x\n", (UINTN)Resource->PciCfg.OriginatingBusNumber));
+      DEBUG ((EFI_D_INFO, "  LastNodeIndex : %02x\n", (UINTN)Resource->PciCfg.LastNodeIndex));
+      for (PciIndex = 0; PciIndex < Resource->PciCfg.LastNodeIndex + 1; PciIndex++) {
+        DEBUG ((EFI_D_INFO, "  Type          : %02x\n", (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Type));
+        DEBUG ((EFI_D_INFO, "  Subtype       : %02x\n", (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Subtype));
+        DEBUG ((EFI_D_INFO, "  Length        : %04x\n", (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].Length));
+        DEBUG ((EFI_D_INFO, "  PciDevice     : %02x\n", (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].PciDevice));
+        DEBUG ((EFI_D_INFO, "  PciFunction   : %02x\n", (UINTN)Resource->PciCfg.PciDevicePath[PciIndex].PciFunction));
+      }
+
+      break;
+    case TRAPPED_IO_RANGE:
+      DEBUG ((EFI_D_INFO, "TRAPPED_IO_RANGE:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  Base          : %04x\n", (UINTN)Resource->TrappedIo.Base));
+      DEBUG ((EFI_D_INFO, "  Length        : %04x\n", (UINTN)Resource->TrappedIo.Length));
+      DEBUG ((EFI_D_INFO, "  In            : %04x\n", (UINTN)Resource->TrappedIo.In));
+      DEBUG ((EFI_D_INFO, "  Out           : %04x\n", (UINTN)Resource->TrappedIo.Out));
+      DEBUG ((EFI_D_INFO, "  Api           : %04x\n", (UINTN)Resource->TrappedIo.Api));
+      break;
+    case ALL_RESOURCES:
+      DEBUG ((EFI_D_INFO, "ALL_RESOURCES:\n"));
+      DumpStmResourceHeader (Resource);
+      break;
+    case REGISTER_VIOLATION:
+      DEBUG ((EFI_D_INFO, "REGISTER_VIOLATION:\n"));
+      DumpStmResourceHeader (Resource);
+      DEBUG ((EFI_D_INFO, "  RegisterType  : %08x\n", (UINTN)Resource->RegisterViolation.RegisterType));
+      DEBUG ((EFI_D_INFO, "  ReadMask      : %016lx\n", Resource->RegisterViolation.ReadMask));
+      DEBUG ((EFI_D_INFO, "  WriteMask     : %016lx\n", Resource->RegisterViolation.WriteMask));
+      break;
+    default:
+      DumpStmResourceHeader (Resource);
+      break;
   }
 }
 
@@ -134,13 +135,14 @@ DumpStmResourceNode (
 **/
 VOID
 DumpStmResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     DumpStmResourceNode (Resource);
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   // Dump End Node
   DumpStmResourceNode (Resource);
 
@@ -160,17 +162,17 @@ DumpStmResource (
 **/
 UINT8
 GetLastNodeBus (
-  IN STM_RSC   *ResourceNode
+  IN STM_RSC  *ResourceNode
   )
 {
-  UINT8   PciIndex;
-  UINT8   Bus;
-  UINT8   Device;
-  UINT8   Function;
+  UINT8  PciIndex;
+  UINT8  Bus;
+  UINT8  Device;
+  UINT8  Function;
 
   Bus = ResourceNode->PciCfg.OriginatingBusNumber;
   for (PciIndex = 0; PciIndex < ResourceNode->PciCfg.LastNodeIndex + 1; PciIndex++) {
-    Device = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciDevice;
+    Device   = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciDevice;
     Function = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciFunction;
 
     if (PciIndex == ResourceNode->PciCfg.LastNodeIndex) {
@@ -180,11 +182,12 @@ GetLastNodeBus (
     //
     // Next node
     //
-    Bus = PciRead8 (PCI_LIB_ADDRESS(Bus, Device, Function, PCI_BRIDGE_SECONDARY_BUS_REGISTER_OFFSET));
+    Bus = PciRead8 (PCI_LIB_ADDRESS (Bus, Device, Function, PCI_BRIDGE_SECONDARY_BUS_REGISTER_OFFSET));
     if (Bus == 0) {
       return 0;
     }
   }
+
   return Bus;
 }
 
@@ -200,7 +203,7 @@ GetLastNodeBus (
 **/
 BOOLEAN
 IsPciResourceNodeValid (
-  IN STM_RSC   *ResourceNode
+  IN STM_RSC  *ResourceNode
   )
 {
   UINT8   PciIndex;
@@ -213,25 +216,30 @@ IsPciResourceNodeValid (
 
   Bus = ResourceNode->PciCfg.OriginatingBusNumber;
   for (PciIndex = 0; PciIndex < ResourceNode->PciCfg.LastNodeIndex + 1; PciIndex++) {
-    Device = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciDevice;
+    Device   = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciDevice;
     Function = ResourceNode->PciCfg.PciDevicePath[PciIndex].PciFunction;
-//    DEBUG ((EFI_D_INFO, "IsPciResourceNodeValid - B(%02x)D(%02x)F(%02x)...\n", (UINTN)Bus, (UINTN)Device, (UINTN)Function));
+    //    DEBUG ((EFI_D_INFO, "IsPciResourceNodeValid - B(%02x)D(%02x)F(%02x)...\n", (UINTN)Bus, (UINTN)Device, (UINTN)Function));
     if (ResourceNode->PciCfg.PciDevicePath[PciIndex].Type != 1) {
       return FALSE;
     }
+
     if (ResourceNode->PciCfg.PciDevicePath[PciIndex].Subtype != 1) {
       return FALSE;
     }
-    if (ResourceNode->PciCfg.PciDevicePath[PciIndex].Length != sizeof(STM_PCI_DEVICE_PATH_NODE)) {
+
+    if (ResourceNode->PciCfg.PciDevicePath[PciIndex].Length != sizeof (STM_PCI_DEVICE_PATH_NODE)) {
       return FALSE;
     }
+
     if (Device > 0x1F) {
       return FALSE;
     }
+
     if (Function > 0x7) {
       return FALSE;
     }
-    PciExpressDeviceBase = PCI_EXPRESS_ADDRESS(Bus, Device, Function, 0);
+
+    PciExpressDeviceBase = PCI_EXPRESS_ADDRESS (Bus, Device, Function, 0);
     if (PciExpressDeviceBase >= mHostContextCommon.PciExpressLength) {
       return FALSE;
     }
@@ -239,12 +247,14 @@ IsPciResourceNodeValid (
     if (PciIndex == ResourceNode->PciCfg.LastNodeIndex) {
       return TRUE;
     }
-    Data16 = PciRead16 (PCI_LIB_ADDRESS(Bus, Device, Function, PCI_VENDOR_ID_OFFSET));
+
+    Data16 = PciRead16 (PCI_LIB_ADDRESS (Bus, Device, Function, PCI_VENDOR_ID_OFFSET));
     if (Data16 == 0xFFFF) {
       DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - PCI_VENDOR_ID == 0xFFFF\n"));
       return FALSE;
     }
-    Data16 = PciRead16 (PCI_LIB_ADDRESS(Bus, Device, Function, PCI_DEVICE_ID_OFFSET));
+
+    Data16 = PciRead16 (PCI_LIB_ADDRESS (Bus, Device, Function, PCI_DEVICE_ID_OFFSET));
     if (Data16 == 0xFFFF) {
       DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - PCI_DEVICE_ID == 0xFFFF\n"));
       return FALSE;
@@ -253,17 +263,19 @@ IsPciResourceNodeValid (
     //
     // Next node
     //
-    Data8 = PciRead8 (PCI_LIB_ADDRESS(Bus, Device, Function, PCI_HEADER_TYPE_OFFSET));
+    Data8 = PciRead8 (PCI_LIB_ADDRESS (Bus, Device, Function, PCI_HEADER_TYPE_OFFSET));
     if ((Data8 & HEADER_LAYOUT_CODE) != HEADER_TYPE_PCI_TO_PCI_BRIDGE) {
       DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - HEADER_LAYOUT_CODE != HEADER_TYPE_PCI_TO_PCI_BRIDGE\n"));
       return FALSE;
     }
-    Bus = PciRead8 (PCI_LIB_ADDRESS(Bus, Device, Function, PCI_BRIDGE_SECONDARY_BUS_REGISTER_OFFSET));
+
+    Bus = PciRead8 (PCI_LIB_ADDRESS (Bus, Device, Function, PCI_BRIDGE_SECONDARY_BUS_REGISTER_OFFSET));
     if (Bus == 0) {
       DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - BRIDGE_SECONDARY_BUS == 0\n"));
       return FALSE;
     }
   }
+
   return TRUE;
 }
 
@@ -281,185 +293,231 @@ IsPciResourceNodeValid (
 **/
 BOOLEAN
 IsResourceNodeValid (
-  IN STM_RSC   *ResourceNode,
-  IN BOOLEAN   FromMle,
-  IN BOOLEAN   ForLogging
+  IN STM_RSC  *ResourceNode,
+  IN BOOLEAN  FromMle,
+  IN BOOLEAN  ForLogging
   )
 {
   if (ResourceNode->Header.IgnoreResource != 0) {
     return TRUE;
   }
+
   if ((UINTN)ResourceNode > mHostContextCommon.MaximumSupportAddress - ResourceNode->Header.Length) {
     goto CheckFail;
   }
+
   switch (ResourceNode->Header.RscType) {
-  case END_OF_RESOURCES:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_END)) {
-      goto CheckFail;
-    }
-    break;
-  case MEM_RANGE:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_MEM_DESC)) {
-      goto CheckFail;
-    }
-    if ((ResourceNode->Mem.RWXAttributes & ~(STM_RSC_MEM_R | STM_RSC_MEM_W | STM_RSC_MEM_X)) != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mem.Reserved != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mem.Reserved_2 != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mem.Length == 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mem.Base > mHostContextCommon.MaximumSupportAddress) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mem.Length > mHostContextCommon.MaximumSupportAddress - ResourceNode->Mem.Base) {
-      goto CheckFail;
-    }
-    // STM_RSC_BGM is NOT supported in this version
-    if (FromMle) {
-      if (((UINT32)ResourceNode->Mem.Base & (SIZE_4KB - 1)) != 0) {
+    case END_OF_RESOURCES:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_END)) {
         goto CheckFail;
       }
-      if (((UINT32)ResourceNode->Mem.Length & (SIZE_4KB - 1)) != 0) {
+
+      break;
+    case MEM_RANGE:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_MEM_DESC)) {
         goto CheckFail;
       }
-    }
-    break;
-  case IO_RANGE:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_IO_DESC)) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Io.Reserved != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Io.Length == 0) {
-      goto CheckFail;
-    }
-    break;
-  case MMIO_RANGE:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_MMIO_DESC)) {
-      goto CheckFail;
-    }
-    if ((ResourceNode->Mmio.RWXAttributes & ~(STM_RSC_MMIO_R | STM_RSC_MMIO_W | STM_RSC_MMIO_X)) != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mmio.Reserved != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mmio.Reserved_2 != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mmio.Length == 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mmio.Base > mHostContextCommon.MaximumSupportAddress) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Mmio.Length > mHostContextCommon.MaximumSupportAddress - ResourceNode->Mmio.Base) {
-      goto CheckFail;
-    }
-    // STM_RSC_BGI is NOT supported in this version
-    if (FromMle) {
-      if (((UINT32)ResourceNode->Mmio.Base & (SIZE_4KB - 1)) != 0) {
+
+      if ((ResourceNode->Mem.RWXAttributes & ~(STM_RSC_MEM_R | STM_RSC_MEM_W | STM_RSC_MEM_X)) != 0) {
         goto CheckFail;
       }
-      if (((UINT32)ResourceNode->Mmio.Length & (SIZE_4KB - 1)) != 0) {
+
+      if (ResourceNode->Mem.Reserved != 0) {
         goto CheckFail;
       }
-    }
-    break;
-  case MACHINE_SPECIFIC_REG:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_MSR_DESC)) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Msr.Reserved != 0) {
-      goto CheckFail;
-    }
-    // STM_RSC_MSR is NOT supported in this version
-    if (FromMle) {
-      if ((ResourceNode->Msr.ReadMask != 0) && (ResourceNode->Msr.ReadMask != (UINT64)-1)) {
+
+      if (ResourceNode->Mem.Reserved_2 != 0) {
         goto CheckFail;
       }
-      if ((ResourceNode->Msr.WriteMask != 0) && (ResourceNode->Msr.WriteMask != (UINT64)-1)) {
+
+      if (ResourceNode->Mem.Length == 0) {
         goto CheckFail;
       }
-    }
-    break;
-  case PCI_CFG_RANGE:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_PCI_CFG_DESC) + (sizeof(STM_PCI_DEVICE_PATH_NODE) * ResourceNode->PciCfg.LastNodeIndex)) {
-      goto CheckFail;
-    }
-    if ((ResourceNode->PciCfg.RWAttributes & ~(STM_RSC_PCI_CFG_R | STM_RSC_PCI_CFG_W)) != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->PciCfg.Reserved != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->PciCfg.Length == 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->PciCfg.Base >= 0x1000) {
-      goto CheckFail;
-    }
-    if (!IsPciResourceNodeValid (ResourceNode)) {
-      DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - fail!!!\n"));
-      goto CheckFail;
-    }
-    // STM_RSC_BGI is NOT supported in this version
-    if (FromMle) {
-      // So we have to mark PciCfg MMIO space are protected, all PCI registers for this device.
-      if (ResourceNode->PciCfg.Base != 0) {
+
+      if (ResourceNode->Mem.Base > mHostContextCommon.MaximumSupportAddress) {
         goto CheckFail;
       }
-      if (ResourceNode->PciCfg.Length != 0x1000) {
+
+      if (ResourceNode->Mem.Length > mHostContextCommon.MaximumSupportAddress - ResourceNode->Mem.Base) {
         goto CheckFail;
       }
-    }
-    break;
-  case TRAPPED_IO_RANGE:
-    if (FromMle) {
+
+      // STM_RSC_BGM is NOT supported in this version
+      if (FromMle) {
+        if (((UINT32)ResourceNode->Mem.Base & (SIZE_4KB - 1)) != 0) {
+          goto CheckFail;
+        }
+
+        if (((UINT32)ResourceNode->Mem.Length & (SIZE_4KB - 1)) != 0) {
+          goto CheckFail;
+        }
+      }
+
+      break;
+    case IO_RANGE:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_IO_DESC)) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Io.Reserved != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Io.Length == 0) {
+        goto CheckFail;
+      }
+
+      break;
+    case MMIO_RANGE:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_MMIO_DESC)) {
+        goto CheckFail;
+      }
+
+      if ((ResourceNode->Mmio.RWXAttributes & ~(STM_RSC_MMIO_R | STM_RSC_MMIO_W | STM_RSC_MMIO_X)) != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Mmio.Reserved != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Mmio.Reserved_2 != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Mmio.Length == 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Mmio.Base > mHostContextCommon.MaximumSupportAddress) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Mmio.Length > mHostContextCommon.MaximumSupportAddress - ResourceNode->Mmio.Base) {
+        goto CheckFail;
+      }
+
+      // STM_RSC_BGI is NOT supported in this version
+      if (FromMle) {
+        if (((UINT32)ResourceNode->Mmio.Base & (SIZE_4KB - 1)) != 0) {
+          goto CheckFail;
+        }
+
+        if (((UINT32)ResourceNode->Mmio.Length & (SIZE_4KB - 1)) != 0) {
+          goto CheckFail;
+        }
+      }
+
+      break;
+    case MACHINE_SPECIFIC_REG:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_MSR_DESC)) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Msr.Reserved != 0) {
+        goto CheckFail;
+      }
+
+      // STM_RSC_MSR is NOT supported in this version
+      if (FromMle) {
+        if ((ResourceNode->Msr.ReadMask != 0) && (ResourceNode->Msr.ReadMask != (UINT64)-1)) {
+          goto CheckFail;
+        }
+
+        if ((ResourceNode->Msr.WriteMask != 0) && (ResourceNode->Msr.WriteMask != (UINT64)-1)) {
+          goto CheckFail;
+        }
+      }
+
+      break;
+    case PCI_CFG_RANGE:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_PCI_CFG_DESC) + (sizeof (STM_PCI_DEVICE_PATH_NODE) * ResourceNode->PciCfg.LastNodeIndex)) {
+        goto CheckFail;
+      }
+
+      if ((ResourceNode->PciCfg.RWAttributes & ~(STM_RSC_PCI_CFG_R | STM_RSC_PCI_CFG_W)) != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->PciCfg.Reserved != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->PciCfg.Length == 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->PciCfg.Base >= 0x1000) {
+        goto CheckFail;
+      }
+
+      if (!IsPciResourceNodeValid (ResourceNode)) {
+        DEBUG ((EFI_D_ERROR, "IsPciResourceNodeValid - fail!!!\n"));
+        goto CheckFail;
+      }
+
+      // STM_RSC_BGI is NOT supported in this version
+      if (FromMle) {
+        // So we have to mark PciCfg MMIO space are protected, all PCI registers for this device.
+        if (ResourceNode->PciCfg.Base != 0) {
+          goto CheckFail;
+        }
+
+        if (ResourceNode->PciCfg.Length != 0x1000) {
+          goto CheckFail;
+        }
+      }
+
+      break;
+    case TRAPPED_IO_RANGE:
+      if (FromMle) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_TRAPPED_IO_DESC)) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->TrappedIo.Reserved1 != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->TrappedIo.Reserved2 != 0) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->TrappedIo.Length == 0) {
+        goto CheckFail;
+      }
+
+      break;
+    case ALL_RESOURCES:
+      if (ResourceNode->Header.Length != sizeof (STM_RSC_ALL_RESOURCES_DESC)) {
+        goto CheckFail;
+      }
+
+      break;
+    case REGISTER_VIOLATION:
+      if (!ForLogging) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->Header.Length != sizeof (STM_REGISTER_VIOLATION_DESC)) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->RegisterViolation.RegisterType >= StmRegisterMax) {
+        goto CheckFail;
+      }
+
+      if (ResourceNode->RegisterViolation.Reserved != 0) {
+        goto CheckFail;
+      }
+
+      break;
+    default:
       goto CheckFail;
-    }
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_TRAPPED_IO_DESC)) {
-      goto CheckFail;
-    }
-    if (ResourceNode->TrappedIo.Reserved1 != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->TrappedIo.Reserved2 != 0) {
-      goto CheckFail;
-    }
-    if (ResourceNode->TrappedIo.Length == 0) {
-      goto CheckFail;
-    }
-    break;
-  case ALL_RESOURCES:
-    if (ResourceNode->Header.Length != sizeof(STM_RSC_ALL_RESOURCES_DESC)) {
-      goto CheckFail;
-    }
-    break;
-  case REGISTER_VIOLATION:
-    if (!ForLogging) {
-      goto CheckFail;
-    }
-    if (ResourceNode->Header.Length != sizeof(STM_REGISTER_VIOLATION_DESC)) {
-      goto CheckFail;
-    }
-    if (ResourceNode->RegisterViolation.RegisterType >= StmRegisterMax) {
-      goto CheckFail;
-    }
-    if (ResourceNode->RegisterViolation.Reserved != 0) {
-      goto CheckFail;
-    }
-    break;
-  default:
-    goto CheckFail;
-    break;
+      break;
   }
 
   //
@@ -516,16 +574,18 @@ IsOverlap (
 **/
 BOOLEAN
 IsResourceListValid (
-  IN STM_RSC   *ResourceList,
-  IN BOOLEAN   FromMle
+  IN STM_RSC  *ResourceList,
+  IN BOOLEAN  FromMle
   )
 {
   while (ResourceList->Header.RscType != END_OF_RESOURCES) {
     if (!IsResourceNodeValid (ResourceList, FromMle, FALSE)) {
       return FALSE;
     }
+
     ResourceList = (STM_RSC *)((UINTN)ResourceList + ResourceList->Header.Length);
   }
+
   if (ResourceList->End.ResourceListContinuation != 0) {
     return IsResourceListValid ((STM_RSC *)(UINTN)ResourceList->End.ResourceListContinuation, FromMle);
   }
@@ -549,15 +609,16 @@ IsResourceListValid (
 **/
 BOOLEAN
 IsResourceNodeOverlap (
-  IN STM_RSC   *ResourceNode1,
-  IN STM_RSC   *ResourceNode2
+  IN STM_RSC  *ResourceNode1,
+  IN STM_RSC  *ResourceNode2
   )
 {
-  UINT8   PciIndex;
+  UINT8  PciIndex;
 
-  if (ResourceNode1->Header.IgnoreResource != 0 || ResourceNode2->Header.IgnoreResource != 0) {
+  if ((ResourceNode1->Header.IgnoreResource != 0) || (ResourceNode2->Header.IgnoreResource != 0)) {
     return FALSE;
   }
+
   if (ResourceNode1->Header.RscType != ResourceNode2->Header.RscType) {
     return FALSE;
   }
@@ -566,85 +627,103 @@ IsResourceNodeOverlap (
   // RscType same, compare them by type
   //
   switch (ResourceNode1->Header.RscType) {
-  case END_OF_RESOURCES:
-    return FALSE;
-    break;
-  case MEM_RANGE:
-    if (!IsOverlap (ResourceNode1->Mem.Base, ResourceNode1->Mem.Length, ResourceNode2->Mem.Base, ResourceNode2->Mem.Length)) {
+    case END_OF_RESOURCES:
       return FALSE;
-    }
-    if ((ResourceNode1->Mem.RWXAttributes & ResourceNode2->Mem.RWXAttributes) == 0) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case IO_RANGE:
-    if (!IsOverlap(ResourceNode1->Io.Base, ResourceNode1->Io.Length, ResourceNode2->Io.Base, ResourceNode2->Io.Length)) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case MMIO_RANGE:
-    if (!IsOverlap(ResourceNode1->Mmio.Base, ResourceNode1->Mmio.Length, ResourceNode2->Mmio.Base, ResourceNode2->Mmio.Length)) {
-      return FALSE;
-    }
-    if ((ResourceNode1->Mmio.RWXAttributes & ResourceNode2->Mmio.RWXAttributes) == 0) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case MACHINE_SPECIFIC_REG:
-    if (ResourceNode1->Msr.MsrIndex != ResourceNode2->Msr.MsrIndex) {
-      return FALSE;
-    }
-    if (((ResourceNode1->Msr.ReadMask  & ResourceNode2->Msr.ReadMask) == 0) &&
-        ((ResourceNode1->Msr.WriteMask & ResourceNode2->Msr.WriteMask) == 0)) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case PCI_CFG_RANGE:
-    if (ResourceNode1->PciCfg.OriginatingBusNumber != ResourceNode2->PciCfg.OriginatingBusNumber) {
-      return FALSE;
-    }
-    if (ResourceNode1->PciCfg.LastNodeIndex != ResourceNode2->PciCfg.LastNodeIndex) {
-      return FALSE;
-    }
-    for (PciIndex = 0; PciIndex < ResourceNode1->PciCfg.LastNodeIndex + 1; PciIndex++) {
-      if (ResourceNode1->PciCfg.PciDevicePath[PciIndex].PciDevice != ResourceNode2->PciCfg.PciDevicePath[PciIndex].PciDevice) {
+      break;
+    case MEM_RANGE:
+      if (!IsOverlap (ResourceNode1->Mem.Base, ResourceNode1->Mem.Length, ResourceNode2->Mem.Base, ResourceNode2->Mem.Length)) {
         return FALSE;
       }
-      if (ResourceNode1->PciCfg.PciDevicePath[PciIndex].PciFunction != ResourceNode2->PciCfg.PciDevicePath[PciIndex].PciFunction) {
+
+      if ((ResourceNode1->Mem.RWXAttributes & ResourceNode2->Mem.RWXAttributes) == 0) {
         return FALSE;
       }
-    }
-    if (!IsOverlap(ResourceNode1->PciCfg.Base, ResourceNode1->PciCfg.Length, ResourceNode2->PciCfg.Base, ResourceNode2->PciCfg.Length)) {
-      return FALSE;
-    }
-    if ((ResourceNode1->PciCfg.RWAttributes & ResourceNode2->PciCfg.RWAttributes) == 0) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case TRAPPED_IO_RANGE:
-    if (!IsOverlap(ResourceNode1->TrappedIo.Base, ResourceNode1->TrappedIo.Length, ResourceNode2->TrappedIo.Base, ResourceNode2->TrappedIo.Length)) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
-  case ALL_RESOURCES:
-    goto OverlapHappen;
-    break;
-  case REGISTER_VIOLATION:
-    if (ResourceNode1->RegisterViolation.RegisterType != ResourceNode2->RegisterViolation.RegisterType) {
-      return FALSE;
-    }
-    if (((ResourceNode1->RegisterViolation.ReadMask  & ResourceNode2->RegisterViolation.ReadMask) == 0) &&
-        ((ResourceNode1->RegisterViolation.WriteMask & ResourceNode2->RegisterViolation.WriteMask) == 0)) {
-      return FALSE;
-    }
-    goto OverlapHappen;
-    break;
+
+      goto OverlapHappen;
+      break;
+    case IO_RANGE:
+      if (!IsOverlap (ResourceNode1->Io.Base, ResourceNode1->Io.Length, ResourceNode2->Io.Base, ResourceNode2->Io.Length)) {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
+    case MMIO_RANGE:
+      if (!IsOverlap (ResourceNode1->Mmio.Base, ResourceNode1->Mmio.Length, ResourceNode2->Mmio.Base, ResourceNode2->Mmio.Length)) {
+        return FALSE;
+      }
+
+      if ((ResourceNode1->Mmio.RWXAttributes & ResourceNode2->Mmio.RWXAttributes) == 0) {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
+    case MACHINE_SPECIFIC_REG:
+      if (ResourceNode1->Msr.MsrIndex != ResourceNode2->Msr.MsrIndex) {
+        return FALSE;
+      }
+
+      if (((ResourceNode1->Msr.ReadMask  & ResourceNode2->Msr.ReadMask) == 0) &&
+          ((ResourceNode1->Msr.WriteMask & ResourceNode2->Msr.WriteMask) == 0))
+      {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
+    case PCI_CFG_RANGE:
+      if (ResourceNode1->PciCfg.OriginatingBusNumber != ResourceNode2->PciCfg.OriginatingBusNumber) {
+        return FALSE;
+      }
+
+      if (ResourceNode1->PciCfg.LastNodeIndex != ResourceNode2->PciCfg.LastNodeIndex) {
+        return FALSE;
+      }
+
+      for (PciIndex = 0; PciIndex < ResourceNode1->PciCfg.LastNodeIndex + 1; PciIndex++) {
+        if (ResourceNode1->PciCfg.PciDevicePath[PciIndex].PciDevice != ResourceNode2->PciCfg.PciDevicePath[PciIndex].PciDevice) {
+          return FALSE;
+        }
+
+        if (ResourceNode1->PciCfg.PciDevicePath[PciIndex].PciFunction != ResourceNode2->PciCfg.PciDevicePath[PciIndex].PciFunction) {
+          return FALSE;
+        }
+      }
+
+      if (!IsOverlap (ResourceNode1->PciCfg.Base, ResourceNode1->PciCfg.Length, ResourceNode2->PciCfg.Base, ResourceNode2->PciCfg.Length)) {
+        return FALSE;
+      }
+
+      if ((ResourceNode1->PciCfg.RWAttributes & ResourceNode2->PciCfg.RWAttributes) == 0) {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
+    case TRAPPED_IO_RANGE:
+      if (!IsOverlap (ResourceNode1->TrappedIo.Base, ResourceNode1->TrappedIo.Length, ResourceNode2->TrappedIo.Base, ResourceNode2->TrappedIo.Length)) {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
+    case ALL_RESOURCES:
+      goto OverlapHappen;
+      break;
+    case REGISTER_VIOLATION:
+      if (ResourceNode1->RegisterViolation.RegisterType != ResourceNode2->RegisterViolation.RegisterType) {
+        return FALSE;
+      }
+
+      if (((ResourceNode1->RegisterViolation.ReadMask  & ResourceNode2->RegisterViolation.ReadMask) == 0) &&
+          ((ResourceNode1->RegisterViolation.WriteMask & ResourceNode2->RegisterViolation.WriteMask) == 0))
+      {
+        return FALSE;
+      }
+
+      goto OverlapHappen;
+      break;
   }
 
   //
@@ -674,19 +753,22 @@ OverlapHappen:
 **/
 BOOLEAN
 IsResourceListOverlapWithNode (
-  IN STM_RSC   *ResourceNode1,
-  IN STM_RSC   *ResourceList2
+  IN STM_RSC  *ResourceNode1,
+  IN STM_RSC  *ResourceList2
   )
 {
   while (ResourceList2->Header.RscType != END_OF_RESOURCES) {
     if ((UINTN)ResourceList2 > mHostContextCommon.MaximumSupportAddress - ResourceList2->Header.Length) {
       return TRUE;
     }
+
     if (IsResourceNodeOverlap (ResourceNode1, ResourceList2)) {
       return TRUE;
     }
+
     ResourceList2 = (STM_RSC *)((UINTN)ResourceList2 + ResourceList2->Header.Length);
   }
+
   if (ResourceList2->End.ResourceListContinuation != 0) {
     return IsResourceListOverlapWithNode (ResourceNode1, (STM_RSC *)(UINTN)ResourceList2->End.ResourceListContinuation);
   }
@@ -710,19 +792,22 @@ IsResourceListOverlapWithNode (
 **/
 BOOLEAN
 IsResourceListOverlap (
-  IN STM_RSC   *ResourceList1,
-  IN STM_RSC   *ResourceList2
+  IN STM_RSC  *ResourceList1,
+  IN STM_RSC  *ResourceList2
   )
 {
   while (ResourceList1->Header.RscType != END_OF_RESOURCES) {
     if ((UINTN)ResourceList1 > mHostContextCommon.MaximumSupportAddress - ResourceList1->Header.Length) {
       return TRUE;
     }
+
     if (IsResourceListOverlapWithNode (ResourceList1, ResourceList2)) {
       return TRUE;
     }
+
     ResourceList1 = (STM_RSC *)((UINTN)ResourceList1 + ResourceList1->Header.Length);
   }
+
   if (ResourceList1->End.ResourceListContinuation != 0) {
     return IsResourceListOverlap ((STM_RSC *)(UINTN)ResourceList1->End.ResourceListContinuation, ResourceList2);
   }
@@ -745,16 +830,17 @@ IsResourceListOverlap (
 **/
 UINTN
 GetSizeFromThisResourceList (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *Header;
+  STM_RSC  *Header;
 
   Header = Resource;
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((UINTN)Resource > mHostContextCommon.MaximumSupportAddress - Resource->Header.Length) {
       return 0;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
 
@@ -779,26 +865,29 @@ GetSizeFromThisResourceList (
 **/
 UINTN
 GetSizeFromThisResourceListWithType (
-  IN STM_RSC   *Resource,
-  IN UINT32    ResourceType,
-  OUT UINTN    *ThisResourceSize
+  IN STM_RSC  *Resource,
+  IN UINT32   ResourceType,
+  OUT UINTN   *ThisResourceSize
   )
 {
-  STM_RSC   *Header;
-  UINTN     Size;
+  STM_RSC  *Header;
+  UINTN    Size;
 
   Header = Resource;
-  Size = 0;
+  Size   = 0;
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if (Resource->Header.RscType == ResourceType) {
       if (Size > mHostContextCommon.MaximumSupportAddress - Resource->Header.Length) {
         return 0;
       }
+
       if ((UINTN)Resource > mHostContextCommon.MaximumSupportAddress - Resource->Header.Length) {
         return 0;
       }
+
       Size += Resource->Header.Length;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
 
@@ -822,12 +911,12 @@ GetSizeFromThisResourceListWithType (
 **/
 UINTN
 GetSizeFromResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *Header;
-  UINTN     Length;
-  UINTN     ThisLength;
+  STM_RSC  *Header;
+  UINTN    Length;
+  UINTN    ThisLength;
 
   Header = Resource;
   Length = 0;
@@ -837,16 +926,19 @@ GetSizeFromResource (
     if (ThisLength == 0) {
       return 0;
     }
+
     //
     // Overflow check
     //
     if (Length > mHostContextCommon.MaximumSupportAddress - ThisLength) {
       return 0;
     }
+
     Length += ThisLength;
     if ((UINTN)Header > mHostContextCommon.MaximumSupportAddress - Length) {
       return 0;
     }
+
     Resource = (STM_RSC *)((UINTN)Header + Length);
     ASSERT (Resource->Header.RscType == END_OF_RESOURCES);
     if (Resource->End.ResourceListContinuation != 0) {
@@ -859,10 +951,11 @@ GetSizeFromResource (
   //
   // Include last END node
   //
-  if (Length > mHostContextCommon.MaximumSupportAddress - sizeof(STM_RSC_END)) {
+  if (Length > mHostContextCommon.MaximumSupportAddress - sizeof (STM_RSC_END)) {
     return 0;
   }
-  return Length + sizeof(STM_RSC_END);
+
+  return Length + sizeof (STM_RSC_END);
 }
 
 /**
@@ -878,18 +971,18 @@ GetSizeFromResource (
 **/
 UINTN
 GetSizeFromResourceWithType (
-  IN STM_RSC   *Resource,
-  IN UINT32    ResourceType
+  IN STM_RSC  *Resource,
+  IN UINT32   ResourceType
   )
 {
-  STM_RSC   *Header;
-  UINTN     Length;
-  UINTN     ThisLength;
-  UINTN     ThisSize;
-  UINTN     ThisTypeSize;
+  STM_RSC  *Header;
+  UINTN    Length;
+  UINTN    ThisLength;
+  UINTN    ThisSize;
+  UINTN    ThisTypeSize;
 
-  Header = Resource;
-  Length = 0;
+  Header       = Resource;
+  Length       = 0;
   ThisTypeSize = 0;
 
   do {
@@ -897,17 +990,20 @@ GetSizeFromResourceWithType (
     if (ThisLength == 0) {
       return 0;
     }
+
     //
     // Overflow check
     //
     if (Length > mHostContextCommon.MaximumSupportAddress - ThisLength) {
       return 0;
     }
-    Length += ThisLength;
+
+    Length       += ThisLength;
     ThisTypeSize += ThisSize;
     if ((UINTN)Header > mHostContextCommon.MaximumSupportAddress - Length) {
       return 0;
     }
+
     Resource = (STM_RSC *)((UINTN)Header + Length);
     ASSERT (Resource->Header.RscType == END_OF_RESOURCES);
     if (Resource->End.ResourceListContinuation != 0) {
@@ -920,10 +1016,11 @@ GetSizeFromResourceWithType (
   //
   // Include last END node
   //
-  if (ThisTypeSize > mHostContextCommon.MaximumSupportAddress - sizeof(STM_RSC_END)) {
+  if (ThisTypeSize > mHostContextCommon.MaximumSupportAddress - sizeof (STM_RSC_END)) {
     return 0;
   }
-  return ThisTypeSize + sizeof(STM_RSC_END);
+
+  return ThisTypeSize + sizeof (STM_RSC_END);
 }
 
 /**
@@ -936,8 +1033,8 @@ GetSizeFromResourceWithType (
 **/
 VOID
 CopyStmResourceMem (
-  IN STM_RSC   *Destination,
-  IN STM_RSC   *Source
+  IN STM_RSC  *Destination,
+  IN STM_RSC  *Source
   )
 {
   UINTN  Length;
@@ -946,7 +1043,7 @@ CopyStmResourceMem (
     Length = GetSizeFromThisResourceList (Source);
     CopyMem (Destination, Source, Length);
     Destination = (STM_RSC *)((UINTN)Destination + Length);
-    Source = (STM_RSC *)((UINTN)Source + Length);
+    Source      = (STM_RSC *)((UINTN)Source + Length);
     if (Source->End.ResourceListContinuation != 0) {
       Source = (STM_RSC *)(UINTN)Source->End.ResourceListContinuation;
     } else {
@@ -954,11 +1051,11 @@ CopyStmResourceMem (
     }
   } while (TRUE);
 
-  ZeroMem (Destination, sizeof(STM_RSC_END));
+  ZeroMem (Destination, sizeof (STM_RSC_END));
   Destination->Header.RscType = END_OF_RESOURCES;
-  Destination->Header.Length = sizeof(STM_RSC_END);
+  Destination->Header.Length  = sizeof (STM_RSC_END);
 
-  return ;
+  return;
 }
 
 /**
@@ -974,23 +1071,27 @@ CopyStmResourceMem (
 **/
 STM_RSC_MEM_DESC *
 GetStmResourceMem (
-  IN STM_RSC   *Resource,
-  IN UINT64    Address,
-  IN UINT32    RWXAttributes
+  IN STM_RSC  *Resource,
+  IN UINT64   Address,
+  IN UINT32   RWXAttributes
   )
 {
   if (Resource == NULL) {
     return NULL;
   }
+
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((Resource->Header.IgnoreResource == 0) &&
         ((Resource->Header.RscType == MEM_RANGE) || (Resource->Header.RscType == MMIO_RANGE)) &&
         ((Resource->Mem.Base <= Address) && (Resource->Mem.Base + Resource->Mem.Length > Address)) &&
-        ((Resource->Mem.RWXAttributes & RWXAttributes) != 0)) {
+        ((Resource->Mem.RWXAttributes & RWXAttributes) != 0))
+    {
       return &Resource->Mem;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     return GetStmResourceMem ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation, Address, RWXAttributes);
   }
@@ -1010,21 +1111,25 @@ GetStmResourceMem (
 **/
 STM_RSC_IO_DESC *
 GetStmResourceIo (
-  IN STM_RSC   *Resource,
-  IN UINT16    IoPort
+  IN STM_RSC  *Resource,
+  IN UINT16   IoPort
   )
 {
   if (Resource == NULL) {
     return NULL;
   }
+
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((Resource->Header.IgnoreResource == 0) &&
         (Resource->Header.RscType == IO_RANGE) &&
-        ((Resource->Io.Base <= IoPort) && (Resource->Io.Base + Resource->Io.Length > IoPort))) {
+        ((Resource->Io.Base <= IoPort) && (Resource->Io.Base + Resource->Io.Length > IoPort)))
+    {
       return &Resource->Io;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     return GetStmResourceIo ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation, IoPort);
   }
@@ -1044,21 +1149,25 @@ GetStmResourceIo (
 **/
 STM_RSC_TRAPPED_IO_DESC *
 GetStmResourceTrappedIo (
-  IN STM_RSC   *Resource,
-  IN UINT16    IoPort
+  IN STM_RSC  *Resource,
+  IN UINT16   IoPort
   )
 {
   if (Resource == NULL) {
     return NULL;
   }
+
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((Resource->Header.IgnoreResource == 0) &&
         (Resource->Header.RscType == TRAPPED_IO_RANGE) &&
-        ((Resource->TrappedIo.Base <= IoPort) && (Resource->TrappedIo.Base + Resource->TrappedIo.Length > IoPort))) {
+        ((Resource->TrappedIo.Base <= IoPort) && (Resource->TrappedIo.Base + Resource->TrappedIo.Length > IoPort)))
+    {
       return &Resource->TrappedIo;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     return GetStmResourceTrappedIo ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation, IoPort);
   }
@@ -1082,33 +1191,38 @@ GetStmResourceTrappedIo (
 **/
 STM_RSC_PCI_CFG_DESC *
 GetStmResourcePci (
-  IN STM_RSC   *Resource,
-  IN UINT8     Bus,
-  IN UINT8     Device,
-  IN UINT8     Function,
-  IN UINT16    Register,
-  IN UINT16    RWAttributes
+  IN STM_RSC  *Resource,
+  IN UINT8    Bus,
+  IN UINT8    Device,
+  IN UINT8    Function,
+  IN UINT16   Register,
+  IN UINT16   RWAttributes
   )
 {
-  UINT8   LastNodeBus;
+  UINT8  LastNodeBus;
 
   if (Resource == NULL) {
     return NULL;
   }
+
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((Resource->Header.IgnoreResource == 0) &&
         (Resource->Header.RscType == PCI_CFG_RANGE) &&
         ((Resource->PciCfg.Base <= Register) && (Resource->PciCfg.Base + Resource->PciCfg.Length > Register)) &&
-        ((Resource->PciCfg.RWAttributes & RWAttributes) != 0)) {
+        ((Resource->PciCfg.RWAttributes & RWAttributes) != 0))
+    {
       LastNodeBus = GetLastNodeBus (Resource);
       if ((LastNodeBus == Bus) &&
           (Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciDevice == Device) &&
-          (Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction == Function) ) {
+          (Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction == Function))
+      {
         return &Resource->PciCfg;
       }
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     return GetStmResourcePci ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation, Bus, Device, Function, Register, RWAttributes);
   }
@@ -1128,8 +1242,8 @@ GetStmResourcePci (
 **/
 STM_RSC_MSR_DESC *
 GetStmResourceMsr (
-  IN STM_RSC   *Resource,
-  IN UINT32    MsrIndex
+  IN STM_RSC  *Resource,
+  IN UINT32   MsrIndex
   )
 {
   if (Resource == NULL) {
@@ -1139,11 +1253,14 @@ GetStmResourceMsr (
   while (Resource->Header.RscType != END_OF_RESOURCES) {
     if ((Resource->Header.IgnoreResource == 0) &&
         (Resource->Header.RscType == MACHINE_SPECIFIC_REG) &&
-        (Resource->Msr.MsrIndex == MsrIndex)) {
+        (Resource->Msr.MsrIndex == MsrIndex))
+    {
       return &Resource->Msr;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     return GetStmResourceMsr ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation, MsrIndex);
   }
@@ -1168,11 +1285,11 @@ AddProtectedResource (
   IN STM_RSC                           *Resource
   )
 {
-  UINTN                             ResourceSize;
-  UINTN                             Pages;
-  STM_RSC                           *Base;
-  STM_RSC                           *Last;
-  
+  UINTN    ResourceSize;
+  UINTN    Pages;
+  STM_RSC  *Base;
+  STM_RSC  *Last;
+
   ResourceSize = GetSizeFromResource (Resource);
   if (ResourceSize == 0) {
     return ERROR_STM_SECURITY_VIOLATION;
@@ -1182,29 +1299,29 @@ AddProtectedResource (
   // Allocate default if new
   //
   if (ProtectedResource->Base == NULL) {
-    Pages = STM_SIZE_TO_PAGES (ResourceSize);
-    Pages = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1; 
-    Base = AllocatePages (Pages);
-    ProtectedResource->Pages = Pages;
-    ProtectedResource->Base = Base;
+    Pages                       = STM_SIZE_TO_PAGES (ResourceSize);
+    Pages                       = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
+    Base                        = AllocatePages (Pages);
+    ProtectedResource->Pages    = Pages;
+    ProtectedResource->Base     = Base;
     ProtectedResource->UsedSize = 0;
   }
-
   //
   // Reallocate if not enough left size
   //
   else if (ResourceSize > STM_PAGES_TO_SIZE (ProtectedResource->Pages) - ProtectedResource->UsedSize) {
-    Pages = STM_SIZE_TO_PAGES (ResourceSize);
-    Pages = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
+    Pages  = STM_SIZE_TO_PAGES (ResourceSize);
+    Pages  = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
     Pages += ProtectedResource->Pages;
-    Base = AllocatePages (Pages);
+    Base   = AllocatePages (Pages);
     if (Base == NULL) {
       return ERROR_STM_OUT_OF_RESOURCES;
     }
+
     CopyMem (Base, ProtectedResource->Base, ProtectedResource->UsedSize);
     FreePages (ProtectedResource->Base, ProtectedResource->Pages);
     ProtectedResource->Pages = Pages;
-    ProtectedResource->Base = Base;
+    ProtectedResource->Base  = Base;
     // Keep UsedSize unchanged
   }
 
@@ -1212,8 +1329,9 @@ AddProtectedResource (
   // Adjust Pointer
   //
   if (ProtectedResource->UsedSize != 0) {
-    ProtectedResource->UsedSize -= sizeof(STM_RSC_END);
+    ProtectedResource->UsedSize -= sizeof (STM_RSC_END);
   }
+
   Last = (STM_RSC *)((UINTN)ProtectedResource->Base + ProtectedResource->UsedSize);
 
   CopyStmResourceMem (Last, Resource);
@@ -1241,11 +1359,11 @@ AddProtectedResourceWithType (
   IN UINT32                            ResourceType
   )
 {
-  UINTN                             ResourceSize;
-  UINTN                             Pages;
-  STM_RSC                           *Base;
-  STM_RSC                           *Last;
-  
+  UINTN    ResourceSize;
+  UINTN    Pages;
+  STM_RSC  *Base;
+  STM_RSC  *Last;
+
   ResourceSize = GetSizeFromResourceWithType (Resource, ResourceType);
   if (ResourceSize == 0) {
     return ERROR_STM_SECURITY_VIOLATION;
@@ -1255,29 +1373,29 @@ AddProtectedResourceWithType (
   // Allocate default if new
   //
   if (ProtectedResource->Base == NULL) {
-    Pages = STM_SIZE_TO_PAGES (ResourceSize);
-    Pages = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1; 
-    Base = AllocatePages (Pages);
-    ProtectedResource->Pages = Pages;
-    ProtectedResource->Base = Base;
+    Pages                       = STM_SIZE_TO_PAGES (ResourceSize);
+    Pages                       = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
+    Base                        = AllocatePages (Pages);
+    ProtectedResource->Pages    = Pages;
+    ProtectedResource->Base     = Base;
     ProtectedResource->UsedSize = 0;
   }
-
   //
   // Reallocate if not enough left size
   //
   else if (ResourceSize > STM_PAGES_TO_SIZE (ProtectedResource->Pages) - ProtectedResource->UsedSize) {
-    Pages = STM_SIZE_TO_PAGES (ResourceSize);
-    Pages = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
+    Pages  = STM_SIZE_TO_PAGES (ResourceSize);
+    Pages  = ((Pages / DEFAULT_PROTECTED_DEFAULT_PAGES)  * DEFAULT_PROTECTED_DEFAULT_PAGES) + 1;
     Pages += ProtectedResource->Pages;
-    Base = AllocatePages (Pages);
+    Base   = AllocatePages (Pages);
     if (Base == NULL) {
       return ERROR_STM_OUT_OF_RESOURCES;
     }
+
     CopyMem (Base, ProtectedResource->Base, ProtectedResource->UsedSize);
     FreePages (ProtectedResource->Base, ProtectedResource->Pages);
     ProtectedResource->Pages = Pages;
-    ProtectedResource->Base = Base;
+    ProtectedResource->Base  = Base;
     // Keep UsedSize unchanged
   }
 
@@ -1285,8 +1403,9 @@ AddProtectedResourceWithType (
   // Adjust Pointer
   //
   if (ProtectedResource->UsedSize != 0) {
-    ProtectedResource->UsedSize -= sizeof(STM_RSC_END);
+    ProtectedResource->UsedSize -= sizeof (STM_RSC_END);
   }
+
   Last = (STM_RSC *)((UINTN)ProtectedResource->Base + ProtectedResource->UsedSize);
 
   //
@@ -1298,8 +1417,10 @@ AddProtectedResourceWithType (
         CopyMem ((VOID *)Last, Resource, Resource->Header.Length);
         Last = (STM_RSC *)((UINTN)Last + Resource->Header.Length);
       }
+
       Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
     }
+
     if (Resource->End.ResourceListContinuation != 0) {
       Resource = (STM_RSC *)(UINTN)Resource->End.ResourceListContinuation;
     } else {
@@ -1307,10 +1428,10 @@ AddProtectedResourceWithType (
     }
   } while (TRUE);
 
-  Last->Header.RscType = END_OF_RESOURCES;
-  Last->Header.Length = sizeof(STM_RSC_END);
-  Last->Header.ReturnStatus = 0;
-  Last->Header.IgnoreResource = 0;
+  Last->Header.RscType               = END_OF_RESOURCES;
+  Last->Header.Length                = sizeof (STM_RSC_END);
+  Last->Header.ReturnStatus          = 0;
+  Last->Header.IgnoreResource        = 0;
   Last->End.ResourceListContinuation = 0;
 
   ProtectedResource->UsedSize += ResourceSize;
@@ -1332,11 +1453,11 @@ DeleteProtectedResourceNode (
   IN STM_RSC                           *ResourceNode
   )
 {
-  STM_RSC   *Resource;
-  UINTN     CopyLength;
+  STM_RSC  *Resource;
+  UINTN    CopyLength;
 
   if (ResourceNode->Header.IgnoreResource != 0) {
-    return ;
+    return;
   }
 
   Resource = ProtectedResource->Base;
@@ -1345,10 +1466,11 @@ DeleteProtectedResourceNode (
         (Resource->Header.RscType == ResourceNode->Header.RscType) &&
         (Resource->Header.Length == ResourceNode->Header.Length) &&
         (CompareMem (
-           (VOID *)((UINTN)Resource + sizeof(STM_RSC_DESC_HEADER)),
-           (VOID *)((UINTN)ResourceNode + sizeof(STM_RSC_DESC_HEADER)),
-           ResourceNode->Header.Length - sizeof(STM_RSC_DESC_HEADER)
-           ) == 0)) {
+           (VOID *)((UINTN)Resource + sizeof (STM_RSC_DESC_HEADER)),
+           (VOID *)((UINTN)ResourceNode + sizeof (STM_RSC_DESC_HEADER)),
+           ResourceNode->Header.Length - sizeof (STM_RSC_DESC_HEADER)
+           ) == 0))
+    {
       //
       // Find it
       //
@@ -1361,8 +1483,9 @@ DeleteProtectedResourceNode (
       // Do not use Resource any more
       //
       ProtectedResource->UsedSize -= ResourceNode->Header.Length;
-      return ;
+      return;
     }
+
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
 }
@@ -1385,6 +1508,7 @@ DeleteProtectedResource (
     DeleteProtectedResourceNode (ProtectedResource, Resource);
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     DeleteProtectedResource (ProtectedResource, (STM_RSC *)(UINTN)Resource->End.ResourceListContinuation);
   }
@@ -1421,72 +1545,76 @@ DeleteProtectedResourceWithType (
 **/
 VOID
 RegisterProtectedResourceNode (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   UINT8   LastNodeBus;
   UINT64  PciExpressDeviceBase;
 
   if (Resource->Header.IgnoreResource != 0) {
-    return ;
+    return;
   }
+
   switch (Resource->Header.RscType) {
-  case MEM_RANGE:
-  case MMIO_RANGE:
-    EPTSetPageAttributeRange (
-      Resource->Mem.Base,
-      Resource->Mem.Length,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_R) != 0) ? 0 : 1,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_W) != 0) ? 0 : 1,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_X) != 0) ? 0 : 1,
-      EptPageAttributeAnd
-      );
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case IO_RANGE:
-    SetIoBitmapRange (Resource->Io.Base, Resource->Io.Length);
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case MACHINE_SPECIFIC_REG:
-    if (Resource->Msr.ReadMask != 0) {
-      SetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
-    }
-    if (Resource->Msr.WriteMask != 0) {
-      SetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
-    }
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case PCI_CFG_RANGE:
-    SetIoBitmapRange (0xCF8, 1);
-    SetIoBitmapRange (0xCFC, 4);
-    // STM_RSC_BGI is NOT supported in this version
-    if (mHostContextCommon.PciExpressBaseAddress != 0) {
-      LastNodeBus = GetLastNodeBus (Resource);
-      PciExpressDeviceBase = PCI_EXPRESS_ADDRESS(LastNodeBus, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciDevice, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction, 0);
+    case MEM_RANGE:
+    case MMIO_RANGE:
       EPTSetPageAttributeRange (
-        PciExpressDeviceBase + mHostContextCommon.PciExpressBaseAddress,
-        SIZE_4KB,
-        ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_R) != 0) ? 0 : 1,
-        ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_W) != 0) ? 0 : 1,
-        0,
+        Resource->Mem.Base,
+        Resource->Mem.Length,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_R) != 0) ? 0 : 1,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_W) != 0) ? 0 : 1,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_X) != 0) ? 0 : 1,
         EptPageAttributeAnd
         );
-    }
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case TRAPPED_IO_RANGE:
-    // Not supported
-    break;
-  case ALL_RESOURCES:
-    // Seems imposible
-    break;
-  case REGISTER_VIOLATION:
-    // Not supported
-    break;
-  default:
-    // Unknown should not be here
-    ASSERT (FALSE);
-    break;
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case IO_RANGE:
+      SetIoBitmapRange (Resource->Io.Base, Resource->Io.Length);
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case MACHINE_SPECIFIC_REG:
+      if (Resource->Msr.ReadMask != 0) {
+        SetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
+      }
+
+      if (Resource->Msr.WriteMask != 0) {
+        SetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
+      }
+
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case PCI_CFG_RANGE:
+      SetIoBitmapRange (0xCF8, 1);
+      SetIoBitmapRange (0xCFC, 4);
+      // STM_RSC_BGI is NOT supported in this version
+      if (mHostContextCommon.PciExpressBaseAddress != 0) {
+        LastNodeBus          = GetLastNodeBus (Resource);
+        PciExpressDeviceBase = PCI_EXPRESS_ADDRESS (LastNodeBus, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciDevice, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction, 0);
+        EPTSetPageAttributeRange (
+          PciExpressDeviceBase + mHostContextCommon.PciExpressBaseAddress,
+          SIZE_4KB,
+          ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_R) != 0) ? 0 : 1,
+          ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_W) != 0) ? 0 : 1,
+          0,
+          EptPageAttributeAnd
+          );
+      }
+
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case TRAPPED_IO_RANGE:
+      // Not supported
+      break;
+    case ALL_RESOURCES:
+      // Seems imposible
+      break;
+    case REGISTER_VIOLATION:
+      // Not supported
+      break;
+    default:
+      // Unknown should not be here
+      ASSERT (FALSE);
+      break;
   }
 }
 
@@ -1499,7 +1627,7 @@ RegisterProtectedResourceNode (
 **/
 VOID
 RegisterProtectedResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   while (Resource->Header.RscType != END_OF_RESOURCES) {
@@ -1507,6 +1635,7 @@ RegisterProtectedResource (
     AddEventLogForResource (EvtMleResourceProtectionGranted, Resource);
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     RegisterProtectedResource ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation);
   }
@@ -1521,71 +1650,75 @@ RegisterProtectedResource (
 **/
 VOID
 UnRegisterProtectedResourceNode (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   UINT8   LastNodeBus;
   UINT64  PciExpressDeviceBase;
 
   if (Resource->Header.IgnoreResource != 0) {
-    return ;
+    return;
   }
+
   switch (Resource->Header.RscType) {
-  case MEM_RANGE:
-  case MMIO_RANGE:
-    EPTSetPageAttributeRange (
-      Resource->Mem.Base,
-      Resource->Mem.Length,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_R) != 0) ? 1 : 0,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_W) != 0) ? 1 : 0,
-      ((Resource->Mem.RWXAttributes & STM_RSC_MEM_X) != 0) ? 1 : 0,
-      EptPageAttributeOr
-      );
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case IO_RANGE:
-    UnSetIoBitmapRange (Resource->Io.Base, Resource->Io.Length);
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case MACHINE_SPECIFIC_REG:
-    if (Resource->Msr.ReadMask != 0) {
-      UnSetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
-    }
-    if (Resource->Msr.WriteMask != 0) {
-      UnSetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
-    }
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case PCI_CFG_RANGE:
-    // Do nothing for CF8/CFC access, we can not UnSetIoBitmapRange (0xCFC, 4)
-    // STM_RSC_BGI is NOT supported in this version
-    if (mHostContextCommon.PciExpressBaseAddress != 0) {
-      LastNodeBus = GetLastNodeBus (Resource);
-      PciExpressDeviceBase = PCI_EXPRESS_ADDRESS(LastNodeBus, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciDevice, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction, 0);
+    case MEM_RANGE:
+    case MMIO_RANGE:
       EPTSetPageAttributeRange (
-        PciExpressDeviceBase + mHostContextCommon.PciExpressBaseAddress,
-        SIZE_4KB,
-        ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_R) != 0) ? 1 : 0,
-        ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_W) != 0) ? 1 : 0,
-        0,
+        Resource->Mem.Base,
+        Resource->Mem.Length,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_R) != 0) ? 1 : 0,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_W) != 0) ? 1 : 0,
+        ((Resource->Mem.RWXAttributes & STM_RSC_MEM_X) != 0) ? 1 : 0,
         EptPageAttributeOr
         );
-    }
-    Resource->Header.ReturnStatus = 1;
-    break;
-  case TRAPPED_IO_RANGE:
-    // Not supported
-    break;
-  case ALL_RESOURCES:
-    // Seems imposible
-    break;
-  case REGISTER_VIOLATION:
-    // Not supported
-    break;
-  default:
-    // Unknown should not be here
-    ASSERT (FALSE);
-    break;
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case IO_RANGE:
+      UnSetIoBitmapRange (Resource->Io.Base, Resource->Io.Length);
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case MACHINE_SPECIFIC_REG:
+      if (Resource->Msr.ReadMask != 0) {
+        UnSetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
+      }
+
+      if (Resource->Msr.WriteMask != 0) {
+        UnSetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
+      }
+
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case PCI_CFG_RANGE:
+      // Do nothing for CF8/CFC access, we can not UnSetIoBitmapRange (0xCFC, 4)
+      // STM_RSC_BGI is NOT supported in this version
+      if (mHostContextCommon.PciExpressBaseAddress != 0) {
+        LastNodeBus          = GetLastNodeBus (Resource);
+        PciExpressDeviceBase = PCI_EXPRESS_ADDRESS (LastNodeBus, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciDevice, Resource->PciCfg.PciDevicePath[Resource->PciCfg.LastNodeIndex].PciFunction, 0);
+        EPTSetPageAttributeRange (
+          PciExpressDeviceBase + mHostContextCommon.PciExpressBaseAddress,
+          SIZE_4KB,
+          ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_R) != 0) ? 1 : 0,
+          ((Resource->PciCfg.RWAttributes & STM_RSC_PCI_CFG_W) != 0) ? 1 : 0,
+          0,
+          EptPageAttributeOr
+          );
+      }
+
+      Resource->Header.ReturnStatus = 1;
+      break;
+    case TRAPPED_IO_RANGE:
+      // Not supported
+      break;
+    case ALL_RESOURCES:
+      // Seems imposible
+      break;
+    case REGISTER_VIOLATION:
+      // Not supported
+      break;
+    default:
+      // Unknown should not be here
+      ASSERT (FALSE);
+      break;
   }
 }
 
@@ -1598,7 +1731,7 @@ UnRegisterProtectedResourceNode (
 **/
 VOID
 UnRegisterProtectedResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   while (Resource->Header.RscType != END_OF_RESOURCES) {
@@ -1606,6 +1739,7 @@ UnRegisterProtectedResource (
     AddEventLogForResource (EvtMleResourceUnprotect, Resource);
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     UnRegisterProtectedResource ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation);
   }
@@ -1623,21 +1757,23 @@ UnRegisterProtectedResource (
 **/
 STM_RSC *
 GetEndNodeOfThisList (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *Node;
+  STM_RSC  *Node;
 
   Node = Resource;
   do {
     if (Node->Header.RscType == END_OF_RESOURCES) {
       return Node;
     }
+
     if (Node->Header.RscType > MAX_DESC_TYPE) {
       return NULL;
     }
+
     Node = (STM_RSC *)((UINTN)Node + Node->Header.Length);
-  } while ((UINTN)Node < (UINTN)Resource + STM_PAGES_TO_SIZE (1) - sizeof(STM_RSC_END));
+  } while ((UINTN)Node < (UINTN)Resource + STM_PAGES_TO_SIZE (1) - sizeof (STM_RSC_END));
 
   return NULL;
 }
@@ -1657,17 +1793,17 @@ GetEndNodeOfThisList (
 **/
 STM_RSC *
 RawDuplicateResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *Base;
-  STM_RSC   *NextDestination;
-  STM_RSC   *NextSource;
-  STM_RSC   *ThisEndNode;
+  STM_RSC  *Base;
+  STM_RSC  *NextDestination;
+  STM_RSC  *NextSource;
+  STM_RSC  *ThisEndNode;
 
-  Base = NULL;
+  Base        = NULL;
   ThisEndNode = NULL;
-  NextSource = Resource;
+  NextSource  = Resource;
   while (NextSource != NULL) {
     if (!IsGuestAddressValid ((UINTN)NextSource, 1, TRUE)) {
       return NULL;
@@ -1677,6 +1813,7 @@ RawDuplicateResource (
     if (NextDestination == NULL) {
       return NULL;
     }
+
     if (Base == NULL) {
       Base = NextDestination;
     } else {
@@ -1688,6 +1825,7 @@ RawDuplicateResource (
     if (ThisEndNode == NULL) {
       return NULL;
     }
+
     NextSource = (STM_RSC *)(UINTN)ThisEndNode->End.ResourceListContinuation;
   }
 
@@ -1707,26 +1845,29 @@ RawDuplicateResource (
 **/
 STM_RSC *
 GetEndNodeToLastList (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *NextSource;
-  STM_RSC   *ReturnedEndNode;
-  STM_RSC   *ThisEndNode;
+  STM_RSC  *NextSource;
+  STM_RSC  *ReturnedEndNode;
+  STM_RSC  *ThisEndNode;
 
   ReturnedEndNode = NULL;
-  NextSource = Resource;
+  NextSource      = Resource;
   while (NextSource != NULL) {
     ThisEndNode = GetEndNodeOfThisList (NextSource);
     if (ThisEndNode == NULL) {
       break;
     }
+
     if (ThisEndNode->End.ResourceListContinuation == 0) {
       break;
     }
+
     ReturnedEndNode = ThisEndNode;
-    NextSource = (STM_RSC *)(UINTN)ThisEndNode->End.ResourceListContinuation;
+    NextSource      = (STM_RSC *)(UINTN)ThisEndNode->End.ResourceListContinuation;
   }
+
   return ReturnedEndNode;
 }
 
@@ -1745,16 +1886,17 @@ GetEndNodeToLastList (
 **/
 VOID
 RawFreeResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  STM_RSC   *Node;
+  STM_RSC  *Node;
 
   while (TRUE) {
     Node = GetEndNodeToLastList (Resource);
     if (Node == NULL) {
       break;
     }
+
     FreePages ((VOID *)(UINTN)Node->End.ResourceListContinuation, 1);
     Node->End.ResourceListContinuation = 0;
   }
@@ -1764,7 +1906,7 @@ RawFreeResource (
 
 /**
 
-  This functin duplicate STM resource list.
+  This function duplicate STM resource list.
 
   @param Resource STM resource list to be duplicated
 
@@ -1773,16 +1915,17 @@ RawFreeResource (
 **/
 STM_RSC *
 DuplicateResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
-  UINTN     ResourceSize;
-  STM_RSC   *Base;
+  UINTN    ResourceSize;
+  STM_RSC  *Base;
 
   ResourceSize = GetSizeFromResource (Resource);
   if (ResourceSize == 0) {
     return NULL;
   }
+
   Base = AllocatePages (STM_SIZE_TO_PAGES (ResourceSize));
   if (Base == NULL) {
     return NULL;
@@ -1802,40 +1945,43 @@ DuplicateResource (
 **/
 VOID
 RegisterBiosResourceNode (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   if (Resource->Header.IgnoreResource != 0) {
-    return ;
+    return;
   }
+
   switch (Resource->Header.RscType) {
-  case MACHINE_SPECIFIC_REG:
-    if (Resource->Msr.KernelModeProcessing != 0) {
-      if (Resource->Msr.ReadMask != 0) {
-        SetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
+    case MACHINE_SPECIFIC_REG:
+      if (Resource->Msr.KernelModeProcessing != 0) {
+        if (Resource->Msr.ReadMask != 0) {
+          SetMsrBitmap (Resource->Msr.MsrIndex, FALSE);
+        }
+
+        if (Resource->Msr.WriteMask != 0) {
+          SetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
+        }
       }
-      if (Resource->Msr.WriteMask != 0) {
-        SetMsrBitmap (Resource->Msr.MsrIndex, TRUE);
-      }
-    }
-    break;
-  case MEM_RANGE:
-  case MMIO_RANGE:
-  case IO_RANGE:
-  case PCI_CFG_RANGE:
-  case TRAPPED_IO_RANGE:
-    // Not supported
-    break;
-  case ALL_RESOURCES:
-    // Seems imposible
-    break;
-  case REGISTER_VIOLATION:
-    // Not supported
-    break;
-  default:
-    // Unknown should not be here
-    ASSERT (FALSE);
-    break;
+
+      break;
+    case MEM_RANGE:
+    case MMIO_RANGE:
+    case IO_RANGE:
+    case PCI_CFG_RANGE:
+    case TRAPPED_IO_RANGE:
+      // Not supported
+      break;
+    case ALL_RESOURCES:
+      // Seems imposible
+      break;
+    case REGISTER_VIOLATION:
+      // Not supported
+      break;
+    default:
+      // Unknown should not be here
+      ASSERT (FALSE);
+      break;
   }
 }
 
@@ -1848,7 +1994,7 @@ RegisterBiosResourceNode (
 **/
 VOID
 RegisterBiosResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   )
 {
   //
@@ -1858,8 +2004,8 @@ RegisterBiosResource (
     RegisterBiosResourceNode (Resource);
     Resource = (STM_RSC *)((UINTN)Resource + Resource->Header.Length);
   }
+
   if (Resource->End.ResourceListContinuation != 0) {
     RegisterBiosResource ((STM_RSC *)(UINTN)Resource->End.ResourceListContinuation);
   }
 }
-
