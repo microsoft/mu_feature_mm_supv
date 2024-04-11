@@ -24,6 +24,7 @@
 #include <Library/DebugLib.h>
 #include <Library/StmPlatformLib.h>
 #include <Library/StmLib.h>
+#include <Library/MemoryAllocationLib.h>
 #include <IndustryStandard/Acpi.h>
 #include <IndustryStandard/MemoryMappedConfigurationSpaceAccessTable.h>
 #include <IndustryStandard/Pci.h>
