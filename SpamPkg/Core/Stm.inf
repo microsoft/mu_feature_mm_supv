@@ -110,3 +110,5 @@
 
 # Jump-table MUST be disabled, or self-relocation will fail.
   MSFT:*_*_X64_DLINK_FLAGS  = /BASE:0x0 /ALIGN:32 /FILEALIGN:32 /STACK:0x8000,0x8000 /HEAP:0x140000,0x140000 /OUT:$(DEBUG_DIR)\Stm.dll 
+
+  GCC:*_*_X64_DLINK_FLAGS  == -o $(DEBUG_DIR)/Stm.dll -nostdlib -Wl,-n,-q,--gc-sections -z common-page-size=0x40 --entry _ModuleEntryPoint -u _ModuleEntryPoint -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map,-melf_x86_64 -Wl,--oformat,elf64-x86-64,--defsym=PECOFF_HEADER_SIZE=0x228 #--script=$(MODULE_DIR)/Stm.lds
