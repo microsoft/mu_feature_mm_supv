@@ -64,7 +64,7 @@
 [Components.X64]
   SpamPkg/Core/Stm.inf {
     <LibraryClasses>
-      NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
+      NULL|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
   }
   SpamPkg/MmiEntrySpam/MmiEntrySpam.inf
 
