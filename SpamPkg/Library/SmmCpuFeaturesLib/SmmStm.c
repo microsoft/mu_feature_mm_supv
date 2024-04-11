@@ -57,7 +57,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED UINT32  mStmState = 0;
 //
 GLOBAL_REMOVE_IF_UNREFERENCED
 EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
-  .LoadMonitor = LoadMonitor,
+  .LoadMonitor     = LoadMonitor,
   .GetMonitorState = GetMonitorState,
 };
 
@@ -66,16 +66,16 @@ EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
 //
 // Global variables and symbols pulled in from MmSupervisor
 //
-extern BOOLEAN mCetSupported;
-extern BOOLEAN gPatchXdSupported;
-extern BOOLEAN gPatchMsrIa32MiscEnableSupported;
-extern BOOLEAN m5LevelPagingNeeded;
+extern BOOLEAN  mCetSupported;
+extern BOOLEAN  gPatchXdSupported;
+extern BOOLEAN  gPatchMsrIa32MiscEnableSupported;
+extern BOOLEAN  m5LevelPagingNeeded;
 
-extern UINT32 mCetPl0Ssp;
-extern UINT32 mCetInterruptSsp;
-extern UINT32 mCetInterruptSspTable;
+extern UINT32  mCetPl0Ssp;
+extern UINT32  mCetInterruptSsp;
+extern UINT32  mCetInterruptSspTable;
 
-extern SMM_SUPV_SECURE_POLICY_DATA_V1_0   *FirmwarePolicy;
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
 VOID
 EFIAPI
@@ -116,58 +116,67 @@ OnException (
 //
 // This structure serves as a template for all processors.
 //
-CONST TXT_PROCESSOR_SMM_DESCRIPTOR mPsdTemplate = {
-  .Signature = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
-  .Size = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
+CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
+  .Signature             = TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE,
+  .Size                  = sizeof (TXT_PROCESSOR_SMM_DESCRIPTOR),
   .SmmDescriptorVerMajor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MAJOR,
   .SmmDescriptorVerMinor = TXT_PROCESSOR_SMM_DESCRIPTOR_VERSION_MINOR,
-  .LocalApicId = 0,
-  .SmmEntryState = 0x0F, // Cr4Pse;Cr4Pae;Intel64Mode;ExecutionDisableOutsideSmrr
-  .SmmResumeState = 0, // BIOS to STM
-  .StmSmmState = 0, // STM to BIOS
-  .Reserved4 = 0,
-  .SmmCs = CODE_SEL,
-  .SmmDs = DATA_SEL,
-  .SmmSs = DATA_SEL,
-  .SmmOtherSegment = DATA_SEL,
-  .SmmTr = TR_SEL,
-  .Reserved5 = 0,
-  .SmmCr3 = 0,
-  .SmmStmSetupRip = (UINT64)OnStmSetup,
-  .SmmStmTeardownRip = (UINT64)OnStmTeardown,
-  .SmmSmiHandlerRip = 0, // SmmSmiHandlerRip - SMM guest entrypoint
-  .SmmSmiHandlerRsp = 0, // SmmSmiHandlerRsp
-  .SmmGdtPtr = 0,
-  .SmmGdtSize = 0,
-  .RequiredStmSmmRevId = 0x80010100,
-  .StmProtectionExceptionHandler = {
-    .SpeRip = (UINT64)OnException,
-    .SpeRsp = 0,
-    .SpeSs = DATA_SEL,
-    .PageViolationException = 1,
-    .MsrViolationException = 1,
-    .RegisterViolationException = 1,
-    .IoViolationException = 1,
-    .PciViolationException = 1,
+  .LocalApicId           = 0,
+  .SmmEntryState         = {
+    .ExecutionDisableOutsideSmrr = 1,
+    .Intel64Mode                 = 1,
+    .Cr4Pae                      = 1,
+    .Cr4Pse                      = 1
   },
-  .Reserved6 = 0,
+  .SmmResumeState                = {
+    0,
+  },                         // BIOS to STM
+  .StmSmmState                   = {
+    0
+  },                         // STM to BIOS
+  .Reserved4                     = 0,
+  .SmmCs                         = CODE_SEL,
+  .SmmDs                         = DATA_SEL,
+  .SmmSs                         = DATA_SEL,
+  .SmmOtherSegment               = DATA_SEL,
+  .SmmTr                         = TR_SEL,
+  .Reserved5                     = 0,
+  .SmmCr3                        = 0,
+  .SmmStmSetupRip                = (UINT64)OnStmSetup,
+  .SmmStmTeardownRip             = (UINT64)OnStmTeardown,
+  .SmmSmiHandlerRip              = 0, // SmmSmiHandlerRip - SMM guest entrypoint
+  .SmmSmiHandlerRsp              = 0, // SmmSmiHandlerRsp
+  .SmmGdtPtr                     = 0,
+  .SmmGdtSize                    = 0,
+  .RequiredStmSmmRevId           = 0x80010100,
+  .StmProtectionExceptionHandler = {
+    .SpeRip                     = (UINT64)OnException,
+    .SpeRsp                     = 0,
+    .SpeSs                      = DATA_SEL,
+    .PageViolationException     = 1,
+    .MsrViolationException      = 1,
+    .RegisterViolationException = 1,
+    .IoViolationException       = 1,
+    .PciViolationException      = 1,
+  },
+  .Reserved6                     = 0,
   .BiosHwResourceRequirementsPtr = 0,
-  .AcpiRsdp = 0,
-  .PhysicalAddressBits = 0,
+  .AcpiRsdp                      = 0,
+  .PhysicalAddressBits           = 0,
 };
 
 //
 // This structure serves as a template for all processors.
 //
-SPAM_RESPONDER_DATA mSpamResponderTemplate = {
-  .Signature = SPAM_RESPONDER_STRUCT_SIGNATURE,
-  .VersionMinor = SPAM_REPSONDER_STRUCT_MINOR_VER,
-  .VersionMajor = SPAM_REPSONDER_STRUCT_MAJOR_VER,
-  .Size = 0,
-  .Reserved = 0,
-  .CpuIndex = 0,
-  .MmEntrySize = 0,
-  .MmSupervisorSize = 0,
+SPAM_RESPONDER_DATA  mSpamResponderTemplate = {
+  .Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE,
+  .VersionMinor        = SPAM_REPSONDER_STRUCT_MINOR_VER,
+  .VersionMajor        = SPAM_REPSONDER_STRUCT_MAJOR_VER,
+  .Size                = 0,
+  .Reserved            = 0,
+  .CpuIndex            = 0,
+  .MmEntrySize         = 0,
+  .MmSupervisorSize    = 0,
   .MmSupervisorAuxBase = 0,
   .MmSupervisorAuxSize = 0
 };
@@ -192,8 +201,8 @@ UINTN  mMsegSize = 0;
 //
 // MMI Entry Base and Length in FV
 //
-EFI_PHYSICAL_ADDRESS  mMmiEntryBaseAddress  = 0;
-UINTN                 mMmiEntrySize         = 0;
+EFI_PHYSICAL_ADDRESS  mMmiEntryBaseAddress = 0;
+UINTN                 mMmiEntrySize        = 0;
 
 EFI_PHYSICAL_ADDRESS  MmSupvAuxFileBase;
 EFI_PHYSICAL_ADDRESS  MmSupvAuxFileSize;
@@ -223,9 +232,9 @@ DiscoverSmiEntryInFvHobs (
   EFI_PEI_HOB_POINTERS            Hob;
   EFI_STATUS                      Status;
   UINTN                           SpamBinSize;
-  BOOLEAN                         MmiEntryFound = FALSE;
+  BOOLEAN                         MmiEntryFound      = FALSE;
   BOOLEAN                         SpamResponderFound = FALSE;
-  BOOLEAN                         AuxBinFound = FALSE;
+  BOOLEAN                         AuxBinFound        = FALSE;
   VOID                            *RawBinFileData;
   VOID                            *RawMmiEntryFileData;
   VOID                            *RawAuxFileData;
@@ -261,20 +270,21 @@ DiscoverSmiEntryInFvHobs (
       //
       FileHeader = NULL;
       do {
-        Status     =  FfsFindNextFile (
-                        EFI_FV_FILETYPE_FREEFORM,
-                        FwVolHeader,
-                        &FileHeader
-                        );
+        Status =  FfsFindNextFile (
+                    EFI_FV_FILETYPE_FREEFORM,
+                    FwVolHeader,
+                    &FileHeader
+                    );
         if (!EFI_ERROR (Status)) {
           if (CompareGuid (&FileHeader->Name, &gMmiEntrySpamFileGuid)) {
             if (MmiEntryFound) {
               Status = EFI_ALREADY_STARTED;
               break;
             }
+
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawMmiEntryFileData, &mMmiEntrySize);
             if (!EFI_ERROR (Status)) {
-              mMmiEntryBaseAddress  = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
+              mMmiEntryBaseAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
             } else {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySpamFileGuid, FileHeader, FileHeader->Size, Status));
               break;
@@ -294,17 +304,20 @@ DiscoverSmiEntryInFvHobs (
               Status = EFI_ALREADY_STARTED;
               break;
             }
+
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawBinFileData, &SpamBinSize);
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SPAM data section [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
+
             Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SpamBinSize);
             // Moving the buffer like size field to our local variable
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SPAM [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSpamBinFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
+
             // TODO: Mark the region as supervisor read-only
             SpamResponderFound = TRUE;
           } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorAuxFileGuid)) {
@@ -312,6 +325,7 @@ DiscoverSmiEntryInFvHobs (
               Status = EFI_ALREADY_STARTED;
               break;
             }
+
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawAuxFileData, &MmSupvAuxFileSize);
             DEBUG ((DEBUG_INFO, "Find raw data from supv aux file - %r\n", Status));
             if (EFI_ERROR (Status)) {
@@ -336,6 +350,7 @@ DiscoverSmiEntryInFvHobs (
           }
         }
       } while (!EFI_ERROR (Status));
+
       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
     }
   } while (Hob.Raw != NULL);
@@ -478,11 +493,11 @@ STATIC
 EFI_STATUS
 EFIAPI
 PopulateSpamInformation (
-  IN UINTN                  CpuIndex,
-  IN EFI_PHYSICAL_ADDRESS   MmEntryBase,
-  IN UINTN                  MmEntrySize,
-  IN EFI_PHYSICAL_ADDRESS   StackBase,
-  IN UINTN                  StackSize
+  IN UINTN                 CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS  MmEntryBase,
+  IN UINTN                 MmEntrySize,
+  IN EFI_PHYSICAL_ADDRESS  StackBase,
+  IN UINTN                 StackSize
   )
 {
   mSpamResponderTemplate.Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE;
@@ -536,19 +551,18 @@ SmmCpuFeaturesInstallSmiHandler (
   IN UINT32  Cr3
   )
 {
-  EFI_STATUS                    Status;
-  TXT_PROCESSOR_SMM_DESCRIPTOR  *Psd;
-  VOID                          *Hob;
-  UINT32                        RegEax;
-  EFI_PROCESSOR_INFORMATION     ProcessorInfo;
-  PER_CORE_MMI_ENTRY_STRUCT_HDR *SmiEntryStructHdrPtr = NULL;
-  UINT32                        SmiEntryStructHdrAddr;
-  UINT32                        WholeStructSize;
-  UINT16                        *FixStructPtr;
-  UINT32                        *Fixup32Ptr;
-  UINT64                        *Fixup64Ptr;
-  UINT8                         *Fixup8Ptr;
-  UINT32                        tSmiStack;
+  EFI_STATUS                     Status;
+  TXT_PROCESSOR_SMM_DESCRIPTOR   *Psd;
+  VOID                           *Hob;
+  UINT32                         RegEax;
+  EFI_PROCESSOR_INFORMATION      ProcessorInfo;
+  PER_CORE_MMI_ENTRY_STRUCT_HDR  *SmiEntryStructHdrPtr = NULL;
+  UINT32                         SmiEntryStructHdrAddr;
+  UINT32                         WholeStructSize;
+  UINT32                         *Fixup32Ptr;
+  UINT64                         *Fixup64Ptr;
+  UINT8                          *Fixup8Ptr;
+  UINT32                         tSmiStack;
 
   CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &mPsdTemplate, sizeof (mPsdTemplate));
   Psd             = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET);
@@ -558,7 +572,7 @@ SmmCpuFeaturesInstallSmiHandler (
   //
   // Initialize values in template before copy
   //
-  tSmiStack                = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
+  tSmiStack = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
   if ((gStmSmiHandlerIdtr.Base == 0) && (gStmSmiHandlerIdtr.Limit == 0)) {
     gStmSmiHandlerIdtr.Base  = IdtBase;
     gStmSmiHandlerIdtr.Limit = (UINT16)(IdtSize - 1);
@@ -581,43 +595,42 @@ SmmCpuFeaturesInstallSmiHandler (
     mMmiEntrySize
     );
 
-  mGdtrPtr[CpuIndex].Limit = (UINT16) GdtSize - 1;
-  mGdtrPtr[CpuIndex].Base = (UINTN) GdtBase;
+  mGdtrPtr[CpuIndex].Limit = (UINT16)GdtSize - 1;
+  mGdtrPtr[CpuIndex].Base  = (UINTN)GdtBase;
 
   // Populate the fix up addresses
   // Get Whole structure size
-  WholeStructSize = (UINT32)*(EFI_PHYSICAL_ADDRESS *)(UINTN)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof(UINT32));
+  WholeStructSize = (UINT32)*(EFI_PHYSICAL_ADDRESS *)(UINTN)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof (UINT32));
 
   // Get header address
-  SmiEntryStructHdrAddr = (UINT32)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof(UINT32) - WholeStructSize);
-  SmiEntryStructHdrPtr = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
+  SmiEntryStructHdrAddr = (UINT32)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof (UINT32) - WholeStructSize);
+  SmiEntryStructHdrPtr  = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
 
-  // Navegiate to the fixup arrays
-  FixStructPtr = (UINT16 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUpStructOffset);
+  // Navigate to the fixup arrays
   Fixup32Ptr = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
   Fixup64Ptr = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
-  Fixup8Ptr = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
+  Fixup8Ptr  = (UINT8 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp8Offset);
 
-  //Do the fixup
-  Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp] = mCetPl0Ssp;
-  Fixup32Ptr[FIXUP32_GDTR] = (UINT32)(UINTN) &mGdtrPtr[CpuIndex];
-  Fixup32Ptr[FIXUP32_CR3_OFFSET] = Cr3;
-  Fixup32Ptr[FIXUP32_mPatchCetInterruptSsp] = mCetInterruptSsp;
+  // Do the fixup
+  Fixup32Ptr[FIXUP32_mPatchCetPl0Ssp]            = mCetPl0Ssp;
+  Fixup32Ptr[FIXUP32_GDTR]                       = (UINT32)(UINTN)&mGdtrPtr[CpuIndex];
+  Fixup32Ptr[FIXUP32_CR3_OFFSET]                 = Cr3;
+  Fixup32Ptr[FIXUP32_mPatchCetInterruptSsp]      = mCetInterruptSsp;
   Fixup32Ptr[FIXUP32_mPatchCetInterruptSspTable] = mCetInterruptSspTable;
-  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0] = (UINT32)(UINTN)tSmiStack;
-  Fixup32Ptr[FIXUP32_MSR_SMM_BASE] = SmBase;
+  Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0]          = (UINT32)(UINTN)tSmiStack;
+  Fixup32Ptr[FIXUP32_MSR_SMM_BASE]               = SmBase;
 
-  Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = (UINT64)CpuSmmDebugEntry;
-  Fixup64Ptr[FIXUP64_SMM_DBG_EXIT] = (UINT64)CpuSmmDebugExit;
-  Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] = (UINT64)SmiRendezvous;
-  Fixup64Ptr[FIXUP64_XD_SUPPORTED] = (UINT64)&gPatchXdSupported;
-  Fixup64Ptr[FIXUP64_CET_SUPPORTED] = (UINT64)&mCetSupported;
+  Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = (UINT64)CpuSmmDebugEntry;
+  Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = (UINT64)CpuSmmDebugExit;
+  Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)SmiRendezvous;
+  Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&gPatchXdSupported;
+  Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)&gStmSmiHandlerIdtr;
 
-  Fixup8Ptr[FIXUP8_gPatchXdSupported] = gPatchXdSupported;
+  Fixup8Ptr[FIXUP8_gPatchXdSupported]                = gPatchXdSupported;
   Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
-  Fixup8Ptr[FIXUP8_m5LevelPagingNeeded] = m5LevelPagingNeeded;
-  Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;
+  Fixup8Ptr[FIXUP8_m5LevelPagingNeeded]              = m5LevelPagingNeeded;
+  Fixup8Ptr[FIXUP8_mPatchCetSupported]               = mCetSupported;
 
   // TODO: Sort out these values, if needed
   Psd->SmmSmiHandlerRip = 0;
@@ -655,16 +668,17 @@ SmmCpuFeaturesInstallSmiHandler (
   if (!mStmConfigurationTableInitialized) {
     StmSmmConfigurationTableInit ();
     Status = PopulateSpamInformation (
-      CpuIndex,
-      mMmiEntryBaseAddress,
-      mMmiEntrySize,
-      (EFI_PHYSICAL_ADDRESS)(UINTN)SmiStack,
-      StackSize
-      );
+               CpuIndex,
+               mMmiEntryBaseAddress,
+               mMmiEntrySize,
+               (EFI_PHYSICAL_ADDRESS)(UINTN)SmiStack,
+               StackSize
+               );
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "PopulateSpamInformation failed - %r\n", Status));
       ASSERT_EFI_ERROR (Status);
     }
+
     mStmConfigurationTableInitialized = TRUE;
   }
 }
@@ -691,7 +705,6 @@ MmEndOfDxeEventNotify (
   UINTN                              Index = 0;
   TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
   SPAM_RESPONDER_DATA                *SpamResponderData;
-  UINTN                              NoHandles;
   UINTN                              HandleBufferSize;
   EFI_HANDLE                         *HandleBuffer;
   EFI_STATUS                         Status;
@@ -713,18 +726,18 @@ MmEndOfDxeEventNotify (
   // STM Header is at the beginning of the STM Image, we use the value from MSR
   //
   StmHeader = (STM_HEADER *)(UINTN)MsegBase;
-  LongRsp = (VOID*)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
+  LongRsp   = (VOID *)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
 
   // Now that we have all the loaded image information, prepare the responder data
   HandleBufferSize = 0;
   HandleBuffer     = NULL;
   Status           = gMmst->MmLocateHandle (
-                                   ByProtocol,
-                                   &gEfiLoadedImageProtocolGuid,
-                                   NULL,
-                                   &HandleBufferSize,
-                                   HandleBuffer
-                                   );
+                              ByProtocol,
+                              &gEfiLoadedImageProtocolGuid,
+                              NULL,
+                              &HandleBufferSize,
+                              HandleBuffer
+                              );
   if (Status != EFI_BUFFER_TOO_SMALL) {
     goto Done;
   }
@@ -736,31 +749,30 @@ MmEndOfDxeEventNotify (
   }
 
   Status = gMmst->MmLocateHandle (
-                         ByProtocol,
-                         &gEfiLoadedImageProtocolGuid,
-                         NULL,
-                         &HandleBufferSize,
-                         HandleBuffer
-                         );
+                    ByProtocol,
+                    &gEfiLoadedImageProtocolGuid,
+                    NULL,
+                    &HandleBufferSize,
+                    HandleBuffer
+                    );
   if (EFI_ERROR (Status)) {
     goto Done;
   }
 
-  NoHandles = HandleBufferSize/sizeof (EFI_HANDLE);
-  Status    = gMmst->MmLocateHandle (
-                          ByProtocol,
-                          &gEfiLoadedImageProtocolGuid,
-                          NULL,
-                          &HandleBufferSize,
-                          HandleBuffer
-                          );
+  Status = gMmst->MmLocateHandle (
+                    ByProtocol,
+                    &gEfiLoadedImageProtocolGuid,
+                    NULL,
+                    &HandleBufferSize,
+                    HandleBuffer
+                    );
 
   // Let's be honest, the first one will be the core...
   Status = gMmst->MmHandleProtocol (
-                        HandleBuffer[Index],
-                        &gEfiLoadedImageProtocolGuid,
-                        (VOID **)&LoadedImage
-                        );
+                    HandleBuffer[Index],
+                    &gEfiLoadedImageProtocolGuid,
+                    (VOID **)&LoadedImage
+                    );
   mSpamResponderTemplate.MmSupervisorSize = (UINT64)(UINTN)LoadedImage->ImageSize;
 
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
@@ -768,14 +780,13 @@ MmEndOfDxeEventNotify (
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
 
-    StmHeader->SwStmHdr.PerProcDynamicMemorySize;
-    SpamResponderData = (SPAM_RESPONDER_DATA*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
-                        sizeof (SPAM_RESPONDER_DATA));
+    SpamResponderData = (SPAM_RESPONDER_DATA *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
+                                                sizeof (SPAM_RESPONDER_DATA));
 
     CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
     // TODO: Mark the region as supervisor read-only, or even read prevention...
 
-    LongRsp = (VOID*)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
+    LongRsp = (VOID *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
   }
 
   mLockLoadMonitor = TRUE;
@@ -952,7 +963,7 @@ StmLoadStmImage (
   IN UINTN                 StmImageSize
   )
 {
-  STM_HEADER                         *StmHeader;
+  STM_HEADER  *StmHeader;
 
   //
   // Zero all of MSEG base address

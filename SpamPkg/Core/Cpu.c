@@ -14,17 +14,17 @@
 
 #include "Stm.h"
 
-#define IA32_EXT_XAPIC_BASE_MSR_INDEX    0x800
-#define APIC_DEST_FIELD                  (0 << 18)
-#define APIC_ALL_EXCLUDING_SELF          (3 << 18)
-#define APIC_SIPI                        (6 << 8)
-#define APIC_INIT                        (5 << 8)
-#define APIC_LEVEL_ASSERT                (1 << 14)
-#define APIC_LEVEL_DEASSERT              (0 << 14)
-#define APIC_BASE_ADDR_MASK              0xFFFFFF000
-#define APIC_REGISTER_ICR_LOW_OFFSET     0x300
-#define APIC_REGISTER_ICR_HIGH_OFFSET    0x310
-#define APIC_REGISTER_APICID             0x20
+#define IA32_EXT_XAPIC_BASE_MSR_INDEX  0x800
+#define APIC_DEST_FIELD                (0 << 18)
+#define APIC_ALL_EXCLUDING_SELF        (3 << 18)
+#define APIC_SIPI                      (6 << 8)
+#define APIC_INIT                      (5 << 8)
+#define APIC_LEVEL_ASSERT              (1 << 14)
+#define APIC_LEVEL_DEASSERT            (0 << 14)
+#define APIC_BASE_ADDR_MASK            0xFFFFFF000
+#define APIC_REGISTER_ICR_LOW_OFFSET   0x300
+#define APIC_REGISTER_ICR_HIGH_OFFSET  0x310
+#define APIC_REGISTER_APICID           0x20
 
 /**
 
@@ -38,8 +38,8 @@ ReadLocalApicId (
   VOID
   )
 {
-  UINT32   ApicId;
-  UINT64   ApicBase;
+  UINT32  ApicId;
+  UINT64  ApicBase;
 
   ApicBase = AsmReadMsr64 (IA32_APIC_BASE_MSR_INDEX);
 
@@ -47,7 +47,7 @@ ReadLocalApicId (
     return (UINT32)AsmReadMsr64 (IA32_EXT_XAPIC_BASE_MSR_INDEX + (APIC_REGISTER_APICID >> 4));
   } else {
     ApicBase = ApicBase & 0xFFFFFF000ull;
-    ApicId = MmioRead32 ((UINTN)ApicBase + APIC_REGISTER_APICID);
+    ApicId   = MmioRead32 ((UINTN)ApicBase + APIC_REGISTER_APICID);
     return (UINT32)(ApicId >> 24);
   }
 }
@@ -81,7 +81,7 @@ IsBsp (
 
 **/
 BOOLEAN
-IsXStateSupoprted (
+IsXStateSupported (
   VOID
   )
 {
@@ -141,7 +141,7 @@ CalculateXStateSize (
   UINT32  Ecx;
   UINT32  Edx;
 
-  if (!IsXStateSupoprted()) {
+  if (!IsXStateSupported ()) {
     // It is FxState size
     return 512;
   }
@@ -162,7 +162,7 @@ CalculateXStateSize (
   //      the XSAVE.HEADER.
   // We need 512 FPU/SSE SaveArea, for whole region.
   //
-  return Ecx + sizeof(IA32_FX_BUFFER);
+  return Ecx + sizeof (IA32_FX_BUFFER);
 }
 
 /**
@@ -175,7 +175,7 @@ CalculateXStateSize (
 **/
 UINT32
 BaseFromGdtEntry (
-  IN GDT_ENTRY *GdtEntry
+  IN GDT_ENTRY  *GdtEntry
   )
 {
   return (UINT32)(GdtEntry->BaseLow | (GdtEntry->BaseMid << 16) | (GdtEntry->BaseHi << 24));
@@ -191,7 +191,7 @@ BaseFromGdtEntry (
 **/
 UINT32
 LimitFromGdtEntry (
-  IN GDT_ENTRY *GdtEntry
+  IN GDT_ENTRY  *GdtEntry
   )
 {
   UINT32  LimitValue;
@@ -210,7 +210,7 @@ LimitFromGdtEntry (
 **/
 UINT32
 ArFromGdtEntry (
-  IN GDT_ENTRY *GdtEntry
+  IN GDT_ENTRY  *GdtEntry
   )
 {
   return (UINT32)(GdtEntry->Attribute | ((GdtEntry->LimitHi & 0xF0) << 8));

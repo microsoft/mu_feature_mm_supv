@@ -24,24 +24,27 @@
 
 **/
 VOID *
+EFIAPI
 AllocatePages (
-  IN UINTN Pages
+  IN UINTN  Pages
   )
 {
   UINT64  Address;
 
   AcquireSpinLock (&mHostContextCommon.MemoryLock);
-  if (STM_PAGES_TO_SIZE(Pages) >= mHostContextCommon.HeapTop) {
-    DEBUG((EFI_D_ERROR, "AllocatePages(%x) overflow\n", Pages));
-    ReleaseSpinLock(&mHostContextCommon.MemoryLock);
-    CpuDeadLoop();
+  if (STM_PAGES_TO_SIZE (Pages) >= mHostContextCommon.HeapTop) {
+    DEBUG ((EFI_D_ERROR, "AllocatePages(%x) overflow\n", Pages));
+    ReleaseSpinLock (&mHostContextCommon.MemoryLock);
+    CpuDeadLoop ();
   }
-  if (mHostContextCommon.HeapBottom > mHostContextCommon.HeapTop - STM_PAGES_TO_SIZE(Pages)) {
+
+  if (mHostContextCommon.HeapBottom > mHostContextCommon.HeapTop - STM_PAGES_TO_SIZE (Pages)) {
     DEBUG ((EFI_D_ERROR, "AllocatePages(%x) fail\n", Pages));
     ReleaseSpinLock (&mHostContextCommon.MemoryLock);
     CpuDeadLoop ();
   }
-  Address = mHostContextCommon.HeapTop - STM_PAGES_TO_SIZE(Pages);
+
+  Address                    = mHostContextCommon.HeapTop - STM_PAGES_TO_SIZE (Pages);
   mHostContextCommon.HeapTop = Address;
 
   ZeroMem ((VOID *)(UINTN)Address, STM_PAGES_TO_SIZE (Pages));
@@ -58,13 +61,15 @@ AllocatePages (
 
 **/
 VOID
+EFIAPI
 FreePages (
-  IN VOID  *Address,
-  IN UINTN Pages
+  IN VOID   *Buffer,
+  IN UINTN  Pages
   )
 {
-  if ((UINT64)(UINTN)Address == mHostContextCommon.HeapTop) {
-    mHostContextCommon.HeapTop += STM_PAGES_TO_SIZE(Pages);
+  if ((UINT64)(UINTN)Buffer == mHostContextCommon.HeapTop) {
+    mHostContextCommon.HeapTop += STM_PAGES_TO_SIZE (Pages);
   }
-  return ;
+
+  return;
 }

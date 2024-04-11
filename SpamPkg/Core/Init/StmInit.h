@@ -107,8 +107,8 @@ Is1GPageSupport (
 **/
 VOID
 InitializeSmiVmcs (
-  IN UINT32   Index,
-  IN UINT64   *Vmcs
+  IN UINT32  Index,
+  IN UINT64  *Vmcs
   );
 
 /**
@@ -121,8 +121,8 @@ InitializeSmiVmcs (
 **/
 VOID
 InitializeSmmVmcs (
-  IN UINT32   Index,
-  IN UINT64   *Vmcs
+  IN UINT32  Index,
+  IN UINT64  *Vmcs
   );
 
 /**
@@ -206,7 +206,7 @@ MsrInit (
 **/
 VOID
 RegisterBiosResource (
-  IN STM_RSC   *Resource
+  IN STM_RSC  *Resource
   );
 
 #endif

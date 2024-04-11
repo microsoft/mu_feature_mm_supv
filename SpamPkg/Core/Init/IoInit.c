@@ -24,31 +24,31 @@
 **/
 VOID
 SetIoBitmapEx (
-  IN UINT16  Port,
-  IN BOOLEAN Set
+  IN UINT16   Port,
+  IN BOOLEAN  Set
   )
 {
-  UINT8 *IoBitmap;
-  UINTN Index;
-  UINTN Offset;
+  UINT8  *IoBitmap;
+  UINTN  Index;
+  UINTN  Offset;
 
   if (Port >= 0x8000) {
     IoBitmap = (UINT8 *)(UINTN)mGuestContextCommonSmm.IoBitmapB;
-    Port -= 0x8000;
+    Port    -= 0x8000;
   } else {
     IoBitmap = (UINT8 *)(UINTN)mGuestContextCommonSmm.IoBitmapA;
   }
 
-  Index = Port / 8;
+  Index  = Port / 8;
   Offset = Port % 8;
 
   if (Set) {
     IoBitmap[Index] |= (UINT8)(1 << Offset);
   } else {
-    IoBitmap[Index] &= (UINT8)~(1 << Offset);
+    IoBitmap[Index] &= (UINT8) ~(1 << Offset);
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -66,6 +66,7 @@ SetIoBitmapRange (
   )
 {
   UINT16  Port;
+
   for (Port = Base; Port < Base + Length; Port++) {
     SetIoBitmapEx (Port, TRUE);
   }
@@ -86,6 +87,7 @@ UnSetIoBitmapRange (
   )
 {
   UINT16  Port;
+
   for (Port = Base; Port < Base + Length; Port++) {
     SetIoBitmapEx (Port, FALSE);
   }

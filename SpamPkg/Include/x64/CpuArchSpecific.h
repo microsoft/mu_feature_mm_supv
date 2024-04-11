@@ -17,23 +17,23 @@
 
 #pragma pack (push, 1)
 typedef struct _X86_REGISTER {
-    UINTN Rax;       //  0/0
-    UINTN Rcx;       //  4/8
-    UINTN Rdx;       //  8/16
-    UINTN Rbx;       //  12/24
-    UINTN Rsp;       //  16/32
-    UINTN Rbp;       //  20/40
-    UINTN Rsi;       //  24/48
-    UINTN Rdi;       //  28/56
-    UINTN R8;        // 64
-    UINTN R9;        // 72
-    UINTN R10;       // 80
-    UINTN R11;       // 88
-    UINTN R12;       // 96
-    UINTN R13;       // 104
-    UINTN R14;       // 112
-    UINTN R15;       // 120
-    IA32_FX_BUFFER   FxBuffer;  // 128, X64 calling convention allow using XMM0~15
+  UINTN             Rax;      //  0/0
+  UINTN             Rcx;      //  4/8
+  UINTN             Rdx;      //  8/16
+  UINTN             Rbx;      //  12/24
+  UINTN             Rsp;      //  16/32
+  UINTN             Rbp;      //  20/40
+  UINTN             Rsi;      //  24/48
+  UINTN             Rdi;      //  28/56
+  UINTN             R8;       // 64
+  UINTN             R9;       // 72
+  UINTN             R10;      // 80
+  UINTN             R11;      // 88
+  UINTN             R12;      // 96
+  UINTN             R13;      // 104
+  UINTN             R14;      // 112
+  UINTN             R15;      // 120
+  IA32_FX_BUFFER    FxBuffer; // 128, X64 calling convention allow using XMM0~15
 } X86_REGISTER;
 #pragma pack (pop)
 

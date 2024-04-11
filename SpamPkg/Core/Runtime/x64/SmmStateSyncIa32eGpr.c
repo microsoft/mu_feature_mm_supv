@@ -25,12 +25,12 @@
 **/
 VOID
 WriteSyncSmmStateSaveAreaIa32eGpr (
-  IN UINT32                             Index,
-  IN STM_SMM_CPU_STATE                  *CpuState,
-  IN BOOLEAN                            Scrub
+  IN UINT32             Index,
+  IN STM_SMM_CPU_STATE  *CpuState,
+  IN BOOLEAN            Scrub
   )
 {
-  X86_REGISTER                       *Reg;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
@@ -54,7 +54,7 @@ WriteSyncSmmStateSaveAreaIa32eGpr (
     CpuState->R8  = 0;
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -67,11 +67,11 @@ WriteSyncSmmStateSaveAreaIa32eGpr (
 **/
 VOID
 ReadSyncSmmStateSaveAreaIa32eGpr (
-  IN UINT32                             Index,
-  IN STM_SMM_CPU_STATE                  *CpuState
+  IN UINT32             Index,
+  IN STM_SMM_CPU_STATE  *CpuState
   )
 {
-  X86_REGISTER                       *Reg;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
 
@@ -84,7 +84,7 @@ ReadSyncSmmStateSaveAreaIa32eGpr (
   Reg->R14 = (UINTN)CpuState->R14;
   Reg->R15 = (UINTN)CpuState->R15;
 
-  return ;
+  return;
 }
 
 /**
@@ -97,14 +97,14 @@ ReadSyncSmmStateSaveAreaIa32eGpr (
 **/
 VOID
 WriteSyncSmmStateSaveAreaSse2 (
-  IN UINT32                             Index,
-  IN BOOLEAN                            Scrub
+  IN UINT32   Index,
+  IN BOOLEAN  Scrub
   )
 {
   if (!Scrub) {
-    CopyMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, sizeof(IA32_FX_BUFFER));
+    CopyMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, sizeof (IA32_FX_BUFFER));
   } else {
-    ZeroMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof(IA32_FX_BUFFER));
+    ZeroMem (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof (IA32_FX_BUFFER));
   }
 }
 
@@ -117,8 +117,8 @@ WriteSyncSmmStateSaveAreaSse2 (
 **/
 VOID
 ReadSyncSmmStateSaveAreaSse2 (
-  IN UINT32                             Index
+  IN UINT32  Index
   )
 {
-  CopyMem (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof(IA32_FX_BUFFER));
+  CopyMem (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.FxBuffer, &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register.FxBuffer, sizeof (IA32_FX_BUFFER));
 }

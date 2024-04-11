@@ -47,7 +47,7 @@ Tpm2GetAlgoFromHashMask (
   UINT32      TpmHashAlgorithmBitmap;
   UINT32      ActivePcrBanks;
 
-  if (AlgoIds == NULL || Count == NULL) {
+  if ((AlgoIds == NULL) || (Count == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -62,6 +62,7 @@ Tpm2GetAlgoFromHashMask (
       if (AlgoIdCount >= *Count) {
         return EFI_BUFFER_TOO_SMALL;
       }
+
       AlgoIds[AlgoIdCount] = mTpm2HashMask[Index].AlgoId;
       AlgoIdCount++;
     }
@@ -235,17 +236,17 @@ HashCompleteAndExtend (
 
     if (AlgoIds[Index] == TPM_ALG_NULL) {
       Status = Tpm2EventSequenceComplete (
-                PcrIndex,
-                (TPMI_DH_OBJECT)HashCtx[Index],
-                &HashBuffer,
-                &DigestList[Index]
-                );
+                 PcrIndex,
+                 (TPMI_DH_OBJECT)HashCtx[Index],
+                 &HashBuffer,
+                 &DigestList[Index]
+                 );
     } else {
       Status = Tpm2SequenceComplete (
-                (TPMI_DH_OBJECT)HashCtx[Index],
-                &HashBuffer,
-                &Result
-                );
+                 (TPMI_DH_OBJECT)HashCtx[Index],
+                 &HashBuffer,
+                 &Result
+                 );
       if (EFI_ERROR (Status)) {
         return EFI_DEVICE_ERROR;
       }
@@ -254,9 +255,9 @@ HashCompleteAndExtend (
       DigestList[Index].digests[0].hashAlg = AlgoIds[Index];
       CopyMem (&DigestList[Index].digests[0].digest, Result.buffer, Result.size);
       Status = Tpm2PcrExtend (
-                PcrIndex,
-                &DigestList[Index]
-                );
+                 PcrIndex,
+                 &DigestList[Index]
+                 );
     }
 
     if (EFI_ERROR (Status)) {
@@ -347,11 +348,11 @@ HashAndExtend (
 
     if (AlgoIds[Index] == TPM_ALG_NULL) {
       Status = Tpm2EventSequenceComplete (
-                PcrIndex,
-                SequenceHandle,
-                &HashBuffer,
-                &DigestList[Index]
-                );
+                 PcrIndex,
+                 SequenceHandle,
+                 &HashBuffer,
+                 &DigestList[Index]
+                 );
       if (EFI_ERROR (Status)) {
         return EFI_DEVICE_ERROR;
       }
@@ -359,10 +360,10 @@ HashAndExtend (
       DEBUG ((DEBUG_VERBOSE, "\n Tpm2EventSequenceComplete Success \n"));
     } else {
       Status = Tpm2SequenceComplete (
-                SequenceHandle,
-                &HashBuffer,
-                &Result
-                );
+                 SequenceHandle,
+                 &HashBuffer,
+                 &Result
+                 );
       if (EFI_ERROR (Status)) {
         return EFI_DEVICE_ERROR;
       }
@@ -373,9 +374,9 @@ HashAndExtend (
       DigestList[Index].digests[0].hashAlg = AlgoIds[Index];
       CopyMem (&DigestList[Index].digests[0].digest, Result.buffer, Result.size);
       Status = Tpm2PcrExtend (
-                PcrIndex,
-                &DigestList[Index]
-                );
+                 PcrIndex,
+                 &DigestList[Index]
+                 );
       if (EFI_ERROR (Status)) {
         return EFI_DEVICE_ERROR;
       }

@@ -17,8 +17,8 @@
 #include <Library/DebugLib.h>
 #include "Library/StmLib.h"
 
-#define RFLAGS_CF   1u
-#define RFLAGS_ZF   (1u << 6)
+#define RFLAGS_CF  1u
+#define RFLAGS_ZF  (1u << 6)
 
 /**
 
@@ -41,6 +41,7 @@ VmRead16 (
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
     DEBUG ((EFI_D_ERROR, "ERROR: AsmVmRead(0x%x) : %08x\n", (UINTN)Index, Rflags));
   }
+
   return (UINT16)Data;
 }
 
@@ -65,6 +66,7 @@ VmRead32 (
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
     DEBUG ((EFI_D_ERROR, "ERROR: AsmVmRead(0x%x) : %08x\n", (UINTN)Index, Rflags));
   }
+
   return (UINT32)Data;
 }
 
@@ -89,6 +91,7 @@ VmReadN (
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
     DEBUG ((EFI_D_ERROR, "ERROR: AsmVmRead(0x%x) : %08x\n", (UINTN)Index, Rflags));
   }
+
   return Data;
 }
 
@@ -138,7 +141,7 @@ VmWrite32 (
 
 /**
 
-  This function write UINNT data to VMCS region.
+  This function write UINTN data to VMCS region.
 
   @param Index VMCS region index
   @param Data  VMCS region value

@@ -43,20 +43,20 @@ GuestLinearToHostPhysical (
 **/
 VOID
 SmmIoHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  VM_EXIT_QUALIFICATION   Qualification;
-  UINT16                  Port;
-  UINTN                   *DataPtr;
-  UINTN                   LinearAddr;
-  X86_REGISTER            *Reg;
-  STM_RSC_IO_DESC         *IoDesc;
-  STM_RSC_PCI_CFG_DESC    *PciCfgDesc;
-  UINT32                  PciAddress;
-  STM_RSC_IO_DESC         LocalIoDesc;
-  STM_RSC_PCI_CFG_DESC    *LocalPciCfgDescPtr;
-  UINT8                   LocalPciCfgDescBuf[STM_LOG_ENTRY_SIZE];
+  VM_EXIT_QUALIFICATION  Qualification;
+  UINT16                 Port;
+  UINTN                  *DataPtr;
+  UINTN                  LinearAddr;
+  X86_REGISTER           *Reg;
+  STM_RSC_IO_DESC        *IoDesc;
+  STM_RSC_PCI_CFG_DESC   *PciCfgDesc;
+  UINT32                 PciAddress;
+  STM_RSC_IO_DESC        LocalIoDesc;
+  STM_RSC_PCI_CFG_DESC   *LocalPciCfgDescPtr;
+  UINT8                  LocalPciCfgDescBuf[STM_LOG_ENTRY_SIZE];
 
   Reg = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
 
@@ -67,6 +67,7 @@ SmmIoHandler (
   } else {
     Port = (UINT16)Reg->Rdx;
   }
+
   DataPtr = (UINTN *)&Reg->Rax;
 
   //
@@ -84,11 +85,11 @@ SmmIoHandler (
 
   IoDesc = GetStmResourceIo ((STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr, Port);
   if (IoDesc == NULL) {
-    ZeroMem (&LocalIoDesc, sizeof(LocalIoDesc));
+    ZeroMem (&LocalIoDesc, sizeof (LocalIoDesc));
     LocalIoDesc.Hdr.RscType = IO_RANGE;
-    LocalIoDesc.Hdr.Length = sizeof(LocalIoDesc);
-    LocalIoDesc.Base = Port;
-    LocalIoDesc.Length = (UINT16)(Qualification.IoInstruction.Size + 1);
+    LocalIoDesc.Hdr.Length  = sizeof (LocalIoDesc);
+    LocalIoDesc.Base        = Port;
+    LocalIoDesc.Length      = (UINT16)(Qualification.IoInstruction.Size + 1);
     AddEventLogForResource (EvtBiosAccessToUnclaimedResource, (STM_RSC *)&LocalIoDesc);
   }
 
@@ -103,6 +104,7 @@ SmmIoHandler (
     //
     AcquireSpinLock (&mHostContextCommon.PciLock);
   }
+
   if ((Port >= 0xCFC) && (Port <= 0xCFF)) {
     // Access PciData
 
@@ -113,10 +115,10 @@ SmmIoHandler (
     PciAddress = IoRead32 (0xCF8);
     PciCfgDesc = GetStmResourcePci (
                    mHostContextCommon.MleProtectedResource.Base,
-                   BUS_FROM_CF8_ADDRESS(PciAddress),
-                   DEVICE_FROM_CF8_ADDRESS(PciAddress),
-                   FUNCTION_FROM_CF8_ADDRESS(PciAddress),
-                   REGISTER_FROM_CF8_ADDRESS(PciAddress) + (Port & 0x3),
+                   BUS_FROM_CF8_ADDRESS (PciAddress),
+                   DEVICE_FROM_CF8_ADDRESS (PciAddress),
+                   FUNCTION_FROM_CF8_ADDRESS (PciAddress),
+                   REGISTER_FROM_CF8_ADDRESS (PciAddress) + (Port & 0x3),
                    (Qualification.IoInstruction.Direction != 0) ? STM_RSC_PCI_CFG_R : STM_RSC_PCI_CFG_W
                    );
     if (PciCfgDesc != NULL) {
@@ -129,46 +131,48 @@ SmmIoHandler (
 
     PciCfgDesc = GetStmResourcePci (
                    (STM_RSC *)(UINTN)mGuestContextCommonSmm.BiosHwResourceRequirementsPtr,
-                   BUS_FROM_CF8_ADDRESS(PciAddress),
-                   DEVICE_FROM_CF8_ADDRESS(PciAddress),
-                   FUNCTION_FROM_CF8_ADDRESS(PciAddress),
-                   REGISTER_FROM_CF8_ADDRESS(PciAddress) + (Port & 0x3),
+                   BUS_FROM_CF8_ADDRESS (PciAddress),
+                   DEVICE_FROM_CF8_ADDRESS (PciAddress),
+                   FUNCTION_FROM_CF8_ADDRESS (PciAddress),
+                   REGISTER_FROM_CF8_ADDRESS (PciAddress) + (Port & 0x3),
                    (Qualification.IoInstruction.Direction != 0) ? STM_RSC_PCI_CFG_R : STM_RSC_PCI_CFG_W
                    );
     if (PciCfgDesc == NULL) {
-      DEBUG((EFI_D_ERROR, "Add unclaimed PCI_RSC!\n"));
+      DEBUG ((EFI_D_ERROR, "Add unclaimed PCI_RSC!\n"));
       LocalPciCfgDescPtr = (STM_RSC_PCI_CFG_DESC *)LocalPciCfgDescBuf;
-      ZeroMem (LocalPciCfgDescBuf, sizeof(LocalPciCfgDescBuf));
-      LocalPciCfgDescPtr->Hdr.RscType = PCI_CFG_RANGE;
-      LocalPciCfgDescPtr->Hdr.Length = sizeof(STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierachy here.
-      LocalPciCfgDescPtr->RWAttributes = (Qualification.IoInstruction.Direction != 0) ? STM_RSC_PCI_CFG_R : STM_RSC_PCI_CFG_W;
-      LocalPciCfgDescPtr->Base = REGISTER_FROM_CF8_ADDRESS(PciAddress) + (Port & 0x3);
-      LocalPciCfgDescPtr->Length = (UINT16)(Qualification.IoInstruction.Size + 1);
-      LocalPciCfgDescPtr->OriginatingBusNumber = BUS_FROM_CF8_ADDRESS(PciAddress);
-      LocalPciCfgDescPtr->LastNodeIndex = 0;
-      LocalPciCfgDescPtr->PciDevicePath[0].Type = 1;
-      LocalPciCfgDescPtr->PciDevicePath[0].Subtype = 1;
-      LocalPciCfgDescPtr->PciDevicePath[0].Length = sizeof(STM_PCI_DEVICE_PATH_NODE);
-      LocalPciCfgDescPtr->PciDevicePath[0].PciFunction = FUNCTION_FROM_CF8_ADDRESS(PciAddress);
-      LocalPciCfgDescPtr->PciDevicePath[0].PciDevice = DEVICE_FROM_CF8_ADDRESS(PciAddress);
+      ZeroMem (LocalPciCfgDescBuf, sizeof (LocalPciCfgDescBuf));
+      LocalPciCfgDescPtr->Hdr.RscType                  = PCI_CFG_RANGE;
+      LocalPciCfgDescPtr->Hdr.Length                   = sizeof (STM_RSC_PCI_CFG_DESC); // BUGBUG: Just report this PCI device, it is hard to create PCI hierarchy here.
+      LocalPciCfgDescPtr->RWAttributes                 = (Qualification.IoInstruction.Direction != 0) ? STM_RSC_PCI_CFG_R : STM_RSC_PCI_CFG_W;
+      LocalPciCfgDescPtr->Base                         = REGISTER_FROM_CF8_ADDRESS (PciAddress) + (Port & 0x3);
+      LocalPciCfgDescPtr->Length                       = (UINT16)(Qualification.IoInstruction.Size + 1);
+      LocalPciCfgDescPtr->OriginatingBusNumber         = BUS_FROM_CF8_ADDRESS (PciAddress);
+      LocalPciCfgDescPtr->LastNodeIndex                = 0;
+      LocalPciCfgDescPtr->PciDevicePath[0].Type        = 1;
+      LocalPciCfgDescPtr->PciDevicePath[0].Subtype     = 1;
+      LocalPciCfgDescPtr->PciDevicePath[0].Length      = sizeof (STM_PCI_DEVICE_PATH_NODE);
+      LocalPciCfgDescPtr->PciDevicePath[0].PciFunction = FUNCTION_FROM_CF8_ADDRESS (PciAddress);
+      LocalPciCfgDescPtr->PciDevicePath[0].PciDevice   = DEVICE_FROM_CF8_ADDRESS (PciAddress);
       AddEventLogForResource (EvtBiosAccessToUnclaimedResource, (STM_RSC *)LocalPciCfgDescPtr);
     }
   }
 
   if (Qualification.IoInstruction.Rep != 0) {
-    UINT64 RcxMask;
+    UINT64  RcxMask;
 
     RcxMask = 0xFFFFFFFFFFFFFFFFull;
     if ((mGuestContextCommonSmm.GuestContextPerCpu[Index].Efer & IA32_EFER_MSR_MLA) == 0) {
       RcxMask = 0xFFFFFFFFull;
     }
+
     if ((Reg->Rcx & RcxMask) == 0) {
       // Skip
       if ((Port == 0xCF8) || ((Port >= 0xCFC) && (Port <= 0xCFF))) {
         ReleaseSpinLock (&mHostContextCommon.PciLock);
       }
-      VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-      return ;
+
+      VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+      return;
     }
   }
 
@@ -195,45 +199,48 @@ SmmIoHandler (
     }
   }
 
-  if (Qualification.IoInstruction.Direction != 0) { // IN
+  if (Qualification.IoInstruction.Direction != 0) {
+    // IN
     switch (Qualification.IoInstruction.Size) {
-    case 0:
-      *(UINT8 *)DataPtr = IoRead8 (Port);
-      goto Ret;
-      break;
-    case 1:
-      *(UINT16 *)DataPtr = IoRead16 (Port);
-      goto Ret;
-      break;
-    case 3:
-      *(UINT32 *)DataPtr = IoRead32 (Port);
-      goto Ret;
-      break;
-    default:
-      break;
+      case 0:
+        *(UINT8 *)DataPtr = IoRead8 (Port);
+        goto Ret;
+        break;
+      case 1:
+        *(UINT16 *)DataPtr = IoRead16 (Port);
+        goto Ret;
+        break;
+      case 3:
+        *(UINT32 *)DataPtr = IoRead32 (Port);
+        goto Ret;
+        break;
+      default:
+        break;
     }
-  } else { // OUT
+  } else {
+    // OUT
     switch (Qualification.IoInstruction.Size) {
-    case 0:
-      IoWrite8 (Port, (UINT8)*DataPtr);
-      goto Ret;
-      break;
-    case 1:
-      IoWrite16 (Port, (UINT16)*DataPtr);
-      goto Ret;
-      break;
-    case 3:
-      IoWrite32 (Port, (UINT32)*DataPtr);
-      goto Ret;
-      break;
-    default:
-      break;
+      case 0:
+        IoWrite8 (Port, (UINT8)*DataPtr);
+        goto Ret;
+        break;
+      case 1:
+        IoWrite16 (Port, (UINT16)*DataPtr);
+        goto Ret;
+        break;
+      case 3:
+        IoWrite32 (Port, (UINT32)*DataPtr);
+        goto Ret;
+        break;
+      default:
+        break;
     }
   }
 
   if ((Port == 0xCF8) || ((Port >= 0xCFC) && (Port <= 0xCFF))) {
     ReleaseSpinLock (&mHostContextCommon.PciLock);
   }
+
   DEBUG ((EFI_D_INFO, "!!!IoHandler!!!\n"));
   DumpVmcsAllField ();
 
@@ -243,12 +250,13 @@ Ret:
   if ((Port == 0xCF8) || ((Port >= 0xCFC) && (Port <= 0xCFF))) {
     ReleaseSpinLock (&mHostContextCommon.PciLock);
   }
+
   if (Qualification.IoInstruction.Rep != 0) {
     // replay
-    Reg->Rcx --;
-    return ;
+    Reg->Rcx--;
+    return;
   }
 
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-  return ;
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  return;
 }

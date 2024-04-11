@@ -23,12 +23,12 @@
 **/
 VOID
 SmmInvdHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
   AsmWbinvd ();
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-  return ;
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  return;
 }
 
 /**
@@ -40,10 +40,10 @@ SmmInvdHandler (
 **/
 VOID
 SmmWbinvdHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
   AsmWbinvd ();
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-  return ;
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  return;
 }

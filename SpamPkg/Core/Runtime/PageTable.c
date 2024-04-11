@@ -21,14 +21,14 @@
 #define PAGING_INDEX_MASK      0x3FF
 #define PAGING_PAE_INDEX_MASK  0x1FF
 
-#define PAGING_4K_ADDRESS_MASK_64_X64 0x000FFFFFFFFFF000ull
-#define PAGING_2M_ADDRESS_MASK_64_X64 0x000FFFFFFFE00000ull
+#define PAGING_4K_ADDRESS_MASK_64_X64  0x000FFFFFFFFFF000ull
+#define PAGING_2M_ADDRESS_MASK_64_X64  0x000FFFFFFFE00000ull
 
-#define PAGING_4K_ADDRESS_MASK_64_IA32 0x00000000FFFFF000u
-#define PAGING_2M_ADDRESS_MASK_64_IA32 0x00000000FFE00000u
+#define PAGING_4K_ADDRESS_MASK_64_IA32  0x00000000FFFFF000u
+#define PAGING_2M_ADDRESS_MASK_64_IA32  0x00000000FFE00000u
 
-#define PAGING_4K_ADDRESS_MASK_32 0xFFFFF000u
-#define PAGING_4M_ADDRESS_MASK_32 0xFFC00000u
+#define PAGING_4K_ADDRESS_MASK_32  0xFFFFF000u
+#define PAGING_4M_ADDRESS_MASK_32  0xFFC00000u
 
 /**
 
@@ -52,35 +52,35 @@
 **/
 UINT64
 TranslateGuestLinearToPhysical (
-  IN UINTN    Cr3,
-  IN UINTN    Cr0,
-  IN UINTN    Cr4,
-  IN UINT64   Efer,
-  IN UINTN    GuestLinearAddress,
-  OUT BOOLEAN *Ia32e,
-  OUT BOOLEAN *Pg,
-  OUT BOOLEAN *Pae,
-  OUT BOOLEAN *Pse,
-  OUT BOOLEAN *Sp,
-  OUT UINT64  **Entry
+  IN UINTN     Cr3,
+  IN UINTN     Cr0,
+  IN UINTN     Cr4,
+  IN UINT64    Efer,
+  IN UINTN     GuestLinearAddress,
+  OUT BOOLEAN  *Ia32e,
+  OUT BOOLEAN  *Pg,
+  OUT BOOLEAN  *Pae,
+  OUT BOOLEAN  *Pse,
+  OUT BOOLEAN  *Sp,
+  OUT UINT64   **Entry
   )
 {
-  UINT64                *L1PageTable;
-  UINT64                *L2PageTable;
-  UINT64                *L3PageTable;
-  UINT64                *L4PageTable;
-  UINT32                *L1PageTable32;
-  UINT32                *L2PageTable32;
-  UINTN                 Index1;
-  UINTN                 Index2;
-  UINTN                 Index3;
-  UINTN                 Index4;
-  UINTN                 Offset;
-  UINT64                PhysicalAddress;
-  UINT64                Paging4kAddressMask64;
-  UINT64                Paging2mAddressMask64;
+  UINT64  *L1PageTable;
+  UINT64  *L2PageTable;
+  UINT64  *L3PageTable;
+  UINT64  *L4PageTable;
+  UINT32  *L1PageTable32;
+  UINT32  *L2PageTable32;
+  UINTN   Index1;
+  UINTN   Index2;
+  UINTN   Index3;
+  UINTN   Index4;
+  UINTN   Offset;
+  UINT64  PhysicalAddress;
+  UINT64  Paging4kAddressMask64;
+  UINT64  Paging2mAddressMask64;
 
-  if (sizeof(UINTN) == sizeof(UINT64)) {
+  if (sizeof (UINTN) == sizeof (UINT64)) {
     Paging4kAddressMask64 = PAGING_4K_ADDRESS_MASK_64_X64;
     Paging2mAddressMask64 = PAGING_2M_ADDRESS_MASK_64_X64;
   } else {
@@ -92,13 +92,16 @@ TranslateGuestLinearToPhysical (
     if (Ia32e != NULL) {
       *Ia32e = TRUE;
     }
+
     if (Pg != NULL) {
       *Pg = TRUE;
     }
+
     if (Pae != NULL) {
       *Pae = TRUE;
     }
-    if (sizeof(UINTN) == sizeof(UINT64)) {
+
+    if (sizeof (UINTN) == sizeof (UINT64)) {
       // x64 paging
       Index4 = ((UINTN)RShiftU64 (GuestLinearAddress, 39)) & PAGING_PAE_INDEX_MASK;
       Index3 = ((UINTN)GuestLinearAddress >> 30) & PAGING_PAE_INDEX_MASK;
@@ -126,30 +129,35 @@ TranslateGuestLinearToPhysical (
         if (Sp != NULL) {
           *Sp = TRUE;
         }
-        // 2M 
-        Offset = (UINTN)GuestLinearAddress & PAGING_2M_MASK;
+
+        // 2M
+        Offset          = (UINTN)GuestLinearAddress & PAGING_2M_MASK;
         PhysicalAddress = (UINTN)(L2PageTable[Index2] & Paging2mAddressMask64);
         if (Entry != NULL) {
           *Entry = &L2PageTable[Index2];
         }
+
         return PhysicalAddress + Offset;
       } else {
         if (Sp != NULL) {
           *Sp = FALSE;
         }
+
         // 4k
         L1PageTable = (UINT64 *)(UINTN)(L2PageTable[Index2] & Paging4kAddressMask64);
         if ((L1PageTable[Index1] & IA32_PG_P) == 0) {
           return 0;
         }
+
         PhysicalAddress = (UINTN)(L1PageTable[Index1] & Paging4kAddressMask64);
         if (Entry != NULL) {
           *Entry = &L1PageTable[Index1];
         }
+
         return PhysicalAddress + Offset;
       }
     } else {
-      Index4 = 0;
+      Index4      = 0;
       L4PageTable = NULL;
       return 0;
     }
@@ -157,15 +165,18 @@ TranslateGuestLinearToPhysical (
     if (Ia32e != NULL) {
       *Ia32e = FALSE;
     }
+
     // ia32 paging
     if ((Cr0 & CR0_PG) != 0) {
       if (Pg != NULL) {
         *Pg = TRUE;
       }
+
       if ((Cr4 & CR4_PAE) != 0) {
         if (Pae != NULL) {
           *Pae = TRUE;
         }
+
         // PAE
         Index3 = ((UINT32)GuestLinearAddress >> 30) & 0x3;
         Index2 = ((UINT32)GuestLinearAddress >> 21) & PAGING_PAE_INDEX_MASK;
@@ -187,32 +198,38 @@ TranslateGuestLinearToPhysical (
           if (Sp != NULL) {
             *Sp = TRUE;
           }
-          // 2M 
-          Offset = (UINTN)GuestLinearAddress & PAGING_2M_MASK;
+
+          // 2M
+          Offset          = (UINTN)GuestLinearAddress & PAGING_2M_MASK;
           PhysicalAddress = (UINTN)(L2PageTable[Index2] & Paging2mAddressMask64);
           if (Entry != NULL) {
             *Entry = &L2PageTable[Index2];
           }
+
           return PhysicalAddress + Offset;
         } else {
           if (Sp != NULL) {
             *Sp = FALSE;
           }
+
           // 4k
           L1PageTable = (UINT64 *)(UINTN)(L2PageTable[Index2] & Paging4kAddressMask64);
           if ((L1PageTable[Index1] & IA32_PG_P) == 0) {
             return 0;
           }
+
           PhysicalAddress = (UINTN)(L1PageTable[Index1] & Paging4kAddressMask64);
           if (Entry != NULL) {
             *Entry = &L1PageTable[Index1];
           }
+
           return PhysicalAddress + Offset;
         }
       } else {
         if (Pae != NULL) {
           *Pae = FALSE;
         }
+
         // Non-PAE
 
         if ((Cr4 & CR4_PSE) != 0) {
@@ -241,30 +258,36 @@ TranslateGuestLinearToPhysical (
           if (Sp != NULL) {
             *Sp = TRUE;
           }
+
           // 4M
-          Offset = (UINT32)GuestLinearAddress & PAGING_4M_MASK;
+          Offset          = (UINT32)GuestLinearAddress & PAGING_4M_MASK;
           PhysicalAddress = (UINTN)L2PageTable32[Index2] & PAGING_4M_ADDRESS_MASK_32;
           if (Entry != NULL) {
             *Entry = (UINT64 *)&L2PageTable32[Index2];
           }
+
           if ((Cr4 & CR4_PSE) != 0) {
             // 4M PSE
             PhysicalAddress += RShiftU64 ((L2PageTable32[Index2] >> 13) & 0xFF, 32);
           }
+
           return PhysicalAddress + Offset;
         } else {
           if (Sp != NULL) {
             *Sp = FALSE;
           }
+
           // 4k
           L1PageTable32 = (UINT32 *)(UINTN)(L2PageTable32[Index2] & PAGING_4K_ADDRESS_MASK_32);
           if ((L1PageTable32[Index1] & IA32_PG_P) == 0) {
             return 0;
           }
+
           PhysicalAddress = (UINTN)L1PageTable32[Index1] & PAGING_4K_ADDRESS_MASK_32;
           if (Entry != NULL) {
             *Entry = (UINT64 *)&L1PageTable32[Index1];
           }
+
           return PhysicalAddress + Offset;
         }
       } // end of Non-PAE
@@ -291,8 +314,8 @@ TranslateGuestLinearToPhysical (
 **/
 UINT64
 GuestLinearToGuestPhysical (
-  IN UINT32   CpuIndex,
-  IN UINTN    GuestLinearAddress
+  IN UINT32  CpuIndex,
+  IN UINTN   GuestLinearAddress
   )
 {
   return TranslateGuestLinearToPhysical (
@@ -324,17 +347,17 @@ GuestLinearToGuestPhysical (
 **/
 UINT64
 LookupSmiGuestVirtualToGuestPhysical (
-  IN UINTN   SmiGuestCr3,
-  IN BOOLEAN SmiGuestCr4Pae,
-  IN BOOLEAN SmiGuestCr4Pse,
-  IN BOOLEAN SmiGuestIa32e,
-  IN UINTN   GuestVirtualAddress
+  IN UINTN    SmiGuestCr3,
+  IN BOOLEAN  SmiGuestCr4Pae,
+  IN BOOLEAN  SmiGuestCr4Pse,
+  IN BOOLEAN  SmiGuestIa32e,
+  IN UINTN    GuestVirtualAddress
   )
 {
-  UINTN                 GuestLinearAddress;
-  UINTN                 Cr0;
-  UINTN                 Cr4;
-  UINT64                Efer;
+  UINTN   GuestLinearAddress;
+  UINTN   Cr0;
+  UINTN   Cr4;
+  UINT64  Efer;
 
   GuestLinearAddress = GuestVirtualAddress;
 
@@ -343,9 +366,11 @@ LookupSmiGuestVirtualToGuestPhysical (
   if (SmiGuestCr4Pae) {
     Cr4 |= CR4_PAE;
   }
+
   if (SmiGuestCr4Pse) {
     Cr4 |= CR4_PSE;
   }
+
   Efer = 0;
   if (SmiGuestIa32e) {
     Efer |= IA32_EFER_MSR_MLA;
@@ -378,10 +403,10 @@ LookupSmiGuestVirtualToGuestPhysical (
 **/
 VOID
 MapLinearAddressOneEntry (
-  IN UINT32   CpuIndex,
-  IN UINT64   PhysicalAddress,
-  IN UINTN    LinearAddress,
-  IN UINTN    SuperPageSize
+  IN UINT32  CpuIndex,
+  IN UINT64  PhysicalAddress,
+  IN UINTN   LinearAddress,
+  IN UINTN   SuperPageSize
   )
 {
   UINT64   CurrentPhysicalAddress;
@@ -397,12 +422,12 @@ MapLinearAddressOneEntry (
   UINT32   *L1PageTable32;
   UINTN    Index1;
 
-  Ia32e = FALSE;
-  Pg    = FALSE;
-  Pae   = FALSE;
-  Pse   = FALSE;
-  Sp    = FALSE;
-  Entry = NULL;
+  Ia32e                  = FALSE;
+  Pg                     = FALSE;
+  Pae                    = FALSE;
+  Pse                    = FALSE;
+  Sp                     = FALSE;
+  Entry                  = NULL;
   CurrentPhysicalAddress = TranslateGuestLinearToPhysical (
                              VmReadN (VMCS_N_GUEST_CR3_INDEX),
                              mGuestContextCommonSmm.GuestContextPerCpu[CpuIndex].Cr0,
@@ -420,21 +445,23 @@ MapLinearAddressOneEntry (
     DEBUG ((EFI_D_ERROR, "!!!MapVirtualAddressToPhysicalAddress not found!!!\n"));
     // TBD - add CreateIfNotExist
     CpuDeadLoop ();
-    return ;
+    return;
   }
+
   Entry32 = (UINT32 *)Entry;
 
   if (!Pg) {
-    return ;
+    return;
   }
 
-  if (((SuperPageSize != SIZE_4KB) && Sp) || (SuperPageSize == SIZE_4KB && (!Sp))) {
+  if (((SuperPageSize != SIZE_4KB) && Sp) || ((SuperPageSize == SIZE_4KB) && (!Sp))) {
     if (Pae) {
       *Entry = PhysicalAddress | (*Entry & 0xFFF);
     } else {
       *Entry32 = (UINT32)PhysicalAddress | (*Entry32 & 0xFFF);
     }
-    return ;
+
+    return;
   }
 
   if ((SuperPageSize != SIZE_4KB) && (!Sp)) {
@@ -444,32 +471,36 @@ MapLinearAddressOneEntry (
     }
   } else {
     // Need split - worst case need split
-    L1PageTable = (UINT64 *)AllocatePages (1);
+    L1PageTable   = (UINT64 *)AllocatePages (1);
     L1PageTable32 = (UINT32 *)L1PageTable;
     if (Pae) {
       BaseAddress = (UINTN)((*Entry) & PAGING_2M_ADDRESS_MASK_64_X64);
-      for (Index1 = 0; Index1 < SIZE_4KB/sizeof(*L1PageTable); Index1 ++) {
+      for (Index1 = 0; Index1 < SIZE_4KB/sizeof (*L1PageTable); Index1++) {
         L1PageTable[Index1] = BaseAddress | (*Entry & 0xFFF & ~IA32_PG_PAT_4K) | RShiftU64 (*Entry & IA32_PG_PAT_2M, 5);
         if (BaseAddress == LinearAddress) {
           L1PageTable[Index1] = PhysicalAddress | (*Entry & 0xFFF) | IA32_PG_P;
         }
+
         BaseAddress += SIZE_4KB;
       }
+
       *Entry = (UINT64)(UINTN)L1PageTable | (*Entry & 0xFFF & ~IA32_PG_PAT_4K) | RShiftU64 (*Entry & IA32_PG_PAT_2M, 5);
     } else {
       BaseAddress = *Entry32 & PAGING_4M_ADDRESS_MASK_32;
-      for (Index1 = 0; Index1 < SIZE_4KB/sizeof(*L1PageTable32); Index1 ++) {
+      for (Index1 = 0; Index1 < SIZE_4KB/sizeof (*L1PageTable32); Index1++) {
         L1PageTable32[Index1] = (UINT32)BaseAddress | (*Entry32 & 0xFFF & ~IA32_PG_PAT_4K) | ((*Entry32 & IA32_PG_PAT_2M) >> 5);
         if (BaseAddress == LinearAddress) {
           L1PageTable32[Index1] = (UINT32)PhysicalAddress | (*Entry32 & 0xFFF) | IA32_PG_P;
         }
+
         BaseAddress += SIZE_4KB;
       }
+
       *Entry32 = (UINT32)(UINTN)L1PageTable32 | (*Entry32 & 0xFFF & ~IA32_PG_PAT_4K) | ((*Entry32 & IA32_PG_PAT_2M) >> 5);
     }
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -484,17 +515,17 @@ MapLinearAddressOneEntry (
 **/
 VOID
 MapVirtualAddressToPhysicalAddress (
-  IN UINT32   CpuIndex,
-  IN UINT64   PhysicalAddress,
-  IN UINTN    VirtualAddress,
-  IN UINTN    PageCount
+  IN UINT32  CpuIndex,
+  IN UINT64  PhysicalAddress,
+  IN UINTN   VirtualAddress,
+  IN UINTN   PageCount
   )
 {
-  UINTN    LinearAddress;
-  UINTN    SuperPageSize;
-  UINTN    Address;
-  UINTN    Base;
-  UINTN    Length;
+  UINTN  LinearAddress;
+  UINTN  SuperPageSize;
+  UINTN  Address;
+  UINTN  Base;
+  UINTN  Length;
 
   if ((mGuestContextCommonSmm.GuestContextPerCpu[CpuIndex].Cr4 & CR4_PAE) == 0) {
     SuperPageSize = SIZE_4MB;
@@ -505,24 +536,25 @@ MapVirtualAddressToPhysicalAddress (
   // BUGBUG: Do not know the segmentation information
   LinearAddress = VirtualAddress;
 
-  Base = LinearAddress & ~(SIZE_4KB - 1);
-  Length = STM_PAGES_TO_SIZE(PageCount);
+  Base   = LinearAddress & ~(SIZE_4KB - 1);
+  Length = STM_PAGES_TO_SIZE (PageCount);
 
   for (Address = Base; Address < Base + Length; ) {
     if (((Address & (SuperPageSize - 1)) == 0) &&
         ((PhysicalAddress & (SuperPageSize - 1)) == 0) &&
-        ((Base <= Address + SuperPageSize) && (Address + SuperPageSize < Base + Length))) {
+        ((Base <= Address + SuperPageSize) && (Address + SuperPageSize < Base + Length)))
+    {
       MapLinearAddressOneEntry (CpuIndex, PhysicalAddress, Address, SuperPageSize);
-      Address += SuperPageSize;
+      Address         += SuperPageSize;
       PhysicalAddress += SuperPageSize;
     } else {
       MapLinearAddressOneEntry (CpuIndex, PhysicalAddress, Address, SIZE_4KB);
-      Address += SIZE_4KB;
+      Address         += SIZE_4KB;
       PhysicalAddress += SIZE_4KB;
     }
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -536,9 +568,9 @@ MapVirtualAddressToPhysicalAddress (
 **/
 VOID
 UnmapLinearAddressOneEntry (
-  IN UINT32   CpuIndex,
-  IN UINTN    LinearAddress,
-  IN UINTN    SuperPageSize
+  IN UINT32  CpuIndex,
+  IN UINTN   LinearAddress,
+  IN UINTN   SuperPageSize
   )
 {
   UINT64   CurrentPhysicalAddress;
@@ -556,9 +588,9 @@ UnmapLinearAddressOneEntry (
 
   ASSERT ((SuperPageSize == SIZE_4KB) || (SuperPageSize == SIZE_4MB) || (SuperPageSize == SIZE_2MB));
 
-  Pae   = FALSE;
-  Sp    = FALSE;
-  Entry = NULL;
+  Pae                    = FALSE;
+  Sp                     = FALSE;
+  Entry                  = NULL;
   CurrentPhysicalAddress = TranslateGuestLinearToPhysical (
                              VmReadN (VMCS_N_GUEST_CR3_INDEX),
                              mGuestContextCommonSmm.GuestContextPerCpu[CpuIndex].Cr0,
@@ -574,17 +606,19 @@ UnmapLinearAddressOneEntry (
                              );
   if ((CurrentPhysicalAddress == 0) || (Entry == NULL)) {
     // Done
-    return ;
+    return;
   }
+
   Entry32 = (UINT32 *)Entry;
 
-  if (((SuperPageSize != SIZE_4KB) && Sp) || (SuperPageSize == SIZE_4KB && (!Sp))) {
+  if (((SuperPageSize != SIZE_4KB) && Sp) || ((SuperPageSize == SIZE_4KB) && (!Sp))) {
     if (Pae) {
       *Entry = *Entry & (~IA32_PG_P);
     } else {
       *Entry32 = *Entry32 & (~IA32_PG_P);
     }
-    return ;
+
+    return;
   }
 
   if ((SuperPageSize != SIZE_4KB) && (!Sp)) {
@@ -594,32 +628,36 @@ UnmapLinearAddressOneEntry (
     }
   } else {
     // Need split - worst case need split
-    L1PageTable = (UINT64 *)AllocatePages (1);
+    L1PageTable   = (UINT64 *)AllocatePages (1);
     L1PageTable32 = (UINT32 *)L1PageTable;
     if (Pae) {
       BaseAddress = (UINTN)((*Entry) & PAGING_2M_ADDRESS_MASK_64_X64);
-      for (Index1 = 0; Index1 < SIZE_4KB/sizeof(*L1PageTable); Index1 ++) {
+      for (Index1 = 0; Index1 < SIZE_4KB/sizeof (*L1PageTable); Index1++) {
         L1PageTable[Index1] = BaseAddress | (*Entry & 0xFFF & ~IA32_PG_PAT_4K) | RShiftU64 (*Entry & IA32_PG_PAT_2M, 5);
         if (BaseAddress == LinearAddress) {
           L1PageTable[Index1] &= ~IA32_PG_P;
         }
+
         BaseAddress += SIZE_4KB;
       }
+
       *Entry = (UINT64)(UINTN)L1PageTable | (*Entry & 0xFFF & ~IA32_PG_PAT_4K) | RShiftU64 (*Entry & IA32_PG_PAT_2M, 5);
     } else {
       BaseAddress = *Entry32 & PAGING_4M_ADDRESS_MASK_32;
-      for (Index1 = 0; Index1 < SIZE_4KB/sizeof(*L1PageTable32); Index1 ++) {
+      for (Index1 = 0; Index1 < SIZE_4KB/sizeof (*L1PageTable32); Index1++) {
         L1PageTable32[Index1] = (UINT32)BaseAddress | (*Entry32 & 0xFFF & ~IA32_PG_PAT_4K) | ((*Entry32 & IA32_PG_PAT_2M) >> 5);
         if (BaseAddress == LinearAddress) {
           L1PageTable32[Index1] &= ~IA32_PG_P;
         }
+
         BaseAddress += SIZE_4KB;
       }
+
       *Entry32 = (UINT32)(UINTN)L1PageTable32 | (*Entry32 & 0xFFF & ~IA32_PG_PAT_4K) | ((*Entry32 & IA32_PG_PAT_2M) >> 5);
     }
   }
 
-  return ;
+  return;
 }
 
 /**
@@ -633,16 +671,16 @@ UnmapLinearAddressOneEntry (
 **/
 VOID
 UnmapVirtualAddressToPhysicalAddress (
-  IN UINT32   CpuIndex,
-  IN UINTN    VirtualAddress,
-  IN UINTN    PageCount
+  IN UINT32  CpuIndex,
+  IN UINTN   VirtualAddress,
+  IN UINTN   PageCount
   )
 {
-  UINTN    LinearAddress;
-  UINTN    SuperPageSize;
-  UINTN    Address;
-  UINTN    Base;
-  UINTN    Length;
+  UINTN  LinearAddress;
+  UINTN  SuperPageSize;
+  UINTN  Address;
+  UINTN  Base;
+  UINTN  Length;
 
   if ((mGuestContextCommonSmm.GuestContextPerCpu[CpuIndex].Cr4 & CR4_PAE) == 0) {
     SuperPageSize = SIZE_4MB;
@@ -653,12 +691,13 @@ UnmapVirtualAddressToPhysicalAddress (
   // BUGBUG: Do not know the segmentation information
   LinearAddress = VirtualAddress;
 
-  Base = LinearAddress & ~(SIZE_4KB - 1);
-  Length = STM_PAGES_TO_SIZE(PageCount);
+  Base   = LinearAddress & ~(SIZE_4KB - 1);
+  Length = STM_PAGES_TO_SIZE (PageCount);
 
   for (Address = Base; Address < Base + Length; ) {
     if (((Address & (SuperPageSize - 1)) == 0) &&
-        ((Base <= Address + SuperPageSize) && (Address + SuperPageSize < Base + Length))) {
+        ((Base <= Address + SuperPageSize) && (Address + SuperPageSize < Base + Length)))
+    {
       UnmapLinearAddressOneEntry (CpuIndex, Address, SuperPageSize);
       Address += SuperPageSize;
     } else {
@@ -667,5 +706,5 @@ UnmapVirtualAddressToPhysicalAddress (
     }
   }
 
-  return ;
+  return;
 }

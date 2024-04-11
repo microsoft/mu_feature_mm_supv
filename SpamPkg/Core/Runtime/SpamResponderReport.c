@@ -11,17 +11,17 @@
 #include <PiMm.h>
 #include <IndustryStandard/Tpm20.h>
 #include <Register/Msr.h>
-#include <Register/CpuId.h>
+#include <Register/Cpuid.h>
 #include <Register/SmramSaveStateMap.h>
 #include <SpamResponder.h>
 #include <SmmSecurePolicy.h>
+#include <x64/Smx.h>
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PcdLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/PeCoffLibNegative.h>
-#include <Library/Smx.h>
 #include <Library/SafeIntLib.h>
 #include <Library/TpmMeasurementLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -29,21 +29,21 @@
 #include <Library/HashLib.h>
 
 // TODO: What is this PCR?
-#define SPAM_PCR_INDEX 0
+#define SPAM_PCR_INDEX  0
 
 EFI_STATUS
 EFIAPI
 TwoRangesOverlap (
-  IN UINT64  Start1,
-  IN UINT64  Size1,
-  IN UINT64  Start2,
-  IN UINT64  Size2,
-  OUT BOOLEAN *Overlap
+  IN UINT64    Start1,
+  IN UINT64    Size1,
+  IN UINT64    Start2,
+  IN UINT64    Size2,
+  OUT BOOLEAN  *Overlap
   )
 {
-  UINT64 End1;
-  UINT64 End2;
-  EFI_STATUS Status;
+  UINT64      End1;
+  UINT64      End2;
+  EFI_STATUS  Status;
 
   if (Overlap == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -81,16 +81,16 @@ Done:
 EFI_STATUS
 EFIAPI
 Range1InsideRange2 (
-  IN UINT64  Start1,
-  IN UINT64  Size1,
-  IN UINT64  Start2,
-  IN UINT64  Size2,
-  OUT BOOLEAN *IsInside
+  IN UINT64    Start1,
+  IN UINT64    Size1,
+  IN UINT64    Start2,
+  IN UINT64    Size2,
+  OUT BOOLEAN  *IsInside
   )
 {
-  EFI_STATUS Status;
-  UINT64 End1;
-  UINT64 End2;
+  EFI_STATUS  Status;
+  UINT64      End1;
+  UINT64      End2;
 
   if (IsInside == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -98,7 +98,7 @@ Range1InsideRange2 (
 
   if (Size1 > Size2) {
     *IsInside = FALSE;
-    Status = EFI_SUCCESS;
+    Status    = EFI_SUCCESS;
   }
 
   Status = SafeUint64Add (Start1, Size1, &End1);
@@ -456,7 +456,7 @@ Finish:
 }
 
 // TODO: Place them in a common place?
-UINT8 DrtmSmmPolicyData[0x1000];
+UINT8  DrtmSmmPolicyData[0x1000];
 
 EFI_STATUS
 EFIAPI
@@ -476,18 +476,18 @@ DumpSmmPolicyData (
   );
 
 // TODO: Consume newly created key symbols
-extern UINT64 MmSupvEfiFileBase;
-extern UINT64 MmSupvEfiFileSize;
+extern UINT64  MmSupvEfiFileBase;
+extern UINT64  MmSupvEfiFileSize;
 
 EFI_STATUS
 EFIAPI
 VerifyAndMeasureImage (
-  IN UINTN    ImageBase,
-  IN UINT64   ImageSize,
-  IN UINT64   AuxFileBase,
-  IN UINT64   AuxFileLength,
-  IN UINT64   MmBase,
-  IN UINT64   MmLength
+  IN UINTN   ImageBase,
+  IN UINT64  ImageSize,
+  IN UINT64  AuxFileBase,
+  IN UINT64  AuxFileLength,
+  IN UINT64  MmBase,
+  IN UINT64  MmLength
   )
 {
   EFI_STATUS          Status;
@@ -506,40 +506,42 @@ VerifyAndMeasureImage (
 
   // Then need to copy the image over to MSEG
   InternalCopy = AllocatePages (
-    EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1)
-    );
+                   EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1)
+                   );
 
   //
   // Get information about the image being loaded
   //
-  PE_COFF_LOADER_IMAGE_CONTEXT ImageContext;
+  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
 
   ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
-  VOID *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (ImageSize));
-  CopyMem (Buffer, (VOID*)ImageBase, ImageSize);
+  VOID  *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (ImageSize));
+
+  CopyMem (Buffer, (VOID *)ImageBase, ImageSize);
 
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
-  ImageContext.Handle    = (VOID*)Buffer;
+  ImageContext.Handle    = (VOID *)Buffer;
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
-  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID*)Buffer;
-  Status = PeCoffLoaderRevertRelocateImage (&ImageContext);
+  ImageContext.DestinationAddress = (EFI_PHYSICAL_ADDRESS)(VOID *)Buffer;
+  Status                          = PeCoffLoaderRevertRelocateImage (&ImageContext);
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
-  Status = PeCoffImageDiffValidation ((VOID*)ImageBase, Buffer, ImageSize, (VOID*)AuxFileBase, AuxFileLength);
+  Status = PeCoffImageDiffValidation ((VOID *)ImageBase, Buffer, ImageSize, (VOID *)AuxFileBase, AuxFileLength);
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
   // Now prepare a new buffer to revert loading operations.
-  UINTN NewBufferSize = ImageSize;
-  VOID *NewBuffer = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
+  UINTN  NewBufferSize = ImageSize;
+  VOID   *NewBuffer    = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
+
   ZeroMem (NewBuffer, NewBufferSize);
 
   DEBUG ((DEBUG_INFO, "%p %p %p\n", ImageBase, Buffer, NewBuffer));
@@ -553,14 +555,14 @@ VerifyAndMeasureImage (
 
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
   ASSERT (MmSupvEfiFileSize == NewBufferSize);
-  ASSERT (CompareMem (NewBuffer, (VOID*)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
+  ASSERT (CompareMem (NewBuffer, (VOID *)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
 
   Status = MeasurePeImageAndExtend (
-              SPAM_PCR_INDEX,
-              (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
-              (UINTN)NewBufferSize,
-              DigestList
-              );
+             SPAM_PCR_INDEX,
+             (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
+             (UINTN)NewBufferSize,
+             DigestList
+             );
   if (!EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a Measured image at %p of size %x successfully.\n", __func__, NewBuffer, NewBufferSize));
   } else {
@@ -571,13 +573,14 @@ Exit:
   if (InternalCopy != NULL) {
     FreePages (InternalCopy, EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1));
   }
+
   return Status;
 }
 
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN SPAM_RESPONDER_DATA *SpamResponderData
+  IN SPAM_RESPONDER_DATA  *SpamResponderData
   )
 {
   EFI_STATUS                      Status;
@@ -589,8 +592,6 @@ SpamResponderReport (
   UINT64                          Length;
   UINT64                          MtrrValidBitsMask;
   UINT64                          MtrrValidAddressMask;
-  UINT16                          *FixStructPtr;
-  UINT8                           *Fixup8Ptr;
   UINT32                          *Fixup32Ptr;
   UINT64                          *Fixup64Ptr;
   BOOLEAN                         IsInside;
@@ -602,9 +603,9 @@ SpamResponderReport (
   UINT64                          SupvPageTableBase;
   TPML_DIGEST_VALUES              DigestList[HASH_COUNT];
 
-  KEY_SYMBOL                      *FirmwarePolicySymbol = NULL;
-  KEY_SYMBOL                      *PageTableSymbol = NULL;
-  KEY_SYMBOL                      *MmiRendezvousSymbol = NULL;
+  KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
+  KEY_SYMBOL  *PageTableSymbol      = NULL;
+  KEY_SYMBOL  *MmiRendezvousSymbol  = NULL;
 
   // TODO: Step 0: Disable MMI
 
@@ -624,7 +625,8 @@ SpamResponderReport (
     Status = EFI_UNSUPPORTED;
     goto Exit;
   } else if ((SpamResponderData->VersionMajor == SPAM_REPSONDER_STRUCT_MAJOR_VER) &&
-            (SpamResponderData->VersionMinor > SPAM_REPSONDER_STRUCT_MINOR_VER)) {
+             (SpamResponderData->VersionMinor > SPAM_REPSONDER_STRUCT_MINOR_VER))
+  {
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
@@ -643,11 +645,11 @@ SpamResponderReport (
   MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
 
   MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
-  MmrrMask = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
+  MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
   // Extend the mask to account for the reserved bits.
   MmrrMask |= 0xffffffff00000000ULL;
-  Length = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
-  MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
+  Length    = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
+  MmBase    = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -659,7 +661,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  if ((IMAGE_VALIDATION_DATA_HEADER*)(VOID*)SpamResponderData->MmSupervisorAuxBase == 0) {
+  if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)SpamResponderData->MmSupervisorAuxBase == 0) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -670,18 +672,18 @@ SpamResponderReport (
     goto Exit;
   }
 
-  if (((IMAGE_VALIDATION_DATA_HEADER*)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+  if (((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   ZeroMem (DigestList, sizeof (DigestList));
   Status = HashAndExtend (
-          SPAM_PCR_INDEX,
-          (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
-          (UINTN)SpamResponderData->MmSupervisorAuxSize,
-          DigestList
-          );
+             SPAM_PCR_INDEX,
+             (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
+             (UINTN)SpamResponderData->MmSupervisorAuxSize,
+             DigestList
+             );
   if (EFI_ERROR (Status)) {
     goto Exit;
   } else {
@@ -692,7 +694,7 @@ SpamResponderReport (
       }
 
       if (DigestList[Index].digests[0].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID*)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
+        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
           DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
@@ -702,13 +704,15 @@ SpamResponderReport (
         }
       }
     }
+
     if (EFI_ERROR (Status)) {
       goto Exit;
     }
   }
 
-  KEY_SYMBOL *KeySymbols = (KEY_SYMBOL*)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER*)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
-  for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER*)SpamResponderData->MmSupervisorAuxBase)->KeySymbolCount; Index++) {
+  KEY_SYMBOL  *KeySymbols = (KEY_SYMBOL *)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
+
+  for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->KeySymbolCount; Index++) {
     switch (KeySymbols[Index].Signature) {
       case KEY_SYMBOL_FW_POLICY_SIGNATURE:
         FirmwarePolicySymbol = &KeySymbols[Index];
@@ -732,11 +736,11 @@ SpamResponderReport (
   // TCG_PCR_EVENT_HDR   NewEventHdr;
 
   Status = HashAndExtend (
-            SPAM_PCR_INDEX,
-            (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
-            (UINTN)SpamResponderData->MmEntrySize,
-            DigestList
-            );
+             SPAM_PCR_INDEX,
+             (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
+             (UINTN)SpamResponderData->MmEntrySize,
+             DigestList
+             );
   if (!EFI_ERROR (Status)) {
     // TODO: Do we want to message with the event log?
     // ZeroMem (&NewEventHdr, sizeof (NewEventHdr));
@@ -751,26 +755,26 @@ SpamResponderReport (
 
   // Step 3: Check MM Core code base and size to be inside the MMRAM region
   // Step 3.1: Check entry fix up data region to be pointing inside the MMRAM region
-  MmiEntryStructHdrSize = *(UINT32*)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
-  MmiEntryStructHdr = (PER_CORE_MMI_ENTRY_STRUCT_HDR*)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize));
+  MmiEntryStructHdrSize = *(UINT32 *)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
+  MmiEntryStructHdr     = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize));
 
   if ((MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION) ||
-      (MmiEntryStructHdrSize >= SpamResponderData->MmEntrySize)) {
+      (MmiEntryStructHdrSize >= SpamResponderData->MmEntrySize))
+  {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  FixStructPtr = (UINT16 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUpStructOffset);
   Fixup32Ptr = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
   Fixup64Ptr = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
-  Fixup8Ptr = (UINT8 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp8Offset);
 
   // Step 3.1.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
   // Reverse engineer MM core region with MM rendezvous
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
 
   if ((MmRamBase > MmSupervisorBase) ||
-      (MmRamBase + Length < MmSupervisorBase + SpamResponderData->MmSupervisorSize)) {
+      (MmRamBase + Length < MmSupervisorBase + SpamResponderData->MmSupervisorSize))
+  {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -783,15 +787,15 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmRamBase, Length, &IsInside);
+  Status = Range1InsideRange2 (((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR*)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
+    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // CR3 should be pointing to the page table from symbol list in the aux file
-  SupvPageTableBase = *(UINT64*)(MmSupervisorBase + PageTableSymbol->Offset);
+  SupvPageTableBase = *(UINT64 *)(MmSupervisorBase + PageTableSymbol->Offset);
   if (Fixup32Ptr[FIXUP32_CR3_OFFSET] != SupvPageTableBase) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -839,8 +843,8 @@ SpamResponderReport (
   }
 
   // Then also verify that the firmware policy is inside the MMRAM
-  FirmwarePolicyBase = *(UINT64*)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
-  Status = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmRamBase, Length, &IsInside);
+  FirmwarePolicyBase = *(UINT64 *)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
+  Status             = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmRamBase, Length, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -859,7 +863,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)FirmwarePolicyBase;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
 
   // Step 4: Report MM Secure Policy code
   ZeroMem (DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
@@ -868,20 +872,20 @@ SpamResponderReport (
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
     goto Exit;
   }
 
-  Status = SecurityPolicyCheck ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData);
+  Status = SecurityPolicyCheck ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __FUNCTION__, Status));
     goto Exit;
   }
 
   DEBUG_CODE_BEGIN ();
-  DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)(UINTN)DrtmSmmPolicyData);
+  DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   DEBUG_CODE_END ();
   // TODO: How to do this? I would like to keep the structure the same though...
 

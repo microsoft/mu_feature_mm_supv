@@ -16,9 +16,10 @@
   Microsoft Visual Studio 7.1 Function Prototypes for I/O Intrinsics.
 **/
 
-long _InterlockedIncrement(
-   long * lpAddend
-);
+long
+_InterlockedIncrement (
+  long  *lpAddend
+  );
 
 #pragma intrinsic(_InterlockedIncrement)
 
@@ -38,9 +39,8 @@ long _InterlockedIncrement(
 UINT32
 EFIAPI
 InternalSyncIncrement (
-  IN      UINT32                    *Value
+  IN      UINT32  *Value
   )
 {
   return _InterlockedIncrement (Value);
 }
-

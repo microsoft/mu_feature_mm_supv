@@ -23,10 +23,10 @@
 **/
 VOID
 SmmCpuidHandler (
-  IN UINT32 Index
+  IN UINT32  Index
   )
 {
-  X86_REGISTER      *Reg;
+  X86_REGISTER  *Reg;
 
   Reg = &mGuestContextCommonSmm.GuestContextPerCpu[Index].Register;
 
@@ -38,6 +38,6 @@ SmmCpuidHandler (
     (UINT32 *)&Reg->Rcx,
     (UINT32 *)&Reg->Rdx
     );
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN(VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-  return ;
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  return;
 }
