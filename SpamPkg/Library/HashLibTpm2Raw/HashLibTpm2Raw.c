@@ -94,7 +94,7 @@ HashStart (
   TPM_ALG_ID      AlgoIds[HASH_COUNT];
   HASH_HANDLE     *HashCtx;
 
-  HashCtx = AllocatePool (sizeof (*HashCtx) * HASH_COUNT);
+  HashCtx = AllocatePages (EFI_SIZE_TO_PAGES (sizeof (*HashCtx) * HASH_COUNT));
   ASSERT (HashCtx != NULL);
 
   Status = Tpm2GetAlgoFromHashMask (AlgoIds, &AlgoIdCount);
@@ -264,6 +264,8 @@ HashCompleteAndExtend (
       return EFI_DEVICE_ERROR;
     }
   }
+
+  FreePages (HashCtx, EFI_SIZE_TO_PAGES (sizeof (*HashCtx) * HASH_COUNT));
 
   return EFI_SUCCESS;
 }

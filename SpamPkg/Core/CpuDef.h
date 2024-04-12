@@ -98,6 +98,8 @@
 #define IA32_PG_G       (1u << 8)
 #define IA32_PG_PAT_2M  (1u << 12)
 #define IA32_PG_PAT_4K  IA32_PG_PS
+#define IA32_PG_PMNT    BIT62
+#define IA32_PG_NX      BIT63
 
 #define RFLAGS_CF    1u
 #define RFLAGS_ZF    (1u << 6)

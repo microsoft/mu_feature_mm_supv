@@ -46,16 +46,16 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
             aux_hash = calculate_aux_hash(aux_path)
 
-            mm_efi = mm_supervisor_build_dir / "MmSupervisorCore.efi"
+            stm_dll = stm_build_dir / "Stm.dll"
             pcd = "PcdAuxBinHash"
-            pcd_addr = get_patch_pcd_address(mm_supervisor_build_dir / "MmSupervisorCore.map", mm_efi, pcd)
+            pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, pcd)
 
             if pcd_addr is None:
-                logging.error(f"PCD {pcd} not found in MmSupervisorCore Map file.")
+                logging.error(f"PCD {pcd} not found in Stm Map file.")
                 return -1
             
-            patch_pcd_value(mm_efi, pcd_addr, aux_hash)
-            generate_stm_binary(stm_build_dir / "Stm.dll", output_dir)
+            patch_pcd_value(stm_dll, pcd_addr, aux_hash)
+            generate_stm_binary(stm_dll, output_dir)
 
             misc_dir = output_dir / "Misc"
             misc_dir.mkdir(exist_ok=True)
