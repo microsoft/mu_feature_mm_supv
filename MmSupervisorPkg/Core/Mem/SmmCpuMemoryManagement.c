@@ -1402,14 +1402,17 @@ SetMemMapAttributes (
       SupervisorMarker = 0;
     }
 
-    if (MemoryMap->Type == EfiRuntimeServicesCode) {
-      MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
-    } else {
-      ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
-      //
-      // Set other type memory as NX.
-      //
-      MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+    MemoryAttribute = MemoryMap->Attribute & (EFI_MEMORY_ACCESS_MASK | EFI_MEMORY_SP);
+    if (MemoryAttribute == 0) {
+      if (MemoryMap->Type == EfiRuntimeServicesCode) {
+        MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
+      } else {
+        ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
+        //
+        // Set other type memory as NX.
+        //
+        MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+      }
     }
 
     //
