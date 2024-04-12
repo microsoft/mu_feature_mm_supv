@@ -684,12 +684,10 @@ PeCoffLoaderImageNegativeReadFromMemory (
   return RETURN_SUCCESS;
 }
 
-// TODO: When moving this over to Spam core, we need to make sure that the
-//       following function is implemented in the Spam core and the page
-//       table is fixed up to point to the one used in MM environment.
 EFI_STATUS
 EFIAPI
-SmmGetMemoryAttributes (
+GetMemoryAttributes (
+  IN  EFI_PHYSICAL_ADDRESS  PageTableBase,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   OUT UINT64                *Attributes
@@ -709,6 +707,7 @@ SmmGetMemoryAttributes (
 **/
 EFI_STATUS
 InspectTargetRangeAttribute (
+  IN  EFI_PHYSICAL_ADDRESS  PageTableBase,
   IN  EFI_PHYSICAL_ADDRESS  Address,
   IN  UINTN                 Size,
   OUT UINT64                *MemAttribute
@@ -740,7 +739,7 @@ InspectTargetRangeAttribute (
   Size &= ~(EFI_PAGE_SIZE - 1);
 
   // Go through page table and grab the entry attribute
-  Status = SmmGetMemoryAttributes (AlignedAddress, Size, &Attributes);
+  Status = GetMemoryAttributes (PageTableBase, AlignedAddress, Size, &Attributes);
   if (!EFI_ERROR (Status)) {
     *MemAttribute = Attributes;
     goto Done;
@@ -754,10 +753,13 @@ Done:
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
 
-  @param[in,out]  TargetImage        The pointer to the target image buffer.
-  @param[in]      TargetImageSize    The size of the target image buffer.
-  @param[in]      ReferenceData      The pointer to the reference data buffer to assist .
-  @param[in]      ReferenceDataSize  The size of the reference data buffer.
+  @param[in]      OriginalImageBaseAddress  The pointer to the executed image buffer, the implementation
+                                            should not touch the content of this buffer.
+  @param[in,out]  TargetImage               The pointer to the target image buffer.
+  @param[in]      TargetImageSize           The size of the target image buffer.
+  @param[in]      ReferenceData             The pointer to the reference data buffer to assist .
+  @param[in]      ReferenceDataSize         The size of the reference data buffer.
+  @param[in]      PageTableBase             The base address of the page table.
 
   @return EFI_SUCCESS               The PE/COFF image was reverted.
   @return EFI_INVALID_PARAMETER     The parameter is invalid.
@@ -766,11 +768,12 @@ Done:
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
-  IN      VOID        *OriginalImageBaseAddress,
-  IN OUT  VOID        *TargetImage,
-  IN      UINTN       TargetImageSize,
-  IN      CONST VOID  *ReferenceData,
-  IN      UINTN       ReferenceDataSize
+  IN      VOID                  *OriginalImageBaseAddress,
+  IN OUT  VOID                  *TargetImage,
+  IN      UINTN                 TargetImageSize,
+  IN      CONST VOID            *ReferenceData,
+  IN      UINTN                 ReferenceDataSize,
+  IN      EFI_PHYSICAL_ADDRESS  PageTableBase
   )
 {
   IMAGE_VALIDATION_DATA_HEADER   *ImageValidationHdr;
@@ -880,6 +883,7 @@ PeCoffImageDiffValidation (
         AddrInTarget = 0;
         CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
         Status = InspectTargetRangeAttribute (
+                   PageTableBase,
                    AddrInTarget,
                    ImageValidationEntryMemAttr->TargetMemorySize,
                    &MemAttr

@@ -202,6 +202,7 @@ PeCoffLoaderImageNegativeReadFromMemory (
   @param[in]      TargetImageSize           The size of the target image buffer.
   @param[in]      ReferenceData             The pointer to the reference data buffer to assist .
   @param[in]      ReferenceDataSize         The size of the reference data buffer.
+  @param[in]      PageTableBase             The base address of the page table.
 
   @return EFI_SUCCESS               The PE/COFF image was reverted.
   @return EFI_INVALID_PARAMETER     The parameter is invalid.
@@ -210,11 +211,12 @@ PeCoffLoaderImageNegativeReadFromMemory (
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
-  IN      VOID        *OriginalImageBaseAddress,
-  IN OUT  VOID        *TargetImage,
-  IN      UINTN       TargetImageSize,
-  IN      CONST VOID  *ReferenceData,
-  IN      UINTN       ReferenceDataSize
+  IN      VOID                  *OriginalImageBaseAddress,
+  IN OUT  VOID                  *TargetImage,
+  IN      UINTN                 TargetImageSize,
+  IN      CONST VOID            *ReferenceData,
+  IN      UINTN                 ReferenceDataSize,
+  IN      EFI_PHYSICAL_ADDRESS  PageTableBase
   );
 
 #endif // BASE_PECOFF_LIB_NEGATIVE_H_

@@ -646,7 +646,7 @@ EPTSetPageAttributeRange (
 **/
 EFI_STATUS
 EFIAPI
-SmmGetMemoryAttributes (
+GetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  PageTableBase,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
