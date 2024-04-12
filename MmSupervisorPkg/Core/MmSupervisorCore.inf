@@ -12,7 +12,7 @@
 
 #Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
 #Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 5cb7de3eb5831c51d030cfc8fc5542dc | 2024-04-12T17-25-59 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | e9d4a69133813bbea71f4035493b26f6 | 2023-12-14T22-58-18 | 78db5a7c3d55d1389373187973bf2936f4bbe5fa
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0f126959ecf2d99db4940bb0d0bba0df | 2024-04-12T17-27-10 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
 
 [Defines]
   INF_VERSION                    = 0x0001001A
@@ -140,6 +140,7 @@
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
+  ImagePropertiesRecordLib
   MmMemoryProtectionHobLib ## MU_CHANGE
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
