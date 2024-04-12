@@ -14,6 +14,7 @@
 
 #include <PiMm.h>
 #include <StandaloneMm.h>
+#include <SmmSecurePolicy.h>
 
 #include <Protocol/DxeMmReadyToLock.h>
 #include <Protocol/MmReadyToLock.h>
@@ -233,22 +234,24 @@ typedef struct {
 //
 // MM Core Global Variables
 //
-extern MM_CORE_PRIVATE_DATA        *gMmCorePrivate;
-extern MM_CORE_PRIVATE_DATA        *gMmCoreMailbox;
-extern EFI_MM_SYSTEM_TABLE         gMmCoreMmst;
-extern EFI_MM_SYSTEM_TABLE         *gMmUserMmst;
-extern LIST_ENTRY                  gHandleList;
-extern EFI_PHYSICAL_ADDRESS        gLoadModuleAtFixAddressMmramBase;
-extern MM_SUPV_USER_COMMON_BUFFER  *SupervisorToUserDataBuffer;
-extern MM_CORE_MMI_HANDLERS        mMmCoreMmiHandlers[];
-extern EFI_MM_DRIVER_ENTRY         *mMmCoreDriverEntry;
-extern BOOLEAN                     mMmReadyToLockDone;
-extern BOOLEAN                     mCoreInitializationComplete;
-extern EFI_MEMORY_DESCRIPTOR       mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
-extern LIST_ENTRY                  mFfsDriverCacheList;
-extern VOID                        *mMmHobStart;
-extern UINTN                       mMmHobSize;
-extern VOID                        *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
+extern MM_CORE_PRIVATE_DATA              *gMmCorePrivate;
+extern MM_CORE_PRIVATE_DATA              *gMmCoreMailbox;
+extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
+extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
+extern LIST_ENTRY                        gHandleList;
+extern EFI_PHYSICAL_ADDRESS              gLoadModuleAtFixAddressMmramBase;
+extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
+extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
+extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+extern BOOLEAN                           mMmReadyToLockDone;
+extern BOOLEAN                           mCoreInitializationComplete;
+extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
+extern LIST_ENTRY                        mFfsDriverCacheList;
+extern VOID                              *mMmHobStart;
+extern UINTN                             mMmHobSize;
+extern VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
 
 /**
   Called to initialize the memory service.

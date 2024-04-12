@@ -13,13 +13,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <SmmSecurePolicy.h>
 
-extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
-extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
+#define MEM_POLICY_SNAPSHOT_SIZE  0x400   // 1K should be more than enough to describe allowed non-MMRAM regions
 
 /**
   Dump a single memory policy data.
 **/
 VOID
+EFIAPI
 DumpMemPolicyEntry (
   SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemoryPolicy
   );
@@ -49,6 +49,7 @@ PopulateMemoryPolicyEntries (
 
 **/
 BOOLEAN
+EFIAPI
 CompareMemoryPolicy (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData1,
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData2
@@ -62,8 +63,9 @@ CompareMemoryPolicy (
   @retval Errors                    Other error during populating memory errors.
 **/
 EFI_STATUS
+EFIAPI
 PrepareMemPolicySnapshot (
-  VOID
+  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot
   );
 
 /**
@@ -73,8 +75,9 @@ PrepareMemPolicySnapshot (
   @retval EFI_OUT_OF_RESOURCES      Cannot allocate enough resources for snapshot.
 **/
 EFI_STATUS
+EFIAPI
 AllocateMemForPolicySnapshot (
-  VOID
+  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  **MemPolicySnapshot
   );
 
 /**
@@ -90,6 +93,7 @@ AllocateMemForPolicySnapshot (
                                   checking.
 **/
 EFI_STATUS
+EFIAPI
 SecurityPolicyCheck (
   IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmSecurityPolicy
   );
@@ -98,20 +102,9 @@ SecurityPolicyCheck (
   Dump the smm policy data.
 **/
 VOID
+EFIAPI
 DumpSmmPolicyData (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *Data
-  );
-
-/**
-  Routine for initializing policy data provided by firmware.
-
-  @retval EFI_SUCCESS           The handler for the processor interrupt was successfully installed or uninstalled.
-  @retval Errors                The supervisor is unable to locate or protect the policy from firmware.
-
-**/
-EFI_STATUS
-InitializePolicy (
-  VOID
   );
 
 #endif // _MM_SUPV_POLICY_H_

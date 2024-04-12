@@ -98,6 +98,7 @@
   IhvSmmSaveStateSupervisionLib|MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
   MmServicesTableLib|StandaloneMmPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLibCore.inf
   SmmCpuSyncLib|MmSupervisorPkg/Library/StandaloneMmCpuSyncLib/StandaloneMmCpuSyncLib.inf
+  SecurePolicyLib|MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
 
 [LibraryClasses.X64.MM_STANDALONE]
   BaseLib|MmSupervisorPkg/Library/BaseLibSysCall/BaseLib.inf
@@ -146,6 +147,7 @@
   MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
   MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorMemLibSyscall.inf
   MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
+  MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
 
   MmSupervisorPkg/Core/MmSupervisorCore.inf
 
