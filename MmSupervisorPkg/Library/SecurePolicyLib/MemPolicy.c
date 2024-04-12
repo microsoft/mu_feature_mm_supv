@@ -13,13 +13,15 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Register/ArchitecturalMsr.h>
 
-#include "MmSupervisorCore.h"
-#include "Mem/Mem.h"
-#include "Policy/Policy.h"
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/SecurePolicyLib.h>
 
-#define MEM_POLICY_SNAPSHOT_SIZE  0x400   // 1K should be more than enough to describe allowed non-MMRAM regions
-
-SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
+#define PAGING_4K_ADDRESS_MASK_64  0x000FFFFFFFFFF000ull
+#define PAGING_2M_ADDRESS_MASK_64  0x000FFFFFFFE00000ull
+#define PAGING_1G_ADDRESS_MASK_64  0x000FFFFFC0000000ull
 
 #define MEM_DESC_UNINIT_BASEADDR  0xDEADBEEF
 
@@ -48,6 +50,22 @@ typedef union {
 } PAGE_TABLE_ENTRY;
 
 #pragma pack()
+
+/**
+  This function check if the buffer is fully inside MMRAM.
+
+  @param Buffer  The buffer start address to be checked.
+  @param Length  The buffer length to be checked.
+
+  @retval TRUE  This buffer is not part of MMRAM.
+  @retval FALSE This buffer is from MMRAM.
+**/
+BOOLEAN
+EFIAPI
+IsBufferInsideMmram (
+  IN EFI_PHYSICAL_ADDRESS  Buffer,
+  IN UINT64                Length
+  );
 
 /**
   Update the policy memory description.
@@ -453,6 +471,7 @@ GenMemPolicyAndShadowPageTable (
   Dump a single memory policy data.
 **/
 VOID
+EFIAPI
 DumpMemPolicyEntry (
   SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemoryPolicy
   )
@@ -557,6 +576,7 @@ Exit:
 
 **/
 BOOLEAN
+EFIAPI
 CompareMemoryPolicy (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData1,
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData2
@@ -615,13 +635,17 @@ CompareMemoryPolicy (
 /**
   Prepare a snapshot of memory policy, this will be compared against the one generated when requested.
 
+  @param[in] MemPolicySnapshot  The buffer to hold the snapshot of memory policy, should be at least the
+                                size of MEM_POLICY_SNAPSHOT_SIZE.
+
   @retval EFI_SUCCESS               The security policy is successfully gathered.
   @retval EFI_NOT_STARTED           No memory policy snapshot buffer prepared.
   @retval Errors                    Other error during populating memory errors.
 **/
 EFI_STATUS
+EFIAPI
 PrepareMemPolicySnapshot (
-  VOID
+  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot
   )
 {
   SMM_SUPV_POLICY_ROOT_V1  *PolicyRoot;
@@ -659,12 +683,13 @@ Done:
   @retval EFI_OUT_OF_RESOURCES      Cannot allocate enough resources for snapshot.
 **/
 EFI_STATUS
+EFIAPI
 AllocateMemForPolicySnapshot (
-  VOID
+  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  **MemPolicySnapshot
   )
 {
-  MemPolicySnapshot = AllocatePages (EFI_SIZE_TO_PAGES (MEM_POLICY_SNAPSHOT_SIZE));
-  if (MemPolicySnapshot == NULL) {
+  *MemPolicySnapshot = AllocatePages (EFI_SIZE_TO_PAGES (MEM_POLICY_SNAPSHOT_SIZE));
+  if (*MemPolicySnapshot == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
 

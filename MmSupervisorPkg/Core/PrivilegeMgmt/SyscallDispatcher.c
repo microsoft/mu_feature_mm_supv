@@ -25,7 +25,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate/Relocate.h"
 #include "Handler/Handler.h"
 #include "Mem/Mem.h"
-#include "Policy/Policy.h"
 
 EFI_MM_SYSTEM_TABLE  *gMmUserMmst = NULL;
 
