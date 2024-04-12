@@ -444,8 +444,8 @@ SmmSetImagePageAttributes (
         EFI_MEMORY_RO
         );
 
-      TempDataAddressStart = ImageRecordCodeSection->CodeSegmentBase + EfiPagesToSize (EfiSizeToPages (ImageRecordCodeSection->CodeSegmentSize));
-      if (EfiSizeToPages (ImageEnd - TempDataAddressStart) == 0) {
+      TempDataAddressStart = ImageRecordCodeSection->CodeSegmentBase + ALIGN_VALUE (ImageRecordCodeSection->CodeSegmentSize, EFI_PAGE_SIZE);
+      if (EFI_SIZE_TO_PAGES (ImageEnd - TempDataAddressStart) == 0) {
         break;
       }
     }
@@ -565,9 +565,14 @@ SmmInitializeMemoryAttributesTable (
     return EFI_SUCCESS;
   }
 
-  DEBUG ((DEBUG_VERBOSE, "SMM Total Image Count - 0x%x\n", mImagePropertiesPrivateData.ImageRecordCount));
-  DEBUG ((DEBUG_VERBOSE, "SMM Dump ImageRecord:\n"));
-  DumpImageRecord (&mImagePropertiesPrivateData.ImageRecordList);s
+  DEBUG_CODE_BEGIN ();
+  if ( mImagePropertiesPrivateData.ImageRecordCount > 0) {
+    DEBUG ((DEBUG_INFO, "SMM - Total Runtime Image Count - 0x%x\n", mImagePropertiesPrivateData.ImageRecordCount));
+    DEBUG ((DEBUG_INFO, "SMM - Dump Runtime Image Records:\n"));
+    DumpImageRecords (&mImagePropertiesPrivateData.ImageRecordList);
+  }
+
+  DEBUG_CODE_END ();
 
   mInitMemoryMap = CollectMemoryAttributesTable (&mInitMemoryMapSize, &mInitDescriptorSize);
 
