@@ -532,9 +532,18 @@ Finish:
   return Status;
 }
 
-// TODO: Place them in a common place?
-UINT8  DrtmSmmPolicyData[0x1000];
+/**
+  Verify and measure an executed PeCoff image in MMRAM based on the provided aux buffer.
 
+  @param[in] ImageBase      The base address of the image.
+  @param[in] ImageSize      The size of the image.
+  @param[in] AuxFileBase    The base address of the auxiliary file.
+  @param[in] AuxFileLength  The length of the auxiliary file.
+
+  @retval EFI_SUCCESS            The image is verified and measured successfully.
+  @retval EFI_SECURITY_VIOLATION The image is not inside MMRAM.
+  @retval other error value
+**/
 EFI_STATUS
 EFIAPI
 VerifyAndMeasureImage (
@@ -554,7 +563,10 @@ VerifyAndMeasureImage (
     goto Exit;
   }
 
-  // TODO: Also need to make sure the ImageBase and ImageSize are page aligned
+  if (((ImageBase & EFI_PAGE_MASK) != 0) || ((ImageSize & EFI_PAGE_MASK) != 0)) {
+    Status = EFI_SECURITY_VIOLATION;
+    goto Exit;
+  }
 
   // Then need to copy the image over to MSEG
   InternalCopy = AllocatePages (
@@ -650,25 +662,27 @@ SpamResponderReport (
   IN SPAM_RESPONDER_DATA  *SpamResponderData
   )
 {
-  EFI_STATUS                      Status;
-  UINT64                          MmBase;
-  UINT64                          MmRamBase;
-  UINT64                          MmrrMask;
-  UINT32                          MaxExtendedFunction;
-  CPUID_VIR_PHY_ADDRESS_SIZE_EAX  VirPhyAddressSize;
-  UINT64                          Length;
-  UINT64                          MtrrValidBitsMask;
-  UINT64                          MtrrValidAddressMask;
-  UINT32                          *Fixup32Ptr;
-  UINT64                          *Fixup64Ptr;
-  BOOLEAN                         IsInside;
-  UINTN                           Index;
-  PER_CORE_MMI_ENTRY_STRUCT_HDR   *MmiEntryStructHdr;
-  UINT32                          MmiEntryStructHdrSize;
-  UINT64                          MmSupervisorBase;
-  UINT64                          FirmwarePolicyBase;
-  UINT64                          SupvPageTableBase;
-  TPML_DIGEST_VALUES              DigestList[HASH_COUNT];
+  EFI_STATUS                        Status;
+  UINT64                            MmBase;
+  UINT64                            MmRamBase;
+  UINT64                            MmrrMask;
+  UINT32                            MaxExtendedFunction;
+  CPUID_VIR_PHY_ADDRESS_SIZE_EAX    VirPhyAddressSize;
+  UINT64                            Length;
+  UINT64                            MtrrValidBitsMask;
+  UINT64                            MtrrValidAddressMask;
+  UINT32                            *Fixup32Ptr;
+  UINT64                            *Fixup64Ptr;
+  BOOLEAN                           IsInside;
+  UINTN                             Index;
+  PER_CORE_MMI_ENTRY_STRUCT_HDR     *MmiEntryStructHdr;
+  UINT32                            MmiEntryStructHdrSize;
+  UINT64                            MmSupervisorBase;
+  UINT64                            FirmwarePolicyBase;
+  UINT64                            SupvPageTableBase;
+  TPML_DIGEST_VALUES                DigestList[HASH_COUNT];
+  UINT8                             *DrtmSmmPolicyData;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
@@ -677,7 +691,6 @@ SpamResponderReport (
   // TODO: Step 0: Disable MMI
 
   // Step 1: Basic check on the validity of SpamResponderData
-  // TODO: How do we know if the input stack is safe to access?
   if (SpamResponderData == NULL) {
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
@@ -919,9 +932,15 @@ SpamResponderReport (
     goto Exit;
   }
 
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
+  FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
 
   // Step 4: Report MM Secure Policy code
+  DrtmSmmPolicyData = AllocatePages (EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
+  if (DrtmSmmPolicyData == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
+
   ZeroMem (DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
 
   // First off, copy the firmware policy to the buffer
