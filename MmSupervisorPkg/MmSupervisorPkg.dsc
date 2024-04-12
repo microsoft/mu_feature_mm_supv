@@ -145,6 +145,7 @@
   MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
   MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorMemLibSyscall.inf
   MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
+  MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
 
   MmSupervisorPkg/Core/MmSupervisorCore.inf
 
