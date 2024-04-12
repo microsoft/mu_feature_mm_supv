@@ -27,57 +27,25 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HashLib.h>
+#include <Library/SecurePolicyLib.h>
 
-// TODO: What is this PCR?
-#define SPAM_PCR_INDEX  0
+#include "Runtime/StmRuntime.h"
 
-EFI_STATUS
-EFIAPI
-TwoRangesOverlap (
-  IN UINT64    Start1,
-  IN UINT64    Size1,
-  IN UINT64    Start2,
-  IN UINT64    Size2,
-  OUT BOOLEAN  *Overlap
-  )
-{
-  UINT64      End1;
-  UINT64      End2;
-  EFI_STATUS  Status;
+#define SPAM_PCR_INDEX  17
 
-  if (Overlap == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
+/**
+  Helper function to check if one range is inside another.
 
-  Status = SafeUint64Add (Start1, Size1, &End1);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
+  @param[in] Start1     Start address of the first range.
+  @param[in] Size1      Size of the first range.
+  @param[in] Start2     Start address of the second range.
+  @param[in] Size2      Size of the second range.
+  @param[out] IsInside  TRUE if the first range is inside the second range, FALSE otherwise.
 
-  Status = SafeUint64Add (Start2, Size2, &End2);
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  *Overlap = FALSE;
-
-  // For two ranges to overlap, one of the following conditions must be true:
-  // 1. Start1 falls into range 2
-  // 2. Start2 falls into range 1
-  if ((Start1 <= Start2) && (Start2 < End1)) {
-    *Overlap = TRUE;
-  }
-
-  if ((Start2 <= Start1) && (Start1 < End2)) {
-    *Overlap = TRUE;
-  }
-
-  Status = EFI_SUCCESS;
-
-Done:
-  return Status;
-}
-
+  @retval EFI_SUCCESS            The function completed successfully.
+  @retval EFI_INVALID_PARAMETER  IsInside is NULL.
+  @retval other error value
+**/
 EFI_STATUS
 EFIAPI
 Range1InsideRange2 (
@@ -347,7 +315,7 @@ MeasurePeImageAndExtend (
   //     header indicates how big the table should be. Do not include any
   //     IMAGE_SECTION_HEADERs in the table whose 'SizeOfRawData' field is zero.
   //
-  SectionHeader = (EFI_IMAGE_SECTION_HEADER *)AllocateZeroPool (sizeof (EFI_IMAGE_SECTION_HEADER) * Hdr.Pe32->FileHeader.NumberOfSections);
+  SectionHeader = (EFI_IMAGE_SECTION_HEADER *)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (EFI_IMAGE_SECTION_HEADER) * Hdr.Pe32->FileHeader.NumberOfSections));
   if (SectionHeader == NULL) {
     Status = EFI_OUT_OF_RESOURCES;
     goto Finish;
@@ -449,36 +417,24 @@ MeasurePeImageAndExtend (
 
 Finish:
   if (SectionHeader != NULL) {
-    FreePool (SectionHeader);
+    FreePages (SectionHeader, EFI_SIZE_TO_PAGES (sizeof (EFI_IMAGE_SECTION_HEADER) * Hdr.Pe32->FileHeader.NumberOfSections));
   }
 
   return Status;
 }
 
-// TODO: Place them in a common place?
-UINT8  DrtmSmmPolicyData[0x1000];
+/**
+  Verify and measure an executed PeCoff image in MMRAM based on the provided aux buffer.
 
-EFI_STATUS
-EFIAPI
-PopulateMemoryPolicyEntries (
-  IN  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyBuffer,
-  IN  UINT64                            MaxPolicySize
-  );
+  @param[in] ImageBase      The base address of the image.
+  @param[in] ImageSize      The size of the image.
+  @param[in] AuxFileBase    The base address of the auxiliary file.
+  @param[in] AuxFileLength  The length of the auxiliary file.
 
-EFI_STATUS
-SecurityPolicyCheck (
-  IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmSecurityPolicy
-  );
-
-VOID
-DumpSmmPolicyData (
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *Data
-  );
-
-// TODO: Consume newly created key symbols
-extern UINT64  MmSupvEfiFileBase;
-extern UINT64  MmSupvEfiFileSize;
-
+  @retval EFI_SUCCESS            The image is verified and measured successfully.
+  @retval EFI_SECURITY_VIOLATION The image is not inside MMRAM.
+  @retval other error value
+**/
 EFI_STATUS
 EFIAPI
 VerifyAndMeasureImage (
@@ -486,23 +442,23 @@ VerifyAndMeasureImage (
   IN UINT64  ImageSize,
   IN UINT64  AuxFileBase,
   IN UINT64  AuxFileLength,
-  IN UINT64  MmBase,
-  IN UINT64  MmLength
+  IN UINT64  PageTableBase
   )
 {
   EFI_STATUS          Status;
-  BOOLEAN             IsInside;
   VOID                *InternalCopy;
   TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
 
   // First need to make sure if this image is inside the MMRAM region
-  Status = Range1InsideRange2 (ImageBase, ImageSize, MmBase, MmLength, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  // TODO: Also need to make sure the ImageBase and ImageSize are page aligned
+  if (((ImageBase & EFI_PAGE_MASK) != 0) || ((ImageSize & EFI_PAGE_MASK) != 0)) {
+    Status = EFI_SECURITY_VIOLATION;
+    goto Exit;
+  }
 
   // Then need to copy the image over to MSEG
   InternalCopy = AllocatePages (
@@ -533,7 +489,7 @@ VerifyAndMeasureImage (
     goto Exit;
   }
 
-  Status = PeCoffImageDiffValidation ((VOID *)ImageBase, Buffer, ImageSize, (VOID *)AuxFileBase, AuxFileLength);
+  Status = PeCoffImageDiffValidation ((VOID *)ImageBase, Buffer, ImageSize, (VOID *)AuxFileBase, AuxFileLength, PageTableBase);
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
@@ -554,8 +510,6 @@ VerifyAndMeasureImage (
   }
 
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
-  ASSERT (MmSupvEfiFileSize == NewBufferSize);
-  ASSERT (CompareMem (NewBuffer, (VOID *)(UINTN)MmSupvEfiFileBase, MmSupvEfiFileSize) == 0);
 
   Status = MeasurePeImageAndExtend (
              SPAM_PCR_INDEX,
@@ -577,31 +531,50 @@ Exit:
   return Status;
 }
 
+/**
+  The main validation routine for the SPAM Core. This routine will validate the input
+  to make sure the MMI entry data section is populated with legit values, then measure
+  the content into TPM.
+
+  The supervisor core will be verified to properly located inside the MMRAM region for
+  this core. It will then validate the supervisor core data according to the accompanying
+  aux file and revert the executed code to the original state and measure into TPM.
+
+  @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
+
+  @retval EFI_SUCCESS            The function completed successfully.
+  @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
+  @retval EFI_UNSUPPORTED        The input parameter is unsupported.
+  @retval EFI_SECURITY_VIOLATION The input parameter violates the security policy.
+  @retval other error value
+**/
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
   IN SPAM_RESPONDER_DATA  *SpamResponderData
   )
 {
-  EFI_STATUS                      Status;
-  UINT64                          MmBase;
-  UINT64                          MmRamBase;
-  UINT64                          MmrrMask;
-  UINT32                          MaxExtendedFunction;
-  CPUID_VIR_PHY_ADDRESS_SIZE_EAX  VirPhyAddressSize;
-  UINT64                          Length;
-  UINT64                          MtrrValidBitsMask;
-  UINT64                          MtrrValidAddressMask;
-  UINT32                          *Fixup32Ptr;
-  UINT64                          *Fixup64Ptr;
-  BOOLEAN                         IsInside;
-  UINTN                           Index;
-  PER_CORE_MMI_ENTRY_STRUCT_HDR   *MmiEntryStructHdr;
-  UINT32                          MmiEntryStructHdrSize;
-  UINT64                          MmSupervisorBase;
-  UINT64                          FirmwarePolicyBase;
-  UINT64                          SupvPageTableBase;
-  TPML_DIGEST_VALUES              DigestList[HASH_COUNT];
+  EFI_STATUS                        Status;
+  UINT64                            MmBase;
+  UINT64                            MmRamBase;
+  UINT64                            MmrrMask;
+  UINT32                            MaxExtendedFunction;
+  CPUID_VIR_PHY_ADDRESS_SIZE_EAX    VirPhyAddressSize;
+  UINT64                            Length;
+  UINT64                            MtrrValidBitsMask;
+  UINT64                            MtrrValidAddressMask;
+  UINT32                            *Fixup32Ptr;
+  UINT64                            *Fixup64Ptr;
+  BOOLEAN                           IsInside;
+  UINTN                             Index;
+  PER_CORE_MMI_ENTRY_STRUCT_HDR     *MmiEntryStructHdr;
+  UINT32                            MmiEntryStructHdrSize;
+  UINT64                            MmSupervisorBase;
+  UINT64                            FirmwarePolicyBase;
+  UINT64                            SupvPageTableBase;
+  TPML_DIGEST_VALUES                DigestList[HASH_COUNT];
+  UINT8                             *DrtmSmmPolicyData;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
@@ -610,7 +583,6 @@ SpamResponderReport (
   // TODO: Step 0: Disable MMI
 
   // Step 1: Basic check on the validity of SpamResponderData
-  // TODO: How do we know if the input stack is safe to access?
   if (SpamResponderData == NULL) {
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
@@ -655,8 +627,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize, MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize)) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -666,8 +637,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize, MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize)) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -772,23 +742,19 @@ SpamResponderReport (
   // Reverse engineer MM core region with MM rendezvous
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
 
-  if ((MmRamBase > MmSupervisorBase) ||
-      (MmRamBase + Length < MmSupervisorBase + SpamResponderData->MmSupervisorSize))
-  {
+  if (!IsBufferInsideMmram (MmSupervisorBase, SpamResponderData->MmSupervisorSize)) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // GDTR and its content should be pointing inside the MMRAM region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR))) {
     DEBUG ((DEBUG_ERROR, "GDTR is not inside MMRAM region %x %x %x %x\n", Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  Status = Range1InsideRange2 (((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1)) {
     DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -802,15 +768,13 @@ SpamResponderReport (
   }
 
   // CR3 should be pointing inside the MMRAM region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_CR3_OFFSET], sizeof (UINT32), MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_CR3_OFFSET], sizeof (UINT32))) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // Supervisor stack should be pointing inside the MMRAM region
-  Status = Range1InsideRange2 (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32), MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32))) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -844,8 +808,7 @@ SpamResponderReport (
 
   // Then also verify that the firmware policy is inside the MMRAM
   FirmwarePolicyBase = *(UINT64 *)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
-  Status             = Range1InsideRange2 (FirmwarePolicyBase, sizeof (UINT64), MmRamBase, Length, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
+  if (!IsBufferInsideMmram (FirmwarePolicyBase, sizeof (UINT64))) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -856,16 +819,21 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorSize,
              SpamResponderData->MmSupervisorAuxBase,
              SpamResponderData->MmSupervisorAuxSize,
-             MmRamBase,
-             Length
+             SupvPageTableBase
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
+  FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
 
   // Step 4: Report MM Secure Policy code
+  DrtmSmmPolicyData = AllocatePages (EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
+  if (DrtmSmmPolicyData == NULL) {
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
+
   ZeroMem (DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
 
   // First off, copy the firmware policy to the buffer

@@ -57,6 +57,7 @@
   Runtime/StmExceptionHandler.c
   Runtime/PageTable.c
   Runtime/SpamResponderReport.c
+  Runtime/SpamResponderUtilities.c
   Stm.h
   CpuDef.h
   Cpu.c
@@ -94,8 +95,11 @@
   StmLib
   PcdLib
   StmPlatformLib
+  PeCoffLib
   PeCoffLibNegative
   HashLib
+  SafeIntLib
+  SecurePolicyLib
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
