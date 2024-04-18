@@ -637,7 +637,6 @@ SmmCpuFeaturesInstallSmiHandler (
   } else {
     Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = TRUE;
   }
-  //Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
   Fixup8Ptr[FIXUP8_m5LevelPagingNeeded]              = m5LevelPagingNeeded;
   Fixup8Ptr[FIXUP8_mPatchCetSupported]               = mCetSupported;
 
