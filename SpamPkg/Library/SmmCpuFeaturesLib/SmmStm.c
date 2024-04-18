@@ -9,6 +9,7 @@
 #include <PiMm.h>
 #include <SmmSecurePolicy.h>
 #include <SpamResponder.h>
+#include <Library/CpuLib.h>
 #include <Library/FvLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -67,7 +68,7 @@ EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
 // Global variables and symbols pulled in from MmSupervisor
 //
 extern BOOLEAN  mCetSupported;
-extern BOOLEAN  gPatchXdSupported;
+extern BOOLEAN  mXdSupported;
 extern BOOLEAN  gPatchMsrIa32MiscEnableSupported;
 extern BOOLEAN  m5LevelPagingNeeded;
 
@@ -623,12 +624,20 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = (UINT64)CpuSmmDebugEntry;
   Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = (UINT64)CpuSmmDebugExit;
   Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)SmiRendezvous;
-  Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&gPatchXdSupported;
+  Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&mXdSupported;
   Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)&gStmSmiHandlerIdtr;
 
-  Fixup8Ptr[FIXUP8_gPatchXdSupported]                = gPatchXdSupported;
-  Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
+  Fixup8Ptr[FIXUP8_gPatchXdSupported]                = mXdSupported;
+  if (StandardSignatureIsAuthenticAMD ()) {
+    //
+    // AMD processors do not support MSR_IA32_MISC_ENABLE
+    //
+    Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = FALSE;
+  } else {
+    Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = TRUE;
+  }
+  //Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = gPatchMsrIa32MiscEnableSupported;
   Fixup8Ptr[FIXUP8_m5LevelPagingNeeded]              = m5LevelPagingNeeded;
   Fixup8Ptr[FIXUP8_mPatchCetSupported]               = mCetSupported;
 
