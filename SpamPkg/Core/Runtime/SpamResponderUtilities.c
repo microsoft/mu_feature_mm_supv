@@ -118,7 +118,7 @@ IsBufferInsideMmram (
   MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
   MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
   // Extend the mask to account for the reserved bits.
-  MmrrMask    |= 0xffffffff00000000ULL;
+  MmrrMask   |= 0xffffffff00000000ULL;
   MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
 
   Status = Range1InsideRange2 (Buffer, Length, MmRamBase, MmRamLength, &IsInside);
