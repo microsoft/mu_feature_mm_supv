@@ -628,7 +628,7 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)&gStmSmiHandlerIdtr;
 
-  Fixup8Ptr[FIXUP8_gPatchXdSupported]                = mXdSupported;
+  Fixup8Ptr[FIXUP8_gPatchXdSupported] = mXdSupported;
   if (StandardSignatureIsAuthenticAMD ()) {
     //
     // AMD processors do not support MSR_IA32_MISC_ENABLE
@@ -637,8 +637,9 @@ SmmCpuFeaturesInstallSmiHandler (
   } else {
     Fixup8Ptr[FIXUP8_gPatchMsrIa32MiscEnableSupported] = TRUE;
   }
-  Fixup8Ptr[FIXUP8_m5LevelPagingNeeded]              = m5LevelPagingNeeded;
-  Fixup8Ptr[FIXUP8_mPatchCetSupported]               = mCetSupported;
+
+  Fixup8Ptr[FIXUP8_m5LevelPagingNeeded] = m5LevelPagingNeeded;
+  Fixup8Ptr[FIXUP8_mPatchCetSupported]  = mCetSupported;
 
   // TODO: Sort out these values, if needed
   Psd->SmmSmiHandlerRip = 0;
