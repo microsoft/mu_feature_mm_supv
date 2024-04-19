@@ -1,0 +1,49 @@
+## @file
+# This library register a supervisor level handler to test SPAM responder functionalities.
+#
+# Copyright (C) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = ResponderValidationTestLib
+  FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
+  MODULE_TYPE                    = MM_CORE_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  LIBRARY_CLASS                  = ResponderValidationTestLib|MM_CORE_STANDALONE
+  CONSTRUCTOR                    = ResponderValidationTestLibConstructor
+
+[Sources]
+  ResponderValidationTestLib.c
+  ../Runtime/SpamResponderReport.c
+  ../Runtime/StmRuntimeUtil.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  SecurityPkg/SecurityPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+  SpamPkg/SpamPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  HashLib
+  PeCoffLibNegative
+
+[Guids]
+  gSpamValidationTestHandlerGuid                ## SOMETIMES_CONSUMES
+  gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
+
+[FeaturePcd]
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable  ## CONSUMES
+
+[PatchPcd]
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash
