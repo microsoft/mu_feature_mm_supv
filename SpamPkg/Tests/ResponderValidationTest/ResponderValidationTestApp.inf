@@ -44,6 +44,7 @@
   UefiLib
   UnitTestLib
   ShellLib
+  DxeServicesLib
 
 [Guids]
   gSpamValidationTestHandlerGuid
@@ -51,6 +52,7 @@
 
 [Protocols]
   gMmSupervisorCommunicationProtocolGuid
+  gEfiTcg2ProtocolGuid
 
 [BuildOptions]
   *_GCC5_*_CC_FLAGS = -Wno-incompatible-pointer-types

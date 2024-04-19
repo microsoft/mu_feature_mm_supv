@@ -7,7 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#include <Uefi.h>
+#include <PiDxe.h>
 
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -20,9 +20,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 #include <Library/DevicePathLib.h>
+#include <Library/DxeServicesLib.h>
 
 #include <Protocol/SmmCommunication.h>
 #include <Protocol/MmSupervisorCommunication.h>
+#include <Protocol/Tcg2Protocol.h>
 
 #include <Guid/PiSmmCommunicationRegionTable.h>
 
@@ -158,6 +160,95 @@ LocateSmmCommonCommBuffer (
 } // LocateSmmCommonCommBuffer()
 
 /**
+  Measure PE image into TPM log based on the authenticode image hashing in
+  PE/COFF Specification 8.0 Appendix A.
+
+  Caution: This function may receive untrusted input.
+  PE/COFF image is external input, so this function will validate its data structure
+  within this image buffer before use.
+
+  @param[in] MeasureBootProtocols   Pointer to the located MeasureBoot protocol instances.
+  @param[in] ImageAddress           Start address of image buffer.
+  @param[in] ImageSize              Image size
+  @param[in] LinkTimeBase           Address that the image is loaded into memory.
+  @param[in] ImageType              Image subsystem type.
+  @param[in] FilePath               File path is corresponding to the input image.
+
+  @retval EFI_SUCCESS            Successfully measure image.
+  @retval EFI_OUT_OF_RESOURCES   No enough resource to measure image.
+  @retval EFI_UNSUPPORTED        ImageType is unsupported or PE image is mal-format.
+  @retval other error value
+**/
+EFI_STATUS
+EFIAPI
+Tcg2MeasurePeImage (
+  IN  EFI_PHYSICAL_ADDRESS      ImageAddress,
+  IN  UINTN                     ImageSize
+  )
+{
+  EFI_STATUS                   Status;
+  EFI_TCG2_EVENT               *Tcg2Event;
+  UINT32                       EventSize;
+  EFI_TCG2_PROTOCOL            *Tcg2Protocol;
+  UINT8                        *EventPtr;
+
+  Status    = EFI_UNSUPPORTED;
+  EventPtr  = NULL;
+  Tcg2Event = NULL;
+
+  Status = gBS->LocateProtocol (&gEfiTcg2ProtocolGuid, NULL, (VOID **)&Tcg2Protocol);
+  if (EFI_ERROR (Status) || (Tcg2Protocol == NULL)) {
+    ASSERT (FALSE);
+    return EFI_UNSUPPORTED;
+  }
+
+  EventSize = OFFSET_OF (EFI_TCG2_EVENT, Event);
+
+  //
+  // Determine destination PCR by BootPolicy
+  //
+  // from a malicious GPT disk partition
+  EventPtr = AllocateZeroPool (EventSize);
+  if (EventPtr == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  Tcg2Event                       = (EFI_TCG2_EVENT *)EventPtr;
+  Tcg2Event->Size                 = EventSize;
+  Tcg2Event->Header.HeaderSize    = sizeof (EFI_TCG2_EVENT_HEADER);
+  Tcg2Event->Header.HeaderVersion = EFI_TCG2_EVENT_HEADER_VERSION;
+  Tcg2Event->Header.EventType     = EV_EFI_BOOT_SERVICES_APPLICATION;
+  Tcg2Event->Header.PCRIndex      = 0;
+
+  //
+  // Log the PE data
+  //
+  Status = Tcg2Protocol->HashLogExtendEvent (
+                            Tcg2Protocol,
+                            PE_COFF_IMAGE,
+                            ImageAddress,
+                            ImageSize,
+                            Tcg2Event
+                            );
+  DEBUG ((DEBUG_INFO, "DxeTpm2MeasureBootHandler - Tcg2 MeasurePeImage - %r\n", Status));
+
+  if (Status == EFI_VOLUME_FULL) {
+    //
+    // Volume full here means the image is hashed and its result is extended to PCR.
+    // But the event log can't be saved since log area is full.
+    // Just return EFI_SUCCESS in order not to block the image load.
+    //
+    Status = EFI_SUCCESS;
+  }
+
+  if (EventPtr != NULL) {
+    FreePool (EventPtr);
+  }
+
+  return Status;
+}
+
+/**
   ResponderValidationTestAppEntry
 
   @param[in] ImageHandle  The firmware allocated handle for the EFI image.
@@ -174,6 +265,10 @@ ResponderValidationTestAppEntry (
   IN     EFI_SYSTEM_TABLE  *SystemTable
   )
 {
+  EFI_STATUS Status;
+  VOID    *SourceBuffer;
+  UINTN   SourceSize;
+
   DEBUG ((DEBUG_INFO, "%a the app's up!\n", __FUNCTION__));
 
   if (EFI_ERROR (LocateSmmCommonCommBuffer ())) {
@@ -182,6 +277,28 @@ ResponderValidationTestAppEntry (
   }
 
   SmmMemoryProtectionsDxeToSmmCommunicate ();
+
+  Status = GetSectionFromAnyFvByFileType (
+             EFI_FV_FILETYPE_MM_CORE_STANDALONE,
+             0,
+             EFI_SECTION_PE32,
+             0,
+             &SourceBuffer,
+             &SourceSize
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to get the section from the FV - %r\n", __FUNCTION__, Status));
+    return Status;
+  }
+
+  Status =  Tcg2MeasurePeImage (
+              (EFI_PHYSICAL_ADDRESS)(UINTN)SourceBuffer,
+              SourceSize
+              );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to measure and log the MM code - %r\n", __FUNCTION__, Status));
+    return Status;
+  }
 
   DEBUG ((DEBUG_INFO, "%a the app's done!\n", __FUNCTION__));
 
