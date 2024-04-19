@@ -9,6 +9,8 @@
 **/
 
 #include <PiMm.h>
+#include <SpamResponder.h>
+#include <IndustryStandard/Tpm20.h>
 #include <Register/Msr.h>
 #include <Register/Cpuid.h>
 
@@ -16,7 +18,7 @@
 #include <Library/SafeIntLib.h>
 #include <Library/BaseMemoryLib.h>
 
-#include "Runtime/StmRuntime.h"
+#include "StmRuntimeUtil.h"
 
 /**
   Helper function to check if two ranges overlap.
