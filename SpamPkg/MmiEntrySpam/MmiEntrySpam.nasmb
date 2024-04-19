@@ -43,12 +43,10 @@
 ; Constants relating to PROCESSOR_SMM_DESCRIPTOR
 ;
 %define DSC_OFFSET 0xfb00
-%define DSC_GDTPTR 0x30
-%define DSC_GDTSIZ 0x38
-%define DSC_CS 14
-%define DSC_DS 16
-%define DSC_SS 18
-%define DSC_OTHERSEG 20
+%define DSC_CS 0x14
+%define DSC_DS 0x16
+%define DSC_SS 0x18
+%define DSC_OTHERSEG 0x1a
 ;
 ; Constants relating to CPU State Save Area
 ;
