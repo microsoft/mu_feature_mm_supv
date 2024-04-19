@@ -29,9 +29,9 @@
 #include <Library/HashLib.h>
 #include <Library/SecurePolicyLib.h>
 
-#include "Runtime/StmRuntime.h"
+#include "StmRuntimeUtil.h"
 
-#define SPAM_PCR_INDEX  17
+#define SPAM_PCR_INDEX  0
 
 /**
   Helper function to check if one range is inside another.
@@ -430,6 +430,8 @@ Finish:
   @param[in] ImageSize      The size of the image.
   @param[in] AuxFileBase    The base address of the auxiliary file.
   @param[in] AuxFileLength  The length of the auxiliary file.
+  @param[in] PageTableBase  The base address of the page table.
+  @param[out] DigestList    The digest list of the image.
 
   @retval EFI_SUCCESS            The image is verified and measured successfully.
   @retval EFI_SECURITY_VIOLATION The image is not inside MMRAM.
@@ -438,16 +440,16 @@ Finish:
 EFI_STATUS
 EFIAPI
 VerifyAndMeasureImage (
-  IN UINTN   ImageBase,
-  IN UINT64  ImageSize,
-  IN UINT64  AuxFileBase,
-  IN UINT64  AuxFileLength,
-  IN UINT64  PageTableBase
+  IN  UINTN               ImageBase,
+  IN  UINT64              ImageSize,
+  IN  UINT64              AuxFileBase,
+  IN  UINT64              AuxFileLength,
+  IN  UINT64              PageTableBase,
+  OUT TPML_DIGEST_VALUES  *DigestList
   )
 {
   EFI_STATUS          Status;
   VOID                *InternalCopy;
-  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -541,6 +543,8 @@ Exit:
   aux file and revert the executed code to the original state and measure into TPM.
 
   @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
+  @param[out] RetDigestList      The digest list of the image.
+  @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
@@ -551,18 +555,15 @@ Exit:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN SPAM_RESPONDER_DATA  *SpamResponderData
+  IN  SPAM_RESPONDER_DATA *SpamResponderData,
+  OUT TPML_DIGEST_VALUES  *RetDigestList,
+  OUT VOID                **NewPolicy  OPTIONAL
   )
 {
   EFI_STATUS                        Status;
   UINT64                            MmBase;
-  UINT64                            MmRamBase;
-  UINT64                            MmrrMask;
   UINT32                            MaxExtendedFunction;
   CPUID_VIR_PHY_ADDRESS_SIZE_EAX    VirPhyAddressSize;
-  UINT64                            Length;
-  UINT64                            MtrrValidBitsMask;
-  UINT64                            MtrrValidAddressMask;
   UINT32                            *Fixup32Ptr;
   UINT64                            *Fixup64Ptr;
   BOOLEAN                           IsInside;
@@ -613,15 +614,7 @@ SpamResponderReport (
     VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
   }
 
-  MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
-  MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
-
-  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
-  MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
-  // Extend the mask to account for the reserved bits.
-  MmrrMask |= 0xffffffff00000000ULL;
-  Length    = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
-  MmBase    = AsmReadMsr64 (MSR_IA32_SMBASE);
+  MmBase  = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -749,13 +742,13 @@ SpamResponderReport (
 
   // GDTR and its content should be pointing inside the MMRAM region
   if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR))) {
-    DEBUG ((DEBUG_ERROR, "GDTR is not inside MMRAM region %x %x %x %x\n", Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length));
+    DEBUG ((DEBUG_ERROR, "GDTR is not inside MMRAM region %x %x.\n", Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR)));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (!IsBufferInsideMmram (((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1)) {
-    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
+    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x.\n", ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -819,10 +812,15 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorSize,
              SpamResponderData->MmSupervisorAuxBase,
              SpamResponderData->MmSupervisorAuxSize,
-             SupvPageTableBase
+             SupvPageTableBase,
+             DigestList
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
+  }
+
+  if (RetDigestList != NULL) {
+    CopyMem (RetDigestList, DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
@@ -840,7 +838,7 @@ SpamResponderReport (
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, SupvPageTableBase);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
     goto Exit;
@@ -855,6 +853,10 @@ SpamResponderReport (
   DEBUG_CODE_BEGIN ();
   DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   DEBUG_CODE_END ();
+
+  if (NewPolicy != NULL) {
+    *NewPolicy = DrtmSmmPolicyData;
+  }
   // TODO: How to do this? I would like to keep the structure the same though...
 
 Exit:
