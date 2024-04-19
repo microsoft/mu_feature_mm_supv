@@ -28,6 +28,7 @@ DumpMemPolicyEntry (
   Helper function that populates memory policy on demands.
 
   @param[in] SmmPolicyBuffer   Input buffer points to the entire v1.0 policy.
+  @param[in] MaxPolicySize     Maximum size of the policy buffer.
   @param[in] Cr3               CR3 value to be converted, if input is zero, check the real HW register.
 
   @param[in] CpuIndex Logical number assigned to CPU.
@@ -36,7 +37,8 @@ EFI_STATUS
 EFIAPI
 PopulateMemoryPolicyEntries (
   IN  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyBuffer,
-  IN  UINT64                            MaxPolicySize
+  IN  UINT64                            MaxPolicySize,
+  IN  UINT64                            Cr3
   );
 
 /**
