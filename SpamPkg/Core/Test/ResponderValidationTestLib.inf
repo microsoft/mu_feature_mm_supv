@@ -37,6 +37,7 @@
   DebugLib
   HashLib
   PeCoffLibNegative
+  SecurePolicyLib
 
 [Guids]
   gSpamValidationTestHandlerGuid                ## SOMETIMES_CONSUMES

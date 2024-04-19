@@ -21,6 +21,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
+#include <Library/SecurePolicyLib.h>
 
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
@@ -208,12 +209,19 @@ SpamValidationTestHandler (
   Status = SpamResponderReport (&SpamData, DigestList, &PolicyBuffer);
   ASSERT_EFI_ERROR (Status);
 
-  ASSERT (CompareMem (PolicyBuffer, MemPolicySnapshot, MemPolicySnapshot->Size) == 0);
+  if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
+    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __FUNCTION__));
+    Status = EFI_SECURITY_VIOLATION;
+    ASSERT_EFI_ERROR (Status);
+  }
 
   for (UINTN Index = 0; Index < HASH_COUNT; Index++) {
     switch (DigestList[Index].digests[0].hashAlg) {
       case TPM_ALG_SHA256:
         DUMP_HEX (DEBUG_INFO, 0, DigestList[Index].digests[0].digest.sha256, SHA256_DIGEST_SIZE, "");
+        break;
+      case TPM_ALG_ERROR:
+        DEBUG ((DEBUG_WARN, "Ignoring returned error algorithm digest at %d!!!\n", Index));
         break;
       default:
         DEBUG ((DEBUG_ERROR, "Unrecognized hash alrogithm %d!!!\n", DigestList[Index].digests[0].hashAlg));
