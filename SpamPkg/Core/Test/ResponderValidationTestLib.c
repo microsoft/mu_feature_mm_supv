@@ -224,7 +224,7 @@ SpamValidationTestHandler (
         DEBUG ((DEBUG_WARN, "Ignoring returned error algorithm digest at %d!!!\n", Index));
         break;
       default:
-        DEBUG ((DEBUG_ERROR, "Unrecognized hash alrogithm %d!!!\n", DigestList[Index].digests[0].hashAlg));
+        DEBUG ((DEBUG_ERROR, "Unrecognized hash algorithm %d!!!\n", DigestList[Index].digests[0].hashAlg));
         ASSERT (FALSE);
         break;
     }

@@ -1,6 +1,6 @@
 # Verify SPAM Responder Validation functionality
 
-The SPAM Responder Validation functionlity.
+The SPAM Responder Validation functionality.
 
 ## About
 
