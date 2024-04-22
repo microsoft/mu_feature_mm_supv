@@ -497,6 +497,7 @@ DumpMemPolicyEntry (
   Helper function that populates memory policy on demands.
 
   @param[in] SmmPolicyBuffer   Input buffer points to the entire v1.0 policy.
+  @param[in] MaxPolicySize     Maximum size of the policy buffer.
   @param[in] Cr3               CR3 value to be converted, if input is zero, check the real HW register.
 
   @param[in] CpuIndex Logical number assigned to CPU.
@@ -505,7 +506,8 @@ EFI_STATUS
 EFIAPI
 PopulateMemoryPolicyEntries (
   IN  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyBuffer,
-  IN  UINT64                            MaxPolicySize
+  IN  UINT64                            MaxPolicySize,
+  IN  UINT64                            Cr3
   )
 {
   SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemoryPolicy;
@@ -552,7 +554,7 @@ PopulateMemoryPolicyEntries (
   MemoryPolicy        = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *)((UINTN)SmmPolicyBuffer + PolicyRoot->Offset);
   MemoryPolicySize    = MaxPolicySize - PolicyRoot->Offset - 1;
   // Generate Policy of current Pagetable
-  Status = GenMemPolicyAndShadowPageTable (0, MemoryPolicy, MemoryPolicySize, &PolicyRoot->Count);
+  Status = GenMemPolicyAndShadowPageTable (Cr3, MemoryPolicy, MemoryPolicySize, &PolicyRoot->Count);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to GenMemPolicyAndShadowPageTable for non-legacy structures %r\n", __FUNCTION__, Status));
     goto Exit;
@@ -667,7 +669,7 @@ PrepareMemPolicySnapshot (
   PolicyRoot->Type                    = SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM;
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries (MemPolicySnapshot, MEM_POLICY_SNAPSHOT_SIZE);
+  Status = PopulateMemoryPolicyEntries (MemPolicySnapshot, MEM_POLICY_SNAPSHOT_SIZE, 0);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
   }

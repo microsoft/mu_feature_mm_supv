@@ -840,7 +840,7 @@ SpamResponderReport (
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+  Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, SupvPageTableBase);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
     goto Exit;

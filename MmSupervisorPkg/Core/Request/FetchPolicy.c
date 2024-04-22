@@ -93,7 +93,7 @@ FetchNUpdateSecurityPolicy (
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries (DrtmSmmPolicyData, MaxPolicyBufferSize);
+  Status = PopulateMemoryPolicyEntries (DrtmSmmPolicyData, MaxPolicyBufferSize, 0);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
     goto Exit;
