@@ -10,7 +10,7 @@
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = ResponderValidationTestLib
-  FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
+  FILE_GUID                      = 7864ED54-A3A8-43B9-953B-29C99CE2E706
   MODULE_TYPE                    = MM_CORE_STANDALONE
   VERSION_STRING                 = 1.0
   PI_SPECIFICATION_VERSION       = 0x00010032
