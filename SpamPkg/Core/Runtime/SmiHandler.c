@@ -13,7 +13,9 @@
 **/
 
 #include "StmRuntime.h"
+#include <IndustryStandard/Tpm20.h>
 #include <SpamResponder.h>
+#include <StmRuntimeUtil.h>
 
 STM_HANDLER  mStmHandlerSmi[VmExitReasonMax];
 
@@ -98,29 +100,6 @@ CheckPendingMtf (
 }
 
 /**
-  The main validation routine for the SPAM Core. This routine will validate the input
-  to make sure the MMI entry data section is populated with legit values, then measure
-  the content into TPM.
-
-  The supervisor core will be verified to properly located inside the MMRAM region for
-  this core. It will then validate the supervisor core data according to the accompanying
-  aux file and revert the executed code to the original state and measure into TPM.
-
-  @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
-
-  @retval EFI_SUCCESS            The function completed successfully.
-  @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
-  @retval EFI_UNSUPPORTED        The input parameter is unsupported.
-  @retval EFI_SECURITY_VIOLATION The input parameter violates the security policy.
-  @retval other error value
-**/
-EFI_STATUS
-EFIAPI
-SpamResponderReport (
-  IN SPAM_RESPONDER_DATA  *SpamResponderData
-  );
-
-/**
 
   This function is STM handler for SMI.
 
@@ -171,7 +150,7 @@ StmHandlerSmi (
   //
   SPAM_RESPONDER_DATA  *SpamData = (SPAM_RESPONDER_DATA *)(UINTN)Reg->Rsp;
 
-  Status = SpamResponderReport (SpamData);
+  Status = SpamResponderReport (SpamData, NULL, NULL);
   ASSERT_EFI_ERROR (Status);
 
   VmWriteN (VMCS_N_GUEST_RSP_INDEX, Reg->Rsp); // sync RSP
