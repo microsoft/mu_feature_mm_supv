@@ -99,9 +99,9 @@ IsBufferInsideMmram (
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  SPAM_RESPONDER_DATA *SpamResponderData,
-  OUT TPML_DIGEST_VALUES  *RetDigestList,
-  OUT VOID                **NewPolicy  OPTIONAL
+  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
+  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  OUT VOID                 **NewPolicy  OPTIONAL
   );
 
 #endif
