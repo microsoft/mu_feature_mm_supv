@@ -31,8 +31,6 @@
 
 #include "StmRuntimeUtil.h"
 
-#define SPAM_PCR_INDEX  0
-
 /**
   Helper function to check if one range is inside another.
 
@@ -448,8 +446,8 @@ VerifyAndMeasureImage (
   OUT TPML_DIGEST_VALUES  *DigestList
   )
 {
-  EFI_STATUS          Status;
-  VOID                *InternalCopy;
+  EFI_STATUS  Status;
+  VOID        *InternalCopy;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -514,7 +512,7 @@ VerifyAndMeasureImage (
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
 
   Status = MeasurePeImageAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
              (UINTN)NewBufferSize,
              DigestList
@@ -555,9 +553,9 @@ Exit:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  SPAM_RESPONDER_DATA *SpamResponderData,
-  OUT TPML_DIGEST_VALUES  *RetDigestList,
-  OUT VOID                **NewPolicy  OPTIONAL
+  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
+  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  OUT VOID                 **NewPolicy  OPTIONAL
   )
 {
   EFI_STATUS                        Status;
@@ -573,7 +571,7 @@ SpamResponderReport (
   UINT64                            MmSupervisorBase;
   UINT64                            FirmwarePolicyBase;
   UINT64                            SupvPageTableBase;
-  TPML_DIGEST_VALUES                DigestList[HASH_COUNT];
+  TPML_DIGEST_VALUES                DigestList;
   UINT8                             *DrtmSmmPolicyData;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
@@ -614,7 +612,7 @@ SpamResponderReport (
     VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
   }
 
-  MmBase  = AsmReadMsr64 (MSR_IA32_SMBASE);
+  MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -640,25 +638,25 @@ SpamResponderReport (
     goto Exit;
   }
 
-  ZeroMem (DigestList, sizeof (DigestList));
+  ZeroMem (&DigestList, sizeof (DigestList));
   Status = HashAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
              (UINTN)SpamResponderData->MmSupervisorAuxSize,
-             DigestList
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
   } else {
     Status = EFI_NOT_FOUND;
-    for (Index = 0; Index < HASH_COUNT; Index++) {
-      if (DigestList[Index].count == 0) {
-        continue;
-      }
-
-      if (DigestList[Index].digests[0].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
+    for (Index = 0; Index < DigestList.count; Index++) {
+      if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
+        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
           DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
+          DEBUG ((DEBUG_ERROR, "Expecting:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), PatchPcdGetSize (PcdAuxBinHash), "");
+          DEBUG ((DEBUG_ERROR, "Calculated:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         } else {
@@ -699,15 +697,15 @@ SpamResponderReport (
   // TCG_PCR_EVENT_HDR   NewEventHdr;
 
   Status = HashAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
              (UINTN)SpamResponderData->MmEntrySize,
-             DigestList
+             &DigestList
              );
   if (!EFI_ERROR (Status)) {
     // TODO: Do we want to message with the event log?
     // ZeroMem (&NewEventHdr, sizeof (NewEventHdr));
-    // NewEventHdr.PCRIndex  = SPAM_PCR_INDEX;
+    // NewEventHdr.PCRIndex  = PcdGet32 (PcdSpamMeasurementPcrIndex);
     // NewEventHdr.EventType = SPAM_EVTYPE_MM_ENTRY_HASH;
     // NewEventHdr.EventSize = sizeof (EFI_TCG2_EVENT) - sizeof (NewEventHdr.Event) - sizeof (UINT32) - sizeof (EFI_TCG2_EVENT_HEADER);;
 
@@ -857,6 +855,7 @@ SpamResponderReport (
   if (NewPolicy != NULL) {
     *NewPolicy = DrtmSmmPolicyData;
   }
+
   // TODO: How to do this? I would like to keep the structure the same though...
 
 Exit:
