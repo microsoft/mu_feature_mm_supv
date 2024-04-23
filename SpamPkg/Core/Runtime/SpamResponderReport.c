@@ -811,14 +811,14 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorAuxBase,
              SpamResponderData->MmSupervisorAuxSize,
              SupvPageTableBase,
-             DigestList
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
   if (RetDigestList != NULL) {
-    CopyMem (RetDigestList, DigestList, sizeof (DigestList));
+    CopyMem (RetDigestList, &DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;

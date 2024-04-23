@@ -14,7 +14,7 @@
 
 typedef struct {
   TPML_DIGEST_VALUES                SupvDigestList;
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  FirmwarePolicy;
 } SPAM_TEST_COMM_REGION;
 
 extern EFI_GUID  gSpamValidationTestHandlerGuid;

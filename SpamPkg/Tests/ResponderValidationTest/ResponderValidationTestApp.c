@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include <PiDxe.h>
+#include <SmmSecurePolicy.h>
 
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -59,6 +60,7 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   VOID                                  *CommBufferBase;
   EFI_SMM_COMMUNICATE_HEADER            *CommHeader;
   UINTN                                 MinBufferSize, BufferSize;
+  SPAM_TEST_COMM_REGION                 *SpamTestCommBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
@@ -70,7 +72,7 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
     return EFI_ABORTED;
   }
 
-  MinBufferSize = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) + 1;
+  MinBufferSize = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) + sizeof (SPAM_TEST_COMM_REGION);
   if (MinBufferSize > mPiSmmCommonCommBufferSize) {
     DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer is too small\n", __func__));
     return EFI_BUFFER_TOO_SMALL;
@@ -91,12 +93,12 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   //
   // Prep the buffer for getting the last of the misc data.
   //
-  ZeroMem (CommBufferBase, MinBufferSize);
+  ZeroMem (CommBufferBase, mPiSmmCommonCommBufferSize);
   CommHeader      = CommBufferBase;
   CopyGuid (&CommHeader->HeaderGuid, &gSpamValidationTestHandlerGuid);
   CommHeader->MessageLength = MinBufferSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
 
-  BufferSize                    = MinBufferSize;
+  BufferSize  = mPiSmmCommonCommBufferSize;
 
   //
   // Signal trip to SMM.
@@ -106,7 +108,16 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
                                CommBufferBase,
                                &BufferSize
                                );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Communication failed - %r\n", __func__, Status));
+    goto Exit;
+  }
 
+  SpamTestCommBuffer = (SPAM_TEST_COMM_REGION *)(CommHeader + 1);
+  DEBUG ((DEBUG_INFO, "%a Measured digest for supervisor is:\n", __func__));
+  DUMP_HEX (DEBUG_INFO, 0, &(SpamTestCommBuffer->SupvDigestList), sizeof (TPML_DIGEST_VALUES), "");
+
+Exit:
   return Status;
 } // SmmMemoryProtectionsDxeToSmmCommunicate()
 

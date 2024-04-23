@@ -13,7 +13,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <IndustryStandard/Tpm20.h>
 #include <Guid/MmCoreData.h>
+#include <Guid/SpamTestCommRegion.h>
 
+#include <Library/StandaloneMmMemLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -182,12 +184,20 @@ SpamValidationTestHandler (
   //
   if ((CommBuffer == NULL) || (CommBufferSize == NULL)) {
     DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __func__));
-    return EFI_ACCESS_DENIED;
+    Status = EFI_ACCESS_DENIED;
+    goto Done;
   }
 
-  if (*CommBufferSize < sizeof (SPAM_RESPONDER_DATA)) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer size! Expected %d, got %d\n", __func__, sizeof (SPAM_RESPONDER_DATA), *CommBufferSize));
-    return EFI_ACCESS_DENIED;
+  if (MmCommBufferValid ((EFI_PHYSICAL_ADDRESS)(UINTN)CommBuffer, *CommBufferSize) == FALSE) {
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __func__));
+    Status = EFI_ACCESS_DENIED;
+    goto Done;
+  }
+
+  if (*CommBufferSize < sizeof (SPAM_TEST_COMM_REGION)) {
+    DEBUG ((DEBUG_ERROR, "%a - Comm buffer size too small! Should be at least %d, got %d\n", __func__, sizeof (SPAM_TEST_COMM_REGION), *CommBufferSize));
+    Status = EFI_ACCESS_DENIED;
+    goto Done;
   }
 
   //
@@ -206,26 +216,38 @@ SpamValidationTestHandler (
   SpamData.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
   Status = SpamResponderReport (&SpamData, &DigestList, &PolicyBuffer);
-  ASSERT_EFI_ERROR (Status);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - SpamResponderReport failed - %r\n", __func__, Status));
     goto Done;
   }
 
-  // Making sure the validation routine is giving us the same policy buffer output
-  if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
-    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __func__));
-    Status = EFI_SECURITY_VIOLATION;
-    ASSERT_EFI_ERROR (Status);
+  // Now reevaluate the communication buffer size
+  if (((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy) > *CommBufferSize) {
+    DEBUG ((DEBUG_ERROR, "%a - Policy buffer is NULL!\n", __func__));
+    *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy);
+    Status = EFI_BUFFER_TOO_SMALL;
     goto Done;
   }
 
   DEBUG ((DEBUG_INFO, "%a Measured digest for supervisor is:\n", __func__));
   DUMP_HEX (DEBUG_INFO, 0, &DigestList, sizeof (DigestList), "");
 
+  // Making sure the validation routine is giving us the same policy buffer output
+  if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
+    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __func__));
+    Status = EFI_SECURITY_VIOLATION;
+    goto Done;
+  }
 
+  *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy);
+  CopyMem ((UINT8*)CommBuffer, &DigestList, sizeof (DigestList));
+  CopyMem ((UINT8*)CommBuffer + OFFSET_OF (SPAM_TEST_COMM_REGION, SupvDigestList), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size);
 
 Done:
+  if (PolicyBuffer != NULL) {
+    FreePool (PolicyBuffer);
+  }
+
   return Status;
 }
 
