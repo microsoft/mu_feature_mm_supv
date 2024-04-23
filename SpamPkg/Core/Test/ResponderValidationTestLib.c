@@ -23,6 +23,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PcdLib.h>
 #include <Library/SecurePolicyLib.h>
 
+extern MM_CORE_PRIVATE_DATA             *gMmCorePrivate;
+extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileBase;
+extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileSize;
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0 *MemPolicySnapshot;
+
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
   to make sure the MMI entry data section is populated with legit values, then measure
@@ -49,11 +54,6 @@ SpamResponderReport (
   OUT TPML_DIGEST_VALUES  *RetDigestList,
   OUT VOID                **NewPolicy  OPTIONAL
   );
-
-extern MM_CORE_PRIVATE_DATA             *gMmCorePrivate;
-extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileBase;
-extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileSize;
-extern SMM_SUPV_SECURE_POLICY_DATA_V1_0 *MemPolicySnapshot;
 
 /**
   Get the size of the SMI Handler in bytes.
@@ -209,6 +209,7 @@ SpamValidationTestHandler (
   Status = SpamResponderReport (&SpamData, DigestList, &PolicyBuffer);
   ASSERT_EFI_ERROR (Status);
 
+  // Making sure the validation routine is giving us the same policy buffer output
   if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
     DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __FUNCTION__));
     Status = EFI_SECURITY_VIOLATION;
