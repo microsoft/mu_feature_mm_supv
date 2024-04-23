@@ -446,8 +446,8 @@ VerifyAndMeasureImage (
   OUT TPML_DIGEST_VALUES  *DigestList
   )
 {
-  EFI_STATUS          Status;
-  VOID                *InternalCopy;
+  EFI_STATUS  Status;
+  VOID        *InternalCopy;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -553,9 +553,9 @@ Exit:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  SPAM_RESPONDER_DATA *SpamResponderData,
-  OUT TPML_DIGEST_VALUES  *RetDigestList,
-  OUT VOID                **NewPolicy  OPTIONAL
+  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
+  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  OUT VOID                 **NewPolicy  OPTIONAL
   )
 {
   EFI_STATUS                        Status;
@@ -612,7 +612,7 @@ SpamResponderReport (
     VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
   }
 
-  MmBase  = AsmReadMsr64 (MSR_IA32_SMBASE);
+  MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
@@ -855,6 +855,7 @@ SpamResponderReport (
   if (NewPolicy != NULL) {
     *NewPolicy = DrtmSmmPolicyData;
   }
+
   // TODO: How to do this? I would like to keep the structure the same though...
 
 Exit:
