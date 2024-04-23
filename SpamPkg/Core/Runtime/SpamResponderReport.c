@@ -585,7 +585,7 @@ SpamResponderReport (
 
   // Step 1: Basic check on the validity of SpamResponderData
   if (SpamResponderData == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData is NULL\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData is NULL\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
