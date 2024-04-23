@@ -571,7 +571,7 @@ SpamResponderReport (
   UINT64                            MmSupervisorBase;
   UINT64                            FirmwarePolicyBase;
   UINT64                            SupvPageTableBase;
-  TPML_DIGEST_VALUES                DigestList[HASH_COUNT];
+  TPML_DIGEST_VALUES                DigestList;
   UINT8                             *DrtmSmmPolicyData;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
@@ -638,25 +638,25 @@ SpamResponderReport (
     goto Exit;
   }
 
-  ZeroMem (DigestList, sizeof (DigestList));
+  ZeroMem (&DigestList, sizeof (DigestList));
   Status = HashAndExtend (
              PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
              (UINTN)SpamResponderData->MmSupervisorAuxSize,
-             DigestList
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
   } else {
     Status = EFI_NOT_FOUND;
-    for (Index = 0; Index < HASH_COUNT; Index++) {
-      if (DigestList[Index].count == 0) {
-        continue;
-      }
-
-      if (DigestList[Index].digests[0].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
+    for (Index = 0; Index < DigestList.count; Index++) {
+      if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
+        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
           DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
+          DEBUG ((DEBUG_ERROR, "Expecting:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), PatchPcdGetSize (PcdAuxBinHash), "");
+          DEBUG ((DEBUG_ERROR, "Calculated:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         } else {
@@ -700,7 +700,7 @@ SpamResponderReport (
              PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
              (UINTN)SpamResponderData->MmEntrySize,
-             DigestList
+             &DigestList
              );
   if (!EFI_ERROR (Status)) {
     // TODO: Do we want to message with the event log?
@@ -811,14 +811,14 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorAuxBase,
              SpamResponderData->MmSupervisorAuxSize,
              SupvPageTableBase,
-             DigestList
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
 
   if (RetDigestList != NULL) {
-    CopyMem (RetDigestList, DigestList, sizeof (DigestList));
+    CopyMem (RetDigestList, &DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
