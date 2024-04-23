@@ -172,16 +172,21 @@ SpamValidationTestHandler (
   )
 {
   EFI_STATUS          Status = EFI_SUCCESS;
-  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
+  TPML_DIGEST_VALUES  DigestList;
   VOID*               PolicyBuffer = NULL;
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // If input is invalid, stop processing this SMI
   //
   if ((CommBuffer == NULL) || (CommBufferSize == NULL)) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __func__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  if (*CommBufferSize < sizeof (SPAM_RESPONDER_DATA)) {
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer size! Expected %d, got %d\n", __func__, sizeof (SPAM_RESPONDER_DATA), *CommBufferSize));
     return EFI_ACCESS_DENIED;
   }
 
@@ -192,13 +197,7 @@ SpamValidationTestHandler (
     SPAM_RESPONDER_STRUCT_SIGNATURE,
     SPAM_REPSONDER_STRUCT_MINOR_VER,
     SPAM_REPSONDER_STRUCT_MAJOR_VER,
-    sizeof (SPAM_RESPONDER_DATA),
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    sizeof (SPAM_RESPONDER_DATA)
   };
 
   SpamData.MmEntrySize = GetSmiHandlerSize ();
@@ -206,31 +205,27 @@ SpamValidationTestHandler (
   SpamData.MmSupervisorAuxBase = MmSupvAuxFileBase;
   SpamData.MmSupervisorAuxSize = MmSupvAuxFileSize;
 
-  Status = SpamResponderReport (&SpamData, DigestList, &PolicyBuffer);
+  Status = SpamResponderReport (&SpamData, &DigestList, &PolicyBuffer);
   ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - SpamResponderReport failed - %r\n", __func__, Status));
+    goto Done;
+  }
 
   // Making sure the validation routine is giving us the same policy buffer output
   if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
-    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     ASSERT_EFI_ERROR (Status);
+    goto Done;
   }
 
-  for (UINTN Index = 0; Index < HASH_COUNT; Index++) {
-    switch (DigestList[Index].digests[0].hashAlg) {
-      case TPM_ALG_SHA256:
-        DUMP_HEX (DEBUG_INFO, 0, DigestList[Index].digests[0].digest.sha256, SHA256_DIGEST_SIZE, "");
-        break;
-      case TPM_ALG_ERROR:
-        DEBUG ((DEBUG_WARN, "Ignoring returned error algorithm digest at %d!!!\n", Index));
-        break;
-      default:
-        DEBUG ((DEBUG_ERROR, "Unrecognized hash algorithm %d!!!\n", DigestList[Index].digests[0].hashAlg));
-        ASSERT (FALSE);
-        break;
-    }
-  }
+  DEBUG ((DEBUG_INFO, "%a Measured digest for supervisor is:\n", __func__));
+  DUMP_HEX (DEBUG_INFO, 0, &DigestList, sizeof (DigestList), "");
 
+
+
+Done:
   return Status;
 }
 
@@ -250,10 +245,10 @@ ResponderValidationTestLibConstructor (
   EFI_STATUS  Status = EFI_SUCCESS;
   VOID        *Registration;
 
-  DEBUG ((DEBUG_INFO, "%a Entry\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a Entry\n", __func__));
 
   if (FeaturePcdGet (PcdMmSupervisorTestEnable)) {
-    DEBUG ((DEBUG_INFO, "%a Test enabled, will register handlers.\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Test enabled, will register handlers.\n", __func__));
     //
     // Register all test related MMI Handlers if enabled through platform configuration
     //
@@ -264,10 +259,10 @@ ResponderValidationTestLibConstructor (
                );
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Registering handler for Mm paging audit test failed - %r!!!\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Registering handler for Mm paging audit test failed - %r!!!\n", __func__, Status));
     }
   }
 
-  DEBUG ((DEBUG_INFO, "%a Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a Exit - %r\n", __func__, Status));
   return Status;
 }
