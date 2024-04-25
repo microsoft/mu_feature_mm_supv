@@ -29,6 +29,7 @@ extern MM_CORE_PRIVATE_DATA             *gMmCorePrivate;
 extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileBase;
 extern EFI_PHYSICAL_ADDRESS             MmSupvAuxFileSize;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0 *MemPolicySnapshot;
+extern SMM_SUPV_SECURE_POLICY_DATA_V1_0 *FirmwarePolicy;
 
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
@@ -241,11 +242,11 @@ SpamValidationTestHandler (
 
   *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy);
   CopyMem ((UINT8*)CommBuffer, &DigestList, sizeof (DigestList));
-  CopyMem ((UINT8*)CommBuffer + OFFSET_OF (SPAM_TEST_COMM_REGION, SupvDigestList), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size);
+  CopyMem ((UINT8*)CommBuffer + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0*)PolicyBuffer)->Size);
 
 Done:
   if (PolicyBuffer != NULL) {
-    FreePool (PolicyBuffer);
+    FreePages (PolicyBuffer, EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
   }
 
   return Status;
