@@ -762,7 +762,7 @@ DiscoverStandaloneMmDriversInFvHobs (
                       &FileHeader
                       );
       if (!EFI_ERROR (Status)) {
-        if (CompareGuid (&FileHeader->Name, &gEfiCallerIdGuid)) {
+        if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
           gMmCorePrivate->StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
           DEBUG ((
             DEBUG_INFO,
