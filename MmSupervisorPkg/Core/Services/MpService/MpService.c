@@ -683,15 +683,17 @@ BSPHandler (
     MtrrSetAllMtrrs (&Mtrrs);
   }
 
-  //
-  // Wait for all APs to complete their pending tasks including MTRR programming if needed.
-  //
-  SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //
+    // Wait for all APs to complete their pending tasks including MTRR programming if needed.
+    //
+    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-  //
-  // Signal APs to Reset states/semaphore for this processor
-  //
-  ReleaseAllAPs ();
+    //
+    // Signal APs to Reset states/semaphore for this processor
+    //
+    ReleaseAllAPs ();
+  }
 
   //
   // Stop source level debug in BSP handler, the code below will not be
@@ -939,15 +941,17 @@ APHandler (
     MtrrSetAllMtrrs (&Mtrrs);
   }
 
-  //
-  // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
-  //
-  SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //
+    // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
+    //
+    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-  //
-  // Wait for the signal from BSP to Reset states/semaphore for this processor
-  //
-  SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+    //
+    // Wait for the signal from BSP to Reset states/semaphore for this processor
+    //
+    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  }
 
   //
   // Reset states/semaphore for this processor
