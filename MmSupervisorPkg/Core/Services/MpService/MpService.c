@@ -665,12 +665,12 @@ BSPHandler (
   *mSmmMpSyncData->InsideSmm = FALSE;
   ReleaseAllAPs ();
 
-  //
-  // Wait for all APs to complete their pending tasks
-  //
-  SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
-
   if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //
+    // Wait for all APs the readiness to program MTRRs
+    //
+    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+
     //
     // Signal APs to restore MTRRs
     //
@@ -681,12 +681,12 @@ BSPHandler (
     //
     SmmCpuFeaturesReenableSmrr ();
     MtrrSetAllMtrrs (&Mtrrs);
-
-    //
-    // Wait for all APs to complete MTRR programming
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
   }
+
+  //
+  // Wait for all APs to complete their pending tasks including MTRR programming if needed.
+  //
+  SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
   //
   // Stop source level debug in BSP handler, the code below will not be
