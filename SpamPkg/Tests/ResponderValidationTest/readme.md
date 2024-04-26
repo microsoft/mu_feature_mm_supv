@@ -8,7 +8,8 @@ These tests verify that the SPAM Responder Validation functionality is working a
 
 ## SPAM Responder Validation Handler
 
-This handler is registered at the constructor of supervisor core and will be executing the SPAM core validation routine when the test application sends a request to the SPAM core.
+This handler is registered at the constructor of supervisor core and will be executing the SPAM core validation routine
+when the test application sends a request to the SPAM core.
 
 ---
 
