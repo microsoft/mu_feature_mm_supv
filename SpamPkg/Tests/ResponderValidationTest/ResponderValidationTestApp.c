@@ -94,11 +94,11 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   // Prep the buffer for getting the last of the misc data.
   //
   ZeroMem (CommBufferBase, mPiSmmCommonCommBufferSize);
-  CommHeader      = CommBufferBase;
+  CommHeader = CommBufferBase;
   CopyGuid (&CommHeader->HeaderGuid, &gSpamValidationTestHandlerGuid);
   CommHeader->MessageLength = MinBufferSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
 
-  BufferSize  = mPiSmmCommonCommBufferSize;
+  BufferSize = mPiSmmCommonCommBufferSize;
 
   //
   // Signal trip to SMM.
@@ -194,15 +194,15 @@ LocateSmmCommonCommBuffer (
 EFI_STATUS
 EFIAPI
 Tcg2MeasurePeImage (
-  IN  EFI_PHYSICAL_ADDRESS      ImageAddress,
-  IN  UINTN                     ImageSize
+  IN  EFI_PHYSICAL_ADDRESS  ImageAddress,
+  IN  UINTN                 ImageSize
   )
 {
-  EFI_STATUS                   Status;
-  EFI_TCG2_EVENT               *Tcg2Event;
-  UINT32                       EventSize;
-  EFI_TCG2_PROTOCOL            *Tcg2Protocol;
-  UINT8                        *EventPtr;
+  EFI_STATUS         Status;
+  EFI_TCG2_EVENT     *Tcg2Event;
+  UINT32             EventSize;
+  EFI_TCG2_PROTOCOL  *Tcg2Protocol;
+  UINT8              *EventPtr;
 
   Status    = EFI_UNSUPPORTED;
   EventPtr  = NULL;
@@ -236,12 +236,12 @@ Tcg2MeasurePeImage (
   // Log the PE data
   //
   Status = Tcg2Protocol->HashLogExtendEvent (
-                            Tcg2Protocol,
-                            PE_COFF_IMAGE,
-                            ImageAddress,
-                            ImageSize,
-                            Tcg2Event
-                            );
+                           Tcg2Protocol,
+                           PE_COFF_IMAGE,
+                           ImageAddress,
+                           ImageSize,
+                           Tcg2Event
+                           );
   DEBUG ((DEBUG_INFO, "DxeTpm2MeasureBootHandler - Tcg2 MeasurePeImage - %r\n", Status));
 
   if (Status == EFI_VOLUME_FULL) {
@@ -277,9 +277,9 @@ ResponderValidationTestAppEntry (
   IN     EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS Status;
-  VOID    *SourceBuffer;
-  UINTN   SourceSize;
+  EFI_STATUS  Status;
+  VOID        *SourceBuffer;
+  UINTN       SourceSize;
 
   DEBUG ((DEBUG_INFO, "%a the app's up!\n", __func__));
 
