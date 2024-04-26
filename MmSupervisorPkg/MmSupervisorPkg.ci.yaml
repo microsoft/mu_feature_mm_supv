@@ -53,7 +53,7 @@
     ## options defined ci/Plugin/GuidCheck
     "GuidCheck": {
         "IgnoreGuidName": [],
-        "IgnoreGuidValue": [],
+        "IgnoreGuidValue": ["4E4C89DC-A452-4B6B-B183-F16A2A223733"],
         "IgnoreFoldersAndFiles": [],
         "IgnoreDuplicates": []
     },

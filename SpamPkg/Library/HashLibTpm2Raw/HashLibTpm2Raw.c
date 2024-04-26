@@ -241,15 +241,15 @@ HashCompleteAndExtend (
     CopyMem (HashBuffer.buffer, Buffer, (UINTN)HashLen);
 
     Status = Tpm2SequenceComplete (
-                (TPMI_DH_OBJECT)HashCtx[Index],
-                &HashBuffer,
-                &Result
-                );
+               (TPMI_DH_OBJECT)HashCtx[Index],
+               &HashBuffer,
+               &Result
+               );
     if (EFI_ERROR (Status)) {
       return EFI_DEVICE_ERROR;
     }
 
-    DigestList->count = DigestList->count + 1;
+    DigestList->count                  = DigestList->count + 1;
     DigestList->digests[Index].hashAlg = AlgoIds[Index];
     CopyMem (&DigestList->digests[Index].digest, Result.buffer, Result.size);
     if (EFI_ERROR (Status)) {
@@ -258,9 +258,9 @@ HashCompleteAndExtend (
   }
 
   Status = Tpm2PcrExtend (
-              PcrIndex,
-              DigestList
-              );
+             PcrIndex,
+             DigestList
+             );
 
   FreePages (HashCtx, EFI_SIZE_TO_PAGES (sizeof (*HashCtx) * HASH_COUNT));
 
@@ -348,25 +348,25 @@ HashAndExtend (
     CopyMem (HashBuffer.buffer, Buffer, (UINTN)HashLen);
 
     Status = Tpm2SequenceComplete (
-                SequenceHandle,
-                &HashBuffer,
-                &Result
-                );
+               SequenceHandle,
+               &HashBuffer,
+               &Result
+               );
     if (EFI_ERROR (Status)) {
       return EFI_DEVICE_ERROR;
     }
 
     DEBUG ((DEBUG_VERBOSE, "\n Tpm2SequenceComplete Success \n"));
 
-    DigestList->count = DigestList->count + 1;
+    DigestList->count                  = DigestList->count + 1;
     DigestList->digests[Index].hashAlg = AlgoIds[Index];
     CopyMem (&DigestList->digests[Index].digest, Result.buffer, Result.size);
   }
 
   Status = Tpm2PcrExtend (
-              PcrIndex,
-              DigestList
-              );
+             PcrIndex,
+             DigestList
+             );
   if (EFI_ERROR (Status)) {
     return EFI_DEVICE_ERROR;
   }

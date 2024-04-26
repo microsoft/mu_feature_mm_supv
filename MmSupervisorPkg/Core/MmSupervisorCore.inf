@@ -223,6 +223,7 @@
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
   gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
+  gMmSupervisorCoreGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
