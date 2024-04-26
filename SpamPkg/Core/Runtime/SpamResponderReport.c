@@ -29,9 +29,7 @@
 #include <Library/HashLib.h>
 #include <Library/SecurePolicyLib.h>
 
-#include "Runtime/StmRuntime.h"
-
-#define SPAM_PCR_INDEX  17
+#include "StmRuntimeUtil.h"
 
 /**
   Helper function to check if one range is inside another.
@@ -430,6 +428,8 @@ Finish:
   @param[in] ImageSize      The size of the image.
   @param[in] AuxFileBase    The base address of the auxiliary file.
   @param[in] AuxFileLength  The length of the auxiliary file.
+  @param[in] PageTableBase  The base address of the page table.
+  @param[out] DigestList    The digest list of the image.
 
   @retval EFI_SUCCESS            The image is verified and measured successfully.
   @retval EFI_SECURITY_VIOLATION The image is not inside MMRAM.
@@ -438,16 +438,17 @@ Finish:
 EFI_STATUS
 EFIAPI
 VerifyAndMeasureImage (
-  IN UINTN   ImageBase,
-  IN UINT64  ImageSize,
-  IN UINT64  AuxFileBase,
-  IN UINT64  AuxFileLength,
-  IN UINT64  PageTableBase
+  IN  UINTN               ImageBase,
+  IN  UINT64              ImageSize,
+  IN  UINT64              AuxFileBase,
+  IN  UINT64              AuxFileLength,
+  IN  UINT64              PageTableBase,
+  OUT TPML_DIGEST_VALUES  *DigestList
   )
 {
-  EFI_STATUS          Status;
-  VOID                *InternalCopy;
-  TPML_DIGEST_VALUES  DigestList[HASH_COUNT];
+  EFI_STATUS  Status;
+  VOID        *InternalCopy;
+  VOID        *Buffer;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -471,7 +472,7 @@ VerifyAndMeasureImage (
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
 
   ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
-  VOID  *Buffer = AllocatePages (EFI_SIZE_TO_PAGES (ImageSize));
+  Buffer = AllocatePages (EFI_SIZE_TO_PAGES (ImageSize));
 
   CopyMem (Buffer, (VOID *)ImageBase, ImageSize);
 
@@ -512,7 +513,7 @@ VerifyAndMeasureImage (
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
 
   Status = MeasurePeImageAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
              (UINTN)NewBufferSize,
              DigestList
@@ -541,6 +542,8 @@ Exit:
   aux file and revert the executed code to the original state and measure into TPM.
 
   @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
+  @param[out] RetDigestList      The digest list of the image.
+  @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
@@ -551,18 +554,15 @@ Exit:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN SPAM_RESPONDER_DATA  *SpamResponderData
+  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
+  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  OUT VOID                 **NewPolicy  OPTIONAL
   )
 {
   EFI_STATUS                        Status;
   UINT64                            MmBase;
-  UINT64                            MmRamBase;
-  UINT64                            MmrrMask;
   UINT32                            MaxExtendedFunction;
   CPUID_VIR_PHY_ADDRESS_SIZE_EAX    VirPhyAddressSize;
-  UINT64                            Length;
-  UINT64                            MtrrValidBitsMask;
-  UINT64                            MtrrValidAddressMask;
   UINT32                            *Fixup32Ptr;
   UINT64                            *Fixup64Ptr;
   BOOLEAN                           IsInside;
@@ -572,9 +572,10 @@ SpamResponderReport (
   UINT64                            MmSupervisorBase;
   UINT64                            FirmwarePolicyBase;
   UINT64                            SupvPageTableBase;
-  TPML_DIGEST_VALUES                DigestList[HASH_COUNT];
+  TPML_DIGEST_VALUES                DigestList;
   UINT8                             *DrtmSmmPolicyData;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
+  KEY_SYMBOL                        *KeySymbols;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
@@ -584,21 +585,25 @@ SpamResponderReport (
 
   // Step 1: Basic check on the validity of SpamResponderData
   if (SpamResponderData == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData is NULL\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
 
   if (SpamResponderData->Signature != SPAM_RESPONDER_STRUCT_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData does not have valid signature %x\n", __func__, SpamResponderData->Signature));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
 
   if (SpamResponderData->VersionMajor > SPAM_REPSONDER_STRUCT_MAJOR_VER) {
+    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData has unrecognized major version %x!\n", __func__, SpamResponderData->VersionMajor));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   } else if ((SpamResponderData->VersionMajor == SPAM_REPSONDER_STRUCT_MAJOR_VER) &&
              (SpamResponderData->VersionMinor > SPAM_REPSONDER_STRUCT_MINOR_VER))
   {
+    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData has unrecognized minor version %x\n", __func__, SpamResponderData->VersionMinor));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
@@ -613,62 +618,61 @@ SpamResponderReport (
     VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
   }
 
-  MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
-  MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
-
-  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
-  MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
-  // Extend the mask to account for the reserved bits.
-  MmrrMask |= 0xffffffff00000000ULL;
-  Length    = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
-  MmBase    = AsmReadMsr64 (MSR_IA32_SMBASE);
+  MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
+    DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE for core 0x%x\n", __func__, SpamResponderData->CpuIndex));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (!IsBufferInsideMmram (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize)) {
+    DEBUG ((DEBUG_ERROR, "%a Reported MM entry code (0x%p: 0x%x) does not reside inside MMRAM region\n", __func__, MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)SpamResponderData->MmSupervisorAuxBase == 0) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file base address is NULL!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (!IsBufferInsideMmram (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file (0x%p: 0x%x) does not reside in MMRAM region!\n", __func__, SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature %x\n", __func__, ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  ZeroMem (DigestList, sizeof (DigestList));
+  ZeroMem (&DigestList, sizeof (DigestList));
   Status = HashAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
              (UINTN)SpamResponderData->MmSupervisorAuxSize,
-             DigestList
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a HashAndExtend for aux file failed %r\n", __func__, Status));
     goto Exit;
   } else {
     Status = EFI_NOT_FOUND;
-    for (Index = 0; Index < HASH_COUNT; Index++) {
-      if (DigestList[Index].count == 0) {
-        continue;
-      }
-
-      if (DigestList[Index].digests[0].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList[Index].digests[0].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
+    for (Index = 0; Index < DigestList.count; Index++) {
+      if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
+        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
           DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
+          DEBUG ((DEBUG_ERROR, "Expecting:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), PatchPcdGetSize (PcdAuxBinHash), "");
+          DEBUG ((DEBUG_ERROR, "Calculated:\n"));
+          DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         } else {
+          DEBUG ((DEBUG_INFO, "%a Hash for aux file matches!\n", __func__));
           Status = EFI_SUCCESS;
           break;
         }
@@ -680,7 +684,7 @@ SpamResponderReport (
     }
   }
 
-  KEY_SYMBOL  *KeySymbols = (KEY_SYMBOL *)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
+  KeySymbols = (KEY_SYMBOL *)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
 
   for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->KeySymbolCount; Index++) {
     switch (KeySymbols[Index].Signature) {
@@ -697,6 +701,7 @@ SpamResponderReport (
   }
 
   if ((FirmwarePolicySymbol == NULL) || (PageTableSymbol == NULL) || (MmiRendezvousSymbol == NULL)) {
+    DEBUG ((DEBUG_ERROR, "%a Some key symbols of the supervisor core are not found policy: 0x%p, page table: 0x%p, rendezvous 0x%p.\n", __func__, FirmwarePolicySymbol, PageTableSymbol, MmiRendezvousSymbol));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -706,20 +711,21 @@ SpamResponderReport (
   // TCG_PCR_EVENT_HDR   NewEventHdr;
 
   Status = HashAndExtend (
-             SPAM_PCR_INDEX,
+             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
              (UINTN)SpamResponderData->MmEntrySize,
-             DigestList
+             &DigestList
              );
   if (!EFI_ERROR (Status)) {
     // TODO: Do we want to message with the event log?
     // ZeroMem (&NewEventHdr, sizeof (NewEventHdr));
-    // NewEventHdr.PCRIndex  = SPAM_PCR_INDEX;
+    // NewEventHdr.PCRIndex  = PcdGet32 (PcdSpamMeasurementPcrIndex);
     // NewEventHdr.EventType = SPAM_EVTYPE_MM_ENTRY_HASH;
     // NewEventHdr.EventSize = sizeof (EFI_TCG2_EVENT) - sizeof (NewEventHdr.Event) - sizeof (UINT32) - sizeof (EFI_TCG2_EVENT_HEADER);;
 
     // Status = TcgDxeLogHashEvent (DigestList, NewEventHdr, NewEventHdr.Event);
   } else {
+    DEBUG ((DEBUG_ERROR, "%a HashAndExtend of MM entry code failed %r.\n", __func__, Status));
     goto Exit;
   }
 
@@ -731,7 +737,8 @@ SpamResponderReport (
   if ((MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION) ||
       (MmiEntryStructHdrSize >= SpamResponderData->MmEntrySize))
   {
-    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a MM entry code has unrecognized version %x or invalid size %x.\n", __func__, MmiEntryStructHdr->HeaderVersion, MmiEntryStructHdrSize));
+    Status = EFI_UNSUPPORTED;
     goto Exit;
   }
 
@@ -743,19 +750,20 @@ SpamResponderReport (
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
 
   if (!IsBufferInsideMmram (MmSupervisorBase, SpamResponderData->MmSupervisorSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Calculated MM supervisor core image (0x%p: 0x%x) does not reside inside MMRAM.\n", __func__, MmSupervisorBase, SpamResponderData->MmSupervisorSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // GDTR and its content should be pointing inside the MMRAM region
   if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR))) {
-    DEBUG ((DEBUG_ERROR, "GDTR is not inside MMRAM region %x %x %x %x\n", Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR), MmRamBase, Length));
+    DEBUG ((DEBUG_ERROR, "%a GDTR is not inside MMRAM region %x %x.\n", __func__, Fixup32Ptr[FIXUP32_GDTR], sizeof (IA32_DESCRIPTOR)));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (!IsBufferInsideMmram (((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1)) {
-    DEBUG ((DEBUG_ERROR, "GDTR base is not inside MMRAM region %x %x %x %x\n", ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1, MmBase, Length));
+    DEBUG ((DEBUG_ERROR, "%a GDTR base is not inside MMRAM region %x %x.\n", __func__, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Base, ((IA32_DESCRIPTOR *)(UINTN)Fixup32Ptr[FIXUP32_GDTR])->Limit + 1));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -763,24 +771,28 @@ SpamResponderReport (
   // CR3 should be pointing to the page table from symbol list in the aux file
   SupvPageTableBase = *(UINT64 *)(MmSupervisorBase + PageTableSymbol->Offset);
   if (Fixup32Ptr[FIXUP32_CR3_OFFSET] != SupvPageTableBase) {
+    DEBUG ((DEBUG_ERROR, "%a Calculated page table 0x%p does not match MM entry code populated value 0x%p.\n", __func__, SupvPageTableBase, Fixup32Ptr[FIXUP32_CR3_OFFSET]));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // CR3 should be pointing inside the MMRAM region
   if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_CR3_OFFSET], sizeof (UINT32))) {
+    DEBUG ((DEBUG_ERROR, "%a Page table pointer 0x%p does not reside inside MMRAM!!!.\n", __func__, Fixup32Ptr[FIXUP32_CR3_OFFSET]));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // Supervisor stack should be pointing inside the MMRAM region
   if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32))) {
+    DEBUG ((DEBUG_ERROR, "%a Poplated supervisor stack 0x%p does not reside inside MMRAM!!!.\n", __func__, Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0]));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // SMM BASE... should be MMBASE...
   if (Fixup32Ptr[FIXUP32_MSR_SMM_BASE] != MmBase) {
+    DEBUG ((DEBUG_ERROR, "%a Poplated MMBASE 0x%p does not match MSR value 0x%p!!!.\n", __func__, Fixup32Ptr[FIXUP32_MSR_SMM_BASE], MmBase));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -788,6 +800,7 @@ SpamResponderReport (
   // MM debug entry should be in the MM CORE region
   Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
+    DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -795,6 +808,7 @@ SpamResponderReport (
   // MM debug exit should be in the MM CORE region
   Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
+    DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -802,6 +816,7 @@ SpamResponderReport (
   // MM IDTR should be in the MM CORE region
   Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
+    DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -809,6 +824,7 @@ SpamResponderReport (
   // Then also verify that the firmware policy is inside the MMRAM
   FirmwarePolicyBase = *(UINT64 *)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
   if (!IsBufferInsideMmram (FirmwarePolicyBase, sizeof (UINT64))) {
+    DEBUG ((DEBUG_ERROR, "%a Reported firmware policy 0x%p does not reside inside MMRAM!!!.\n", __func__, FirmwarePolicyBase));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -819,10 +835,16 @@ SpamResponderReport (
              SpamResponderData->MmSupervisorSize,
              SpamResponderData->MmSupervisorAuxBase,
              SpamResponderData->MmSupervisorAuxSize,
-             SupvPageTableBase
+             SupvPageTableBase,
+             &DigestList
              );
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndMeasureImage %r!!!.\n", __func__, Status));
     goto Exit;
+  }
+
+  if (RetDigestList != NULL) {
+    CopyMem (RetDigestList, &DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
@@ -830,6 +852,7 @@ SpamResponderReport (
   // Step 4: Report MM Secure Policy code
   DrtmSmmPolicyData = AllocatePages (EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
   if (DrtmSmmPolicyData == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate for policy data!!!.\n", __func__));
     Status = EFI_OUT_OF_RESOURCES;
     goto Exit;
   }
@@ -842,19 +865,24 @@ SpamResponderReport (
   // Then leave the heavy lifting job to the library
   Status = PopulateMemoryPolicyEntries ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, SupvPageTableBase);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __func__, Status));
     goto Exit;
   }
 
   Status = SecurityPolicyCheck ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __func__, Status));
     goto Exit;
   }
 
   DEBUG_CODE_BEGIN ();
   DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   DEBUG_CODE_END ();
+
+  if (NewPolicy != NULL) {
+    *NewPolicy = DrtmSmmPolicyData;
+  }
+
   // TODO: How to do this? I would like to keep the structure the same though...
 
 Exit:
