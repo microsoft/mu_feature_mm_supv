@@ -27,7 +27,6 @@ CPU_HOT_PLUG_DATA  mCpuHotPlugData = {
 // SMM Relocation variables
 //
 volatile BOOLEAN  *mRebased;
-volatile BOOLEAN  mIsBsp;
 
 ///
 /// Handle for the SMM CPU Protocol
@@ -35,6 +34,10 @@ volatile BOOLEAN  mIsBsp;
 EFI_HANDLE  mSmmCpuHandle = NULL;
 
 EFI_CPU_INTERRUPT_HANDLER  mExternalVectorTable[EXCEPTION_VECTOR_NUMBER];
+
+BOOLEAN           mSmmRelocated    = FALSE;
+volatile BOOLEAN  *mSmmInitialized = NULL;
+UINT32            mBspApicId       = 0;
 
 //
 // SMM stack information
@@ -205,8 +208,9 @@ SmmInitHandler (
   VOID
   )
 {
-  UINT32  ApicId;
-  UINTN   Index;
+  UINT32   ApicId;
+  UINTN    Index;
+  BOOLEAN  IsBsp;
 
   //
   // Update SMM IDT entries' code segment and load IDT
@@ -214,16 +218,21 @@ SmmInitHandler (
   AsmWriteIdtr (&gcSmiIdtr);
   ApicId = GetApicId ();
 
+  IsBsp = (BOOLEAN)(mBspApicId == ApicId);
+
   ASSERT (mNumberOfCpus <= mMaxNumberOfCpus);
 
   for (Index = 0; Index < mNumberOfCpus; Index++) {
     if (ApicId == (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
+      PERF_CODE (
+        MpPerfBegin (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
+        );
       //
       // Initialize SMM specific features on the currently executing CPU
       //
       SmmCpuFeaturesInitializeProcessor (
         Index,
-        mIsBsp,
+        IsBsp,
         gSmmCpuPrivate->ProcessorInfo,
         &mCpuHotPlugData
         );
@@ -233,7 +242,7 @@ SmmInitHandler (
       //
       CheckFeatureSupported ();
 
-      if (mIsBsp) {
+      if (IsBsp) {
         //
         // BSP rebase is already done above.
         // Initialize private data during S3 resume
@@ -241,16 +250,71 @@ SmmInitHandler (
         InitializeMpSyncData ();
       }
 
-      //
-      // Hook return after RSM to set SMM re-based flag
-      //
-      SemaphoreHook (Index, &mRebased[Index]);
+      if (!mSmmRelocated) {
+        //
+        // Hook return after RSM to set SMM re-based flag
+        //
+        SemaphoreHook (Index, &mRebased[Index]);
+      }
+
+      PERF_CODE (
+        MpPerfEnd (Index, SMM_MP_PERF_PROCEDURE_ID (SmmInitHandler));
+        );
 
       return;
     }
   }
 
   ASSERT (FALSE);
+}
+
+/**
+  Issue SMI IPI (All Excluding Self SMM IPI + BSP SMM IPI) to execute first SMI init.
+**/
+VOID
+ExecuteFirstSmiInit (
+  VOID
+  )
+{
+  UINTN  Index;
+
+  PERF_FUNCTION_BEGIN ();
+
+  if (mSmmInitialized == NULL) {
+    mSmmInitialized = (BOOLEAN *)AllocatePool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
+  }
+
+  ASSERT (mSmmInitialized != NULL);
+  if (mSmmInitialized == NULL) {
+    PERF_FUNCTION_END ();
+    return;
+  }
+
+  //
+  // Reset the mSmmInitialized to false.
+  //
+  ZeroMem ((VOID *)mSmmInitialized, sizeof (BOOLEAN) * mMaxNumberOfCpus);
+
+  //
+  // Get the BSP ApicId.
+  //
+  mBspApicId = GetApicId ();
+
+  //
+  // Issue SMI IPI (All Excluding Self SMM IPI + BSP SMM IPI) for SMM init
+  //
+  SendSmiIpi (mBspApicId);
+  SendSmiIpiAllExcludingSelf ();
+
+  //
+  // Wait for all processors to finish its 1st SMI
+  //
+  for (Index = 0; Index < mNumberOfCpus; Index++) {
+    while (!(BOOLEAN)mSmmInitialized[Index]) {
+    }
+  }
+
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -269,9 +333,10 @@ SmmRelocateBases (
   SMRAM_SAVE_STATE_MAP  BakBuf2;
   SMRAM_SAVE_STATE_MAP  *CpuStatePtr;
   UINT8                 *U8Ptr;
-  UINT32                ApicId;
   UINTN                 Index;
   UINTN                 BspIndex;
+
+  PERF_FUNCTION_BEGIN ();
 
   //
   // Make sure the reserved size is large enough for procedure SmmInitTemplate.
@@ -310,17 +375,16 @@ SmmRelocateBases (
   //
   // Retrieve the local APIC ID of current processor
   //
-  ApicId = GetApicId ();
+  mBspApicId = GetApicId ();
 
   //
   // Relocate SM bases for all APs
   // This is APs' 1st SMI - rebase will be done here, and APs' default SMI handler will be overridden by gcSmmInitTemplate
   //
-  mIsBsp   = FALSE;
   BspIndex = (UINTN)-1;
   for (Index = 0; Index < mNumberOfCpus; Index++) {
     mRebased[Index] = FALSE;
-    if (ApicId != (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
+    if (mBspApicId != (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
       SendSmiIpi ((UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId);
       //
       // Wait for this AP to finish its 1st SMI
@@ -339,8 +403,7 @@ SmmRelocateBases (
   // Relocate BSP's SMM base
   //
   ASSERT (BspIndex != (UINTN)-1);
-  mIsBsp = TRUE;
-  SendSmiIpi (ApicId);
+  SendSmiIpi (mBspApicId);
   //
   // Wait for the BSP to finish its 1st SMI
   //
@@ -352,6 +415,8 @@ SmmRelocateBases (
   //
   CopyMem (CpuStatePtr, &BakBuf2, sizeof (BakBuf2));
   CopyMem (U8Ptr, BakBuf, sizeof (BakBuf));
+
+  PERF_FUNCTION_END ();
 }
 
 EFI_STATUS
@@ -381,6 +446,8 @@ LockMmCoreBeforeExit (
   )
 {
   EFI_STATUS  Status;
+
+  PERF_FUNCTION_BEGIN ();
 
   // This will stand for the initial locking, which will cover that:
   // a. Core data and code set to supervisor pages
@@ -442,9 +509,12 @@ LockMmCoreBeforeExit (
     SetPageTableAttributes ();
   }
 
+  PERF_START (NULL, "SmmCompleteReadyToLock", NULL, 0);
   SmmCpuFeaturesCompleteSmmReadyToLock ();
+  PERF_END (NULL, "SmmCompleteReadyToLock", NULL, 0);
 
   SetPageTableBase (0);
+  PERF_FUNCTION_END ();
 }
 
 /**
@@ -472,15 +542,22 @@ SetupSmiEntryExit (
   UINTN       TileSize;
   UINT8       *Stacks;
   // VOID                       *Registration;
-  UINT32  RegEax;
-  UINT32  RegEbx;
-  UINT32  RegEcx;
-  UINT32  RegEdx;
-  UINTN   FamilyId;
-  UINTN   ModelId;
-  UINT32  Cr3;
+  UINT32             RegEax;
+  UINT32             RegEbx;
+  UINT32             RegEcx;
+  UINT32             RegEdx;
+  UINTN              FamilyId;
+  UINTN              ModelId;
+  UINT32             Cr3;
+  EFI_HOB_GUID_TYPE  *GuidHob;
+  SMM_BASE_HOB_DATA  *SmmBaseHobData;
 
   UINT8  *Cpl3Stacks;
+
+  GuidHob        = NULL;
+  SmmBaseHobData = NULL;
+
+  PERF_FUNCTION_BEGIN ();
 
   //
   // Initialize address fixup
@@ -511,8 +588,6 @@ SetupSmiEntryExit (
   //
   // Extract the MP information from the Hoblist
   //
-  VOID  *GuidHob = NULL;
-
   GuidHob = GetFirstGuidHob (&gMpInformationHobGuid);
   ASSERT (GuidHob != NULL);
   MP_INFORMATION_HOB_DATA  *MpInformationHobData = GET_GUID_HOB_DATA (GuidHob);
@@ -557,6 +632,10 @@ SetupSmiEntryExit (
   }
 
   gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus = mMaxNumberOfCpus;
+
+  PERF_CODE (
+    InitializeMpPerf (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
+    );
 
   //
   // The CPU save state and code for the SMI entry point are tiled within an SMRAM
@@ -713,26 +792,50 @@ SetupSmiEntryExit (
   ASSERT (TileSize <= (SMRAM_SAVE_STATE_MAP_OFFSET + sizeof (SMRAM_SAVE_STATE_MAP) - SMM_HANDLER_OFFSET));
 
   //
-  // Allocate buffer for all of the tiles.
+  // Retrive the allocated SmmBase from gSmmBaseHobGuid. If found,
+  // means the SmBase relocation has been done.
   //
-  // Intel(R) 64 and IA-32 Architectures Software Developer's Manual
-  // Volume 3C, Section 34.11 SMBASE Relocation
-  //   For Pentium and Intel486 processors, the SMBASE values must be
-  //   aligned on a 32K Byte boundary or the processor will enter shutdown
-  //   state during the execution of a RSM instruction.
-  //
-  // Intel486 processors: FamilyId is 4
-  // Pentium processors : FamilyId is 5
-  //
-  BufferPages = EFI_SIZE_TO_PAGES (SIZE_32KB + TileSize * (mMaxNumberOfCpus - 1));
-  if ((FamilyId == 4) || (FamilyId == 5)) {
-    Buffer = AllocateAlignedCodePages (BufferPages, SIZE_32KB);
-  } else {
-    Buffer = AllocateAlignedCodePages (BufferPages, SIZE_4KB);
-  }
+  GuidHob = GetFirstGuidHob (&gSmmBaseHobGuid);
+  if (GuidHob != NULL) {
+    //
+    // Check whether the Required TileSize is enough.
+    //
+    if (TileSize > SIZE_8KB) {
+      DEBUG ((DEBUG_ERROR, "The Range of Smbase in SMRAM is not enough -- Required TileSize = 0x%08x, Actual TileSize = 0x%08x\n", TileSize, SIZE_8KB));
+      CpuDeadLoop ();
+      return RETURN_BUFFER_TOO_SMALL;
+    }
 
-  ASSERT (Buffer != NULL);
-  DEBUG ((DEBUG_INFO, "SMRAM SaveState Buffer (0x%08x, 0x%08x)\n", Buffer, EFI_PAGES_TO_SIZE (BufferPages)));
+    SmmBaseHobData = GET_GUID_HOB_DATA (GuidHob);
+
+    //
+    // Assume single instance of HOB produced, expect the HOB.NumberOfProcessors equals to the mMaxNumberOfCpus.
+    //
+    ASSERT (SmmBaseHobData->NumberOfProcessors == (UINT32)mMaxNumberOfCpus && SmmBaseHobData->ProcessorIndex == 0);
+    mSmmRelocated = TRUE;
+  } else {
+    //
+    // When the HOB doesn't exist, allocate new SMBASE itself.
+    //
+    DEBUG ((DEBUG_INFO, "PiCpuSmmEntry: gSmmBaseHobGuid not found!\n"));
+    //
+    // very old processors (i486 + pentium) need 32k not 4k alignment, exclude them.
+    //
+    ASSERT (FamilyId >= 6);
+    //
+    // Allocate buffer for all of the tiles.
+    //
+    BufferPages = EFI_SIZE_TO_PAGES (SIZE_32KB + TileSize * (mMaxNumberOfCpus - 1));
+    Buffer      = AllocateAlignedCodePages (BufferPages, SIZE_4KB);
+    if (Buffer == NULL) {
+      DEBUG ((DEBUG_ERROR, "Failed to allocate %Lu pages.\n", (UINT64)BufferPages));
+      CpuDeadLoop ();
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+    ASSERT (Buffer != NULL);
+    DEBUG ((DEBUG_INFO, "New Allcoated SMRAM SaveState Buffer (0x%08x, 0x%08x)\n", Buffer, EFI_PAGES_TO_SIZE (BufferPages)));
+  }
 
   //
   // Allocate buffer for pointers to array in  SMM_CPU_PRIVATE_DATA.
@@ -767,7 +870,8 @@ SetupSmiEntryExit (
   // size for each CPU in the platform
   //
   for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-    mCpuHotPlugData.SmBase[Index]           = (UINTN)Buffer + Index * TileSize - SMM_HANDLER_OFFSET;
+    mCpuHotPlugData.SmBase[Index] = mSmmRelocated ? (UINTN)SmmBaseHobData->SmBase[Index] : (UINTN)Buffer + Index * TileSize - SMM_HANDLER_OFFSET;
+
     gSmmCpuPrivate->CpuSaveStateSize[Index] = sizeof (SMRAM_SAVE_STATE_MAP);
     gSmmCpuPrivate->CpuSaveState[Index]     = (VOID *)(mCpuHotPlugData.SmBase[Index] + SMRAM_SAVE_STATE_MAP_OFFSET);
     gSmmCpuPrivate->Operation[Index]        = SmmCpuNone;
@@ -894,17 +998,23 @@ SetupSmiEntryExit (
   InitializeSmmIdt ();
 
   //
-  // Relocate SMM Base addresses to the ones allocated from SMRAM
+  // Check whether Smm Relocation is done or not.
+  // If not, will do the SmmBases Relocation here!!!
   //
-  mRebased = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
-  ASSERT (mRebased != NULL);
-  SmmRelocateBases ();
+  if (!mSmmRelocated) {
+    //
+    // Relocate SMM Base addresses to the ones allocated from SMRAM
+    //
+    mRebased = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
+    ASSERT (mRebased != NULL);
+    SmmRelocateBases ();
 
-  //
-  // Call hook for BSP to perform extra actions in normal mode after all
-  // SMM base addresses have been relocated on all CPUs
-  //
-  SmmCpuFeaturesSmmRelocationComplete ();
+    //
+    // Call hook for BSP to perform extra actions in normal mode after all
+    // SMM base addresses have been relocated on all CPUs
+    //
+    SmmCpuFeaturesSmmRelocationComplete ();
+  }
 
   DEBUG ((DEBUG_INFO, "mXdSupported - 0x%x\n", mXdSupported));
 
@@ -926,13 +1036,32 @@ SetupSmiEntryExit (
         mSmmShadowStackSize
         );
       if (FeaturePcdGet (PcdCpuSmmStackGuard)) {
-        SetNotPresentPage (
+        ConvertMemoryPageAttributes (
           Cr3,
+          mPagingMode,
           (EFI_PHYSICAL_ADDRESS)(UINTN)Stacks + mSmmStackSize + EFI_PAGES_TO_SIZE (1) + (mSmmStackSize + mSmmShadowStackSize) * Index,
-          EFI_PAGES_TO_SIZE (1)
+          EFI_PAGES_TO_SIZE (1),
+          EFI_MEMORY_RP,
+          TRUE,
+          NULL
           );
       }
     }
+  }
+
+  //
+  // For relocated SMBASE, some MSRs & CSRs are still required to be configured in SMM Mode for SMM Initialization.
+  // Those MSRs & CSRs must be configured before normal SMI sources happen.
+  // So, here is to issue SMI IPI (All Excluding  Self SMM IPI + BSP SMM IPI) to execute first SMI init.
+  //
+  if (mSmmRelocated) {
+    ExecuteFirstSmiInit ();
+
+    //
+    // Call hook for BSP to perform extra actions in normal mode after all
+    // SMM base addresses have been relocated on all CPUs
+    //
+    SmmCpuFeaturesSmmRelocationComplete ();
   }
 
   //
@@ -986,7 +1115,32 @@ SetupSmiEntryExit (
 
   DEBUG ((DEBUG_INFO, "SMM CPU Module exit from SMRAM with EFI_SUCCESS\n"));
 
+  PERF_FUNCTION_END ();
   return EFI_SUCCESS;
+}
+
+/**
+  Function to compare 2 EFI_SMRAM_DESCRIPTOR based on CpuStart.
+  @param[in] Buffer1            pointer to Device Path pointer to compare
+  @param[in] Buffer2            pointer to second DevicePath pointer to compare
+  @retval 0                     Buffer1 equal to Buffer2
+  @retval <0                    Buffer1 is less than Buffer2
+  @retval >0                    Buffer1 is greater than Buffer2
+**/
+INTN
+EFIAPI
+CpuSmramRangeCompare (
+  IN  CONST VOID  *Buffer1,
+  IN  CONST VOID  *Buffer2
+  )
+{
+  if (((EFI_SMRAM_DESCRIPTOR *)Buffer1)->CpuStart > ((EFI_SMRAM_DESCRIPTOR *)Buffer2)->CpuStart) {
+    return 1;
+  } else if (((EFI_SMRAM_DESCRIPTOR *)Buffer1)->CpuStart < ((EFI_SMRAM_DESCRIPTOR *)Buffer2)->CpuStart) {
+    return -1;
+  }
+
+  return 0;
 }
 
 /**
@@ -1009,6 +1163,7 @@ FindSmramInfo (
   UINTN                           Index;
   UINT64                          MaxSize;
   BOOLEAN                         Found;
+  EFI_SMRAM_DESCRIPTOR            SmramDescriptor;
 
   //
   // Get SMRAM hob
@@ -1039,6 +1194,11 @@ FindSmramInfo (
   ASSERT (mSmmCpuSmramRanges != NULL);
 
   CopyMem (mSmmCpuSmramRanges, HobData->Descriptor, mSmmCpuSmramRangeCount * sizeof (EFI_SMRAM_DESCRIPTOR));
+
+  //
+  // Sort the mSmmCpuSmramRanges
+  //
+  QuickSort (mSmmCpuSmramRanges, mSmmCpuSmramRangeCount, sizeof (EFI_SMRAM_DESCRIPTOR), (BASE_SORT_COMPARE)CpuSmramRangeCompare, &SmramDescriptor);
 
   //
   // Find the largest SMRAM range between 1MB and 4GB that is at least 256K - 4K in size
@@ -1148,12 +1308,15 @@ ConfigSmmCodeAccessCheck (
   UINTN       Index;
   EFI_STATUS  Status;
 
+  PERF_FUNCTION_BEGIN ();
+
   //
   // Check to see if the Feature Control MSR is supported on this CPU
   //
   Index = gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu;
   if (!SmmCpuFeaturesIsSmmRegisterSupported (Index, SmmRegFeatureControl)) {
     mSmmCodeAccessCheckEnable = FALSE;
+    PERF_FUNCTION_END ();
     return;
   }
 
@@ -1163,6 +1326,7 @@ ConfigSmmCodeAccessCheck (
   //
   if ((AsmReadMsr64 (EFI_MSR_SMM_MCA_CAP) & SMM_CODE_ACCESS_CHK_BIT) == 0) {
     mSmmCodeAccessCheckEnable = FALSE;
+    PERF_FUNCTION_END ();
     return;
   }
 
@@ -1219,6 +1383,8 @@ ConfigSmmCodeAccessCheck (
       ReleaseSpinLock (mConfigSmmCodeAccessCheckLock);
     }
   }
+
+  PERF_FUNCTION_END ();
 }
 
 // MSCHANGE [BEGIN] - Add flag to enable "test mode" for the SMM protections.

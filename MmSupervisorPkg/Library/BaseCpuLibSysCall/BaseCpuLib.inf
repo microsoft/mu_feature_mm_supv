@@ -15,7 +15,7 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | d0c8e15f448b76a4d613430cfb45320d | 2023-05-19T22-07-15 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
+#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 9264f95ed968bb116e16422dbefc3faa | 2023-12-14T22-57-32 | 78db5a7c3d55d1389373187973bf2936f4bbe5fa
 
 [Defines]
   INF_VERSION                    = 0x00010005

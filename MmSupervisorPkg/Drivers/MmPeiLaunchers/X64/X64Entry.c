@@ -261,7 +261,7 @@ _ModuleEntryPoint (
   DEBUG ((
     DEBUG_INFO,
     "%a() Core Entry Point: 0x%p, Hob Start Address: 0x%p\n",
-    __FUNCTION__,
+    __func__,
     EntrypointContext->MmCoreEntryPointAddr,
     EntrypointContext->HobStartAddr
     ));
@@ -284,7 +284,7 @@ _ModuleEntryPoint (
   DEBUG ((
     DEBUG_INFO,
     "%a() Stack Base: 0x%lx, Stack Size: 0x%lx - %r\n",
-    __FUNCTION__,
+    __func__,
     EntrypointContext->StackBufferBase,
     EntrypointContext->StackBufferLength,
     Status

@@ -13,6 +13,7 @@
 #define _MM_CORE_MEM_H_
 
 #include <Guid/MmCoreData.h>
+#include <Library/CpuPageTableLib.h>
 
 ///
 /// Page Table Entry
@@ -145,8 +146,6 @@ typedef struct {
   UINTN    FreePages;
 } PAGE_TABLE_POOL;
 
-extern PAGE_TABLE_POOL  mPageTablePoolEx;
-
 //
 // Copy of the PcdPteMemoryEncryptionAddressOrMask
 //
@@ -156,6 +155,8 @@ extern UINT8   mPhysicalAddressBits;
 extern EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap;
 extern UINTN                  mInitDescriptorSize;
 extern UINTN                  mInitMemoryMapSize;
+extern PAGING_MODE            mPagingMode;
+extern UINTN                  mSmmShadowStackSize;
 
 /**
   Disable CET.
@@ -266,11 +267,10 @@ GetPageTable (
   Length from their current attributes to the attributes specified by Attributes.
 
   @param[in]   PageTableBase    The page table base.
-  @param[in]   EnablePML5Paging If PML5 paging is enabled.
+  @param[in]   PagingMode       The paging mode.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to set for the memory region.
-  @param[out]  IsSplitted       TRUE means page table splitted. FALSE means page table not splitted.
 
   @retval EFI_SUCCESS           The attributes were set for the memory region.
   @retval EFI_ACCESS_DENIED     The attributes for the memory resource range specified by
@@ -288,12 +288,11 @@ GetPageTable (
 **/
 EFI_STATUS
 SmmSetMemoryAttributesEx (
-  IN  UINTN                 PageTableBase,
-  IN  BOOLEAN               EnablePML5Paging,
-  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN  UINT64                Length,
-  IN  UINT64                Attributes,
-  OUT BOOLEAN               *IsSplitted  OPTIONAL
+  IN  UINTN             PageTableBase,
+  IN  PAGING_MODE       PagingMode,
+  IN  PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64            Length,
+  IN  UINT64            Attributes
   );
 
 /**
@@ -301,11 +300,10 @@ SmmSetMemoryAttributesEx (
   Length from their current attributes to the attributes specified by Attributes.
 
   @param[in]   PageTableBase    The page table base.
-  @param[in]   EnablePML5Paging If PML5 paging is enabled.
+  @param[in]   PagingMode       The paging mode.
   @param[in]   BaseAddress      The physical address that is the start address of a memory region.
   @param[in]   Length           The size in bytes of the memory region.
   @param[in]   Attributes       The bit mask of attributes to clear for the memory region.
-  @param[out]  IsSplitted       TRUE means page table splitted. FALSE means page table not splitted.
 
   @retval EFI_SUCCESS           The attributes were cleared for the memory region.
   @retval EFI_ACCESS_DENIED     The attributes for the memory resource range specified by
@@ -324,11 +322,10 @@ SmmSetMemoryAttributesEx (
 EFI_STATUS
 SmmClearMemoryAttributesEx (
   IN  UINTN                 PageTableBase,
-  IN  BOOLEAN               EnablePML5Paging,
+  IN  PAGING_MODE           PagingMode,
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
-  IN  UINT64                Attributes,
-  OUT BOOLEAN               *IsSplitted  OPTIONAL
+  IN  UINT64                Attributes
   );
 
 /**
@@ -485,26 +482,6 @@ AllocatePageTableMemory (
   );
 
 /**
-  This API provides a way to allocate memory for page table.
-
-  This API can be called more once to allocate memory for page tables.
-
-  Allocates the number of 4KB pages of type EfiRuntimeServicesData and returns a pointer to the
-  allocated buffer.  The buffer returned is aligned on a 4KB boundary.  If Pages is 0, then NULL
-  is returned.  If there is not enough memory remaining to satisfy the request, then NULL is
-  returned.
-
-  @param  Pages                 The number of 4 KB pages to allocate.
-
-  @return A pointer to the allocated buffer or NULL if allocation fails.
-
-**/
-VOID *
-AllocateExtendedPageTableMemory (
-  IN UINTN  Pages
-  );
-
-/**
   Allocate pages for code.
 
   @param[in]  Pages Number of pages to be allocated.
@@ -530,6 +507,40 @@ VOID *
 AllocateAlignedCodePages (
   IN UINTN  Pages,
   IN UINTN  Alignment
+  );
+
+/**
+  This function modifies the page attributes for the memory region specified by BaseAddress and
+  Length from their current attributes to the attributes specified by Attributes.
+  Caller should make sure BaseAddress and Length is at page boundary.
+  @param[in]   PageTableBase    The page table base.
+  @param[in]   BaseAddress      The physical address that is the start address of a memory region.
+  @param[in]   Length           The size in bytes of the memory region.
+  @param[in]   Attributes       The bit mask of attributes to modify for the memory region.
+  @param[in]   IsSet            TRUE means to set attributes. FALSE means to clear attributes.
+  @param[out]  IsModified       TRUE means page table modified. FALSE means page table not modified.
+  @retval RETURN_SUCCESS           The attributes were modified for the memory region.
+  @retval RETURN_ACCESS_DENIED     The attributes for the memory resource range specified by
+                                   BaseAddress and Length cannot be modified.
+  @retval RETURN_INVALID_PARAMETER Length is zero.
+                                   Attributes specified an illegal combination of attributes that
+                                   cannot be set together.
+  @retval RETURN_OUT_OF_RESOURCES  There are not enough system resources to modify the attributes of
+                                   the memory resource range.
+  @retval RETURN_UNSUPPORTED       The processor does not support one or more bytes of the memory
+                                   resource range specified by BaseAddress and Length.
+                                   The bit mask of attributes is not support for the memory resource
+                                   range specified by BaseAddress and Length.
+**/
+RETURN_STATUS
+ConvertMemoryPageAttributes (
+  IN  UINTN             PageTableBase,
+  IN  PAGING_MODE       PagingMode,
+  IN  PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64            Length,
+  IN  UINT64            Attributes,
+  IN  BOOLEAN           IsSet,
+  OUT BOOLEAN           *IsModified   OPTIONAL
   );
 
 /*
@@ -597,27 +608,23 @@ SetShadowStack (
   );
 
 /**
-  Set not present memory.
-
-  @param[in]  Cr3              The page table base address.
-  @param[in]  BaseAddress      The physical address that is the start address of a memory region.
-  @param[in]  Length           The size in bytes of the memory region.
-
-  @retval EFI_SUCCESS           The not present memory is set.
-**/
-EFI_STATUS
-SetNotPresentPage (
-  IN  UINTN                 Cr3,
-  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN  UINT64                Length
-  );
-
-/**
   This function sets memory attribute according to MemoryAttributesTable.
 **/
 VOID
 SetMemMapAttributes (
   VOID
+  );
+
+/**
+  Create page table based on input PagingMode and PhysicalAddressBits in smm.
+  @param[in]      PagingMode           The paging mode.
+  @param[in]      PhysicalAddressBits  The bits of physical address to map.
+  @retval         PageTable Address
+**/
+UINTN
+GenSmmPageTable (
+  IN PAGING_MODE  PagingMode,
+  IN UINT8        PhysicalAddressBits
   );
 
 /**

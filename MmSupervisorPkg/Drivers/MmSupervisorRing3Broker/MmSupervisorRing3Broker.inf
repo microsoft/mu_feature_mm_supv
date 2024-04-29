@@ -9,8 +9,8 @@
 #**/
 
 # This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-02-14T23-02-36 | 45b2886c1f0d56d32b0b048494e4e9c2b4f88671
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c6af8bbe5339bdf045cc9e36064b0ea2 | 2023-05-19T23-00-30 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0f126959ecf2d99db4940bb0d0bba0df | 2024-04-12T17-27-10 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
 
 [Defines]
   INF_VERSION                    = 0x0001001A
@@ -48,6 +48,7 @@
   StandaloneMmDriverEntryPoint
   SafeIntLib
   MmMemoryProtectionHobLib
+  PerformanceLib
 
 [Protocols]
   gEfiMmCpuProtocolGuid                   # PRODUCES

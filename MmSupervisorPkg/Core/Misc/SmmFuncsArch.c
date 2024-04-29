@@ -20,7 +20,6 @@ UINTN                 mGdtBufferSize;
 UINTN                 mGdtStepSize;
 
 extern BOOLEAN  mCetSupported;
-extern UINTN    mSmmShadowStackSize;
 
 X86_ASSEMBLY_PATCH_LABEL  mPatchCetPl0Ssp;
 X86_ASSEMBLY_PATCH_LABEL  mPatchCetInterruptSsp;
@@ -73,6 +72,7 @@ InitGdt (
   UINTN                    GdtTssTableSize;
   UINT8                    *GdtTssTables;
   UINTN                    GdtTableStepSize;
+  UINTN                    IstStackSize;
 
   //
   // For X64 SMM, we allocate separate GDT/TSS for each CPUs to avoid TSS load contention
@@ -99,10 +99,17 @@ InitGdt (
     GdtDescriptor->Bits.BaseHigh = (UINT8)((UINTN)TssBase >> 24);
 
     if ((FeaturePcdGet (PcdCpuSmmStackGuard)) || ((PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) && mCetSupported)) {
+      if (PcdGet32 (PcdMmSupervisorExceptionStackSize) > mSmmStackSize + mSmmShadowStackSize) {
+        // The exception stack size cannot exceed the SMM stack size.
+        IstStackSize = mSmmStackSize + mSmmShadowStackSize;
+      } else {
+        IstStackSize = PcdGet32 (PcdMmSupervisorExceptionStackSize);
+      }
+
       //
       // Setup top of known good stack as IST1 for each processor.
       //
-      *(UINTN *)(TssBase + TSS_X64_IST1_OFFSET) = (mSmmStackArrayBase + EFI_PAGE_SIZE + Index * (mSmmStackSize + mSmmShadowStackSize));
+      *(UINTN *)(TssBase + TSS_X64_IST1_OFFSET) = (mSmmStackArrayBase + IstStackSize + Index * (mSmmStackSize + mSmmShadowStackSize));
     }
   }
 

@@ -1,7 +1,7 @@
 ## @file
 # This module provide an SMM CIS compliant implementation of SMM Core.
 #
-# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
 # Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
 # Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
 # Copyright (C) Microsoft Corporation.
@@ -10,16 +10,16 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | afc905240e20c3c2205b0699c28e78d8 | 2023-02-14T23-02-36 | 45b2886c1f0d56d32b0b048494e4e9c2b4f88671
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | dceb5d7aaa3a51aefdbbd0ba9ede8a47 | 2023-07-17T14-51-51 | 3f022dad7ac0035cfe3ed49a12403a7314445383
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c6af8bbe5339bdf045cc9e36064b0ea2 | 2023-05-19T23-00-30 | dc6c1f99c459dc4107bf51d307d3484f101a95fa
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 5cb7de3eb5831c51d030cfc8fc5542dc | 2024-04-12T17-25-59 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0f126959ecf2d99db4940bb0d0bba0df | 2024-04-12T17-27-10 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
 
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmSupervisorCore
   FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
-  VERSION_STRING                 = 8.001
+  VERSION_STRING                 = 11.001
   PI_SPECIFICATION_VERSION       = 0x00010032
   ENTRY_POINT                    = MmSupervisorMain
 
@@ -27,8 +27,8 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 8.0019
-  DEBUG_DRIVER_VERSION     = 8.0018
+  RELEASE_DRIVER_VERSION   = 11.0019
+  DEBUG_DRIVER_VERSION     = 11.0018
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
@@ -68,6 +68,8 @@
   Misc/MemoryAttributesTable.c
   Misc/Semaphore.c
   Misc/SmmFuncsArch.c
+  Misc/SmmMpPerf.h
+  Misc/SmmMpPerf.c
 
   Relocate/Relocate.c
   Relocate/Relocate.h
@@ -138,11 +140,15 @@
   SortLib
   HwResetSystemLib
   SmmPolicyGateLib
-  BaseBinSecurityLib
+  ImagePropertiesRecordLib
   MmMemoryProtectionHobLib ## MU_CHANGE
   IhvSmmSaveStateSupervisionLib
   SafeIntLib
   TimerLib
+  PerformanceLib
+  CpuPageTableLib
+  MmSaveStateLib
+  SmmCpuSyncLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -173,6 +179,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackGuard                    ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdSmmApPerfLogEnable                  ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable         ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsEnable   ## CONSUMES
@@ -197,6 +204,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmMpTokenCountPerChunk               ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize       ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize      ## CONSUMES
 
 [FixedPcd.X64]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES
@@ -209,6 +217,7 @@
   gEdkiiMemoryProfileGuid
   gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
   gEfiSmmSmramMemoryGuid                        ## SOMETIMES_CONSUMES   ## GUID
+  gSmmBaseHobGuid                               ## CONSUMES
   gEfiHobListGuid
   gMmCoreDataHobGuid
   gMmFvDispatchGuid

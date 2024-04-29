@@ -12,7 +12,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/SmmReadyToLock.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/CpuLib.h>
-#include <Library/UefiCpuLib.h>
 #include <IndustryStandard/Acpi.h>
 #include <Library/MmMemoryProtectionHobLib.h>         // MU_CHANGE
 

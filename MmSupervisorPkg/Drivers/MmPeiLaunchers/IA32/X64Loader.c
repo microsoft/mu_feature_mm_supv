@@ -385,7 +385,7 @@ Thunk32To64 (
     DEBUG ((
       DEBUG_INFO,
       "%a() Stack Base: 0x%lx, Stack Size: 0x%lx\n",
-      __FUNCTION__,
+      __func__,
       Context->StackBufferBase,
       Context->StackBufferLength
       ));
@@ -523,7 +523,7 @@ ModeSwitch (
   Status = Thunk32To64 (LongModeBuffer->PageTableAddress, &Context, &ReturnContext);
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Executing MM foundation has failed - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Executing MM foundation has failed - %r!\n", __func__, Status));
   }
 
   // MU_CHANGE: These ranges are zeroed and freed after usage
@@ -624,7 +624,7 @@ GetLongModeContext (
   // MU_CHANGE: Allocate needed stack and page table buffer here
   TotalPageTableSize = CalculatePageTableSize (IsPage1GSupport ());
   TotalPagesNum      = EFI_SIZE_TO_PAGES (TotalPageTableSize);
-  DEBUG ((DEBUG_INFO, "%a TotalPagesNum - 0x%x pages\n", __FUNCTION__, TotalPagesNum));
+  DEBUG ((DEBUG_INFO, "%a TotalPagesNum - 0x%x pages\n", __func__, TotalPagesNum));
 
   LongModeBuffer->PageTableAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocateAlignedReservedPages (TotalPagesNum, EFI_PAGE_SIZE);
   if (NULL == (VOID *)(UINTN)LongModeBuffer->PageTableAddress) {
@@ -678,14 +678,14 @@ SetMmFoundationInX64Relay (
     // 2. When the buffer for 64-bit transition exists
     // 3. When Pei MM IPL X64 Relay image is built in BIOS image
     //
-    DEBUG ((DEBUG_INFO, "%a Need to do mode switch!\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Need to do mode switch!\n", __func__));
     Status = GetLongModeContext (&LongModeBuffer);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "Fail to find the variable for long mode context!\n"));
       goto Exit;
     }
 
-    DEBUG ((DEBUG_INFO, "%a Find the X64 relay driver from available FVs!\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Find the X64 relay driver from available FVs!\n", __func__));
     // MU_CHANGE: MM_SUPV: Added performance data points for looking up IPL relay module
     PERF_INMODULE_BEGIN ("Locate X64 relay module");
     Status = FindMmIplX64RelayImage (&RelayImageEntryPoint, &RelayImageMachineType);
@@ -702,7 +702,7 @@ SetMmFoundationInX64Relay (
       goto Exit;
     }
 
-    DEBUG ((DEBUG_INFO, "%a About to do mode switching!\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a About to do mode switching!\n", __func__));
     RelayEntry = (RELAY_ENTRY)(UINTN)RelayImageEntryPoint;
     // MU_CHANGE: MM_SUPV: Added performance data points for initializing MM core
     PERF_INMODULE_BEGIN ("Switch to X64 to initialize MM foundation");
@@ -717,7 +717,7 @@ SetMmFoundationInX64Relay (
     //
     // MM foundation is processed in IA32 mode, not supported
     //
-    DEBUG ((DEBUG_ERROR, "%a PcdDxeIplSwitchToLongMode is FALSE, system should not need to switch mode (X64) to launch MM!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a PcdDxeIplSwitchToLongMode is FALSE, system should not need to switch mode (X64) to launch MM!\n", __func__));
     ASSERT (FALSE);
     Status = EFI_UNSUPPORTED;
     goto Exit;

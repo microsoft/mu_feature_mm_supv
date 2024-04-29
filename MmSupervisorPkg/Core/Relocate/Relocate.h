@@ -1,7 +1,7 @@
 /** @file
 Agent Module to load other modules to deploy SMM Entry Vector for X86 CPU.
 
-Copyright (c) 2009 - 2020, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
 
 SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -28,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/MmCoreData.h>
 #include <Guid/MmramMemoryReserve.h>
 #include <Guid/MemoryTypeInformation.h>
+#include <Guid/SmmBaseHob.h>
 
 #include <Library/BaseLib.h>
 #include <Library/IoLib.h>
@@ -47,12 +48,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/HobLib.h>
 #include <Library/LocalApicLib.h>
 #include <Library/CpuLib.h>
-#include <Library/UefiCpuLib.h>
 #include <Library/CpuExceptionHandlerLib.h>
 #include <Library/ReportStatusCodeLib.h>
 #include <Library/SmmCpuFeaturesLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/RegisterCpuFeaturesLib.h>
+#include <Library/PerformanceLib.h>
+#include <Library/MmSaveStateLib.h>
 
 #include <AcpiCpuData.h>
 #include <CpuHotPlugData.h>
@@ -64,6 +66,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "CpuService.h"
 #include "SmmProfile.h"
+#include "SmmMpPerf.h"
 
 //
 // CET definition
@@ -189,82 +192,17 @@ SmmReadSaveState (
   );
 
 /**
-  Write data to the CPU save state.
-
-  @param  This      EFI_SMM_CPU_PROTOCOL instance
-  @param  Width     The number of bytes to read from the CPU save state.
-  @param  Register  Specifies the CPU register to write to the save state.
-  @param  CpuIndex  Specifies the zero-based index of the CPU save state
-  @param  Buffer    Upon entry, this holds the new CPU register value.
-
-  @retval EFI_SUCCESS   The register was written from Save State
-  @retval EFI_NOT_FOUND The register is not defined for the Save State of Processor
-  @retval EFI_INVALID_PARAMETER   ProcessorIndex or Width is not correct
-
+  C function for SMI handler. To change all processor's SMMBase Register.
 **/
-EFI_STATUS
+VOID
 EFIAPI
-SmmWriteSaveState (
-  IN CONST EFI_SMM_CPU_PROTOCOL   *This,
-  IN UINTN                        Width,
-  IN EFI_SMM_SAVE_STATE_REGISTER  Register,
-  IN UINTN                        CpuIndex,
-  IN CONST VOID                   *Buffer
+SmmInitHandler (
+  VOID
   );
 
-/**
-Read a CPU Save State register on the target processor.
-
-This function abstracts the differences that whether the CPU Save State register is in the
-IA32 CPU Save State Map or X64 CPU Save State Map.
-
-This function supports reading a CPU Save State register in SMBase relocation handler.
-
-@param[in]  CpuIndex       Specifies the zero-based index of the CPU save state.
-@param[in]  RegisterIndex  Index into mSmmCpuWidthOffset[] look up table.
-@param[in]  Width          The number of bytes to read from the CPU save state.
-@param[out] Buffer         Upon return, this holds the CPU register value read from the save state.
-
-@retval EFI_SUCCESS           The register was read from Save State.
-@retval EFI_NOT_FOUND         The register is not defined for the Save State of Processor.
-@retval EFI_INVALID_PARAMETER Buffer is NULL, or Width does not meet requirement per Register type.
-
-**/
-EFI_STATUS
-EFIAPI
-ReadSaveStateRegister (
-  IN UINTN                        CpuIndex,
-  IN EFI_SMM_SAVE_STATE_REGISTER  Register,
-  IN UINTN                        Width,
-  OUT VOID                        *Buffer
-  );
-
-/**
-Write value to a CPU Save State register on the target processor.
-
-This function abstracts the differences that whether the CPU Save State register is in the
-IA32 CPU Save State Map or X64 CPU Save State Map.
-
-This function supports writing a CPU Save State register in SMBase relocation handler.
-
-@param[in] CpuIndex       Specifies the zero-based index of the CPU save state.
-@param[in] RegisterIndex  Index into mSmmCpuWidthOffset[] look up table.
-@param[in] Width          The number of bytes to read from the CPU save state.
-@param[in] Buffer         Upon entry, this holds the new CPU register value.
-
-@retval EFI_SUCCESS           The register was written to Save State.
-@retval EFI_NOT_FOUND         The register is not defined for the Save State of Processor.
-@retval EFI_INVALID_PARAMETER  ProcessorIndex or Width is not correct.
-
-**/
-EFI_STATUS
-EFIAPI
-WriteSaveStateRegister (
-  IN UINTN                        CpuIndex,
-  IN EFI_SMM_SAVE_STATE_REGISTER  Register,
-  IN UINTN                        Width,
-  IN CONST VOID                   *Buffer
-  );
+extern BOOLEAN            mSmmRelocated;
+extern volatile  BOOLEAN  *mSmmInitialized;
+extern UINT32             mBspApicId;
 
 extern CONST UINT8        gcSmmInitTemplate[];
 extern CONST UINT16       gcSmmInitSize;
@@ -293,7 +231,6 @@ SmmRelocationSemaphoreComplete (
 /// All global semaphores' pointer
 ///
 typedef struct {
-  volatile UINT32     *Counter;
   volatile BOOLEAN    *InsideSmm;
   volatile BOOLEAN    *AllCpusInSync;
   SPIN_LOCK           *PFLock;
@@ -305,7 +242,6 @@ typedef struct {
 ///
 typedef struct {
   SPIN_LOCK           *Busy;
-  volatile UINT32     *Run;
   volatile BOOLEAN    *Present;
   SPIN_LOCK           *Token;
 } SMM_CPU_SEMAPHORE_CPU;

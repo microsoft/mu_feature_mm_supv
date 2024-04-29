@@ -165,17 +165,17 @@ SmmSupervisorMiscExceptionHandler (
 
   mCpuExceptionCountBuffer[CpuIndex] = mCpuExceptionCountBuffer[CpuIndex] + 1;
 
-  DumpCpuContext (InterruptType, SystemContext);
-  DEBUG ((DEBUG_INFO, "%a MM Supervisor fault here\n", __FUNCTION__));
-  DEBUG_CODE (
-    DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
-    );
-
   if (InterruptType == EXCEPT_IA32_PAGE_FAULT) {
     // Hand it over to page fault handler
     SmiPFHandler (InterruptType, SystemContext);
     goto HaltOrReboot;
   }
+
+  DumpCpuContext (InterruptType, SystemContext);
+  DEBUG ((DEBUG_INFO, "%a MM Supervisor fault here\n", __func__));
+  DEBUG_CODE (
+    DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
+    );
 
   Status = PrepareNReportError (InterruptType, SystemContext);
   if (EFI_ERROR (Status)) {

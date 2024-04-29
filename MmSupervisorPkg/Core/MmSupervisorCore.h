@@ -44,13 +44,13 @@
 #include <Library/ReportStatusCodeLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
+#include <Library/PerformanceLib.h>
 
 #include <Library/StandaloneMmMemLib.h>
 #include <Library/HobLib.h>
 #include <Library/UefiLib.h>
 #include <Library/SafeIntLib.h>
 #include <Library/ResetSystemLib.h>
-#include <Library/BaseBinSecurityLib.h>
 
 //
 // Used to build a table of MMI Handlers that the MM Core registers
@@ -1040,8 +1040,8 @@ EFIAPI
 MmSupvRequestHandler (
   IN     EFI_HANDLE  DispatchHandle,
   IN     CONST VOID  *Context         OPTIONAL,
-  IN OUT VOID        *CommBuffer      OPTIONAL,
-  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  IN OUT VOID        *CommBuffer,
+  IN OUT UINTN       *CommBufferSize
   );
 
 /**

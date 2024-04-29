@@ -540,12 +540,11 @@ SetGuardPage (
   }
 
   mOnGuarding = TRUE;
-  // MU_CHANGE: MM_SUPV: The guard pages are not present AND supervisor only
-  Status = SmmSetMemoryAttributes (
-             BaseAddress,
-             EFI_PAGE_SIZE,
-             EFI_MEMORY_RP | EFI_MEMORY_SP
-             );
+  Status      = SmmSetMemoryAttributes (
+                  BaseAddress,
+                  EFI_PAGE_SIZE,
+                  EFI_MEMORY_RP
+                  );
   ASSERT_EFI_ERROR (Status);
   mOnGuarding = FALSE;
 }
@@ -578,8 +577,15 @@ UnsetGuardPage (
   Status      = SmmClearMemoryAttributes (
                   BaseAddress,
                   EFI_PAGE_SIZE,
-                  EFI_MEMORY_RP
+                  EFI_MEMORY_RP | EFI_MEMORY_RO
                   );
+  ASSERT_EFI_ERROR (Status);
+
+  Status = SmmSetMemoryAttributes (
+             BaseAddress,
+             EFI_PAGE_SIZE,
+             EFI_MEMORY_XP | EFI_MEMORY_SP
+             );
   ASSERT_EFI_ERROR (Status);
   mOnGuarding = FALSE;
 }

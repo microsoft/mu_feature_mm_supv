@@ -40,8 +40,8 @@ EFIAPI
 MmSupvRequestHandler (
   IN     EFI_HANDLE  DispatchHandle,
   IN     CONST VOID  *Context         OPTIONAL,
-  IN OUT VOID        *CommBuffer      OPTIONAL,
-  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  IN OUT VOID        *CommBuffer,
+  IN OUT UINTN       *CommBufferSize
   )
 {
   EFI_STATUS                    Status = EFI_SUCCESS;
@@ -106,7 +106,7 @@ MmSupvRequestHandler (
       // Use the common buffer to host policy data, and indicate the maximal data allowed
       ExpectedSize                = *CommBufferSize - ExpectedSize;
       MmSupvRequestHeader->Result = FetchNUpdateSecurityPolicy ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(MmSupvRequestHeader + 1), ExpectedSize);
-      if (!EFI_ERROR (MmSupvRequestHeader->Result) && (CommBufferSize != NULL)) {
+      if (!EFI_ERROR (MmSupvRequestHeader->Result)) {
         *CommBufferSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(MmSupvRequestHeader + 1))->Size;
       }
 
