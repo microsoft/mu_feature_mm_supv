@@ -665,12 +665,12 @@ BSPHandler (
   *mSmmMpSyncData->InsideSmm = FALSE;
   ReleaseAllAPs ();
 
-  //
-  // Wait for all APs to complete their pending tasks
-  //
-  SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
-
   if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //
+    // Wait for all APs the readiness to program MTRRs
+    //
+    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+
     //
     // Signal APs to restore MTRRs
     //
@@ -681,11 +681,18 @@ BSPHandler (
     //
     SmmCpuFeaturesReenableSmrr ();
     MtrrSetAllMtrrs (&Mtrrs);
+  }
 
+  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
     //
-    // Wait for all APs to complete MTRR programming
+    // Wait for all APs to complete their pending tasks including MTRR programming if needed.
     //
     SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+
+    //
+    // Signal APs to Reset states/semaphore for this processor
+    //
+    ReleaseAllAPs ();
   }
 
   //
@@ -693,11 +700,6 @@ BSPHandler (
   // debugged.
   //
   InitializeDebugAgent (DEBUG_AGENT_INIT_EXIT_SMI, NULL, NULL);
-
-  //
-  // Signal APs to Reset states/semaphore for this processor
-  //
-  ReleaseAllAPs ();
 
   //
   // Perform pending operations for hot-plug
@@ -730,10 +732,10 @@ BSPHandler (
   ResetTokens ();
 
   //
-  // Reset BspIndex to -1, meaning BSP has not been elected.
+  // Reset BspIndex to MAX_UINT32, meaning BSP has not been elected.
   //
   if (FeaturePcdGet (PcdCpuSmmEnableBspElection)) {
-    mSmmMpSyncData->BspIndex = (UINT32)-1;
+    mSmmMpSyncData->BspIndex = MAX_UINT32;
   }
 
   //
@@ -781,7 +783,7 @@ APHandler (
     //
     // BSP timeout in the first round
     //
-    if (mSmmMpSyncData->BspIndex != -1) {
+    if (mSmmMpSyncData->BspIndex != MAX_UINT32) {
       //
       // BSP Index is known
       // Existing AP is in SMI now but BSP not in, so, try bring BSP in SMM.
@@ -939,15 +941,17 @@ APHandler (
     MtrrSetAllMtrrs (&Mtrrs);
   }
 
-  //
-  // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
-  //
-  SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //
+    // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
+    //
+    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-  //
-  // Wait for the signal from BSP to Reset states/semaphore for this processor
-  //
-  SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+    //
+    // Wait for the signal from BSP to Reset states/semaphore for this processor
+    //
+    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  }
 
   //
   // Reset states/semaphore for this processor
@@ -1737,11 +1741,13 @@ SmiRendezvous (
             //
             // Platform hook fails to determine, use default BSP election method
             //
-            InterlockedCompareExchange32 (
-              (UINT32 *)&mSmmMpSyncData->BspIndex,
-              (UINT32)-1,
-              (UINT32)CpuIndex
-              );
+            if (mSmmMpSyncData->BspIndex == MAX_UINT32) {
+              InterlockedCompareExchange32 (
+                (UINT32 *)&mSmmMpSyncData->BspIndex,
+                MAX_UINT32,
+                (UINT32)CpuIndex
+                );
+            }
           }
         }
       }
@@ -1947,9 +1953,19 @@ InitializeMpSyncData (
     mSmmMpSyncData->CandidateBsp = (BOOLEAN *)(mSmmMpSyncData->CpuData + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
     if (FeaturePcdGet (PcdCpuSmmEnableBspElection)) {
       //
-      // Enable BSP election by setting BspIndex to -1
+      // Enable BSP election by setting BspIndex to MAX_UINT32
       //
-      mSmmMpSyncData->BspIndex = (UINT32)-1;
+      mSmmMpSyncData->BspIndex = MAX_UINT32;
+    } else {
+      //
+      // Use NonSMM BSP as SMM BSP
+      //
+      for (CpuIndex = 0; CpuIndex < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; CpuIndex++) {
+        if (GetApicId () == gSmmCpuPrivate->ProcessorInfo[CpuIndex].ProcessorId) {
+          mSmmMpSyncData->BspIndex = (UINT32)CpuIndex;
+          break;
+        }
+      }
     } else {
       //
       // Use NonSMM BSP as SMM BSP
