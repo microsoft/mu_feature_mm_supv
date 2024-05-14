@@ -1966,16 +1966,6 @@ InitializeMpSyncData (
           break;
         }
       }
-    } else {
-      //
-      // Use NonSMM BSP as SMM BSP
-      //
-      for (CpuIndex = 0; CpuIndex < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; CpuIndex++) {
-        if (GetApicId () == gSmmCpuPrivate->ProcessorInfo[CpuIndex].ProcessorId) {
-          mSmmMpSyncData->BspIndex = (UINT32)CpuIndex;
-          break;
-        }
-      }
     }
 
     mSmmMpSyncData->EffectiveSyncMode = mCpuSmmSyncMode;
