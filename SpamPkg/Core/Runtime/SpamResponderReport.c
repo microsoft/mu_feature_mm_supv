@@ -10,6 +10,10 @@
 
 #include <PiMm.h>
 #include <IndustryStandard/Tpm20.h>
+#include <IndustryStandard/UefiTcgPlatform.h>
+
+#include <Protocol/Tcg2Protocol.h>
+
 #include <Register/Msr.h>
 #include <Register/Cpuid.h>
 #include <Register/SmramSaveStateMap.h>
@@ -28,6 +32,8 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HashLib.h>
 #include <Library/SecurePolicyLib.h>
+#include <Library/StmLib.h>
+#include <Library/Tpm2CommandLib.h>
 
 #include "StmRuntimeUtil.h"
 
@@ -422,6 +428,126 @@ Finish:
 }
 
 /**
+  Get TPML_DIGEST_VALUES compact binary buffer size.
+
+  @param[in]     DigestListBin    TPML_DIGEST_VALUES compact binary buffer.
+
+  @return TPML_DIGEST_VALUES compact binary buffer size.
+**/
+UINT32
+GetDigestListBinSize (
+  IN VOID  *DigestListBin
+  )
+{
+  UINTN          Index;
+  UINT16         DigestSize;
+  UINT32         TotalSize;
+  UINT32         Count;
+  TPMI_ALG_HASH  HashAlg;
+
+  Count         = ReadUnaligned32 (DigestListBin);
+  TotalSize     = sizeof (Count);
+  DigestListBin = (UINT8 *)DigestListBin + sizeof (Count);
+  for (Index = 0; Index < Count; Index++) {
+    HashAlg       = ReadUnaligned16 (DigestListBin);
+    TotalSize    += sizeof (HashAlg);
+    DigestListBin = (UINT8 *)DigestListBin + sizeof (HashAlg);
+
+    DigestSize    = GetHashSizeFromAlgo (HashAlg);
+    TotalSize    += DigestSize;
+    DigestListBin = (UINT8 *)DigestListBin + DigestSize;
+  }
+
+  return TotalSize;
+}
+
+/**
+  Add a new entry to the Event Log.
+
+  @param[in]     DigestList    A list of digest.
+  @param[in,out] NewEventHdr   Pointer to a TCG_PCR_EVENT_HDR data structure.
+  @param[in]     NewEventData  Pointer to the new event data.
+
+  @retval EFI_SUCCESS           The new event log entry was added.
+  @retval EFI_OUT_OF_RESOURCES  No enough memory to log the new event.
+**/
+EFI_STATUS
+TcgLogHashEvent (
+  IN TPML_DIGEST_VALUES *DigestList,
+  IN UINT32             PcrIndex,
+  IN UINT32             EventType,
+  IN UINT32             NewEventDataSize,
+  IN UINT8              *NewEventData
+  )
+{
+  EFI_STATUS                Status;
+  EFI_STATUS                RetStatus;
+  TCG_PCR_EVENT2            TcgPcrEvent2;
+  UINT8                     *DigestBuffer;
+  UINT32                    *EventSizePtr;
+  UINT32                    TpmHashAlgorithmBitmap;
+  UINT32                    ActivePcrBanks;
+  TXT_OS_TO_SINIT_DATA      *OsSinitData;
+  UINT64                    OsSinitDataSize;
+  TXT_HEAP_EXT_DATA_ELEMENT *ExtDataElements;
+  TXT_HEAP_EVENT_LOG_POINTER_ELEMENT2_1* EventLogAreaStruct;
+
+  OsSinitData = GetTxtOsToSinitData ();
+  if (OsSinitData != NULL) {
+    OsSinitDataSize = *((UINT64 *)OsSinitData - 1);
+  }
+
+  Status = Tpm2GetCapabilitySupportedAndActivePcrs (&TpmHashAlgorithmBitmap, &ActivePcrBanks);
+
+  RetStatus = EFI_SUCCESS;
+
+  ZeroMem (&TcgPcrEvent2, sizeof (TcgPcrEvent2));
+  TcgPcrEvent2.PCRIndex  = PcrIndex;
+  TcgPcrEvent2.EventType = EventType;
+  DigestBuffer           = (UINT8 *)&TcgPcrEvent2.Digest;
+  EventSizePtr           = CopyDigestListToBuffer (DigestBuffer, DigestList, ActivePcrBanks);
+  CopyMem (EventSizePtr, &NewEventDataSize, sizeof (NewEventDataSize));
+
+  //
+  // Enter critical region
+  //
+
+  //
+  // Record to normal event log
+  //
+  ExtDataElements = (TXT_HEAP_EXT_DATA_ELEMENT *)(OsSinitData + 1);
+  while ((UINTN)ExtDataElements < ((UINTN)OsSinitData + OsSinitDataSize)) {
+    if (ExtDataElements->Type == TXT_HEAP_EXTDATA_TYPE_EVENT_LOG_POINTER2_1) {
+      break;
+    }
+    ExtDataElements = (TXT_HEAP_EXT_DATA_ELEMENT *)((UINTN)ExtDataElements + ExtDataElements->Size);
+  }
+
+  if ((UINTN)ExtDataElements >= ((UINTN)OsSinitData + OsSinitDataSize)) {
+    return EFI_NOT_FOUND;
+  }
+
+  EventLogAreaStruct = (TXT_HEAP_EVENT_LOG_POINTER_ELEMENT2_1 *)(ExtDataElements + 1);
+
+  if (EventLogAreaStruct->AllocatedEventContainerSize < EventLogAreaStruct->NextRecordOffset + sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize) + NewEventDataSize) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  CopyMem ((VOID*)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset), &TcgPcrEvent2, sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize));
+  CopyMem (
+    (VOID*)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset + sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize)),
+    NewEventData,
+    NewEventDataSize
+    );
+
+  //
+  // Exit critical region
+  //
+
+  return RetStatus;
+}
+
+/**
   Verify and measure an executed PeCoff image in MMRAM based on the provided aux buffer.
 
   @param[in] ImageBase      The base address of the image.
@@ -660,6 +786,12 @@ SpamResponderReport (
     DEBUG ((DEBUG_ERROR, "%a HashAndExtend for aux file failed %r\n", __func__, Status));
     goto Exit;
   } else {
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_AUX_HASH, MM_AUX_HASH_EVENT_LOG_SIZE, MM_AUX_HASH_EVENT_LOG);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor aux file failed %r\n", __func__, Status));
+      goto Exit;
+    }
+
     Status = EFI_NOT_FOUND;
     for (Index = 0; Index < DigestList.count; Index++) {
       if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
@@ -717,13 +849,11 @@ SpamResponderReport (
              &DigestList
              );
   if (!EFI_ERROR (Status)) {
-    // TODO: Do we want to message with the event log?
-    // ZeroMem (&NewEventHdr, sizeof (NewEventHdr));
-    // NewEventHdr.PCRIndex  = PcdGet32 (PcdSpamMeasurementPcrIndex);
-    // NewEventHdr.EventType = SPAM_EVTYPE_MM_ENTRY_HASH;
-    // NewEventHdr.EventSize = sizeof (EFI_TCG2_EVENT) - sizeof (NewEventHdr.Event) - sizeof (UINT32) - sizeof (EFI_TCG2_EVENT_HEADER);;
-
-    // Status = TcgDxeLogHashEvent (DigestList, NewEventHdr, NewEventHdr.Event);
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_ENTRY_HASH, MM_ENTRY_HASH_EVENT_LOG_SIZE, MM_ENTRY_HASH_EVENT_LOG);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM entry code failed %r.\n", __func__, Status));
+      goto Exit;
+    }
   } else {
     DEBUG ((DEBUG_ERROR, "%a HashAndExtend of MM entry code failed %r.\n", __func__, Status));
     goto Exit;
@@ -840,6 +970,12 @@ SpamResponderReport (
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndMeasureImage %r!!!.\n", __func__, Status));
+    goto Exit;
+  }
+
+  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_CORE_HASH, MM_CORE_HASH_EVENT_LOG_SIZE, MM_CORE_HASH_EVENT_LOG);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor core failed %r.\n", __func__, Status));
     goto Exit;
   }
 
