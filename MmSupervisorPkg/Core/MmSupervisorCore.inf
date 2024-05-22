@@ -149,6 +149,7 @@
   CpuPageTableLib
   MmSaveStateLib
   SmmCpuSyncLib
+  PanicLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
