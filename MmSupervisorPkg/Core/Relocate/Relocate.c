@@ -519,7 +519,7 @@ LockMmCoreBeforeExit (
 
 /**
   Function to compare 2 SMM_BASE_HOB_DATA pointer based on ProcessorIndex.
-  @param[in] Buffer1            pointer to SMM_BASE_HOB_DATA poiner to compare
+  @param[in] Buffer1            pointer to SMM_BASE_HOB_DATA pointer to compare
   @param[in] Buffer2            pointer to second SMM_BASE_HOB_DATA pointer to compare
   @retval 0                     Buffer1 equal to Buffer2
   @retval <0                    Buffer1 is less than Buffer2
@@ -641,7 +641,7 @@ GetSmBase (
 
 /**
   Function to compare 2 MP_INFORMATION2_HOB_DATA pointer based on ProcessorIndex.
-  @param[in] Buffer1            pointer to MP_INFORMATION2_HOB_DATA poiner to compare
+  @param[in] Buffer1            pointer to MP_INFORMATION2_HOB_DATA pointer to compare
   @param[in] Buffer2            pointer to second MP_INFORMATION2_HOB_DATA pointer to compare
   @retval 0                     Buffer1 equal to Buffer2
   @retval <0                    Buffer1 is less than Buffer2
