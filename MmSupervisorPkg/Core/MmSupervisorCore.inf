@@ -11,7 +11,7 @@
 ##
 
 #Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c76826a5d7096269b15df7c68bf217dd | 2024-01-31T14-26-14 | 75cc3bfa5fecce1f750cbecc2da58c09519a3323
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 5cb7de3eb5831c51d030cfc8fc5542dc | 2024-04-12T17-25-59 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | ffd612109bf4352d28180ee1ea627f22 | 2024-05-09T18-50-17 | 6233cc5bda0c10234140e36a05319ece8d2a8ff3
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0f126959ecf2d99db4940bb0d0bba0df | 2024-04-12T17-27-10 | d6e01136697c1aed85bb83cff98b74ec11e96e1a
 
 [Defines]
@@ -149,6 +149,7 @@
   CpuPageTableLib
   MmSaveStateLib
   SmmCpuSyncLib
+  PanicLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -218,6 +219,7 @@
   gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
   gEfiSmmSmramMemoryGuid                        ## SOMETIMES_CONSUMES   ## GUID
   gSmmBaseHobGuid                               ## CONSUMES
+  gMpInformationHobGuid2                        ## CONSUMES # Assume the HOB must has been created
   gEfiHobListGuid
   gMmCoreDataHobGuid
   gMmFvDispatchGuid
