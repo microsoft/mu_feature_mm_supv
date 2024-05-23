@@ -48,6 +48,7 @@
 
 [FixedPcd]
   gEfiSpamPkgTokenSpaceGuid.PcdSpamCodeMeasurementPcrIndex  ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdSpamDataMeasurementPcrIndex  ## CONSUMES
 
 [PatchPcd]
   gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash
