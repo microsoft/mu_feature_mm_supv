@@ -789,7 +789,7 @@ SpamResponderReport (
     DEBUG ((DEBUG_ERROR, "%a HashAndExtend for aux file failed %r\n", __func__, Status));
     goto Exit;
   } else {
-    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_AUX_HASH, MM_AUX_HASH_EVENT_LOG_SIZE, (UINT8*)MM_AUX_HASH_EVENT_LOG);
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_AUX_HASH, MM_AUX_HASH_EVENT_LOG_SIZE, (UINT8 *)MM_AUX_HASH_EVENT_LOG);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor aux file failed %r\n", __func__, Status));
       goto Exit;
@@ -852,7 +852,7 @@ SpamResponderReport (
              &DigestList
              );
   if (!EFI_ERROR (Status)) {
-    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_ENTRY_HASH, MM_ENTRY_HASH_EVENT_LOG_SIZE, (UINT8*)MM_ENTRY_HASH_EVENT_LOG);
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_ENTRY_HASH, MM_ENTRY_HASH_EVENT_LOG_SIZE, (UINT8 *)MM_ENTRY_HASH_EVENT_LOG);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM entry code failed %r.\n", __func__, Status));
       goto Exit;
@@ -976,7 +976,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_CORE_HASH, MM_CORE_HASH_EVENT_LOG_SIZE, (UINT8*)MM_CORE_HASH_EVENT_LOG);
+  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_CORE_HASH, MM_CORE_HASH_EVENT_LOG_SIZE, (UINT8 *)MM_CORE_HASH_EVENT_LOG);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor core failed %r.\n", __func__, Status));
     goto Exit;
@@ -1029,7 +1029,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamDataMeasurementPcrIndex), SPAM_EVTYPE_MM_POLICY_HASH, MM_POLICY_HASH_EVENT_LOG_SIZE, (UINT8*)MM_POLICY_HASH_EVENT_LOG);
+  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamDataMeasurementPcrIndex), SPAM_EVTYPE_MM_POLICY_HASH, MM_POLICY_HASH_EVENT_LOG_SIZE, (UINT8 *)MM_POLICY_HASH_EVENT_LOG);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM policy failed %r.\n", __func__, Status));
     goto Exit;
