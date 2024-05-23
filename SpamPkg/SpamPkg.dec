@@ -41,4 +41,5 @@
 
 [PcdsFixedAtBuild]
   ## Size of supervisor communication buffer in number of pages
-  gEfiSpamPkgTokenSpaceGuid.PcdSpamMeasurementPcrIndex|17|UINT32|0x00000001
+  gEfiSpamPkgTokenSpaceGuid.PcdSpamCodeMeasurementPcrIndex|17|UINT32|0x00000001
+  gEfiSpamPkgTokenSpaceGuid.PcdSpamDataMeasurementPcrIndex|18|UINT32|0x00000002

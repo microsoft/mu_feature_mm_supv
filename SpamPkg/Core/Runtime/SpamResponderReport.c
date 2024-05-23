@@ -639,7 +639,7 @@ VerifyAndMeasureImage (
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
 
   Status = MeasurePeImageAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
+             PcdGet32 (PcdSpamCodeMeasurementPcrIndex),
              (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
              (UINTN)NewBufferSize,
              DigestList
@@ -777,7 +777,7 @@ SpamResponderReport (
 
   ZeroMem (&DigestList, sizeof (DigestList));
   Status = HashAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
+             PcdGet32 (PcdSpamCodeMeasurementPcrIndex),
              (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
              (UINTN)SpamResponderData->MmSupervisorAuxSize,
              &DigestList
@@ -786,7 +786,7 @@ SpamResponderReport (
     DEBUG ((DEBUG_ERROR, "%a HashAndExtend for aux file failed %r\n", __func__, Status));
     goto Exit;
   } else {
-    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_AUX_HASH, MM_AUX_HASH_EVENT_LOG_SIZE, MM_AUX_HASH_EVENT_LOG);
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_AUX_HASH, MM_AUX_HASH_EVENT_LOG_SIZE, MM_AUX_HASH_EVENT_LOG);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor aux file failed %r\n", __func__, Status));
       goto Exit;
@@ -843,13 +843,13 @@ SpamResponderReport (
   // TCG_PCR_EVENT_HDR   NewEventHdr;
 
   Status = HashAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
+             PcdGet32 (PcdSpamCodeMeasurementPcrIndex),
              (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
              (UINTN)SpamResponderData->MmEntrySize,
              &DigestList
              );
   if (!EFI_ERROR (Status)) {
-    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_ENTRY_HASH, MM_ENTRY_HASH_EVENT_LOG_SIZE, MM_ENTRY_HASH_EVENT_LOG);
+    Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_ENTRY_HASH, MM_ENTRY_HASH_EVENT_LOG_SIZE, MM_ENTRY_HASH_EVENT_LOG);
     if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM entry code failed %r.\n", __func__, Status));
       goto Exit;
@@ -973,7 +973,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamMeasurementPcrIndex), SPAM_EVTYPE_MM_CORE_HASH, MM_CORE_HASH_EVENT_LOG_SIZE, MM_CORE_HASH_EVENT_LOG);
+  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamCodeMeasurementPcrIndex), SPAM_EVTYPE_MM_CORE_HASH, MM_CORE_HASH_EVENT_LOG_SIZE, MM_CORE_HASH_EVENT_LOG);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor core failed %r.\n", __func__, Status));
     goto Exit;
@@ -1014,6 +1014,23 @@ SpamResponderReport (
   DEBUG_CODE_BEGIN ();
   DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   DEBUG_CODE_END ();
+
+  Status = HashAndExtend (
+            PcdGet32 (PcdSpamDataMeasurementPcrIndex),
+            (VOID *)(UINTN)(DrtmSmmPolicyData),
+            ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData)->Size,
+            &DigestList
+            );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndMeasureImage %r!!!.\n", __func__, Status));
+    goto Exit;
+  }
+
+  Status = TcgLogHashEvent (&DigestList, PcdGet32 (PcdSpamDataMeasurementPcrIndex), SPAM_EVTYPE_MM_POLICY_HASH, MM_POLICY_HASH_EVENT_LOG_SIZE, MM_POLICY_HASH_EVENT_LOG);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a TcgLogHashEvent of MM supervisor core failed %r.\n", __func__, Status));
+    goto Exit;
+  }
 
   if (NewPolicy != NULL) {
     *NewPolicy = DrtmSmmPolicyData;
