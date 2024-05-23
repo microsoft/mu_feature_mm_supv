@@ -473,24 +473,24 @@ GetDigestListBinSize (
 **/
 EFI_STATUS
 TcgLogHashEvent (
-  IN TPML_DIGEST_VALUES *DigestList,
-  IN UINT32             PcrIndex,
-  IN UINT32             EventType,
-  IN UINT32             NewEventDataSize,
-  IN UINT8              *NewEventData
+  IN TPML_DIGEST_VALUES  *DigestList,
+  IN UINT32              PcrIndex,
+  IN UINT32              EventType,
+  IN UINT32              NewEventDataSize,
+  IN UINT8               *NewEventData
   )
 {
-  EFI_STATUS                Status;
-  EFI_STATUS                RetStatus;
-  TCG_PCR_EVENT2            TcgPcrEvent2;
-  UINT8                     *DigestBuffer;
-  UINT32                    *EventSizePtr;
-  UINT32                    TpmHashAlgorithmBitmap;
-  UINT32                    ActivePcrBanks;
-  TXT_OS_TO_SINIT_DATA      *OsSinitData;
-  UINT64                    OsSinitDataSize;
-  TXT_HEAP_EXT_DATA_ELEMENT *ExtDataElements;
-  TXT_HEAP_EVENT_LOG_POINTER_ELEMENT2_1* EventLogAreaStruct;
+  EFI_STATUS                             Status;
+  EFI_STATUS                             RetStatus;
+  TCG_PCR_EVENT2                         TcgPcrEvent2;
+  UINT8                                  *DigestBuffer;
+  UINT32                                 *EventSizePtr;
+  UINT32                                 TpmHashAlgorithmBitmap;
+  UINT32                                 ActivePcrBanks;
+  TXT_OS_TO_SINIT_DATA                   *OsSinitData;
+  UINT64                                 OsSinitDataSize;
+  TXT_HEAP_EXT_DATA_ELEMENT              *ExtDataElements;
+  TXT_HEAP_EVENT_LOG_POINTER_ELEMENT2_1  *EventLogAreaStruct;
 
   OsSinitData = GetTxtOsToSinitData ();
   if (OsSinitData != NULL) {
@@ -520,6 +520,7 @@ TcgLogHashEvent (
     if (ExtDataElements->Type == TXT_HEAP_EXTDATA_TYPE_EVENT_LOG_POINTER2_1) {
       break;
     }
+
     ExtDataElements = (TXT_HEAP_EXT_DATA_ELEMENT *)((UINTN)ExtDataElements + ExtDataElements->Size);
   }
 
@@ -533,9 +534,9 @@ TcgLogHashEvent (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  CopyMem ((VOID*)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset), &TcgPcrEvent2, sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize));
+  CopyMem ((VOID *)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset), &TcgPcrEvent2, sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize));
   CopyMem (
-    (VOID*)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset + sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize)),
+    (VOID *)(EventLogAreaStruct->PhysicalAddress + EventLogAreaStruct->NextRecordOffset + sizeof (TcgPcrEvent2.PCRIndex) + sizeof (TcgPcrEvent2.EventType) + GetDigestListBinSize (DigestBuffer) + sizeof (TcgPcrEvent2.EventSize)),
     NewEventData,
     NewEventDataSize
     );
@@ -1016,11 +1017,11 @@ SpamResponderReport (
   DEBUG_CODE_END ();
 
   Status = HashAndExtend (
-            PcdGet32 (PcdSpamDataMeasurementPcrIndex),
-            (VOID *)(UINTN)(DrtmSmmPolicyData),
-            ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData)->Size,
-            &DigestList
-            );
+             PcdGet32 (PcdSpamDataMeasurementPcrIndex),
+             (VOID *)(UINTN)(DrtmSmmPolicyData),
+             ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData)->Size,
+             &DigestList
+             );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndMeasureImage %r!!!.\n", __func__, Status));
     goto Exit;
