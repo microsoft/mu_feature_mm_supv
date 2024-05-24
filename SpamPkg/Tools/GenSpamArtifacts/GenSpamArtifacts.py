@@ -44,7 +44,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             mmi_build_dir = spam_build_dir / "MmiEntrySpam" / "MmiEntrySpam" / "OUTPUT"
 
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
-            aux_hash = calculate_aux_hash(aux_path)
+            aux_hash = calculate_file_hash(aux_path)
 
             stm_dll = stm_build_dir / "Stm.dll"
             pcd = "PcdAuxBinHash"
@@ -53,8 +53,34 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             if pcd_addr is None:
                 logging.error(f"PCD {pcd} not found in Stm Map file.")
                 return -1
-            
+
             patch_pcd_value(stm_dll, pcd_addr, aux_hash)
+
+            # MMI entry block hash patching
+            mmi_entry_hash = calculate_file_hash(mmi_build_dir / "MmiEntrySpam.bin")
+
+            mmi_entry_hash_pcd = "PcdMmiEntryBinHash"
+            mmi_entry_hash_pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, mmi_entry_hash_pcd)
+
+            if mmi_entry_hash_pcd_addr is None:
+                logging.error(f"PCD {mmi_entry_hash_pcd} not found in Stm Map file.")
+                return -1
+
+            patch_pcd_value(stm_dll, mmi_entry_hash_pcd_addr, mmi_entry_hash)
+
+            # MM supervisor core hash patching
+            mm_supv_core_hash = calculate_file_hash(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+
+            mm_supv_core_hash_pcd = "PcdMmSupervisorCoreHash"
+            mm_supv_core_hash_pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, mm_supv_core_hash_pcd)
+
+            if mm_supv_core_hash_pcd_addr is None:
+                logging.error(f"PCD {mm_supv_core_hash_pcd} not found in Stm Map file.")
+                return -1
+
+            patch_pcd_value(stm_dll, mm_supv_core_hash_pcd_addr, mm_supv_core_hash)
+
+            # Done with patching, generate STM binary
             generate_stm_binary(stm_dll, output_dir)
 
             misc_dir = output_dir / "Misc"
@@ -132,7 +158,7 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, outp
     return output_path
 
 
-def calculate_aux_hash(file: Path):
+def calculate_file_hash(file: Path):
     """Calculates the hash of the auxiliary file.
    
     Args:
@@ -238,4 +264,3 @@ def generate_stm_binary(stm_dll: Path, output_dir: Path):
     ret = RunCmd(cmd, args)
     if ret != 0:
         raise RuntimeError("GenStm failed. Review command output.")
-
