@@ -180,7 +180,7 @@ VerifyAndHashImage (
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
 
   Status = HashOnly (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
+             NewBuffer,
              (UINTN)NewBufferSize,
              DigestList
              );
