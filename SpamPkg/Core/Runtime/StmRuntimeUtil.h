@@ -79,12 +79,12 @@ IsBufferInsideMmram (
 
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
-  to make sure the MMI entry data section is populated with legit values, then measure
+  to make sure the MMI entry data section is populated with legit values, then hash
   the content into TPM.
 
   The supervisor core will be verified to properly located inside the MMRAM region for
   this core. It will then validate the supervisor core data according to the accompanying
-  aux file and revert the executed code to the original state and measure into TPM.
+  aux file and revert the executed code to the original state and hash into TPM.
 
   @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
   @param[out] RetDigestList      The digest list of the image.
