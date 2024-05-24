@@ -104,7 +104,6 @@
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
-  gEfiSpamPkgTokenSpaceGuid.PcdSpamMeasurementPcrIndex        ## CONSUMES
 
 [PatchPcd]
   # SHA256 Hash of the AuxBin file.

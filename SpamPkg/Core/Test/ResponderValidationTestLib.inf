@@ -46,8 +46,5 @@
 [FeaturePcd]
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable  ## CONSUMES
 
-[FixedPcd]
-  gEfiSpamPkgTokenSpaceGuid.PcdSpamMeasurementPcrIndex        ## CONSUMES
-
 [PatchPcd]
   gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash
