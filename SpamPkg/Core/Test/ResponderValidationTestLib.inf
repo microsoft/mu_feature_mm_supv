@@ -47,6 +47,6 @@
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable  ## CONSUMES
 
 [PatchPcd]
-  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash               ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash          ## CONSUMES
