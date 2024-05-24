@@ -179,10 +179,9 @@ HashUpdate (
 }
 
 /**
-  Hash sequence complete and extend to PCR.
+  Hash sequence complete and return the digest list.
 
   @param HashHandle    Hash handle.
-  @param PcrIndex      PCR to be extended.
   @param DataToHash    Data to be hashed.
   @param DataToHashLen Data size.
   @param DigestList    Digest list.
@@ -191,9 +190,8 @@ HashUpdate (
 **/
 EFI_STATUS
 EFIAPI
-HashCompleteAndExtend (
+HashComplete (
   IN HASH_HANDLE          HashHandle,
-  IN TPMI_DH_PCR          PcrIndex,
   IN VOID                 *DataToHash,
   IN UINTN                DataToHashLen,
   OUT TPML_DIGEST_VALUES  *DigestList
@@ -257,20 +255,14 @@ HashCompleteAndExtend (
     }
   }
 
-  Status = Tpm2PcrExtend (
-             PcrIndex,
-             DigestList
-             );
-
   FreePages (HashCtx, EFI_SIZE_TO_PAGES (sizeof (*HashCtx) * HASH_COUNT));
 
   return EFI_SUCCESS;
 }
 
 /**
-  Hash data and extend to PCR.
+  Hash data and return the digest list.
 
-  @param PcrIndex      PCR to be extended.
   @param DataToHash    Data to be hashed.
   @param DataToHashLen Data size.
   @param DigestList    Digest list.
@@ -279,8 +271,7 @@ HashCompleteAndExtend (
 **/
 EFI_STATUS
 EFIAPI
-HashAndExtend (
-  IN TPMI_DH_PCR          PcrIndex,
+HashOnly (
   IN VOID                 *DataToHash,
   IN UINTN                DataToHashLen,
   OUT TPML_DIGEST_VALUES  *DigestList
@@ -297,7 +288,7 @@ HashAndExtend (
   TPM2B_EVENT       EventData;
   TPM2B_DIGEST      Result;
 
-  DEBUG ((DEBUG_VERBOSE, "\n HashAndExtend Entry \n"));
+  DEBUG ((DEBUG_VERBOSE, "\n %a Entry \n", __func__));
 
   if (DigestList == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -311,14 +302,7 @@ HashAndExtend (
   }
 
   if ((AlgoIdCount == 0) && (DataToHashLen <= sizeof (EventData.buffer))) {
-    EventData.size = (UINT16)DataToHashLen;
-    CopyMem (EventData.buffer, DataToHash, DataToHashLen);
-    Status = Tpm2PcrEvent (PcrIndex, &EventData, DigestList);
-    if (EFI_ERROR (Status)) {
-      return EFI_DEVICE_ERROR;
-    }
-
-    return EFI_SUCCESS;
+    return EFI_DEVICE_ERROR;
   }
 
   ZeroMem (DigestList, sizeof (*DigestList));
@@ -363,33 +347,5 @@ HashAndExtend (
     CopyMem (&DigestList->digests[Index].digest, Result.buffer, Result.size);
   }
 
-  Status = Tpm2PcrExtend (
-             PcrIndex,
-             DigestList
-             );
-  if (EFI_ERROR (Status)) {
-    return EFI_DEVICE_ERROR;
-  }
-
-  DEBUG ((DEBUG_VERBOSE, "\n Tpm2PcrExtend Success \n"));
-
   return EFI_SUCCESS;
-}
-
-/**
-  This service register Hash.
-
-  @param HashInterface  Hash interface
-
-  @retval EFI_SUCCESS          This hash interface is registered successfully.
-  @retval EFI_UNSUPPORTED      System does not support register this interface.
-  @retval EFI_ALREADY_STARTED  System already register this interface.
-**/
-EFI_STATUS
-EFIAPI
-RegisterHashInterfaceLib (
-  IN HASH_INTERFACE  *HashInterface
-  )
-{
-  return EFI_UNSUPPORTED;
 }

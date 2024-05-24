@@ -27,6 +27,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/HashLib.h>
+#include <Library/HashLibRaw.h>
 #include <Library/SecurePolicyLib.h>
 
 #include "StmRuntimeUtil.h"
@@ -98,7 +99,6 @@ Done:
 
   Notes: PE/COFF image is checked by BasePeCoffLib PeCoffLoaderGetImageInfo().
 
-  @param[in]  PCRIndex       TPM PCR index
   @param[in]  ImageAddress   Start address of image buffer.
   @param[in]  ImageSize      Image size
   @param[out] DigestList     Digest list of this image.
@@ -109,7 +109,6 @@ Done:
 **/
 EFI_STATUS
 MeasurePeImageAndExtend (
-  IN  UINT32                PCRIndex,
   IN  EFI_PHYSICAL_ADDRESS  ImageAddress,
   IN  UINTN                 ImageSize,
   OUT TPML_DIGEST_VALUES    *DigestList
@@ -408,7 +407,7 @@ MeasurePeImageAndExtend (
   //
   // 17.  Finalize the SHA hash.
   //
-  Status = HashCompleteAndExtend (HashHandle, PCRIndex, NULL, 0, DigestList);
+  Status = HashComplete (HashHandle, NULL, 0, DigestList);
   if (EFI_ERROR (Status)) {
     goto Finish;
   }
@@ -513,7 +512,6 @@ VerifyAndMeasureImage (
   DEBUG ((DEBUG_INFO, "%a Reverted image at %p of size %x\n", __func__, NewBuffer, NewBufferSize));
 
   Status = MeasurePeImageAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
              (EFI_PHYSICAL_ADDRESS)(UINTN)NewBuffer,
              (UINTN)NewBufferSize,
              DigestList
@@ -650,14 +648,13 @@ SpamResponderReport (
   }
 
   ZeroMem (&DigestList, sizeof (DigestList));
-  Status = HashAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
+  Status = HashOnly (
              (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
              (UINTN)SpamResponderData->MmSupervisorAuxSize,
              &DigestList
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a HashAndExtend for aux file failed %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a HashOnly for aux file failed %r\n", __func__, Status));
     goto Exit;
   } else {
     Status = EFI_NOT_FOUND;
@@ -710,22 +707,13 @@ SpamResponderReport (
   // Record SMI_ENTRY_HASH to PCR 0, just in case it is NOT TXT launch, we still need provide the evidence.
   // TCG_PCR_EVENT_HDR   NewEventHdr;
 
-  Status = HashAndExtend (
-             PcdGet32 (PcdSpamMeasurementPcrIndex),
+  Status = HashOnly (
              (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
              (UINTN)SpamResponderData->MmEntrySize,
              &DigestList
              );
-  if (!EFI_ERROR (Status)) {
-    // TODO: Do we want to message with the event log?
-    // ZeroMem (&NewEventHdr, sizeof (NewEventHdr));
-    // NewEventHdr.PCRIndex  = PcdGet32 (PcdSpamMeasurementPcrIndex);
-    // NewEventHdr.EventType = SPAM_EVTYPE_MM_ENTRY_HASH;
-    // NewEventHdr.EventSize = sizeof (EFI_TCG2_EVENT) - sizeof (NewEventHdr.Event) - sizeof (UINT32) - sizeof (EFI_TCG2_EVENT_HEADER);;
-
-    // Status = TcgDxeLogHashEvent (DigestList, NewEventHdr, NewEventHdr.Event);
-  } else {
-    DEBUG ((DEBUG_ERROR, "%a HashAndExtend of MM entry code failed %r.\n", __func__, Status));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a HashOnly of MM entry code failed %r.\n", __func__, Status));
     goto Exit;
   }
 
