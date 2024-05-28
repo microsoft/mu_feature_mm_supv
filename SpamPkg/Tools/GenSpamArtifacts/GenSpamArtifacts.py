@@ -13,7 +13,7 @@ import shutil
 from typing import Tuple
 
 from edk2toolext.environment.plugintypes.uefi_helper_plugin import IUefiHelperPlugin
-from edk2toollib.utility_functions import RunCmd
+from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
 
 HASH_ALGORITHM = "sha256"
@@ -21,11 +21,11 @@ HASH_ALGORITHM = "sha256"
 
 class GenSpamArtifacts(IUefiHelperPlugin):
     def RegisterHelpers(self, obj):
-      fp = os.path.abspath(__file__)
-      obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
+        fp = os.path.abspath(__file__)
+        obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
 
     @staticmethod
-    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path):
+    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path, inc_file_path: Path):
         """Generates SPAM artifacts.
 
         Generates the following artifacts:
@@ -43,42 +43,71 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             stm_build_dir = spam_build_dir / "Core" / "Stm" / "DEBUG"
             mmi_build_dir = spam_build_dir / "MmiEntrySpam" / "MmiEntrySpam" / "OUTPUT"
 
+            temp_hash_dir = stm_build_dir / "temp_hash.bin"
+            temp_out_dir = stm_build_dir / "temp_out.inc"
+
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
-            aux_hash = calculate_file_hash(aux_path)
 
-            stm_dll = stm_build_dir / "Stm.dll"
-            pcd = "PcdAuxBinHash"
-            pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, pcd)
-
-            if pcd_addr is None:
-                logging.error(f"PCD {pcd} not found in Stm Map file.")
-                return -1
-
-            patch_pcd_value(stm_dll, pcd_addr, aux_hash)
+            cmd = "BinToPcd.py"
+            args = f"-i {aux_path}"
+            args += f" -o {inc_file_path}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdAuxBinFile. Review command output.")
 
             # MMI entry block hash patching
             mmi_entry_hash = calculate_file_hash(mmi_build_dir / "MmiEntrySpam.bin")
+            with open(temp_hash_dir, 'w') as f:
+                f.write(mmi_entry_hash)
 
-            mmi_entry_hash_pcd = "PcdMmiEntryBinHash"
-            mmi_entry_hash_pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, mmi_entry_hash_pcd)
+            cmd = "BinToPcd.py"
+            args = f"-i {temp_hash_dir}"
+            args += f" -o {temp_out_dir}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdMmiEntryBinHash. Review command output.")
 
-            if mmi_entry_hash_pcd_addr is None:
-                logging.error(f"PCD {mmi_entry_hash_pcd} not found in Stm Map file.")
-                return -1
-
-            patch_pcd_value(stm_dll, mmi_entry_hash_pcd_addr, mmi_entry_hash)
+            # Write the hash to the inc file
+            with open(temp_out_dir, 'r') as f, open(inc_file_path, 'w+') as o:
+                mmi_entry_hash_pcd = f.read().strip()
+                o.write(mmi_entry_hash_pcd)
 
             # MM supervisor core hash patching
             mm_supv_core_hash = calculate_file_hash(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+            with open(temp_hash_dir, 'w') as f:
+                f.write(mm_supv_core_hash)
 
-            mm_supv_core_hash_pcd = "PcdMmSupervisorCoreHash"
-            mm_supv_core_hash_pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, mm_supv_core_hash_pcd)
+            cmd = "BinToPcd.py"
+            args = f"-i {temp_hash_dir}"
+            args += f" -o {temp_out_dir}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdMmSupervisorCoreHash. Review command output.")
 
-            if mm_supv_core_hash_pcd_addr is None:
-                logging.error(f"PCD {mm_supv_core_hash_pcd} not found in Stm Map file.")
-                return -1
+            # Write the hash to the inc file
+            with open(temp_out_dir, 'r') as f, open(inc_file_path, 'w+') as o:
+                mm_supv_core_hash = f.read().strip()
+                o.write(mm_supv_core_hash)
 
-            patch_pcd_value(stm_dll, mm_supv_core_hash_pcd_addr, mm_supv_core_hash)
+    @staticmethod
+    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path, inc_file_path: Path):
+        """Generates SPAM artifacts.
+
+        Generates the following artifacts:
+        - MmSupervisorCore.aux (As build by gen_aux)
+        - MmSupervisorCore.efi (As Build by edk2 build system)
+        - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore.aux file)
+
+        Args:
+            aux_config_path: Path to the aux gen config file.
+            mm_supvervisor_build_dir: Path to the MM Supervisor build output.
+            spam_build_dir: Path to the Spam Package build output.
+            output_dir: Path to place the artifacts.
+        """
+
 
             # Done with patching, generate STM binary
             generate_stm_binary(stm_dll, output_dir)
