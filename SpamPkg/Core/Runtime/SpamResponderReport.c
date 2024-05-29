@@ -297,6 +297,9 @@ SpamResponderReport (
     goto Exit;
   }
 
+  SpamResponderData->MmSupervisorAuxBase = (UINT64)(UINTN)PcdGetPtr (PcdAuxBinFile);
+  SpamResponderData->MmSupervisorAuxSize = PcdGetSize (PcdAuxBinFile);
+
   if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)SpamResponderData->MmSupervisorAuxBase == 0) {
     DEBUG ((DEBUG_ERROR, "%a Reported aux file base address is NULL!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
@@ -313,40 +316,6 @@ SpamResponderReport (
     DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature %x\n", __func__, ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
-  }
-
-  ZeroMem (&DigestList, sizeof (DigestList));
-  Status = HashOnly (
-             (VOID *)(UINTN)(SpamResponderData->MmSupervisorAuxBase),
-             (UINTN)SpamResponderData->MmSupervisorAuxSize,
-             &DigestList
-             );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a HashOnly for aux file failed %r\n", __func__, Status));
-    goto Exit;
-  } else {
-    Status = EFI_NOT_FOUND;
-    for (Index = 0; Index < DigestList.count; Index++) {
-      if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), SHA256_DIGEST_SIZE) != 0) {
-          DEBUG ((DEBUG_ERROR, "Hash mismatch for aux file!!!\n"));
-          DEBUG ((DEBUG_ERROR, "Expecting:\n"));
-          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PatchPcdGetPtr (PcdAuxBinHash), PatchPcdGetSize (PcdAuxBinHash), "");
-          DEBUG ((DEBUG_ERROR, "Calculated:\n"));
-          DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        } else {
-          DEBUG ((DEBUG_INFO, "%a Hash for aux file matches!\n", __func__));
-          Status = EFI_SUCCESS;
-          break;
-        }
-      }
-    }
-
-    if (EFI_ERROR (Status)) {
-      goto Exit;
-    }
   }
 
   KeySymbols = (KEY_SYMBOL *)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
@@ -388,10 +357,10 @@ SpamResponderReport (
     Status = EFI_NOT_FOUND;
     for (Index = 0; Index < DigestList.count; Index++) {
       if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PatchPcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE) != 0) {
+        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE) != 0) {
           DEBUG ((DEBUG_ERROR, "Hash mismatch for MM entry code!!!\n"));
           DEBUG ((DEBUG_ERROR, "Expecting:\n"));
-          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PatchPcdGetPtr (PcdMmiEntryBinHash), PatchPcdGetSize (PcdMmiEntryBinHash), "");
+          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PcdGetPtr (PcdMmiEntryBinHash), PcdGetSize (PcdMmiEntryBinHash), "");
           DEBUG ((DEBUG_ERROR, "Calculated:\n"));
           DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
           Status = EFI_SECURITY_VIOLATION;
@@ -520,6 +489,29 @@ SpamResponderReport (
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndHashImage %r!!!.\n", __func__, Status));
+    goto Exit;
+  }
+
+  Status = EFI_NOT_FOUND;
+  for (Index = 0; Index < DigestList.count; Index++) {
+    if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
+      if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE) != 0) {
+        DEBUG ((DEBUG_ERROR, "Hash mismatch for MM entry code!!!\n"));
+        DEBUG ((DEBUG_ERROR, "Expecting:\n"));
+        DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PcdGetPtr (PcdMmSupervisorCoreHash), PcdGetSize (PcdMmSupervisorCoreHash), "");
+        DEBUG ((DEBUG_ERROR, "Calculated:\n"));
+        DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
+        Status = EFI_SECURITY_VIOLATION;
+        goto Exit;
+      } else {
+        DEBUG ((DEBUG_INFO, "%a Hash for MM entry code matches!\n", __func__));
+        Status = EFI_SUCCESS;
+        break;
+      }
+    }
+  }
+
+  if (EFI_ERROR (Status)) {
     goto Exit;
   }
 

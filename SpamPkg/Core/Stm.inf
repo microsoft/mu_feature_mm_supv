@@ -104,12 +104,9 @@
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
-
-[PatchPcd]
-  # SHA256 Hash of the AuxBin file.
-  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash                    ## CONSUMES
-  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash               ## CONSUMES
-  gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash          ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile                     ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash                ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash           ## CONSUMES
 
 [BuildOptions]
 #  MSFT:*_*_X64_CC_FLAGS  = /Od  /GL-
