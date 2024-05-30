@@ -219,7 +219,7 @@
   gZeroGuid                                     ## SOMETIMES_CONSUMES   ## GUID
   gEfiSmmSmramMemoryGuid                        ## SOMETIMES_CONSUMES   ## GUID
   gSmmBaseHobGuid                               ## CONSUMES
-  gMpInformationHobGuid2                        ## CONSUMES # Assume the HOB must has been created
+  gMpInformation2HobGuid                        ## CONSUMES # Assume the HOB must has been created
   gEfiHobListGuid
   gMmCoreDataHobGuid
   gMmFvDispatchGuid
