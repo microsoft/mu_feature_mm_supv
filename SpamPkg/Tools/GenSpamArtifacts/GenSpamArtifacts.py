@@ -26,7 +26,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
         obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
 
     @staticmethod
-    def generate_spam_includes(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path, inc_file_path: Path):
+    def generate_spam_includes(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, inc_file_path: Path):
         """Generates SPAM artifacts.
 
         Generates the following artifacts:
@@ -37,7 +37,6 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             aux_config_path: Path to the aux gen config file.
             mm_supervisor_build_dir: Path to the MM Supervisor build output.
             spam_build_dir: Path to the Spam Package build output.
-            output_dir: Path to place the artifacts.
         """
         try:
             stm_build_dir = spam_build_dir / "Core" / "Stm" / "DEBUG"
@@ -49,7 +48,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             temp_hash_dir = stm_build_dir / "temp_hash.bin"
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, stm_build_dir)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -60,7 +59,12 @@ class GenSpamArtifacts(IUefiHelperPlugin):
                 raise RuntimeError("BinToPcd.py failed to convert PcdAuxBinFile. Review command output.")
 
             # MMI entry block hash patching
-            mmi_entry_hash = calculate_file_hash(mmi_build_dir / "MmiEntrySpam.bin")
+            mmi_entry_file = mmi_build_dir / "MmiEntrySpam.bin"
+            # Read the data structure size from the last 4 bytes of the file
+            with open(mmi_entry_file, 'rb') as f:
+                f.seek(-4, os.SEEK_END)
+                mmi_entry_size = int.from_bytes(f.read(), byteorder='little')
+            mmi_entry_hash = calculate_file_hash(mmi_entry_file, length=(os.path.getsize(mmi_entry_file) - mmi_entry_size - 4))
             hex_bytes = bytes.fromhex(mmi_entry_hash)
             with open(temp_hash_dir, 'wb') as f:
                 f.write(hex_bytes)
@@ -76,11 +80,14 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             # Write the hash to the inc file
             with open(temp_out_dir, 'r') as f, open(inc_file_path, 'a') as o:
                 mmi_entry_hash_pcd = f.read().strip()
-                o.write("\r\n")
+                o.write("\r\n  ")
                 o.writelines(mmi_entry_hash_pcd)
+                o.write("\r\n  ")
+                o.write("gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinSize|0x%08X" % os.path.getsize(mmi_entry_file))
 
             # MM supervisor core hash patching
-            mm_supv_core_hash = calculate_file_hash(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+            mm_supv_file = mm_supervisor_build_dir / "MmSupervisorCore.efi"
+            mm_supv_core_hash = calculate_file_hash(mm_supv_file)
             hex_bytes = bytes.fromhex(mm_supv_core_hash)
             with open(temp_hash_dir, 'wb') as f:
                 f.write(hex_bytes)
@@ -96,7 +103,7 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             # Write the hash to the inc file
             with open(temp_out_dir, 'r') as f, open(inc_file_path, 'a') as o:
                 mm_supv_core_hash_pcd = f.read().strip()
-                o.write("\r\n")
+                o.write("\r\n  ")
                 o.write(mm_supv_core_hash_pcd)
 
         except FileNotFoundError as e:
@@ -192,7 +199,7 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, outp
 
     output_path = output_dir / 'MmSupervisorCore.aux'
 
-    args = "run --"
+    args = "run --bin gen_aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
@@ -205,7 +212,7 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, outp
     return output_path
 
 
-def calculate_file_hash(file: Path):
+def calculate_file_hash(file: Path, offset: int = 0, length: int = -1):
     """Calculates the hash of the auxiliary file.
 
     Args:
@@ -222,37 +229,16 @@ def calculate_file_hash(file: Path):
 
     hasher = hashlib.new(HASH_ALGORITHM)
     with open(file, 'rb') as f:
-        while True:
+        f.seek(offset)
+        while length != 0:
             data = f.read(65536)
             if not data:
                 break
+            if length > 0:
+                data = data[:length]
+                length -= len(data)
             hasher.update(data)
     return hasher.hexdigest()
-
-
-def patch_pcd_value(file: Path, offset: int, value: Tuple[str, int]) -> int:
-    """Patches the value at the given offset in the file.
-
-    Args:
-        file (Path): the file to patch
-        offset (int): the offset to patch
-        value (str|int): the value to patch (hex string or int)
-
-    Raises:
-        FileNotFoundError: if the file does not exist
-    """
-    if not file.exists():
-        raise FileNotFoundError(file)
-
-    if isinstance(value, int):
-        hex_bytes = value.to_bytes(4, byteorder='little')
-    else:
-        hex_bytes = bytes.fromhex(value)
-    bytes.fromhex(value)
-
-    with open(file, 'r+b') as f:
-        f.seek(offset)
-        f.write(hex_bytes)
 
 
 def generate_stm_binary(stm_dll: Path, output_dir: Path):
