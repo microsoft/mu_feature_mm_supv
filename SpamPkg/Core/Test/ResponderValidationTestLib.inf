@@ -41,12 +41,6 @@
 
 [Guids]
   gSpamValidationTestHandlerGuid                ## SOMETIMES_CONSUMES
-  gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
 
 [FeaturePcd]
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable  ## CONSUMES
-
-[Pcd]
-  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile                    ## CONSUMES
-  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash               ## CONSUMES
-  gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash          ## CONSUMES

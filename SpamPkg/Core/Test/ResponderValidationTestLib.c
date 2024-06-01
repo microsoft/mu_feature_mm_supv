@@ -26,22 +26,23 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/SecurePolicyLib.h>
 
 extern MM_CORE_PRIVATE_DATA              *gMmCorePrivate;
-extern EFI_PHYSICAL_ADDRESS              MmSupvAuxFileBase;
-extern EFI_PHYSICAL_ADDRESS              MmSupvAuxFileSize;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
-  to make sure the MMI entry data section is populated with legit values, then measure
+  to make sure the MMI entry data section is populated with legit values, then hash
   the content into TPM.
 
   The supervisor core will be verified to properly located inside the MMRAM region for
   this core. It will then validate the supervisor core data according to the accompanying
-  aux file and revert the executed code to the original state and measure into TPM.
+  aux file and revert the executed code to the original state and hash into TPM.
 
-  @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
-  @param[out] RetDigestList      The digest list of the image.
+  @param[in]  CpuIndex           The index of the CPU.
+  @param[in]  AuxFileBase        The base address of the auxiliary file.
+  @param[in]  AuxFileSize        The size of the auxiliary file.
+  @param[in]  MmiEntryFileSize   The size of the MMI entry file.
+  @param[in]  RetDigestListCnt   The count of the digest list.
   @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
@@ -53,8 +54,12 @@ extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
-  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  IN  UINTN                CpuIndex,
+  IN  EFI_PHYSICAL_ADDRESS AuxFileBase,
+  IN  UINT64               AuxFileSize,
+  IN  UINT64               MmiEntryFileSize,
+  IN  TPML_DIGEST_VALUES   *RetDigestList,
+  IN  UINTN                RetDigestListCnt,
   OUT VOID                 **NewPolicy  OPTIONAL
   );
 
@@ -175,9 +180,9 @@ SpamValidationTestHandler (
   IN OUT UINTN       *CommBufferSize
   )
 {
-  EFI_STATUS          Status = EFI_SUCCESS;
-  TPML_DIGEST_VALUES  DigestList;
-  VOID                *PolicyBuffer = NULL;
+  EFI_STATUS                   Status = EFI_SUCCESS;
+  VOID                         *PolicyBuffer = NULL;
+  SPAM_TEST_COMM_INPUT_REGION  *CommRegion = (SPAM_TEST_COMM_INPUT_REGION *)CommBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
@@ -196,43 +201,34 @@ SpamValidationTestHandler (
     goto Done;
   }
 
-  if (*CommBufferSize < sizeof (SPAM_TEST_COMM_REGION)) {
-    DEBUG ((DEBUG_ERROR, "%a - Comm buffer size too small! Should be at least %d, got %d\n", __func__, sizeof (SPAM_TEST_COMM_REGION), *CommBufferSize));
+  if ((*CommBufferSize < sizeof (SPAM_TEST_COMM_INPUT_REGION)) ||
+      (*CommBufferSize < sizeof (SPAM_TEST_COMM_OUTPUT_REGION))) {
+    DEBUG ((DEBUG_ERROR, "%a - Comm buffer size too small! Should be at least %d, got %d\n", __func__, MAX (sizeof (SPAM_TEST_COMM_INPUT_REGION), sizeof (SPAM_TEST_COMM_OUTPUT_REGION)), *CommBufferSize));
     Status = EFI_ACCESS_DENIED;
     goto Done;
   }
 
-  //
-  // Get information about the image being loaded
-  //
-  SPAM_RESPONDER_DATA  SpamData = {
-    SPAM_RESPONDER_STRUCT_SIGNATURE,
-    SPAM_REPSONDER_STRUCT_MINOR_VER,
-    SPAM_REPSONDER_STRUCT_MAJOR_VER,
-    sizeof (SPAM_RESPONDER_DATA)
-  };
-
-  SpamData.MmEntrySize         = GetSmiHandlerSize ();
-  SpamData.MmSupervisorSize    = gMmCorePrivate->MmCoreImageSize;
-  SpamData.MmSupervisorAuxBase = MmSupvAuxFileBase;
-  SpamData.MmSupervisorAuxSize = MmSupvAuxFileSize;
-
-  Status = SpamResponderReport (&SpamData, &DigestList, &PolicyBuffer);
+  Status = SpamResponderReport (
+             gMmst->CurrentlyExecutingCpu,
+             (EFI_PHYSICAL_ADDRESS)(UINTN)CommRegion->SupervisorAuxFileBase,
+             CommRegion->SupervisorAuxFileSize,
+             CommRegion->MmiEntryFileSize,
+             CommRegion->SupvDigestList,
+             CommRegion->SupvDigestListCount,
+             &PolicyBuffer
+             );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - SpamResponderReport failed - %r\n", __func__, Status));
     goto Done;
   }
 
   // Now reevaluate the communication buffer size
-  if (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy) > *CommBufferSize) {
+  if (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_OUTPUT_REGION, FirmwarePolicy) > *CommBufferSize) {
     DEBUG ((DEBUG_ERROR, "%a - Policy buffer is NULL!\n", __func__));
-    *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy);
+    *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
     Status          = EFI_BUFFER_TOO_SMALL;
     goto Done;
   }
-
-  DEBUG ((DEBUG_INFO, "%a Measured digest for supervisor is:\n", __func__));
-  DUMP_HEX (DEBUG_INFO, 0, &DigestList, sizeof (DigestList), "");
 
   // Making sure the validation routine is giving us the same policy buffer output
   if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
@@ -241,9 +237,8 @@ SpamValidationTestHandler (
     goto Done;
   }
 
-  *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy);
-  CopyMem ((UINT8 *)CommBuffer, &DigestList, sizeof (DigestList));
-  CopyMem ((UINT8 *)CommBuffer + OFFSET_OF (SPAM_TEST_COMM_REGION, FirmwarePolicy), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size);
+  *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SPAM_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
+  CopyMem ((UINT8 *)CommBuffer + OFFSET_OF (SPAM_TEST_COMM_OUTPUT_REGION, FirmwarePolicy), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size);
 
 Done:
   if (PolicyBuffer != NULL) {
