@@ -106,6 +106,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
   gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile                     ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash                ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinSize                ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash           ## CONSUMES
 
 [BuildOptions]

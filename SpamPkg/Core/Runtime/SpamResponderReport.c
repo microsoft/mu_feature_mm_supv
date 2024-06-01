@@ -113,9 +113,12 @@ VerifyAndHashImage (
   OUT TPML_DIGEST_VALUES  *DigestList
   )
 {
-  EFI_STATUS  Status;
-  VOID        *InternalCopy;
-  VOID        *Buffer;
+  EFI_STATUS                    Status;
+  VOID                          *InternalCopy;
+  VOID                          *Buffer     = NULL;
+  VOID                          *NewBuffer  = NULL;
+  UINTN                         NewBufferSize;
+  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -136,8 +139,6 @@ VerifyAndHashImage (
   //
   // Get information about the image being loaded
   //
-  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
-
   ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
   Buffer = AllocatePages (EFI_SIZE_TO_PAGES (ImageSize));
 
@@ -163,8 +164,8 @@ VerifyAndHashImage (
   }
 
   // Now prepare a new buffer to revert loading operations.
-  UINTN  NewBufferSize = ImageSize;
-  VOID   *NewBuffer    = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
+  NewBufferSize = ImageSize;
+  NewBuffer     = AllocatePages (EFI_SIZE_TO_PAGES (NewBufferSize));
 
   ZeroMem (NewBuffer, NewBufferSize);
 
@@ -195,7 +196,83 @@ Exit:
     FreePages (InternalCopy, EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1));
   }
 
+  if (Buffer != NULL) {
+    FreePages (Buffer, EFI_SIZE_TO_PAGES (ImageSize));
+  }
+
+  if (NewBuffer != NULL) {
+    FreePages (NewBuffer, EFI_SIZE_TO_PAGES (NewBufferSize));
+  }
+
   return Status;
+}
+
+/**
+  Helper function to compare two digests inside TPML_DIGEST_VALUES.
+
+  @param[in] DigestList1    The first digest to compare.
+  @param[in] DigestList2    The second digest to compare.
+  @param[in] TargetAlg      The algorithm to compare.
+
+  @retval TRUE  The two digests are identical.
+  @retval FALSE The two digests are different.
+**/
+BOOLEAN
+EFIAPI
+CompareDigest (
+  IN TPML_DIGEST_VALUES  *DigestList1,
+  IN TPML_DIGEST_VALUES  *DigestList2,
+  IN TPMI_ALG_HASH       TargetAlgHash
+  )
+{
+  UINTN   Index1;
+  UINTN   Index2;
+  BOOLEAN Result;
+
+  if ((DigestList1 == NULL) || (DigestList2 == NULL)) {
+    Result = FALSE;
+    goto Done;
+  }
+
+  Result = FALSE;
+  for (Index1 = 0; Index1 < DigestList1->count; Index1++) {
+    if (DigestList1->digests[Index1].hashAlg == TargetAlgHash) {
+      break;
+    }
+  }
+
+  if (Index1 == DigestList1->count) {
+    Result = FALSE;
+    goto Done;
+  }
+
+  for (Index2 = 0; Index2 < DigestList2->count; Index2++) {
+    if (DigestList2->digests[Index2].hashAlg == TargetAlgHash) {
+      break;
+    }
+  }
+
+  if (Index2 == DigestList2->count) {
+    Result = FALSE;
+    goto Done;
+  }
+
+  switch (TargetAlgHash) {
+    case TPM_ALG_SHA256:
+      Result = CompareMem (DigestList1->digests[Index1].digest.sha256, DigestList2->digests[Index2].digest.sha256, SHA256_DIGEST_SIZE) == 0;
+      break;
+    case TPM_ALG_SHA384:
+      Result = CompareMem (DigestList1->digests[Index1].digest.sha384, DigestList2->digests[Index2].digest.sha384, SHA384_DIGEST_SIZE) == 0;
+      break;
+    case TPM_ALG_SHA512:
+      Result = CompareMem (DigestList1->digests[Index1].digest.sha512, DigestList2->digests[Index2].digest.sha512, SHA512_DIGEST_SIZE) == 0;
+      break;
+    default:
+      Result = FALSE;
+  }
+
+Done:
+  return Result;
 }
 
 /**
@@ -207,8 +284,11 @@ Exit:
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash into TPM.
 
-  @param[in]  SpamResponderData  The pointer to the SPAM_RESPONDER_DATA structure.
-  @param[out] RetDigestList      The digest list of the image.
+  @param[in]  CpuIndex           The index of the CPU.
+  @param[in]  AuxFileBase        The base address of the auxiliary file.
+  @param[in]  AuxFileSize        The size of the auxiliary file.
+  @param[in]  MmiEntryFileSize   The size of the MMI entry file.
+  @param[in]  RetDigestListCnt   The count of the digest list.
   @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
@@ -220,8 +300,12 @@ Exit:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  SPAM_RESPONDER_DATA  *SpamResponderData,
-  OUT TPML_DIGEST_VALUES   *RetDigestList,
+  IN  UINTN                CpuIndex,
+  IN  EFI_PHYSICAL_ADDRESS AuxFileBase,
+  IN  UINT64               AuxFileSize,
+  IN  UINT64               MmiEntryFileSize,
+  IN  TPML_DIGEST_VALUES   *RetDigestList,
+  IN  UINTN                RetDigestListCnt,
   OUT VOID                 **NewPolicy  OPTIONAL
   )
 {
@@ -229,48 +313,32 @@ SpamResponderReport (
   UINT64                            MmBase;
   UINT32                            MaxExtendedFunction;
   CPUID_VIR_PHY_ADDRESS_SIZE_EAX    VirPhyAddressSize;
+  UINT16                            *FixStructPtr;
   UINT32                            *Fixup32Ptr;
   UINT64                            *Fixup64Ptr;
   BOOLEAN                           IsInside;
   UINTN                             Index;
+  UINT8                             *LocalMmiEntryBase = NULL;
   PER_CORE_MMI_ENTRY_STRUCT_HDR     *MmiEntryStructHdr;
   UINT32                            MmiEntryStructHdrSize;
   UINT64                            MmSupervisorBase;
+  UINT64                            MmSupervisorImageSize;
   UINT64                            FirmwarePolicyBase;
   UINT64                            SupvPageTableBase;
   TPML_DIGEST_VALUES                DigestList;
   UINT8                             *DrtmSmmPolicyData;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
   KEY_SYMBOL                        *KeySymbols;
+  PE_COFF_LOADER_IMAGE_CONTEXT      ImageContext;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
   KEY_SYMBOL  *MmiRendezvousSymbol  = NULL;
 
-  // TODO: Step 0: Disable MMI
-
-  // Step 1: Basic check on the validity of SpamResponderData
-  if (SpamResponderData == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData is NULL\n", __func__));
+  // Step 1: Basic check on the validity of inputs
+  if ((RetDigestList == NULL) || (RetDigestListCnt != SUPPORTED_DIGEST_COUNT)) {
+    DEBUG ((DEBUG_ERROR, "%a Input is not supported RetDigestList: %p and RetDigestListCnt: %d\n", __func__, RetDigestList, RetDigestListCnt));
     Status = EFI_INVALID_PARAMETER;
-    goto Exit;
-  }
-
-  if (SpamResponderData->Signature != SPAM_RESPONDER_STRUCT_SIGNATURE) {
-    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData does not have valid signature %x\n", __func__, SpamResponderData->Signature));
-    Status = EFI_UNSUPPORTED;
-    goto Exit;
-  }
-
-  if (SpamResponderData->VersionMajor > SPAM_REPSONDER_STRUCT_MAJOR_VER) {
-    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData has unrecognized major version %x!\n", __func__, SpamResponderData->VersionMajor));
-    Status = EFI_UNSUPPORTED;
-    goto Exit;
-  } else if ((SpamResponderData->VersionMajor == SPAM_REPSONDER_STRUCT_MAJOR_VER) &&
-             (SpamResponderData->VersionMinor > SPAM_REPSONDER_STRUCT_MINOR_VER))
-  {
-    DEBUG ((DEBUG_ERROR, "%a Input SpamResponderData has unrecognized minor version %x\n", __func__, SpamResponderData->VersionMinor));
-    Status = EFI_UNSUPPORTED;
     goto Exit;
   }
 
@@ -285,42 +353,40 @@ SpamResponderReport (
   }
 
   MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
+  MmBase = mCpuHotPlugData.SmBase[CpuIndex];
   if (MmBase == 0) {
-    DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE for core 0x%x\n", __func__, SpamResponderData->CpuIndex));
+    DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE for core 0x%x\n", __func__, CpuIndex));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (!IsBufferInsideMmram (MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize)) {
-    DEBUG ((DEBUG_ERROR, "%a Reported MM entry code (0x%p: 0x%x) does not reside inside MMRAM region\n", __func__, MmBase + SMM_HANDLER_OFFSET, SpamResponderData->MmEntrySize));
+  if (!IsBufferInsideMmram (MmBase + SMM_HANDLER_OFFSET, MmiEntryFileSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Reported MM entry code (0x%p: 0x%x) does not reside inside MMRAM region\n", __func__, MmBase + SMM_HANDLER_OFFSET, MmiEntryFileSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  SpamResponderData->MmSupervisorAuxBase = (UINT64)(UINTN)PcdGetPtr (PcdAuxBinFile);
-  SpamResponderData->MmSupervisorAuxSize = PcdGetSize (PcdAuxBinFile);
-
-  if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)SpamResponderData->MmSupervisorAuxBase == 0) {
+  if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)AuxFileBase == 0) {
     DEBUG ((DEBUG_ERROR, "%a Reported aux file base address is NULL!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (!IsBufferInsideMmram (SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize)) {
-    DEBUG ((DEBUG_ERROR, "%a Reported aux file (0x%p: 0x%x) does not reside in MMRAM region!\n", __func__, SpamResponderData->MmSupervisorAuxBase, SpamResponderData->MmSupervisorAuxSize));
+  if (!IsBufferInsideMmram (AuxFileBase, AuxFileSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file (0x%p: 0x%x) does not reside in MMRAM region!\n", __func__, AuxFileBase, AuxFileSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
-    DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature %x\n", __func__, ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->HeaderSignature));
+  if (((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature %p %x\n", __func__, AuxFileBase, ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->HeaderSignature));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  KeySymbols = (KEY_SYMBOL *)(SpamResponderData->MmSupervisorAuxBase + ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->OffsetToFirstKeySymbol);
+  KeySymbols = (KEY_SYMBOL *)(AuxFileBase + ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->OffsetToFirstKeySymbol);
 
-  for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER *)SpamResponderData->MmSupervisorAuxBase)->KeySymbolCount; Index++) {
+  for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->KeySymbolCount; Index++) {
     switch (KeySymbols[Index].Signature) {
       case KEY_SYMBOL_FW_POLICY_SIGNATURE:
         FirmwarePolicySymbol = &KeySymbols[Index];
@@ -340,66 +406,75 @@ SpamResponderReport (
     goto Exit;
   }
 
-  // Step 2.1: Hash MMI entry code
-  // Record SMI_ENTRY_HASH to PCR 0, just in case it is NOT TXT launch, we still need provide the evidence.
-  // TCG_PCR_EVENT_HDR   NewEventHdr;
-
-  ZeroMem (&DigestList, sizeof (DigestList));
-  Status = HashOnly (
-             (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET),
-             (UINTN)SpamResponderData->MmEntrySize,
-             &DigestList
-             );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a HashOnly of MM entry code failed %r.\n", __func__, Status));
+  // Step 2.1: Check basic entry fix up data region to be pointing inside the MMRAM region
+  LocalMmiEntryBase = AllocatePages (EFI_SIZE_TO_PAGES (MmiEntryFileSize));
+  if (LocalMmiEntryBase == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate memory for local MM entry code.\n", __func__));
+    Status = EFI_OUT_OF_RESOURCES;
     goto Exit;
-  } else {
-    Status = EFI_NOT_FOUND;
-    for (Index = 0; Index < DigestList.count; Index++) {
-      if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
-        if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE) != 0) {
-          DEBUG ((DEBUG_ERROR, "Hash mismatch for MM entry code!!!\n"));
-          DEBUG ((DEBUG_ERROR, "Expecting:\n"));
-          DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PcdGetPtr (PcdMmiEntryBinHash), PcdGetSize (PcdMmiEntryBinHash), "");
-          DEBUG ((DEBUG_ERROR, "Calculated:\n"));
-          DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        } else {
-          DEBUG ((DEBUG_INFO, "%a Hash for MM entry code matches!\n", __func__));
-          Status = EFI_SUCCESS;
-          break;
-        }
-      }
-    }
-
-    if (EFI_ERROR (Status)) {
-      goto Exit;
-    }
   }
+  CopyMem (LocalMmiEntryBase, (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET), MmiEntryFileSize);
 
-  // Step 3: Check MM Core code base and size to be inside the MMRAM region
-  // Step 3.1: Check entry fix up data region to be pointing inside the MMRAM region
-  MmiEntryStructHdrSize = *(UINT32 *)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - sizeof (MmiEntryStructHdrSize));
-  MmiEntryStructHdr     = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(MmBase + SMM_HANDLER_OFFSET + SpamResponderData->MmEntrySize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize));
+  MmiEntryStructHdrSize = *(UINT32 *)(UINTN)(LocalMmiEntryBase + MmiEntryFileSize - sizeof (MmiEntryStructHdrSize));
+  MmiEntryStructHdr     = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(LocalMmiEntryBase + MmiEntryFileSize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize));
 
-  if ((MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION) ||
-      (MmiEntryStructHdrSize >= SpamResponderData->MmEntrySize))
+  if ((MmiEntryStructHdrSize >= MmiEntryFileSize) ||
+      (MmiEntryStructHdr->HeaderVersion > MMI_ENTRY_STRUCT_VERSION))
   {
     DEBUG ((DEBUG_ERROR, "%a MM entry code has unrecognized version %x or invalid size %x.\n", __func__, MmiEntryStructHdr->HeaderVersion, MmiEntryStructHdrSize));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
 
-  Fixup32Ptr = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
-  Fixup64Ptr = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
+  // We need to revert some regions before making the hash
+  FixStructPtr = (UINT16 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUpStructOffset);
+  for (Index = 0; Index < (MmiEntryStructHdr->FixUpStructNum * 2); Index += 2) {
+    // Do not let the data in structure go wild...
+    if (FixStructPtr[Index + 1] + FixStructPtr[Index] < MmiEntryFileSize - MmiEntryStructHdrSize) {
+      ZeroMem ((VOID *)(UINTN)(LocalMmiEntryBase + FixStructPtr[Index + 1]), FixStructPtr[Index]);
+    }
+  }
 
-  // Step 3.1.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
+  // Step 2.2: Hash MMI entry code block
+  ZeroMem (&DigestList, sizeof (DigestList));
+  Status = HashOnly (
+             (VOID *)(UINTN)(LocalMmiEntryBase),
+             (UINTN)MmiEntryFileSize - MmiEntryStructHdrSize - sizeof (MmiEntryStructHdrSize),
+             &DigestList
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a HashOnly of MM entry code failed %r.\n", __func__, Status));
+    goto Exit;
+  } else {
+    if (!CompareDigest (&RetDigestList[MMI_ENTRY_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
+      DEBUG ((DEBUG_ERROR, "%a Hash of MM entry code does not match expectation! Calculated:\n", __func__));
+      DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+  }
+
+  // Step 3: Check MM Core code base and size to be inside the MMRAM region
+  Fixup32Ptr   = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
+  Fixup64Ptr   = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
+
+  // Step 3.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
   // Reverse engineer MM core region with MM rendezvous
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
+  ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
+  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
+  ImageContext.Handle    = (VOID *)MmSupervisorBase;
 
-  if (!IsBufferInsideMmram (MmSupervisorBase, SpamResponderData->MmSupervisorSize)) {
-    DEBUG ((DEBUG_ERROR, "%a Calculated MM supervisor core image (0x%p: 0x%x) does not reside inside MMRAM.\n", __func__, MmSupervisorBase, SpamResponderData->MmSupervisorSize));
+  Status = PeCoffLoaderGetImageInfo (&ImageContext);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to get MM supervisor image info %r.\n", __func__, Status));
+    goto Exit;
+  }
+
+  MmSupervisorImageSize = ImageContext.ImageSize;
+
+  if (!IsBufferInsideMmram (MmSupervisorBase, MmSupervisorImageSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Calculated MM supervisor core image (0x%p: 0x%x) does not reside inside MMRAM.\n", __func__, MmSupervisorBase, MmSupervisorImageSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -447,25 +522,25 @@ SpamResponderReport (
   }
 
   // MM debug entry should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
+  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
+    DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // MM debug exit should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
+  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
+    DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], MmSupervisorBase, MmSupervisorImageSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   // MM IDTR should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (UINT64), MmSupervisorBase, SpamResponderData->MmSupervisorSize, &IsInside);
+  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
   if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, SpamResponderData->MmSupervisorSize));
+    DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -481,9 +556,9 @@ SpamResponderReport (
   // Step 3.2: Hash MM Core code
   Status = VerifyAndHashImage (
              MmSupervisorBase,
-             SpamResponderData->MmSupervisorSize,
-             SpamResponderData->MmSupervisorAuxBase,
-             SpamResponderData->MmSupervisorAuxSize,
+             MmSupervisorImageSize,
+             AuxFileBase,
+             AuxFileSize,
              SupvPageTableBase,
              &DigestList
              );
@@ -492,31 +567,15 @@ SpamResponderReport (
     goto Exit;
   }
 
-  Status = EFI_NOT_FOUND;
-  for (Index = 0; Index < DigestList.count; Index++) {
-    if (DigestList.digests[Index].hashAlg == TPM_ALG_SHA256) {
-      if (CompareMem (DigestList.digests[Index].digest.sha256, (VOID *)PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE) != 0) {
-        DEBUG ((DEBUG_ERROR, "Hash mismatch for MM entry code!!!\n"));
-        DEBUG ((DEBUG_ERROR, "Expecting:\n"));
-        DUMP_HEX (DEBUG_ERROR, 0, (VOID *)PcdGetPtr (PcdMmSupervisorCoreHash), PcdGetSize (PcdMmSupervisorCoreHash), "");
-        DEBUG ((DEBUG_ERROR, "Calculated:\n"));
-        DUMP_HEX (DEBUG_ERROR, 0, DigestList.digests[Index].digest.sha256, SHA256_DIGEST_SIZE, "");
-        Status = EFI_SECURITY_VIOLATION;
-        goto Exit;
-      } else {
-        DEBUG ((DEBUG_INFO, "%a Hash for MM entry code matches!\n", __func__));
-        Status = EFI_SUCCESS;
-        break;
-      }
-    }
-  }
-
-  if (EFI_ERROR (Status)) {
+  if (!CompareDigest (&RetDigestList[MM_SUPV_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
+    DEBUG ((DEBUG_ERROR, "%a Hash of MM core does not match expectation! Calculated:\n", __func__));
+    DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
+    Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   if (RetDigestList != NULL) {
-    CopyMem (RetDigestList, &DigestList, sizeof (DigestList));
+    CopyMem (RetDigestList + 1, &DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
@@ -555,8 +614,9 @@ SpamResponderReport (
     *NewPolicy = DrtmSmmPolicyData;
   }
 
-  // TODO: How to do this? I would like to keep the structure the same though...
-
 Exit:
+  if (LocalMmiEntryBase != NULL) {
+    FreePages (LocalMmiEntryBase, EFI_SIZE_TO_PAGES (MmiEntryFileSize));
+  }
   return Status;
 }
