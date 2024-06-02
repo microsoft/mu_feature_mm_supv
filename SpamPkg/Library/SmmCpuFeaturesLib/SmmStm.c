@@ -487,7 +487,6 @@ SmmCpuFeaturesInstallSmiHandler (
   IN UINT32  Cr3
   )
 {
-  EFI_STATUS                     Status;
   TXT_PROCESSOR_SMM_DESCRIPTOR   *Psd;
   VOID                           *Hob;
   UINT32                         RegEax;
@@ -636,7 +635,6 @@ MmEndOfDxeEventNotify (
 {
   UINTN                              Index = 0;
   TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
-  EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   UINT32                             MsegBase;
   STM_HEADER                         *StmHeader;
@@ -668,10 +666,7 @@ MmEndOfDxeEventNotify (
 
   mLockLoadMonitor = TRUE;
 
-  Status = EFI_SUCCESS;
-
-Done:
-  return Status;
+  return EFI_SUCCESS;
 }
 
 /**
