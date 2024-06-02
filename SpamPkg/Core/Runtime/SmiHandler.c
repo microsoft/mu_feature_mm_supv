@@ -148,15 +148,15 @@ StmHandlerSmi (
   //
   // Get information about the image being loaded
   //
-  TPML_DIGEST_VALUES   DigestList[SUPPORTED_DIGEST_COUNT];
+  TPML_DIGEST_VALUES  DigestList[SUPPORTED_DIGEST_COUNT];
 
   ZeroMem (DigestList, sizeof (DigestList));
   DigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
-  DigestList[MMI_ENTRY_DIGEST_INDEX].count = 1;
+  DigestList[MMI_ENTRY_DIGEST_INDEX].count              = 1;
   CopyMem (DigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE);
 
   DigestList[MM_SUPV_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
-  DigestList[MM_SUPV_DIGEST_INDEX].count = 1;
+  DigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
   CopyMem (DigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
 
   Status = SpamResponderReport (

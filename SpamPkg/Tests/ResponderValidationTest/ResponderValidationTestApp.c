@@ -32,8 +32,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/SpamTestCommRegion.h>
 #include <Guid/PiSmmCommunicationRegionTable.h>
 
-VOID      *mPiSmmCommonCommBufferAddress = NULL;
-UINTN     mPiSmmCommonCommBufferSize;
+VOID   *mPiSmmCommonCommBufferAddress = NULL;
+UINTN  mPiSmmCommonCommBufferSize;
 
 /**
   This helper function actually sends the requested communication
@@ -94,16 +94,16 @@ DxeToSmmCommunicate (
   CopyGuid (&CommHeader->HeaderGuid, &gSpamValidationTestHandlerGuid);
   CommHeader->MessageLength = MinBufferSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
 
-  SpamTestCommInputBuffer = (SPAM_TEST_COMM_INPUT_REGION *)((UINTN)CommHeader + OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data));
+  SpamTestCommInputBuffer                        = (SPAM_TEST_COMM_INPUT_REGION *)((UINTN)CommHeader + OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data));
   SpamTestCommInputBuffer->SupervisorAuxFileSize = PcdGetSize (PcdAuxBinFile);
   CopyMem (SpamTestCommInputBuffer->SupervisorAuxFileBase, PcdGetPtr (PcdAuxBinFile), PcdGetSize (PcdAuxBinFile));
 
   SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
-  SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].count = 1;
+  SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].count              = 1;
   CopyMem (SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE);
 
   SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
-  SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].count = 1;
+  SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
   CopyMem (SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
 
   SpamTestCommInputBuffer->SupvDigestListCount = SUPPORTED_DIGEST_COUNT;
@@ -124,7 +124,7 @@ DxeToSmmCommunicate (
     goto Exit;
   }
 
-  SpamTestCommOutputputBuffer = (SPAM_TEST_COMM_OUTPUT_REGION*)(CommHeader + 1);
+  SpamTestCommOutputputBuffer = (SPAM_TEST_COMM_OUTPUT_REGION *)(CommHeader + 1);
   DEBUG ((DEBUG_INFO, "%a - FirmwarePolicy: %p\n", __func__, &SpamTestCommOutputputBuffer->FirmwarePolicy));
 
 Exit:

@@ -54,13 +54,13 @@ extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  UINTN                CpuIndex,
-  IN  EFI_PHYSICAL_ADDRESS AuxFileBase,
-  IN  UINT64               AuxFileSize,
-  IN  UINT64               MmiEntryFileSize,
-  IN  TPML_DIGEST_VALUES   *RetDigestList,
-  IN  UINTN                RetDigestListCnt,
-  OUT VOID                 **NewPolicy  OPTIONAL
+  IN  UINTN                 CpuIndex,
+  IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
+  IN  UINT64                AuxFileSize,
+  IN  UINT64                MmiEntryFileSize,
+  IN  TPML_DIGEST_VALUES    *RetDigestList,
+  IN  UINTN                 RetDigestListCnt,
+  OUT VOID                  **NewPolicy  OPTIONAL
   );
 
 /**
@@ -180,9 +180,9 @@ SpamValidationTestHandler (
   IN OUT UINTN       *CommBufferSize
   )
 {
-  EFI_STATUS                   Status = EFI_SUCCESS;
+  EFI_STATUS                   Status        = EFI_SUCCESS;
   VOID                         *PolicyBuffer = NULL;
-  SPAM_TEST_COMM_INPUT_REGION  *CommRegion = (SPAM_TEST_COMM_INPUT_REGION *)CommBuffer;
+  SPAM_TEST_COMM_INPUT_REGION  *CommRegion   = (SPAM_TEST_COMM_INPUT_REGION *)CommBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
@@ -202,7 +202,8 @@ SpamValidationTestHandler (
   }
 
   if ((*CommBufferSize < sizeof (SPAM_TEST_COMM_INPUT_REGION)) ||
-      (*CommBufferSize < sizeof (SPAM_TEST_COMM_OUTPUT_REGION))) {
+      (*CommBufferSize < sizeof (SPAM_TEST_COMM_OUTPUT_REGION)))
+  {
     DEBUG ((DEBUG_ERROR, "%a - Comm buffer size too small! Should be at least %d, got %d\n", __func__, MAX (sizeof (SPAM_TEST_COMM_INPUT_REGION), sizeof (SPAM_TEST_COMM_OUTPUT_REGION)), *CommBufferSize));
     Status = EFI_ACCESS_DENIED;
     goto Done;

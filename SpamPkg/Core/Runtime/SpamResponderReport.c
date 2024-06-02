@@ -115,8 +115,8 @@ VerifyAndHashImage (
 {
   EFI_STATUS                    Status;
   VOID                          *InternalCopy;
-  VOID                          *Buffer     = NULL;
-  VOID                          *NewBuffer  = NULL;
+  VOID                          *Buffer    = NULL;
+  VOID                          *NewBuffer = NULL;
   UINTN                         NewBufferSize;
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
 
@@ -225,9 +225,9 @@ CompareDigest (
   IN TPMI_ALG_HASH       TargetAlgHash
   )
 {
-  UINTN   Index1;
-  UINTN   Index2;
-  BOOLEAN Result;
+  UINTN    Index1;
+  UINTN    Index2;
+  BOOLEAN  Result;
 
   if ((DigestList1 == NULL) || (DigestList2 == NULL)) {
     Result = FALSE;
@@ -300,13 +300,13 @@ Done:
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  UINTN                CpuIndex,
-  IN  EFI_PHYSICAL_ADDRESS AuxFileBase,
-  IN  UINT64               AuxFileSize,
-  IN  UINT64               MmiEntryFileSize,
-  IN  TPML_DIGEST_VALUES   *RetDigestList,
-  IN  UINTN                RetDigestListCnt,
-  OUT VOID                 **NewPolicy  OPTIONAL
+  IN  UINTN                 CpuIndex,
+  IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
+  IN  UINT64                AuxFileSize,
+  IN  UINT64                MmiEntryFileSize,
+  IN  TPML_DIGEST_VALUES    *RetDigestList,
+  IN  UINTN                 RetDigestListCnt,
+  OUT VOID                  **NewPolicy  OPTIONAL
   )
 {
   EFI_STATUS                        Status;
@@ -412,6 +412,7 @@ SpamResponderReport (
     Status = EFI_OUT_OF_RESOURCES;
     goto Exit;
   }
+
   CopyMem (LocalMmiEntryBase, (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET), MmiEntryFileSize);
 
   MmiEntryStructHdrSize = *(UINT32 *)(UINTN)(LocalMmiEntryBase + MmiEntryFileSize - sizeof (MmiEntryStructHdrSize));
@@ -454,8 +455,8 @@ SpamResponderReport (
   }
 
   // Step 3: Check MM Core code base and size to be inside the MMRAM region
-  Fixup32Ptr   = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
-  Fixup64Ptr   = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
+  Fixup32Ptr = (UINT32 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp32Offset);
+  Fixup64Ptr = (UINT64 *)(UINTN)((UINTN)MmiEntryStructHdr + MmiEntryStructHdr->FixUp64Offset);
 
   // Step 3.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
   // Reverse engineer MM core region with MM rendezvous
@@ -617,5 +618,6 @@ Exit:
   if (LocalMmiEntryBase != NULL) {
     FreePages (LocalMmiEntryBase, EFI_SIZE_TO_PAGES (MmiEntryFileSize));
   }
+
   return Status;
 }

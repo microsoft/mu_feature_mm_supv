@@ -102,13 +102,13 @@ IsBufferInsideMmram (
 EFI_STATUS
 EFIAPI
 SpamResponderReport (
-  IN  UINTN                CpuIndex,
-  IN  EFI_PHYSICAL_ADDRESS AuxFileBase,
-  IN  UINT64               AuxFileSize,
-  IN  UINT64               MmiEntryFileSize,
-  IN  TPML_DIGEST_VALUES   *RetDigestList,
-  IN  UINTN                RetDigestListCnt,
-  OUT VOID                 **NewPolicy  OPTIONAL
+  IN  UINTN                 CpuIndex,
+  IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
+  IN  UINT64                AuxFileSize,
+  IN  UINT64                MmiEntryFileSize,
+  IN  TPML_DIGEST_VALUES    *RetDigestList,
+  IN  UINTN                 RetDigestListCnt,
+  OUT VOID                  **NewPolicy  OPTIONAL
   );
 
 #endif
