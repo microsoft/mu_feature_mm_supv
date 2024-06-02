@@ -353,7 +353,6 @@ SpamResponderReport (
   }
 
   MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
-  MmBase = mCpuHotPlugData.SmBase[CpuIndex];
   if (MmBase == 0) {
     DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE for core 0x%x\n", __func__, CpuIndex));
     Status = EFI_SECURITY_VIOLATION;
