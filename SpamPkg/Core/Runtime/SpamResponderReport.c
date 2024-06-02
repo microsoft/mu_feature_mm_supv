@@ -587,7 +587,7 @@ SpamResponderReport (
     goto Exit;
   }
 
-  ZeroMem (DrtmSmmPolicyData, sizeof (DrtmSmmPolicyData));
+  ZeroMem (DrtmSmmPolicyData, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE);
 
   // First off, copy the firmware policy to the buffer
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
