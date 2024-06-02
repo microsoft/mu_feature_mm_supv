@@ -15,7 +15,6 @@
 typedef struct {
   UINT64              SupvDigestListCount;
   TPML_DIGEST_VALUES  SupvDigestList[SUPPORTED_DIGEST_COUNT];
-  UINT64              MmSupvFileSize;
   UINT64              MmiEntryFileSize;
   UINT64              SupervisorAuxFileSize;
   UINT8               SupervisorAuxFileBase[];
