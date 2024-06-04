@@ -80,17 +80,18 @@ IsBufferInsideMmram (
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
   to make sure the MMI entry data section is populated with legit values, then hash
-  the content into TPM.
+  the content using TPM.
 
   The supervisor core will be verified to properly located inside the MMRAM region for
   this core. It will then validate the supervisor core data according to the accompanying
-  aux file and revert the executed code to the original state and hash into TPM.
+  aux file and revert the executed code to the original state and hash using TPM.
 
   @param[in]  CpuIndex           The index of the CPU.
   @param[in]  AuxFileBase        The base address of the auxiliary file.
   @param[in]  AuxFileSize        The size of the auxiliary file.
   @param[in]  MmiEntryFileSize   The size of the MMI entry file.
-  @param[in]  RetDigestListCnt   The count of the digest list.
+  @param[in]  GoldDigestList     The digest list of the MMI entry and supervisor core.
+  @param[in]  GoldDigestListCnt  The count of the digest list.
   @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
@@ -106,8 +107,8 @@ SpamResponderReport (
   IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
   IN  UINT64                AuxFileSize,
   IN  UINT64                MmiEntryFileSize,
-  IN  TPML_DIGEST_VALUES    *RetDigestList,
-  IN  UINTN                 RetDigestListCnt,
+  IN  TPML_DIGEST_VALUES    *GoldDigestList,
+  IN  UINTN                 GoldDigestListCnt,
   OUT VOID                  **NewPolicy  OPTIONAL
   );
 

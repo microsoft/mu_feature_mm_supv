@@ -278,17 +278,18 @@ Done:
 /**
   The main validation routine for the SPAM Core. This routine will validate the input
   to make sure the MMI entry data section is populated with legit values, then hash
-  the content into TPM.
+  the content using TPM.
 
   The supervisor core will be verified to properly located inside the MMRAM region for
   this core. It will then validate the supervisor core data according to the accompanying
-  aux file and revert the executed code to the original state and hash into TPM.
+  aux file and revert the executed code to the original state and hash using TPM.
 
   @param[in]  CpuIndex           The index of the CPU.
   @param[in]  AuxFileBase        The base address of the auxiliary file.
   @param[in]  AuxFileSize        The size of the auxiliary file.
   @param[in]  MmiEntryFileSize   The size of the MMI entry file.
-  @param[in]  RetDigestListCnt   The count of the digest list.
+  @param[in]  GoldDigestList     The digest list of the MMI entry and supervisor core.
+  @param[in]  GoldDigestListCnt  The count of the digest list.
   @param[out] NewPolicy          The new policy populated by this routine.
 
   @retval EFI_SUCCESS            The function completed successfully.
@@ -304,8 +305,8 @@ SpamResponderReport (
   IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
   IN  UINT64                AuxFileSize,
   IN  UINT64                MmiEntryFileSize,
-  IN  TPML_DIGEST_VALUES    *RetDigestList,
-  IN  UINTN                 RetDigestListCnt,
+  IN  TPML_DIGEST_VALUES    *GoldDigestList,
+  IN  UINTN                 GoldDigestListCnt,
   OUT VOID                  **NewPolicy  OPTIONAL
   )
 {
@@ -336,8 +337,8 @@ SpamResponderReport (
   KEY_SYMBOL  *MmiRendezvousSymbol  = NULL;
 
   // Step 1: Basic check on the validity of inputs
-  if ((RetDigestList == NULL) || (RetDigestListCnt != SUPPORTED_DIGEST_COUNT)) {
-    DEBUG ((DEBUG_ERROR, "%a Input is not supported RetDigestList: %p and RetDigestListCnt: %d\n", __func__, RetDigestList, RetDigestListCnt));
+  if ((GoldDigestList == NULL) || (GoldDigestListCnt != SUPPORTED_DIGEST_COUNT)) {
+    DEBUG ((DEBUG_ERROR, "%a Input is not supported GoldDigestList: %p and GoldDigestListCnt: %d\n", __func__, GoldDigestList, GoldDigestListCnt));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -446,7 +447,7 @@ SpamResponderReport (
     DEBUG ((DEBUG_ERROR, "%a HashOnly of MM entry code failed %r.\n", __func__, Status));
     goto Exit;
   } else {
-    if (!CompareDigest (&RetDigestList[MMI_ENTRY_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
+    if (!CompareDigest (&GoldDigestList[MMI_ENTRY_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
       DEBUG ((DEBUG_ERROR, "%a Hash of MM entry code does not match expectation! Calculated:\n", __func__));
       DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
       Status = EFI_SECURITY_VIOLATION;
@@ -567,15 +568,15 @@ SpamResponderReport (
     goto Exit;
   }
 
-  if (!CompareDigest (&RetDigestList[MM_SUPV_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
+  if (!CompareDigest (&GoldDigestList[MM_SUPV_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
     DEBUG ((DEBUG_ERROR, "%a Hash of MM core does not match expectation! Calculated:\n", __func__));
     DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (RetDigestList != NULL) {
-    CopyMem (RetDigestList + 1, &DigestList, sizeof (DigestList));
+  if (GoldDigestList != NULL) {
+    CopyMem (GoldDigestList + 1, &DigestList, sizeof (DigestList));
   }
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
