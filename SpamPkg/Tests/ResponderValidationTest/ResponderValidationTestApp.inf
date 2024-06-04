@@ -52,3 +52,9 @@
 [Protocols]
   gMmSupervisorCommunicationProtocolGuid
   gEfiTcg2ProtocolGuid
+
+[Pcd]
+  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile                   ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash              ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinSize              ## CONSUMES
+  gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash         ## CONSUMES

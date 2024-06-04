@@ -60,30 +60,13 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define SPAM_RESPONDER_STRUCT_SIGNATURE  SIGNATURE_32 ('S', 'P', 'A', 'M')
-#define SPAM_REPSONDER_STRUCT_MAJOR_VER  0x0000
-#define SPAM_REPSONDER_STRUCT_MINOR_VER  0x0001
-
 // Key Symbols for MmSupervisorCore
 #define KEY_SYMBOL_FW_POLICY_SIGNATURE  SIGNATURE_32 ('F', 'P', 'O', 'L')
 #define KEY_SYMBOL_PAGE_TBL_SIGNATURE   SIGNATURE_32 ('P', 'G', 'T', 'B')
 #define KEY_SYMBOL_MMI_RDV_SIGNATURE    SIGNATURE_32 ('M', 'R', 'D', 'V')
 
-#pragma pack(push,1)
-
-typedef struct {
-  UINT32                  Signature;         // SPAM
-  UINT16                  VersionMinor;      // 0x0001
-  UINT16                  VersionMajor;      // 0x0000
-  UINT32                  Size;
-  UINT32                  Reserved;
-  UINT64                  CpuIndex;
-  UINT64                  MmEntrySize;
-  UINT64                  MmSupervisorSize;
-  EFI_PHYSICAL_ADDRESS    MmSupervisorAuxBase;
-  UINT64                  MmSupervisorAuxSize;
-} SPAM_RESPONDER_DATA;
-
-#pragma pack(pop)
+#define MMI_ENTRY_DIGEST_INDEX  0
+#define MM_SUPV_DIGEST_INDEX    1
+#define SUPPORTED_DIGEST_COUNT  2
 
 #endif // SPAM_RESPONDER_H_

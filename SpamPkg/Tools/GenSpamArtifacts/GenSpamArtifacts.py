@@ -13,7 +13,7 @@ import shutil
 from typing import Tuple
 
 from edk2toolext.environment.plugintypes.uefi_helper_plugin import IUefiHelperPlugin
-from edk2toollib.utility_functions import RunCmd
+from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
 
 HASH_ALGORITHM = "sha256"
@@ -21,21 +21,110 @@ HASH_ALGORITHM = "sha256"
 
 class GenSpamArtifacts(IUefiHelperPlugin):
     def RegisterHelpers(self, obj):
-      fp = os.path.abspath(__file__)
-      obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
+        fp = os.path.abspath(__file__)
+        obj.Register("generate_spam_includes", GenSpamArtifacts.generate_spam_includes, fp)
+        obj.Register("generate_spam_artifacts", GenSpamArtifacts.generate_spam_artifacts, fp)
 
     @staticmethod
-    def generate_spam_artifacts(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path):
+    def generate_spam_includes(aux_config_path: Path, mm_supervisor_build_dir: Path, spam_build_dir: Path, inc_file_path: Path):
         """Generates SPAM artifacts.
 
         Generates the following artifacts:
         - MmSupervisorCore.aux (As build by gen_aux)
         - MmSupervisorCore.efi (As Build by edk2 build system)
-        - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore.aux file)
 
         Args:
             aux_config_path: Path to the aux gen config file.
-            mm_supvervisor_build_dir: Path to the MM Supervisor build output.
+            mm_supervisor_build_dir: Path to the MM Supervisor build output.
+            spam_build_dir: Path to the Spam Package build output.
+        """
+        try:
+            stm_build_dir = spam_build_dir / "Core" / "Stm" / "DEBUG"
+            mmi_build_dir = spam_build_dir / "MmiEntrySpam" / "MmiEntrySpam" / "OUTPUT"
+
+            if not os.path.exists(stm_build_dir):
+                os.makedirs(stm_build_dir)
+
+            temp_hash_dir = stm_build_dir / "temp_hash.bin"
+            temp_out_dir = stm_build_dir / "temp_out.inc"
+
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, stm_build_dir)
+
+            cmd = "BinToPcd.py"
+            args = f"-i {aux_path}"
+            args += f" -o {inc_file_path}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdAuxBinFile. Review command output.")
+
+            # MMI entry block hash patching
+            mmi_entry_file = mmi_build_dir / "MmiEntrySpam.bin"
+            # Read the data structure size from the last 4 bytes of the file
+            with open(mmi_entry_file, 'rb') as f:
+                f.seek(-4, os.SEEK_END)
+                mmi_entry_size = int.from_bytes(f.read(), byteorder='little')
+            mmi_entry_hash = calculate_file_hash(mmi_entry_file, length=(os.path.getsize(mmi_entry_file) - mmi_entry_size - 4))
+            hex_bytes = bytes.fromhex(mmi_entry_hash)
+            with open(temp_hash_dir, 'wb') as f:
+                f.write(hex_bytes)
+
+            cmd = "BinToPcd.py"
+            args = f"-i {temp_hash_dir}"
+            args += f" -o {temp_out_dir}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdMmiEntryBinHash. Review command output.")
+
+            # Write the hash to the inc file
+            with open(temp_out_dir, 'r') as f, open(inc_file_path, 'a') as o:
+                mmi_entry_hash_pcd = f.read().strip()
+                o.write("\r\n  ")
+                o.writelines(mmi_entry_hash_pcd)
+                o.write("\r\n  ")
+                o.write("gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinSize|0x%08X" % os.path.getsize(mmi_entry_file))
+
+            # MM supervisor core hash patching
+            mm_supv_file = mm_supervisor_build_dir / "MmSupervisorCore.efi"
+            mm_supv_core_hash = calculate_file_hash(mm_supv_file)
+            hex_bytes = bytes.fromhex(mm_supv_core_hash)
+            with open(temp_hash_dir, 'wb') as f:
+                f.write(hex_bytes)
+
+            cmd = "BinToPcd.py"
+            args = f"-i {temp_hash_dir}"
+            args += f" -o {temp_out_dir}"
+            args += " -p gEfiSpamPkgTokenSpaceGuid.PcdMmSupervisorCoreHash"
+            ret = RunPythonScript(cmd, args)
+            if ret != 0:
+                raise RuntimeError("BinToPcd.py failed to convert PcdMmSupervisorCoreHash. Review command output.")
+
+            # Write the hash to the inc file
+            with open(temp_out_dir, 'r') as f, open(inc_file_path, 'a') as o:
+                mm_supv_core_hash_pcd = f.read().strip()
+                o.write("\r\n  ")
+                o.write(mm_supv_core_hash_pcd)
+
+        except FileNotFoundError as e:
+            logging.error(f"File {e} not found.")
+            return 1
+        except RuntimeError as e:
+            logging.error(e)
+            return -1
+
+        return 0
+
+    @staticmethod
+    def generate_spam_artifacts(mm_supervisor_build_dir: Path, spam_build_dir: Path, output_dir: Path):
+        """Generates SPAM artifacts.
+
+        Generates the following artifacts:
+        - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore and MmiEntrySpam file)
+
+        Args:
+            aux_config_path: Path to the aux gen config file.
+            mm_supervisor_build_dir: Path to the MM Supervisor build output.
             spam_build_dir: Path to the Spam Package build output.
             output_dir: Path to place the artifacts.
         """
@@ -43,18 +132,9 @@ class GenSpamArtifacts(IUefiHelperPlugin):
             stm_build_dir = spam_build_dir / "Core" / "Stm" / "DEBUG"
             mmi_build_dir = spam_build_dir / "MmiEntrySpam" / "MmiEntrySpam" / "OUTPUT"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, output_dir)
-            aux_hash = calculate_aux_hash(aux_path)
-
             stm_dll = stm_build_dir / "Stm.dll"
-            pcd = "PcdAuxBinHash"
-            pcd_addr = get_patch_pcd_address(stm_build_dir / "Stm.map", stm_dll, pcd)
 
-            if pcd_addr is None:
-                logging.error(f"PCD {pcd} not found in Stm Map file.")
-                return -1
-            
-            patch_pcd_value(stm_dll, pcd_addr, aux_hash)
+            # Done with patching, generate STM binary
             generate_stm_binary(stm_dll, output_dir)
 
             misc_dir = output_dir / "Misc"
@@ -107,19 +187,19 @@ class GenSpamArtifacts(IUefiHelperPlugin):
 
 def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, output_dir: Path):
     """Generates the auxiliary file for the MmsupervisorCore.
-   
+
     Args:
         aux_config_path: Path to the aux gen config file.
-        mm_supvervisor_build_dir: Path to the MM Supervisor build output.
+        mm_supervisor_build_dir: Path to the MM Supervisor build output.
         output_dir: Path to place the artifacts.
-        
+
     Raises:
         RuntimeError: if gen_aux fails
     """
 
     output_path = output_dir / 'MmSupervisorCore.aux'
 
-    args = "run --"
+    args = "run --bin gen_aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
@@ -128,20 +208,20 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, outp
     ret = RunCmd("cargo", args)
     if ret != 0:
         raise RuntimeError("gen_aux failed. Is your Cargo workspace setup correctly?")
-    
+
     return output_path
 
 
-def calculate_aux_hash(file: Path):
+def calculate_file_hash(file: Path, offset: int = 0, length: int = -1):
     """Calculates the hash of the auxiliary file.
-   
+
     Args:
         file: Path to the auxiliary file.
-        
+
     Returns:
         The hash of the auxiliary file.
 
-    Raises:    
+    Raises:
         FileNotFoundError: The file does not exist
     """
     if not file.exists():
@@ -149,75 +229,16 @@ def calculate_aux_hash(file: Path):
 
     hasher = hashlib.new(HASH_ALGORITHM)
     with open(file, 'rb') as f:
-        while True:
+        f.seek(offset)
+        while length != 0:
             data = f.read(65536)
             if not data:
                 break
+            if length > 0:
+                data = data[:length]
+                length -= len(data)
             hasher.update(data)
     return hasher.hexdigest()
-
-
-def get_patch_pcd_address(map: Path, dll: Path, pcd_name: str) -> int:
-    """Gets the address of the given PCD in the patch PCD table.
-
-    Args:
-        file (Path): the path to the patch PCD table
-        pcd_name (str): the name of the PCD to find
-
-    Returns:
-        int: the address of the PCD in the patch PCD table
-        None: The pcd does not exist in the table
-    
-    Raises:
-        FileNotFoundError: if map or dll do not exist
-        RuntimeError: if GenPatchPcdTable fails
-    """
-    if not map.exists():
-        raise FileNotFoundError(map)
-    if not dll.exists():
-        raise FileNotFoundError(dll)
-
-    cmd = "GenPatchPcdTable"
-    args = f"-m {map} -e {dll}"
-    RunCmd(cmd, args)
-
-    pcd_table = map.with_suffix(".BinaryPcdTable.txt")
-    if not pcd_table.exists():
-        raise RuntimeError("GenPatchPcdTable Failed. Review command output.")
-
-    offset = None
-    with open(pcd_table, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            if line.startswith(pcd_name):
-                offset = int(line.split()[1], 16)
-                break
-    return offset
-
-
-def patch_pcd_value(file: Path, offset: int, value: Tuple[str, int]) -> int:
-    """Patches the value at the given offset in the file.
-
-    Args:
-        file (Path): the file to patch
-        offset (int): the offset to patch
-        value (str|int): the value to patch (hex string or int)
-
-    Raises:
-        FileNotFoundError: if the file does not exist
-    """
-    if not file.exists():
-        raise FileNotFoundError(file)
-
-    if isinstance(value, int):
-        hex_bytes = value.to_bytes(4, byteorder='little')
-    else:
-        hex_bytes = bytes.fromhex(value)
-    bytes.fromhex(value)
-
-    with open(file, 'r+b') as f:
-        f.seek(offset)
-        f.write(hex_bytes)
 
 
 def generate_stm_binary(stm_dll: Path, output_dir: Path):
@@ -238,4 +259,3 @@ def generate_stm_binary(stm_dll: Path, output_dir: Path):
     ret = RunCmd(cmd, args)
     if ret != 0:
         raise RuntimeError("GenStm failed. Review command output.")
-
