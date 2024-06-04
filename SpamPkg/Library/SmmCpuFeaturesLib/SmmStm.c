@@ -167,22 +167,6 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
 };
 
 //
-// This structure serves as a template for all processors.
-//
-SPAM_RESPONDER_DATA  mSpamResponderTemplate = {
-  .Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE,
-  .VersionMinor        = SPAM_REPSONDER_STRUCT_MINOR_VER,
-  .VersionMajor        = SPAM_REPSONDER_STRUCT_MAJOR_VER,
-  .Size                = 0,
-  .Reserved            = 0,
-  .CpuIndex            = 0,
-  .MmEntrySize         = 0,
-  .MmSupervisorSize    = 0,
-  .MmSupervisorAuxBase = 0,
-  .MmSupervisorAuxSize = 0
-};
-
-//
 // Variables used by SMI Handler
 //
 IA32_DESCRIPTOR  gStmSmiHandlerIdtr;
@@ -204,9 +188,6 @@ UINTN  mMsegSize = 0;
 //
 EFI_PHYSICAL_ADDRESS  mMmiEntryBaseAddress = 0;
 UINTN                 mMmiEntrySize        = 0;
-
-EFI_PHYSICAL_ADDRESS  MmSupvAuxFileBase;
-EFI_PHYSICAL_ADDRESS  MmSupvAuxFileSize;
 
 BOOLEAN  mStmConfigurationTableInitialized = FALSE;
 
@@ -235,10 +216,8 @@ DiscoverSmiEntryInFvHobs (
   UINTN                           SpamBinSize;
   BOOLEAN                         MmiEntryFound      = FALSE;
   BOOLEAN                         SpamResponderFound = FALSE;
-  BOOLEAN                         AuxBinFound        = FALSE;
   VOID                            *RawBinFileData;
   VOID                            *RawMmiEntryFileData;
-  VOID                            *RawAuxFileData;
 
   Hob.Raw = GetHobList ();
   if (Hob.Raw == NULL) {
@@ -321,30 +300,9 @@ DiscoverSmiEntryInFvHobs (
 
             // TODO: Mark the region as supervisor read-only
             SpamResponderFound = TRUE;
-          } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorAuxFileGuid)) {
-            if (AuxBinFound) {
-              Status = EFI_ALREADY_STARTED;
-              break;
-            }
-
-            Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawAuxFileData, &MmSupvAuxFileSize);
-            DEBUG ((DEBUG_INFO, "Find raw data from supv aux file - %r\n", Status));
-            if (EFI_ERROR (Status)) {
-              break;
-            }
-
-            MmSupvAuxFileBase = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (MmSupvAuxFileSize));
-            if (MmSupvAuxFileBase == 0) {
-              Status = EFI_OUT_OF_RESOURCES;
-              break;
-            }
-
-            CopyMem ((VOID *)(UINTN)MmSupvAuxFileBase, (VOID *)(UINTN)RawAuxFileData, MmSupvAuxFileSize);
-            // TODO: Mark the region as supervisor read-only
-            AuxBinFound = TRUE;
           }
 
-          if (MmiEntryFound && SpamResponderFound && AuxBinFound) {
+          if (MmiEntryFound && SpamResponderFound) {
             // Job done, break out of the loop
             Status = EFI_SUCCESS;
             break;
@@ -356,7 +314,7 @@ DiscoverSmiEntryInFvHobs (
     }
   } while (Hob.Raw != NULL);
 
-  if (!MmiEntryFound || !SpamResponderFound || !AuxBinFound) {
+  if (!MmiEntryFound || !SpamResponderFound) {
     DEBUG ((DEBUG_ERROR, "[%a]   Required entries for SPAM not found in any FV.\n", __FUNCTION__));
     Status = EFI_NOT_FOUND;
   } else {
@@ -490,29 +448,6 @@ SmmCpuFeaturesGetSmiHandlerSize (
   return mMmiEntrySize;
 }
 
-STATIC
-EFI_STATUS
-EFIAPI
-PopulateSpamInformation (
-  IN UINTN                 CpuIndex,
-  IN EFI_PHYSICAL_ADDRESS  MmEntryBase,
-  IN UINTN                 MmEntrySize,
-  IN EFI_PHYSICAL_ADDRESS  StackBase,
-  IN UINTN                 StackSize
-  )
-{
-  mSpamResponderTemplate.Signature           = SPAM_RESPONDER_STRUCT_SIGNATURE;
-  mSpamResponderTemplate.VersionMajor        = SPAM_REPSONDER_STRUCT_MAJOR_VER;
-  mSpamResponderTemplate.VersionMinor        = SPAM_REPSONDER_STRUCT_MINOR_VER;
-  mSpamResponderTemplate.Size                = sizeof (SPAM_RESPONDER_DATA);
-  mSpamResponderTemplate.CpuIndex            = CpuIndex;
-  mSpamResponderTemplate.MmEntrySize         = MmEntrySize;
-  mSpamResponderTemplate.MmSupervisorAuxBase = MmSupvAuxFileBase;
-  mSpamResponderTemplate.MmSupervisorAuxSize = MmSupvAuxFileSize;
-
-  return EFI_SUCCESS;
-}
-
 /**
   Install a custom SMI handler for the CPU specified by CpuIndex.  This function
   is only called if SmmCpuFeaturesGetSmiHandlerSize() returns a size is greater
@@ -552,7 +487,6 @@ SmmCpuFeaturesInstallSmiHandler (
   IN UINT32  Cr3
   )
 {
-  EFI_STATUS                     Status;
   TXT_PROCESSOR_SMM_DESCRIPTOR   *Psd;
   VOID                           *Hob;
   UINT32                         RegEax;
@@ -676,18 +610,6 @@ SmmCpuFeaturesInstallSmiHandler (
 
   if (!mStmConfigurationTableInitialized) {
     StmSmmConfigurationTableInit ();
-    Status = PopulateSpamInformation (
-               CpuIndex,
-               mMmiEntryBaseAddress,
-               mMmiEntrySize,
-               (EFI_PHYSICAL_ADDRESS)(UINTN)SmiStack,
-               StackSize
-               );
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "PopulateSpamInformation failed - %r\n", Status));
-      ASSERT_EFI_ERROR (Status);
-    }
-
     mStmConfigurationTableInitialized = TRUE;
   }
 }
@@ -713,11 +635,6 @@ MmEndOfDxeEventNotify (
 {
   UINTN                              Index = 0;
   TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
-  SPAM_RESPONDER_DATA                *SpamResponderData;
-  UINTN                              HandleBufferSize;
-  EFI_HANDLE                         *HandleBuffer;
-  EFI_STATUS                         Status;
-  EFI_LOADED_IMAGE_PROTOCOL          *LoadedImage;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   UINT32                             MsegBase;
   STM_HEADER                         *StmHeader;
@@ -737,62 +654,11 @@ MmEndOfDxeEventNotify (
   StmHeader = (STM_HEADER *)(UINTN)MsegBase;
   LongRsp   = (VOID *)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
 
-  // Now that we have all the loaded image information, prepare the responder data
-  HandleBufferSize = 0;
-  HandleBuffer     = NULL;
-  Status           = gMmst->MmLocateHandle (
-                              ByProtocol,
-                              &gEfiLoadedImageProtocolGuid,
-                              NULL,
-                              &HandleBufferSize,
-                              HandleBuffer
-                              );
-  if (Status != EFI_BUFFER_TOO_SMALL) {
-    goto Done;
-  }
-
-  HandleBuffer = AllocateZeroPool (HandleBufferSize);
-  if (HandleBuffer == NULL) {
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Done;
-  }
-
-  Status = gMmst->MmLocateHandle (
-                    ByProtocol,
-                    &gEfiLoadedImageProtocolGuid,
-                    NULL,
-                    &HandleBufferSize,
-                    HandleBuffer
-                    );
-  if (EFI_ERROR (Status)) {
-    goto Done;
-  }
-
-  Status = gMmst->MmLocateHandle (
-                    ByProtocol,
-                    &gEfiLoadedImageProtocolGuid,
-                    NULL,
-                    &HandleBufferSize,
-                    HandleBuffer
-                    );
-
-  // Let's be honest, the first one will be the core...
-  Status = gMmst->MmHandleProtocol (
-                    HandleBuffer[Index],
-                    &gEfiLoadedImageProtocolGuid,
-                    (VOID **)&LoadedImage
-                    );
-  mSpamResponderTemplate.MmSupervisorSize = (UINT64)(UINTN)LoadedImage->ImageSize;
-
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
 
-    SpamResponderData = (SPAM_RESPONDER_DATA *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize -
-                                                sizeof (SPAM_RESPONDER_DATA));
-
-    CopyMem (SpamResponderData, &mSpamResponderTemplate, sizeof (SPAM_RESPONDER_DATA));
     // TODO: Mark the region as supervisor read-only, or even read prevention...
 
     LongRsp = (VOID *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
@@ -800,14 +666,7 @@ MmEndOfDxeEventNotify (
 
   mLockLoadMonitor = TRUE;
 
-  Status = EFI_SUCCESS;
-
-Done:
-  if (HandleBuffer != NULL) {
-    FreePool (HandleBuffer);
-  }
-
-  return Status;
+  return EFI_SUCCESS;
 }
 
 /**

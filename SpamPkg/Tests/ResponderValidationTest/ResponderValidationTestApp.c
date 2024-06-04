@@ -8,6 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include <PiDxe.h>
+#include <SpamResponder.h>
 #include <SmmSecurePolicy.h>
 
 #include <Library/BaseLib.h>
@@ -16,6 +17,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/PrintLib.h>
+#include <Library/PcdLib.h>
 #include <Library/ShellLib.h>
 #include <Library/UefiApplicationEntryPoint.h>
 #include <Library/UefiBootServicesTableLib.h>
@@ -30,15 +32,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/SpamTestCommRegion.h>
 #include <Guid/PiSmmCommunicationRegionTable.h>
 
-#define MEM_INFO_DATABASE_REALLOC_CHUNK    0x1000
-#define MEM_INFO_DATABASE_MAX_STRING_SIZE  0x400
-
-EFI_FILE  *mFs_Handle;
-VOID      *mPiSmmCommonCommBufferAddress = NULL;
-UINTN     mPiSmmCommonCommBufferSize;
-CHAR8     *mMemoryInfoDatabaseBuffer   = NULL;
-UINTN     mMemoryInfoDatabaseSize      = 0;
-UINTN     mMemoryInfoDatabaseAllocSize = 0;
+VOID   *mPiSmmCommonCommBufferAddress = NULL;
+UINTN  mPiSmmCommonCommBufferSize;
 
 /**
   This helper function actually sends the requested communication
@@ -51,7 +46,7 @@ UINTN     mMemoryInfoDatabaseAllocSize = 0;
 **/
 STATIC
 EFI_STATUS
-SmmMemoryProtectionsDxeToSmmCommunicate (
+DxeToSmmCommunicate (
   VOID
   )
 {
@@ -60,7 +55,8 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   VOID                                  *CommBufferBase;
   EFI_SMM_COMMUNICATE_HEADER            *CommHeader;
   UINTN                                 MinBufferSize, BufferSize;
-  SPAM_TEST_COMM_REGION                 *SpamTestCommBuffer;
+  SPAM_TEST_COMM_INPUT_REGION           *SpamTestCommInputBuffer;
+  SPAM_TEST_COMM_OUTPUT_REGION          *SpamTestCommOutputputBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
@@ -72,7 +68,7 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
     return EFI_ABORTED;
   }
 
-  MinBufferSize = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) + sizeof (SPAM_TEST_COMM_REGION);
+  MinBufferSize = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) + sizeof (SPAM_TEST_COMM_INPUT_REGION) + PcdGetSize (PcdAuxBinFile);
   if (MinBufferSize > mPiSmmCommonCommBufferSize) {
     DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer is too small\n", __func__));
     return EFI_BUFFER_TOO_SMALL;
@@ -98,6 +94,21 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   CopyGuid (&CommHeader->HeaderGuid, &gSpamValidationTestHandlerGuid);
   CommHeader->MessageLength = MinBufferSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
 
+  SpamTestCommInputBuffer                        = (SPAM_TEST_COMM_INPUT_REGION *)((UINTN)CommHeader + OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data));
+  SpamTestCommInputBuffer->SupervisorAuxFileSize = PcdGetSize (PcdAuxBinFile);
+  CopyMem (SpamTestCommInputBuffer->SupervisorAuxFileBase, PcdGetPtr (PcdAuxBinFile), PcdGetSize (PcdAuxBinFile));
+
+  SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
+  SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].count              = 1;
+  CopyMem (SpamTestCommInputBuffer->SupvDigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE);
+
+  SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
+  SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
+  CopyMem (SpamTestCommInputBuffer->SupvDigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
+
+  SpamTestCommInputBuffer->SupvDigestListCount = SUPPORTED_DIGEST_COUNT;
+  SpamTestCommInputBuffer->MmiEntryFileSize    = PcdGet64 (PcdMmiEntryBinSize);
+
   BufferSize = mPiSmmCommonCommBufferSize;
 
   //
@@ -113,13 +124,12 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
     goto Exit;
   }
 
-  SpamTestCommBuffer = (SPAM_TEST_COMM_REGION *)(CommHeader + 1);
-  DEBUG ((DEBUG_INFO, "%a Measured digest for supervisor is:\n", __func__));
-  DUMP_HEX (DEBUG_INFO, 0, &(SpamTestCommBuffer->SupvDigestList), sizeof (TPML_DIGEST_VALUES), "");
+  SpamTestCommOutputputBuffer = (SPAM_TEST_COMM_OUTPUT_REGION *)(CommHeader + 1);
+  DEBUG ((DEBUG_INFO, "%a - FirmwarePolicy: %p\n", __func__, &SpamTestCommOutputputBuffer->FirmwarePolicy));
 
 Exit:
   return Status;
-} // SmmMemoryProtectionsDxeToSmmCommunicate()
+} // DxeToSmmCommunicate()
 
 /**
  * @brief      Locates and stores address of comm buffer.
@@ -288,7 +298,7 @@ ResponderValidationTestAppEntry (
     return EFI_ABORTED;
   }
 
-  SmmMemoryProtectionsDxeToSmmCommunicate ();
+  DxeToSmmCommunicate ();
 
   Status = GetSectionFromAnyFvByFileType (
              EFI_FV_FILETYPE_MM_CORE_STANDALONE,

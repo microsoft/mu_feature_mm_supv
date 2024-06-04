@@ -41,10 +41,6 @@
 
 [Guids]
   gSpamValidationTestHandlerGuid                ## SOMETIMES_CONSUMES
-  gMmSupervisorAuxFileGuid                      ## SOMETIMES_CONSUMES
 
 [FeaturePcd]
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorTestEnable  ## CONSUMES
-
-[PatchPcd]
-  gEfiSpamPkgTokenSpaceGuid.PcdAuxBinHash

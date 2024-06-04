@@ -89,6 +89,7 @@ UpdateMemoryDesc (
     MemoryPolicy->BaseAddress   = PageTableBaseAddress;
     MemoryPolicy->Size          = Size;
     MemoryPolicy->MemAttributes = MemoryAttr;
+    MemoryPolicy->Reserved      = 0;
   } else {
     // Check if the continual address of Current memory policy
     if ((PageTableBaseAddress == MemoryPolicy->BaseAddress + MemoryPolicy->Size) &&
