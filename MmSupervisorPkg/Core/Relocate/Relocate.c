@@ -600,7 +600,7 @@ GetSmBase (
   ASSERT (NumberOfProcessors == MaxNumberOfCpus);
   if (NumberOfProcessors != MaxNumberOfCpus) {
     PANIC ("NumberOfProcessors does not match MaxNumberOfCpus");
-    return NULL;
+    return EFI_DEVICE_ERROR;
   }
 
   SmBaseHobs = AllocatePool (sizeof (SMM_BASE_HOB_DATA *) * HobCount);
