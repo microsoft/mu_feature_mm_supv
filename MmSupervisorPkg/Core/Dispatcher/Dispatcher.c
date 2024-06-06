@@ -867,7 +867,7 @@ FvIsBeingProcessed (
 {
   KNOWN_FWVOL  *KnownFwVol;
   EFI_GUID     FvNameGuid;
-  BOOLEAN      FvNameGuidIsFound;
+  BOOLEAN      FvNameGuidIsFound = FALSE;
   LIST_ENTRY   *Link;
 
   DEBUG ((DEBUG_INFO, "FvIsBeingProcessed - 0x%08x\n", FwVolHeader));
