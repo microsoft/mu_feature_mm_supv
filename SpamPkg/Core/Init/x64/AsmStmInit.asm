@@ -20,8 +20,8 @@
 externdef InitializeSmmMonitor:NEAR
 externdef _ModuleEntryPoint:NEAR
 
-STM_API_START                 EQU 00010001h
-STM_API_INITIALIZE_PROTECTION EQU 00010007h
+SEA_API_GET_CAPABILITIES  EQU 00010101h
+SEA_API_GET_RESOURCES     EQU 00010102h
 
 STM_STACK_SIZE                EQU 08000h
 
@@ -31,13 +31,13 @@ STM_STACK_SIZE                EQU 08000h
 ;   VOID
 ;   )
 _ModuleEntryPoint PROC PUBLIC
-  cmp eax, STM_API_INITIALIZE_PROTECTION ; for BSP
-  jz  GoBsp
-  cmp eax, STM_API_START ; for AP
-  jz  GoAp
+  cmp eax, SEA_API_GET_CAPABILITIES ; for getting capabilities on BSP
+  jz  GoCapabilities
+  cmp eax, SEA_API_GET_RESOURCES ; for getting resources on all cores
+  jz  GoResource
   jmp DeadLoop
 
-GoBsp:
+GoCapabilities:
   ; Assume ThisOffset is 0
   ; ESP is pointer to stack bottom, NOT top
   mov  eax, STM_STACK_SIZE     ; eax = STM_STACK_SIZE, 
@@ -65,16 +65,16 @@ GoBsp:
   push rbx
   push rdx
   push rcx
-  mov  eax, STM_API_INITIALIZE_PROTECTION
+  mov  eax, SEA_API_GET_CAPABILITIES
   push rax
   mov  rcx, rsp ; parameter
   sub  rsp, 20h
-  call InitializeSmmMonitor
+  call SeaGetCapabilities
   add  rsp, 20h
   ; should never get here
   jmp  DeadLoop
 
-GoAp:
+GoResource:
   ;
   ; assign unique ESP for each processor
   ;
@@ -114,11 +114,11 @@ GoAp:
   push rbx
   push rdx
   push rcx
-  mov  eax, STM_API_START
+  mov  eax, SEA_API_GET_RESOURCES
   push rax
   mov  rcx, rsp ; parameter
   sub  rsp, 20h
-  call InitializeSmmMonitor
+  call SeaGetResources
   add  rsp, 20h
   ; should never get here
 DeadLoop:

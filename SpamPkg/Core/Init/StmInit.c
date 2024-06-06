@@ -1120,7 +1120,6 @@ InitializeSmmMonitor (
 
     BspInit (Register);
   } else {
-    Index = GetIndexFromStack (Register);
     ApInit (Index, Register);
   }
 
