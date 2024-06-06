@@ -170,7 +170,7 @@ VerifyUnblockRequest (
   // First check if the requested region is duplicated.
   Node = mUnblockedMemoryList.ForwardLink;
   while (Node != &mUnblockedMemoryList) {
-    UnblockedListEntry    = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
+    UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
     CopyMem (&UnblockedMemEntry, &UnblockedListEntry->UnblockMemData, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
     UnblockedStartAddress = UnblockedMemEntry.MemoryDescriptor.PhysicalStart;
     UnblockedEndAddress   = UnblockedStartAddress +
