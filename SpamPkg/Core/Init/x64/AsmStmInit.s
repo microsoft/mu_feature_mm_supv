@@ -70,7 +70,7 @@ GoCapabilities:
   # should never get here
   jmp  DeadLoop
 
-GoAp:
+GoResource:
   #
   # assign unique ESP for each processor
   #

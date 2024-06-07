@@ -41,7 +41,30 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define MMI_ENTRY_STRUCT_VERSION  4
 
+#define SEA_SPEC_VERSION_MAJOR  1
+#define SEA_SPEC_VERSION_MINOR  0
+
 #pragma pack(push,1)
+
+typedef struct {
+  UINT64    VerifyMmiEntry   : 1;  /// > bitfield
+  UINT64    VerifyMmSupv     : 1;  /// > bitfield
+  UINT64    VerifyMmPolicy   : 1;  /// > bitfield
+  UINT64    HashAlg          : 3;  /// > bitfield
+  UINT64    Reserved         : 58; /// > must be 0
+} SEA_CAPS;
+
+typedef struct {
+  UINT16      SeaSpecVerMinor;
+  UINT16      SeaSpecVerMajor;
+  ///
+  /// Must be zero
+  ///
+  UINT32      Reserved;
+  UINT32      SeaHeaderSize;
+  UINT32      SeaTotalSize;  
+  SEA_CAPS    SeaFeatures;
+} SEA_CAPABILITIES_STRUCT;
 
 typedef struct {
   UINT32    HeaderVersion;     // 4 For Version 4 Header

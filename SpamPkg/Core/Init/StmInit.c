@@ -933,10 +933,10 @@ InitializeSmmMonitor (
   IN X86_REGISTER  *Register
   )
 {
-  UINT32  Index;
+  UINT32  CpuIndex;
 
-  Index = GetIndexFromStack (Register);
-  if (Index == 0) {
+  CpuIndex = GetIndexFromStack (Register);
+  if (CpuIndex == 0) {
     // The build process should make sure "virtual address" is same as "file pointer to raw data",
     // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
     // If no, GenStm tool will "load image". So here, we just need "relocate image"
@@ -944,11 +944,20 @@ InitializeSmmMonitor (
 
     BspInit (Register);
   } else {
-    ApInit (Index, Register);
+    ApInit (CpuIndex, Register);
   }
 
-  CommonInit (Index);
+  CommonInit (CpuIndex);
 
-  LaunchBack (Index);
+  switch (ServiceId) {
+    case SEA_API_GET_CAPABILITIES:
+      GetCapabilities (Register);
+      break;
+    case SEA_API_GET_RESOURCES:
+      GetResources (Register);
+      break;
+  }
+
+  LaunchBack (CpuIndex);
   return;
 }
