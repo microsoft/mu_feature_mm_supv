@@ -549,7 +549,6 @@ BspInit (
   UINTN                         VmcsDatabasePage;
   VMCS_RECORD_STRUCTURE         *VmcsRecord;
   TXT_PROCESSOR_SMM_DESCRIPTOR  *TxtProcessorSmmDescriptor;
-  X86_REGISTER                  *Reg;
   IA32_IDT_GATE_DESCRIPTOR      *IdtGate;
   UINT32                        SubIndex;
   UINT32                        RegEax;
@@ -812,8 +811,6 @@ ApInit (
   IN X86_REGISTER  *Register
   )
 {
-  X86_REGISTER  *Reg;
-
   while (!mIsBspInitialized) {
     //
     // Wait here
@@ -966,8 +963,6 @@ InitializeSmmMonitor (
   }
 
   CommonInit (Index);
-
-  VmcsInit (Index);
 
   LaunchBack (Index);
   return;
