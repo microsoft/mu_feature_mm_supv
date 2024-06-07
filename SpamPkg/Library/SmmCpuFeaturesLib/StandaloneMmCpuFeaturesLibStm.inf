@@ -27,7 +27,6 @@
   SmmStm.h
   StandaloneMmCpuFeaturesLib.c
   SmmStmSupport.c
-  SmiException.nasm
 
 [Packages]
   MdePkg/MdePkg.dec
