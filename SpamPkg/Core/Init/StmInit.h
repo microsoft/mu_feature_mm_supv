@@ -19,62 +19,6 @@
 
 /**
 
-  This function is host entrypoint for SMI.
-
-**/
-VOID
-AsmHostEntrypointSmi (
-  VOID
-  );
-
-/**
-
-  This function is host entrypoint for SMM.
-
-**/
-VOID
-AsmHostEntrypointSmm (
-  VOID
-  );
-
-/**
-
-  This function create Ia32e page table for SMM guest.
-
-  @return pages table address
-
-**/
-UINTN
-CreateIa32ePageTable (
-  VOID
-  );
-
-/**
-
-  This function create compatible page table for SMM guest.
-
-  @return pages table address
-
-**/
-UINTN
-CreateCompatiblePageTable (
-  VOID
-  );
-
-/**
-
-  This function create compatible PAE page table for SMM guest.
-
-  @return pages table address
-
-**/
-UINTN
-CreateCompatiblePaePageTable (
-  VOID
-  );
-
-/**
-
   This function create page table for STM host.
   The SINIT/StmLoader should already configured 4G paging, so here
   we just create >4G paging for X64 mode.
@@ -99,114 +43,12 @@ Is1GPageSupport (
 
 /**
 
-  This function initialize VMCS for SMI.
-
-  @param Index CPU index
-  @param Vmcs  VMCS pointer
-
-**/
-VOID
-InitializeSmiVmcs (
-  IN UINT32  Index,
-  IN UINT64  *Vmcs
-  );
-
-/**
-
-  This function initialize VMCS for SMM.
-
-  @param Index CPU index
-  @param Vmcs  VMCS pointer
-
-**/
-VOID
-InitializeSmmVmcs (
-  IN UINT32  Index,
-  IN UINT64  *Vmcs
-  );
-
-/**
-
   This function initialize event log.
 
 **/
 VOID
 InitializeEventLog (
   VOID
-  );
-
-/**
-
-  This function run BIOS SMM provided SetupRip.
-
-  @param Index CPU index
-
-**/
-VOID
-SmmSetup (
-  IN UINT32  Index
-  );
-
-/**
-
-  This function initialize STM handle for SMI.
-
-**/
-VOID
-InitStmHandlerSmi (
-  VOID
-  );
-
-/**
-
-  This function initialize STM handle for SMM.
-
-**/
-VOID
-InitStmHandlerSmm (
-  VOID
-  );
-
-/**
-
-  This function initialize EPT.
-
-**/
-VOID
-EptInit (
-  VOID
-  );
-
-/**
-
-  This function initialize IO bitmap.
-
-**/
-VOID
-IoInit (
-  VOID
-  );
-
-/**
-
-  This function initialize MSR bitmap.
-
-**/
-VOID
-MsrInit (
-  VOID
-  );
-
-/**
-
-  This function register BIOS resource list to VMCS.
-
-  @param Resource          Resource list to be registered
-
-**/
-VOID
-RegisterBiosResource (
-  IN STM_RSC  *Resource
   );
 
 #endif

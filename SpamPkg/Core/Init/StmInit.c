@@ -15,9 +15,7 @@
 #include "StmInit.h"
 #include <Library/PcdLib.h>
 
-STM_HOST_CONTEXT_COMMON   mHostContextCommon;
-STM_GUEST_CONTEXT_COMMON  mGuestContextCommonSmi;
-STM_GUEST_CONTEXT_COMMON  mGuestContextCommonSmm;
+SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 
 volatile BOOLEAN  mIsBspInitialized;
 
@@ -532,9 +530,7 @@ InitBasicContext (
   VOID
   )
 {
-  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (STM_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
-  mGuestContextCommonSmi.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (STM_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
-  mGuestContextCommonSmm.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (STM_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
 /**
@@ -556,7 +552,6 @@ BspInit (
   X86_REGISTER                  *Reg;
   IA32_IDT_GATE_DESCRIPTOR      *IdtGate;
   UINT32                        SubIndex;
-  UINTN                         XStateSize;
   UINT32                        RegEax;
   IA32_VMX_MISC_MSR             VmxMisc;
 
@@ -674,9 +669,7 @@ BspInit (
   InitBasicContext ();
 
   DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)0, Register));
-  Reg           = &mGuestContextCommonSmi.GuestContextPerCpu[0].Register;
   Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  CopyMem (Reg, Register, sizeof (X86_REGISTER));
 
   mHostContextCommon.StmHeader = StmHeader;
   DEBUG ((EFI_D_INFO, "StmHeader                     - %08x\n", (UINTN)mHostContextCommon.StmHeader));
@@ -762,28 +755,6 @@ BspInit (
 
   mCpuInitStatus = AllocatePages (STM_SIZE_TO_PAGES (mHostContextCommon.CpuNum));
 
-  mGuestContextCommonSmm.GuestContextPerCpu[0].Cr3    = (UINTN)TxtProcessorSmmDescriptor->SmmCr3;
-  mGuestContextCommonSmm.GuestContextPerCpu[0].Active = FALSE;
-
-  //
-  // CompatiblePageTable for IA32 flat mode only
-  //
-  mGuestContextCommonSmm.CompatiblePageTable    = CreateCompatiblePageTable ();
-  mGuestContextCommonSmm.CompatiblePaePageTable = CreateCompatiblePaePageTable ();
-
-  //
-  // Allocate XState buffer
-  //
-  XStateSize                              = CalculateXStateSize ();
-  mGuestContextCommonSmi.ZeroXStateBuffer = (UINTN)AllocatePages (STM_SIZE_TO_PAGES (XStateSize));
-  for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
-    mGuestContextCommonSmi.GuestContextPerCpu[SubIndex].XStateBuffer = (UINTN)AllocatePages (STM_SIZE_TO_PAGES (XStateSize));
-  }
-
-  EptInit ();
-  IoInit ();
-  MsrInit ();
-
   //
   // Get PciExpressBaseAddress
   //
@@ -816,29 +787,6 @@ BspInit (
 
   // TODO
   // PcdSet64S(PcdPciExpressBaseAddress, mHostContextCommon.PciExpressBaseAddress);
-
-  for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
-    mHostContextCommon.HostContextPerCpu[SubIndex].HostMsrEntryCount       = 1;
-    mGuestContextCommonSmi.GuestContextPerCpu[SubIndex].GuestMsrEntryCount = 1;
-    mGuestContextCommonSmm.GuestContextPerCpu[SubIndex].GuestMsrEntryCount = 1;
-  }
-
-  mHostContextCommon.HostContextPerCpu[0].HostMsrEntryAddress       = (UINT64)(UINTN)AllocatePages (STM_SIZE_TO_PAGES (sizeof (VM_EXIT_MSR_ENTRY) * mHostContextCommon.HostContextPerCpu[0].HostMsrEntryCount * mHostContextCommon.CpuNum));
-  mGuestContextCommonSmi.GuestContextPerCpu[0].GuestMsrEntryAddress = (UINT64)(UINTN)AllocatePages (STM_SIZE_TO_PAGES (sizeof (VM_EXIT_MSR_ENTRY) * mGuestContextCommonSmi.GuestContextPerCpu[0].GuestMsrEntryCount * mHostContextCommon.CpuNum));
-  mGuestContextCommonSmm.GuestContextPerCpu[0].GuestMsrEntryAddress = (UINT64)(UINTN)AllocatePages (STM_SIZE_TO_PAGES (sizeof (VM_EXIT_MSR_ENTRY) * mGuestContextCommonSmm.GuestContextPerCpu[0].GuestMsrEntryCount * mHostContextCommon.CpuNum));
-  for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
-    mHostContextCommon.HostContextPerCpu[SubIndex].HostMsrEntryAddress       = mHostContextCommon.HostContextPerCpu[0].HostMsrEntryAddress + sizeof (VM_EXIT_MSR_ENTRY) * mGuestContextCommonSmi.GuestContextPerCpu[0].GuestMsrEntryCount * SubIndex;
-    mGuestContextCommonSmi.GuestContextPerCpu[SubIndex].GuestMsrEntryAddress = mGuestContextCommonSmi.GuestContextPerCpu[0].GuestMsrEntryAddress + sizeof (VM_EXIT_MSR_ENTRY) * mGuestContextCommonSmi.GuestContextPerCpu[0].GuestMsrEntryCount * SubIndex;
-    mGuestContextCommonSmm.GuestContextPerCpu[SubIndex].GuestMsrEntryAddress = mGuestContextCommonSmm.GuestContextPerCpu[0].GuestMsrEntryAddress + sizeof (VM_EXIT_MSR_ENTRY) * mGuestContextCommonSmm.GuestContextPerCpu[0].GuestMsrEntryCount * SubIndex;
-  }
-
-  DEBUG ((EFI_D_INFO, "DumpStmResource - %x\n", TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr));
-  DumpStmResource ((STM_RSC *)(UINTN)TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
-  DEBUG ((EFI_D_INFO, "RegisterBiosResource - %x\n", TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr));
-  RegisterBiosResource ((STM_RSC *)(UINTN)TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
-
-  InitStmHandlerSmi ();
-  InitStmHandlerSmm ();
 
   STM_PERF_INIT;
 
@@ -883,9 +831,7 @@ ApInit (
   InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
 
   DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)Index, Register));
-  Reg           = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
   Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  CopyMem (Reg, Register, sizeof (X86_REGISTER));
 
   if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
     DEBUG ((EFI_D_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
@@ -920,7 +866,7 @@ CommonInit (
   }
 
   VmxMisc.Uint64 = AsmReadMsr64 (IA32_VMX_MISC_MSR_INDEX);
-  RegEdx         = ReadUnaligned32 ((UINT32 *)&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.Rdx);
+  RegEdx         = ReadUnaligned32 ((UINT32 *)&mHostContextCommon.HostContextPerCpu[Index].Register.Rdx);
   if ((RegEdx & STM_CONFIG_SMI_UNBLOCKING_BY_VMX_OFF) != 0) {
     if (VmxMisc.Bits.VmxOffUnblockSmiSupport != 0) {
       AsmWriteMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX, AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) | IA32_SMM_MONITOR_SMI_UNBLOCKING_BY_VMX_OFF);
@@ -948,95 +894,6 @@ CommonInit (
   DEBUG ((EFI_D_INFO, "SMBASE(%d) - %08x\n", (UINTN)Index, (UINTN)mHostContextCommon.HostContextPerCpu[Index].Smbase));
   DEBUG ((EFI_D_INFO, "TxtProcessorSmmDescriptor(%d) - %08x\n", (UINTN)Index, mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor));
   DEBUG ((EFI_D_INFO, "Stack(%d) - %08x\n", (UINTN)Index, (UINTN)mHostContextCommon.HostContextPerCpu[Index].Stack));
-
-  mGuestContextCommonSmm.GuestContextPerCpu[Index].Cr3  = (UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->SmmCr3;
-  mGuestContextCommonSmm.GuestContextPerCpu[Index].Efer = AsmReadMsr64 (IA32_EFER_MSR_INDEX);
-
-  mGuestContextCommonSmi.GuestContextPerCpu[Index].Efer = AsmReadMsr64 (IA32_EFER_MSR_INDEX);
-}
-
-/**
-
-  This function initialize VMCS.
-
-  @param Index    CPU index
-
-**/
-VOID
-VmcsInit (
-  IN UINT32  Index
-  )
-{
-  UINT64      CurrentVmcs;
-  UINTN       VmcsBase;
-  UINT32      VmcsSize;
-  STM_HEADER  *StmHeader;
-  UINTN       Rflags;
-
-  StmHeader = mHostContextCommon.StmHeader;
-  VmcsBase  = (UINTN)StmHeader +
-              STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
-              StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
-              StmHeader->SwStmHdr.PerProcDynamicMemorySize * mHostContextCommon.CpuNum;
-  VmcsSize = GetVmcsSize ();
-
-  mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs = (UINT64)(VmcsBase + VmcsSize * (Index * 2));
-  mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs = (UINT64)(VmcsBase + VmcsSize * (Index * 2 + 1));
-
-  DEBUG ((EFI_D_INFO, "SmiVmcsPtr(%d) - %016lx\n", (UINTN)Index, mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs));
-  DEBUG ((EFI_D_INFO, "SmmVmcsPtr(%d) - %016lx\n", (UINTN)Index, mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs));
-
-  AsmVmPtrStore (&CurrentVmcs);
-  DEBUG ((EFI_D_INFO, "CurrentVmcs(%d) - %016lx\n", (UINTN)Index, CurrentVmcs));
-  if (IsOverlap (CurrentVmcs, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
-    // Overlap TSEG
-    DEBUG ((EFI_D_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
-    CpuDeadLoop ();
-  }
-
-  Rflags = AsmVmClear (&CurrentVmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, CurrentVmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  CopyMem (
-    (VOID *)(UINTN)mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs,
-    (VOID *)(UINTN)CurrentVmcs,
-    (UINTN)VmcsSize
-    );
-  CopyMem (
-    (VOID *)(UINTN)mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs,
-    (VOID *)(UINTN)CurrentVmcs,
-    (UINTN)VmcsSize
-    );
-
-  *(UINT32 *)(UINTN)mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs = (UINT32)AsmReadMsr64 (IA32_VMX_BASIC_MSR_INDEX) & 0xFFFFFFFF;
-
-  AsmWbinvd ();
-
-  Rflags = AsmVmPtrLoad (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  InitializeSmmVmcs (Index, &mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs);
-  Rflags = AsmVmClear (&mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonSmm.GuestContextPerCpu[Index].Vmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  AsmWbinvd ();
-
-  Rflags = AsmVmPtrLoad (&mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  InitializeSmiVmcs (Index, &mGuestContextCommonSmi.GuestContextPerCpu[Index].Vmcs);
 }
 
 /**
@@ -1054,22 +911,7 @@ LaunchBack (
   UINTN         Rflags;
   X86_REGISTER  *Reg;
 
-  Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
- #if 0
-  //
-  // Dump BIOS resource - already dumped
-  //
-  if ((Index == 0) && (ReadUnaligned32 ((UINT32 *)&Reg->Rax) == STM_API_INITIALIZE_PROTECTION)) {
-    DEBUG ((EFI_D_INFO, "BIOS resource:\n"));
-    DumpStmResource ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[0].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
-  }
-
- #endif
-  if (ReadUnaligned32 ((UINT32 *)&Reg->Rax) == STM_API_START) {
-    // We need do additional thing for STM_API_START
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Active = TRUE;
-    SmmSetup (Index);
-  }
+  Reg = &mHostContextCommon.HostContextPerCpu[Index].Register;
 
   //
   // Indicate success, if BIOS resource is good.

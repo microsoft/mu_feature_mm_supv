@@ -29,13 +29,13 @@ ASM_GLOBAL ASM_PFX(_ModuleEntryPoint)
 #   VOID
 #   )
 ASM_PFX(_ModuleEntryPoint):
-  cmpl $STM_API_INITIALIZE_PROTECTION, %eax # for BSP
-  jz  GoBsp
-  cmpl $STM_API_START, %eax # for AP
-  jz  GoAp
+  cmpl $SEA_API_GET_CAPABILITIES, %eax # for BSP
+  jz  GoCapabilities
+  cmpl $SEA_API_GET_RESOURCES, %eax # for AP
+  jz  GoResource
   jmp DeadLoop
 
-GoBsp:
+GoCapabilities:
   # Assume ThisOffset is 0
   # ESP is pointer to stack bottom, NOT top
   movl $STM_STACK_SIZE, %eax     # eax = STM_STACK_SIZE, 
@@ -61,7 +61,7 @@ GoBsp:
   push %rbx
   push %rdx
   push %rcx
-  movl $STM_API_INITIALIZE_PROTECTION, %eax
+  movl $SEA_API_GET_CAPABILITIES, %eax
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
@@ -108,11 +108,11 @@ GoAp:
   push %rbx
   push %rdx
   push %rcx
-  movl $STM_API_START, %eax
+  movl $SEA_API_GET_RESOURCES, %eax
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor)
+  call ASM_PFX(SeaGetResources)
   addq $0x20, %rsp
   # should never get here
 DeadLoop:
