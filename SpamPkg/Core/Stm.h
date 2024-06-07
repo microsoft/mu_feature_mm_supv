@@ -846,98 +846,21 @@ StmDumpPerformanceMeasurement (
 #define STM_GDT_OFFSET   STM_DATA_OFFSET
 #define STM_CODE_OFFSET  STM_DATA_OFFSET + 0x1000
 
-#pragma pack (push, 1)
-
-//
-// More define for IO_MISC
-//
-typedef struct {
-  UINT32    IoSmi      : 1;
-  UINT32    Length     : 3;
-  UINT32    Direction  : 1;    // 0=Out, 1=In
-  UINT32    String     : 1;    // 0=Not String, 1=String
-  UINT32    Rep        : 1;    // 0=Not REP, 1=REP
-  UINT32    OpEncoding : 1;    // 0=DX, 1=Immediate
-  UINT32    Reserved   : 8;
-  UINT32    Port       : 16;
-} SMM_SAVE_STATE_IO_MISC_BITS;
-
-typedef union {
-  SMM_SAVE_STATE_IO_MISC_BITS    Bits;
-  UINT32                         Uint32;
-} SMM_SAVE_STATE_IO_MISC;
-
 #define SMM_TXTPSD_OFFSET     0xfb00
 #define SMM_CPU_STATE_OFFSET  0xfc00
 
-#pragma pack (pop)
-
-// __declspec (align(0x10))
-typedef struct _STM_GUEST_CONTEXT_PER_CPU {
-  X86_REGISTER             Register;
-  IA32_DESCRIPTOR          Gdtr;
-  IA32_DESCRIPTOR          Idtr;
-  UINTN                    Cr0;
-  UINTN                    Cr3;
-  UINTN                    Cr4;
-  UINTN                    Stack;
-  UINT64                   Efer;
-  BOOLEAN                  UnrestrictedGuest;
-  UINTN                    XStateBuffer;
-
-  // For CPU support Save State in MSR, we need a place holder to save it in memory in advanced.
-  // The reason is that when we switch to SMM guest, we lose the context in SMI guest.
-  STM_SMM_CPU_STATE        *SmmCpuState;
-
-  VM_EXIT_INFO_BASIC       InfoBasic;            // hold info since we need that when return to SMI guest.
-  VM_EXIT_QUALIFICATION    Qualification;        // hold info since we need that when return to SMI guest.
-  UINT32                   VmExitInstructionLength;
-  BOOLEAN                  Launched;
-  BOOLEAN                  Active;             // For SMM VMCS only, controlled by StartStmVMCALL
-  UINT64                   Vmcs;
-  UINT32                   GuestMsrEntryCount;
-  UINT64                   GuestMsrEntryAddress;
-
- #if defined (MDE_CPU_X64)
-  // Need check alignment here because we need use FXSAVE/FXRESTORE buffer
-  UINT32                   Reserved;
- #endif
-} STM_GUEST_CONTEXT_PER_CPU;
-
-#if defined (MDE_CPU_X64)
-// Need check alignment here because we need use FXSAVE/FXRESTORE buffer
-C_ASSERT ((sizeof (STM_GUEST_CONTEXT_PER_CPU) & 0xF) == 0);
-#endif
-
-typedef struct _STM_GUEST_CONTEXT_COMMON {
-  EPT_POINTER                  EptPointer;
-  UINTN                        CompatiblePageTable;
-  UINTN                        CompatiblePaePageTable;
-  UINT64                       MsrBitmap;
-  UINT64                       IoBitmapA;
-  UINT64                       IoBitmapB;
-  UINT32                       Vmid;
-  UINTN                        ZeroXStateBuffer;
-  //
-  // BiosHwResourceRequirementsPtr: This is back up of BIOS resource - no ResourceListContinuation
-  //
-  UINT64                       BiosHwResourceRequirementsPtr;
-  STM_GUEST_CONTEXT_PER_CPU    *GuestContextPerCpu;
-} STM_GUEST_CONTEXT_COMMON;
-
-typedef struct _STM_HOST_CONTEXT_PER_CPU {
+typedef struct _SEA_HOST_CONTEXT_PER_CPU {
   UINT32                          Index;
   UINT32                          ApicId;
   UINTN                           Stack;
   UINT32                          Smbase;
   TXT_PROCESSOR_SMM_DESCRIPTOR    *TxtProcessorSmmDescriptor;
-  UINT32                          HostMsrEntryCount;
-  UINT64                          HostMsrEntryAddress;
+  X86_REGISTER                    Register;
 
   // JumpBuffer for Setup/TearDown
   BOOLEAN                         JumpBufferValid;
   BASE_LIBRARY_JUMP_BUFFER        JumpBuffer;
-} STM_HOST_CONTEXT_PER_CPU;
+} SEA_HOST_CONTEXT_PER_CPU;
 
 typedef struct _STM_HOST_CONTEXT_COMMON {
   SPIN_LOCK                           DebugLock;
@@ -994,11 +917,9 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
   //
   STM_PERF_DATA                       PerfData;
 
-  STM_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
-} STM_HOST_CONTEXT_COMMON;
+  SEA_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
+} SEA_HOST_CONTEXT_COMMON;
 
-extern STM_HOST_CONTEXT_COMMON   mHostContextCommon;
-extern STM_GUEST_CONTEXT_COMMON  mGuestContextCommonSmi;
-extern STM_GUEST_CONTEXT_COMMON  mGuestContextCommonSmm;
+extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 
 #endif
