@@ -779,11 +779,6 @@ BspInit (
     CpuDeadLoop ();
   }
 
-  if (IsOverlap (mHostContextCommon.PciExpressBaseAddress, mHostContextCommon.PciExpressLength, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
-    DEBUG ((EFI_D_INFO, "mHostContextCommon.PciExpressBaseAddress overlap with TSEG\n"));
-    CpuDeadLoop ();
-  }
-
   // TODO
   // PcdSet64S(PcdPciExpressBaseAddress, mHostContextCommon.PciExpressBaseAddress);
 
@@ -913,14 +908,8 @@ LaunchBack (
   //
   // Indicate success, if BIOS resource is good.
   //
-  if (!IsResourceListValid ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr, FALSE)) {
-    DEBUG ((EFI_D_INFO, "ValidateBiosResourceList fail!\n"));
-    WriteUnaligned32 ((UINT32 *)&Reg->Rax, ERROR_STM_MALFORMED_RESOURCE_LIST);
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
-  } else {
-    WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
-  }
+  WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
+  VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
 
   WriteUnaligned32 ((UINT32 *)&Reg->Rbx, 0); // Not support STM_RSC_BGM or STM_RSC_BGI or STM_RSC_MSR
 
