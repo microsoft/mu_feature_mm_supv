@@ -47,7 +47,6 @@
   Init/x64/AsmStmInit.s
   Runtime/x64/Exception.asm
   Runtime/x64/Exception.s
-  Runtime/x64/SmmStateSyncIa32eGpr.c
 
 [Packages]
   MdePkg/MdePkg.dec

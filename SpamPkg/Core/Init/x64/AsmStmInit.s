@@ -65,7 +65,7 @@ GoCapabilities:
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor)
+  call ASM_PFX(InitializeSmmMonitor) # should be SeaGetCapabilities
   addq $0x20, %rsp
   # should never get here
   jmp  DeadLoop
@@ -112,7 +112,7 @@ GoAp:
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(SeaGetResources)
+  call ASM_PFX(InitializeSmmMonitor) # should be SeaGetResources
   addq $0x20, %rsp
   # should never get here
 DeadLoop:
