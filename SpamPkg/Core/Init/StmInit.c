@@ -19,8 +19,6 @@ SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 
 volatile BOOLEAN  mIsBspInitialized;
 
-extern volatile BOOLEAN  *mCpuInitStatus;
-
 /*++
   STM runtime:
 
@@ -751,8 +749,6 @@ BspInit (
 
   // EventLog
   InitializeEventLog ();
-
-  mCpuInitStatus = AllocatePages (STM_SIZE_TO_PAGES (mHostContextCommon.CpuNum));
 
   //
   // Get PciExpressBaseAddress
