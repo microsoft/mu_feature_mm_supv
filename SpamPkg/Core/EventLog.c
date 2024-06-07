@@ -212,33 +212,6 @@ AddEventLogInvalidParameter (
 
 /**
 
-  This function add event log for resource.
-
-  @param EventType   EvtHandledProtectionException, EvtBiosAccessToUnclaimedResource,
-                     EvtMleResourceProtectionGranted, EvtMleResourceProtectionDenied,
-                     EvtMleResourceUnprotect, EvtMleResourceUnprotectError
-  @param Resource    STM Resource
-
-**/
-VOID
-AddEventLogForResource (
-  IN EVENT_TYPE  EventType,
-  IN STM_RSC     *Resource
-  )
-{
-  LOG_ENTRY_DATA  LogEntryData;
-
-  if (!IsResourceNodeValid (Resource, FALSE, TRUE)) {
-    DEBUG ((EFI_D_ERROR, "AddEventLogForResource - Invalid Resource!!!\n"));
-    return;
-  }
-
-  CopyMem (&LogEntryData.HandledProtectionException.Resource, Resource, Resource->Header.Length);
-  AddEventLog (EventType, &LogEntryData, Resource->Header.Length, &mHostContextCommon.EventLog);
-}
-
-/**
-
   This function add event log for domain degration.
 
   @param VmcsPhysPointer    VmcsPhysPointer
@@ -320,36 +293,6 @@ DumpEventLogEntry (
       DEBUG ((EFI_D_INFO, "EVT_LOG_INVALID_PARAMETER_DETECTED:\n"));
       DumpEventLogHeader (LogEntry);
       DEBUG ((EFI_D_INFO, "  VmcallApiNumber   : %08x\n", LogEntry->Data.InvalidParam.VmcallApiNumber));
-      break;
-    case EvtHandledProtectionException:
-      DEBUG ((EFI_D_INFO, "EVT_HANDLED_PROTECTION_EXCEPTION:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.HandledProtectionException.Resource);
-      break;
-    case EvtBiosAccessToUnclaimedResource:
-      DEBUG ((EFI_D_INFO, "EVT_BIOS_ACCESS_TO_UNCLAIMED_RESOURCE:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.BiosUnclaimedRsc.Resource);
-      break;
-    case EvtMleResourceProtectionGranted:
-      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_GRANTED:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.MleRscProtGranted.Resource);
-      break;
-    case EvtMleResourceProtectionDenied:
-      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_PROTECTION_DENIED:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.MleRscProtDenied.Resource);
-      break;
-    case EvtMleResourceUnprotect:
-      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.MleRscUnprot.Resource);
-      break;
-    case EvtMleResourceUnprotectError:
-      DEBUG ((EFI_D_INFO, "EVT_MLE_RESOURCE_UNPROTECT_ERROR:\n"));
-      DumpEventLogHeader (LogEntry);
-      DumpStmResourceNode (&LogEntry->Data.MleRscUnprotError.Resource);
       break;
     case EvtMleDomainTypeDegraded:
       DEBUG ((EFI_D_INFO, "EVT_MLE_DOMAIN_TYPE_DEGRADED:\n"));
