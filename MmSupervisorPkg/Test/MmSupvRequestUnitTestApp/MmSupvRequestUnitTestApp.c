@@ -596,7 +596,7 @@ LocateMmCommonCommBuffer (
   IN UNIT_TEST_CONTEXT  Context
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS  Status = EFI_SUCCESS;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
     // Locate the communication buffer, if not done yet.

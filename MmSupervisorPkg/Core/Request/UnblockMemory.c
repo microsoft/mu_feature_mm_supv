@@ -123,7 +123,7 @@ CollectUnblockedRegionsFromNthNode (
     if (Index >= StartIndex) {
       // This is in our target
       UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
-      UnblockedMemEntry  = UnblockedListEntry->UnblockMemData;
+      CopyMem (&UnblockedMemEntry, &UnblockedListEntry->UnblockMemData, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
       CopyMem (&Buffer[Index - StartIndex], &UnblockedMemEntry, sizeof (UnblockedMemEntry));
     }
 
@@ -170,8 +170,8 @@ VerifyUnblockRequest (
   // First check if the requested region is duplicated.
   Node = mUnblockedMemoryList.ForwardLink;
   while (Node != &mUnblockedMemoryList) {
-    UnblockedListEntry    = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
-    UnblockedMemEntry     = UnblockedListEntry->UnblockMemData;
+    UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
+    CopyMem (&UnblockedMemEntry, &UnblockedListEntry->UnblockMemData, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
     UnblockedStartAddress = UnblockedMemEntry.MemoryDescriptor.PhysicalStart;
     UnblockedEndAddress   = UnblockedStartAddress +
                             EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages);
