@@ -15,7 +15,7 @@
 #include "StmInit.h"
 #include <Library/PcdLib.h>
 
-STM_HOST_CONTEXT_COMMON   mHostContextCommon;
+SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 
 volatile BOOLEAN  mIsBspInitialized;
 
