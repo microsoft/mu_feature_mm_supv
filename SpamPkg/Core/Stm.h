@@ -413,21 +413,20 @@ StmDumpPerformanceMeasurement (
 #define SMM_TXTPSD_OFFSET     0xfb00
 #define SMM_CPU_STATE_OFFSET  0xfc00
 
-typedef struct _STM_HOST_CONTEXT_PER_CPU {
+typedef struct _SEA_HOST_CONTEXT_PER_CPU {
   UINT32                          Index;
   UINT32                          ApicId;
   UINTN                           Stack;
   UINT32                          Smbase;
   TXT_PROCESSOR_SMM_DESCRIPTOR    *TxtProcessorSmmDescriptor;
-  UINT32                          HostMsrEntryCount;
-  UINT64                          HostMsrEntryAddress;
+  X86_REGISTER                    Register;
 
   // JumpBuffer for Setup/TearDown
   BOOLEAN                         JumpBufferValid;
   BASE_LIBRARY_JUMP_BUFFER        JumpBuffer;
-} STM_HOST_CONTEXT_PER_CPU;
+} SEA_HOST_CONTEXT_PER_CPU;
 
-typedef struct _STM_HOST_CONTEXT_COMMON {
+typedef struct _SEA_HOST_CONTEXT_COMMON {
   SPIN_LOCK                           DebugLock;
   SPIN_LOCK                           MemoryLock;
   SPIN_LOCK                           SmiVmcallLock;
@@ -475,9 +474,9 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
   //
   STM_PERF_DATA                       PerfData;
 
-  STM_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
-} STM_HOST_CONTEXT_COMMON;
+  SEA_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
+} SEA_HOST_CONTEXT_COMMON;
 
-extern STM_HOST_CONTEXT_COMMON   mHostContextCommon;
+extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 
 #endif

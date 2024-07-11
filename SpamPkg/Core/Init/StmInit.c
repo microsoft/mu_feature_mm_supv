@@ -447,7 +447,7 @@ InitBasicContext (
   VOID
   )
 {
-  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (STM_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
 /**
@@ -731,7 +731,7 @@ CommonInit (
   }
 
   VmxMisc.Uint64 = AsmReadMsr64 (IA32_VMX_MISC_MSR_INDEX);
-  RegEdx         = ReadUnaligned32 ((UINT32 *)&mGuestContextCommonSmi.GuestContextPerCpu[Index].Register.Rdx);
+  RegEdx         = ReadUnaligned32 ((UINT32 *)&mHostContextCommon.HostContextPerCpu[Index].Register.Rdx);
   if ((RegEdx & STM_CONFIG_SMI_UNBLOCKING_BY_VMX_OFF) != 0) {
     if (VmxMisc.Bits.VmxOffUnblockSmiSupport != 0) {
       AsmWriteMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX, AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) | IA32_SMM_MONITOR_SMI_UNBLOCKING_BY_VMX_OFF);
@@ -776,34 +776,13 @@ LaunchBack (
   UINTN         Rflags;
   X86_REGISTER  *Reg;
 
-  Reg = &mGuestContextCommonSmi.GuestContextPerCpu[Index].Register;
- #if 0
-  //
-  // Dump BIOS resource - already dumped
-  //
-  if ((Index == 0) && (ReadUnaligned32 ((UINT32 *)&Reg->Rax) == STM_API_INITIALIZE_PROTECTION)) {
-    DEBUG ((EFI_D_INFO, "BIOS resource:\n"));
-    DumpStmResource ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[0].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr);
-  }
-
- #endif
-  if (ReadUnaligned32 ((UINT32 *)&Reg->Rax) == STM_API_START) {
-    // We need do additional thing for STM_API_START
-    mGuestContextCommonSmm.GuestContextPerCpu[Index].Active = TRUE;
-    SmmSetup (Index);
-  }
+  Reg = &mHostContextCommon.HostContextPerCpu[Index].Register;
 
   //
   // Indicate success, if BIOS resource is good.
   //
-  if (!IsResourceListValid ((STM_RSC *)(UINTN)mHostContextCommon.HostContextPerCpu[Index].TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr, FALSE)) {
-    DEBUG ((EFI_D_INFO, "ValidateBiosResourceList fail!\n"));
-    WriteUnaligned32 ((UINT32 *)&Reg->Rax, ERROR_STM_MALFORMED_RESOURCE_LIST);
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) | RFLAGS_CF);
-  } else {
-    WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
-    VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
-  }
+  WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
+  VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
 
   WriteUnaligned32 ((UINT32 *)&Reg->Rbx, 0); // Not support STM_RSC_BGM or STM_RSC_BGI or STM_RSC_MSR
 
@@ -847,8 +826,6 @@ InitializeSmmMonitor (
   }
 
   CommonInit (Index);
-
-  VmcsInit (Index);
 
   LaunchBack (Index);
   return;
