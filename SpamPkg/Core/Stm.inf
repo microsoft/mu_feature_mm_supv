@@ -40,10 +40,11 @@
   StmPerformance.c
 
 [Sources.X64]
-  Init/x64/AsmStmInit.asm
-  Init/x64/AsmStmInit.s
-  Runtime/x64/Exception.asm
-  Runtime/x64/Exception.s
+  Init/x64/AsmStmInit.asm | MSFT
+  Init/x64/AsmStmInit.s   | GCC
+
+  Runtime/x64/Exception.asm | MSFT
+  Runtime/x64/Exception.s   | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
