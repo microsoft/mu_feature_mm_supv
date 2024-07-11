@@ -62,7 +62,7 @@ typedef struct {
   ///
   UINT32      Reserved;
   UINT32      SeaHeaderSize;
-  UINT32      SeaTotalSize;  
+  UINT32      SeaTotalSize;
   SEA_CAPS    SeaFeatures;
 } SEA_CAPABILITIES_STRUCT;
 
@@ -91,5 +91,8 @@ typedef struct {
 #define MMI_ENTRY_DIGEST_INDEX  0
 #define MM_SUPV_DIGEST_INDEX    1
 #define SUPPORTED_DIGEST_COUNT  2
+
+#define SEA_API_GET_CAPABILITIES  (BIT16 | BIT8 | 1)
+#define SEA_API_GET_RESOURCES     (BIT16 | BIT8 | 2)
 
 #endif // SPAM_RESPONDER_H_
