@@ -126,42 +126,6 @@ GetCpuNumFromTxt (
   return BiosToOsData->NumLogProcs;
 }
 
-/**
-
-  This function return PCI Express information in TXT heap region.
-  Only one segment information is returned.
-
-  @param  PciExpressBaseAddress  PCI Express base address
-  @param  PciExpressLength       PCI Express length
-
-  @return PciExpressBaseAddress
-
-**/
-UINT64
-GetPciExpressInfoFromTxt (
-  OUT UINT64  *PciExpressBaseAddress,
-  OUT UINT64  *PciExpressLength
-  )
-{
-  TXT_SINIT_TO_MLE_DATA               *SinitToMleData;
-  TXT_SINIT_MEMORY_DESCRIPTOR_RECORD  *SinitMemoryDescriptor;
-  UINTN                               Index;
-
-  SinitToMleData        = GetTxtSinitToMleData ();
-  SinitMemoryDescriptor = (TXT_SINIT_MEMORY_DESCRIPTOR_RECORD *)((UINTN)SinitToMleData - sizeof (UINT64) + SinitToMleData->SinitMdrTableOffset);
-  for (Index = 0; Index < SinitToMleData->NumberOfSinitMdrs; Index++) {
-    if (SinitMemoryDescriptor[Index].Type == TXT_SINIT_MDR_TYPE_PCIE) {
-      *PciExpressBaseAddress = SinitMemoryDescriptor[Index].Address;
-      *PciExpressLength      = SinitMemoryDescriptor[Index].Length;
-      return SinitMemoryDescriptor[Index].Address;
-    }
-  }
-
-  *PciExpressBaseAddress = 0;
-  *PciExpressLength      = 0;
-  return 0;
-}
-
 #define EBDA_BASE_ADDRESS  0x40E
 
 /**
@@ -394,51 +358,6 @@ GetCpuNumFromAcpi (
 
 /**
 
-  This function return PCI Express information from MCFG.
-  Only one segment information is returned.
-
-  @param  PciExpressBaseAddress  PCI Express base address
-  @param  PciExpressLength       PCI Express length
-
-  @return PciExpressBaseAddress
-
-**/
-UINT64
-GetPciExpressInfoFromAcpi (
-  OUT UINT64  *PciExpressBaseAddress,
-  OUT UINT64  *PciExpressLength
-  )
-{
-  EFI_ACPI_MEMORY_MAPPED_CONFIGURATION_BASE_ADDRESS_TABLE_HEADER                         *Mcfg;
-  UINTN                                                                                  Length;
-  EFI_ACPI_MEMORY_MAPPED_ENHANCED_CONFIGURATION_SPACE_BASE_ADDRESS_ALLOCATION_STRUCTURE  *McfgStruct;
-
-  Mcfg = FindAcpiPtr (FindAcpiRsdPtr (), EFI_ACPI_2_0_MEMORY_MAPPED_CONFIGURATION_BASE_ADDRESS_TABLE_SIGNATURE);
-  if (Mcfg == NULL) {
-    *PciExpressBaseAddress = 0;
-    *PciExpressLength      = 0;
-    return 0;
-  }
-
-  Length     = Mcfg->Header.Length;
-  McfgStruct = (EFI_ACPI_MEMORY_MAPPED_ENHANCED_CONFIGURATION_SPACE_BASE_ADDRESS_ALLOCATION_STRUCTURE *)(Mcfg + 1);
-  while ((UINTN)McfgStruct < (UINTN)Mcfg + Length) {
-    if ((McfgStruct->PciSegmentGroupNumber == 0) && (McfgStruct->StartBusNumber == 0)) {
-      *PciExpressBaseAddress = McfgStruct->BaseAddress;
-      *PciExpressLength      = (McfgStruct->EndBusNumber + 1) * SIZE_1MB;
-      return McfgStruct->BaseAddress;
-    }
-
-    McfgStruct++;
-  }
-
-  *PciExpressBaseAddress = 0;
-  *PciExpressLength      = 0;
-  return 0;
-}
-
-/**
-
   This function return minimal MSEG size required by STM.
 
   @param StmHeader  Stm header
@@ -544,8 +463,6 @@ BspInit (
   )
 {
   STM_HEADER                    *StmHeader;
-  UINTN                         VmcsDatabasePage;
-  VMCS_RECORD_STRUCTURE         *VmcsRecord;
   TXT_PROCESSOR_SMM_DESCRIPTOR  *TxtProcessorSmmDescriptor;
   IA32_IDT_GATE_DESCRIPTOR      *IdtGate;
   UINT32                        SubIndex;
@@ -737,46 +654,6 @@ BspInit (
   // Add more paging for Host CR3.
   //
   CreateHostPaging ();
-
-  // VMCS database: One CPU one page should be enough
-  VmcsDatabasePage                = mHostContextCommon.CpuNum;
-  mHostContextCommon.VmcsDatabase = (UINT64)(UINTN)AllocatePages (VmcsDatabasePage);
-  // Set last entry
-  ZeroMem ((VOID *)(UINTN)mHostContextCommon.VmcsDatabase, STM_PAGES_TO_SIZE (VmcsDatabasePage));
-  VmcsRecord                                                                                 = (VMCS_RECORD_STRUCTURE *)(UINTN)mHostContextCommon.VmcsDatabase;
-  VmcsRecord[STM_PAGES_TO_SIZE (VmcsDatabasePage) / sizeof (VMCS_RECORD_STRUCTURE) - 1].Type = VMCS_RECORD_LAST;
-  //  DumpVmcsRecord (mHostContextCommon.VmcsDatabase);
-
-  // EventLog
-  InitializeEventLog ();
-
-  //
-  // Get PciExpressBaseAddress
-  //
-  if (IsSentryEnabled ()) {
-    GetPciExpressInfoFromTxt (&mHostContextCommon.PciExpressBaseAddress, &mHostContextCommon.PciExpressLength);
-    DEBUG ((EFI_D_INFO, "PCIExpressBase   from TXT Region - %x\n", (UINTN)mHostContextCommon.PciExpressBaseAddress));
-    DEBUG ((EFI_D_INFO, "PCIExpressLength from TXT Region - %x\n", (UINTN)mHostContextCommon.PciExpressLength));
-  } else {
-    GetPciExpressInfoFromAcpi (&mHostContextCommon.PciExpressBaseAddress, &mHostContextCommon.PciExpressLength);
-    DEBUG ((EFI_D_INFO, "PCIExpressBase   from ACPI MCFG - %x\n", (UINTN)mHostContextCommon.PciExpressBaseAddress));
-    DEBUG ((EFI_D_INFO, "PCIExpressLength from ACPI MCFG - %x\n", (UINTN)mHostContextCommon.PciExpressLength));
-  }
-
-  if (mHostContextCommon.PciExpressBaseAddress == 0) {
-    DEBUG ((EFI_D_INFO, "mHostContextCommon.PciExpressBaseAddress == 0\n"));
-    CpuDeadLoop ();
-  }
-
-  if ((mHostContextCommon.PciExpressBaseAddress > mHostContextCommon.MaximumSupportAddress) ||
-      (mHostContextCommon.PciExpressLength > mHostContextCommon.MaximumSupportAddress - mHostContextCommon.PciExpressBaseAddress))
-  {
-    DEBUG ((EFI_D_INFO, "mHostContextCommon.PciExpressBaseAddress overflow MaximumSupportAddress\n"));
-    CpuDeadLoop ();
-  }
-
-  // TODO
-  // PcdSet64S(PcdPciExpressBaseAddress, mHostContextCommon.PciExpressBaseAddress);
 
   STM_PERF_INIT;
 
