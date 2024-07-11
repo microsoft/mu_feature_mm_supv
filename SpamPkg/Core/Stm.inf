@@ -37,9 +37,6 @@
   Stm.h
   CpuDef.h
   Cpu.c
-  Dump.c
-  EventLog.c
-  VmcsRecord.c
   StmPerformance.c
 
 [Sources.X64]
