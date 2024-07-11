@@ -56,7 +56,7 @@ GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceSizeAvailable = 0x0;
 //
 GLOBAL_REMOVE_IF_UNREFERENCED
 EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
-  .LoadMonitor     = LoadMonitor
+  .LoadMonitor = LoadMonitor
 };
 
 #define   CPUID1_EDX_XD_SUPPORT  0x100000

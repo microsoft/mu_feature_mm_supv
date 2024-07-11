@@ -15,7 +15,7 @@
 #include "StmInit.h"
 #include <Library/PcdLib.h>
 
-SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
+SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
 
 volatile BOOLEAN  mIsBspInitialized;
 
@@ -447,7 +447,7 @@ InitBasicContext (
   VOID
   )
 {
-  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  mHostContextCommon.HostContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
 /**

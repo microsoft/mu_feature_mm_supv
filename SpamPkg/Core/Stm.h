@@ -477,6 +477,6 @@ typedef struct _SEA_HOST_CONTEXT_COMMON {
   SEA_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
 } SEA_HOST_CONTEXT_COMMON;
 
-extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
+extern SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
 
 #endif
