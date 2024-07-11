@@ -41,14 +41,4 @@ Is1GPageSupport (
   VOID
   );
 
-/**
-
-  This function initialize event log.
-
-**/
-VOID
-InitializeEventLog (
-  VOID
-  );
-
 #endif

@@ -187,92 +187,6 @@ IsXStateSupported (
   );
 
 /**
-
-  This function return VMCS record from VMCS database.
-
-  @param VmcsDatabase VMCS database
-  @param Vmcs         VMCS to be found
-
-  @return VMCS record
-
-**/
-VMCS_RECORD_STRUCTURE *
-GetVmcsRecord (
-  IN UINT64  VmcsDatabase,
-  IN UINT64  Vmcs
-  );
-
-/**
-
-  This function process VMCS database request.
-
-  @param VmcsDatabaseRequest VMCS database request
-  @param VmcsDatabaseTable   VMCS database table
-
-  @return STM_SUCCESS                     request processed
-  @return ERROR_INVALID_PARAMETER         request error
-  @return ERROR_STM_INVALID_VMCS_DATABASE VMCS database table error
-
-**/
-STM_STATUS
-RequestVmcsDatabaseEntry (
-  IN STM_VMCS_DATABASE_REQUEST  *VmcsDatabaseRequest,
-  IN VMCS_RECORD_STRUCTURE      *VmcsDatabaseTable
-  );
-
-/**
-
-  This function dump VMCS database.
-
-  @param VmcsDatabase VMCS database
-
-**/
-VOID
-DumpVmcsRecord (
-  IN UINT64  VmcsDatabase
-  );
-
-/**
-
-  This function check STM resource list overlap.
-
-  @param ResourceList1 STM resource list1
-  @param ResourceList2 STM resource list2
-
-  @retval TRUE  overlap
-  @retval FALSE not overlap
-
-**/
-BOOLEAN
-IsResourceListOverlap (
-  IN STM_RSC  *ResourceList1,
-  IN STM_RSC  *ResourceList2
-  );
-
-/**
-
-  This function set EPT page table attribute by range.
-
-  @param Base                     Memory base
-  @param Length                   Memory length
-  @param Ra                       Read access
-  @param Wa                       Write access
-  @param Xa                       Execute access
-  @param EptPageAttributeSetting  EPT page attribute setting
-
-  @return RETURN_SUCCESS If page attribute is set successfully.
-**/
-RETURN_STATUS
-EPTSetPageAttributeRange (
-  IN UINT64                      Base,
-  IN UINT64                      Length,
-  IN UINT32                      Ra,
-  IN UINT32                      Wa,
-  IN UINT32                      Xa,
-  IN EPT_PAGE_ATTRIBUTE_SETTING  EptPageAttributeSetting
-  );
-
-/**
   This function retrieves the attributes of the memory region specified by
   BaseAddress and Length. If different attributes are got from different part
   of the memory region, EFI_NO_MAPPING will be returned.
@@ -301,124 +215,6 @@ SmmGetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   OUT UINT64                *Attributes
-  );
-
-/**
-
-  This function clear event log.
-
-  @param EventLog Event log structure
-
-**/
-VOID
-ClearEventLog (
-  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
-  );
-
-/**
-
-  This function add event log.
-
-  @param EventType        Event type
-  @param LogEntryData     Log entry data
-  @param LogEntryDataSize Log entry data size
-  @param EventLog         Event log structure
-
-**/
-VOID
-AddEventLog (
-  IN UINT16                   EventType,
-  IN LOG_ENTRY_DATA           *LogEntryData,
-  IN UINTN                    LogEntryDataSize,
-  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
-  );
-
-/**
-
-  This function add event log for invalid parameter.
-
-  @param VmcallApiNumber    VMCALL API number which caused invalid parameter
-
-**/
-VOID
-AddEventLogInvalidParameter (
-  IN UINT32  VmcallApiNumber
-  );
-
-/**
-
-  This function add event log for resource.
-
-  @param EventType   EvtHandledProtectionException, EvtBiosAccessToUnclaimedResource,
-                     EvtMleResourceProtectionGranted, EvtMleResourceProtectionDenied,
-                     EvtMleResourceUnprotect, EvtMleResourceUnprotectError
-  @param Resource    STM Resource
-
-**/
-VOID
-AddEventLogForResource (
-  IN EVENT_TYPE  EventType,
-  IN STM_RSC     *Resource
-  );
-
-/**
-
-  This function add event log for domain degration.
-
-  @param VmcsPhysPointer    VmcsPhysPointer
-  @param ExpectedDomainType Expected DomainType
-  @param DegradedDomainType Degraded DomainType
-
-**/
-VOID
-AddEventLogDomainDegration (
-  IN UINT64  VmcsPhysPointer,
-  IN UINT8   ExpectedDomainType,
-  IN UINT8   DegradedDomainType
-  );
-
-/**
-
-  This function dump event log.
-
-  @param EventLog Event log structure
-
-**/
-VOID
-DumpEventLog (
-  IN MLE_EVENT_LOG_STRUCTURE  *EventLog
-  );
-
-/**
-
-  This function dump VMX capability MSR.
-
-**/
-VOID
-DumpVmxCapabilityMsr (
-  VOID
-  );
-
-/**
-
-  This function dump VMCS all field.
-
-**/
-VOID
-DumpVmcsAllField (
-  VOID
-  );
-
-/**
-
-  This function dump X86 register context.
-
-  @param Reg X86 register context
-
-**/
-VOID
-DumpRegContext (
-  IN X86_REGISTER  *Reg
   );
 
 /**
@@ -634,7 +430,7 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
   SPIN_LOCK                           DebugLock;
   SPIN_LOCK                           MemoryLock;
   SPIN_LOCK                           SmiVmcallLock;
-  SPIN_LOCK                           PciLock;
+  SPIN_LOCK                           ResponderLock;
   UINT32                              CpuNum;
   UINT32                              JoinedCpuNum;
   UINTN                               PageTable;
@@ -644,13 +440,6 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
   UINT64                              HeapTop;
   UINT8                               PhysicalAddressBits;
   UINT64                              MaximumSupportAddress;
-  //
-  // BUGBUG: Assume only one segment for client system.
-  //
-  UINT64                              PciExpressBaseAddress;
-  UINT64                              PciExpressLength;
-
-  UINT64                              VmcsDatabase;
   UINT32                              TotalNumberProcessors;
   STM_HEADER                          *StmHeader;
   UINTN                               StmSize;
