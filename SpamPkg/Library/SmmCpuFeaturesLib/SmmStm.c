@@ -51,15 +51,12 @@ GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceTotalSize     = 0x0;
 GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceSizeUsed      = 0x0;
 GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mStmResourceSizeAvailable = 0x0;
 
-GLOBAL_REMOVE_IF_UNREFERENCED UINT32  mStmState = 0;
-
 //
 // System Configuration Table pointing to STM Configuration Table
 //
 GLOBAL_REMOVE_IF_UNREFERENCED
 EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
-  .LoadMonitor     = LoadMonitor,
-  .GetMonitorState = GetMonitorState,
+  .LoadMonitor = LoadMonitor
 };
 
 #define   CPUID1_EDX_XD_SUPPORT  0x100000
@@ -96,24 +93,6 @@ SmiRendezvous (
   IN      UINTN  CpuIndex
   );
 
-VOID
-EFIAPI
-OnStmSetup (
-  VOID
-  );
-
-VOID
-EFIAPI
-OnStmTeardown (
-  VOID
-  );
-
-VOID
-EFIAPI
-OnException (
-  VOID
-  );
-
 //
 // This structure serves as a template for all processors.
 //
@@ -143,15 +122,15 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
   .SmmTr                         = TR_SEL,
   .Reserved5                     = 0,
   .SmmCr3                        = 0,
-  .SmmStmSetupRip                = (UINT64)OnStmSetup,
-  .SmmStmTeardownRip             = (UINT64)OnStmTeardown,
+  .SmmStmSetupRip                = 0,
+  .SmmStmTeardownRip             = 0,
   .SmmSmiHandlerRip              = 0, // SmmSmiHandlerRip - SMM guest entrypoint
   .SmmSmiHandlerRsp              = 0, // SmmSmiHandlerRsp
   .SmmGdtPtr                     = 0,
   .SmmGdtSize                    = 0,
   .RequiredStmSmmRevId           = 0x80010100,
   .StmProtectionExceptionHandler = {
-    .SpeRip                     = (UINT64)OnException,
+    .SpeRip                     = 0,
     .SpeRsp                     = 0,
     .SpeSs                      = DATA_SEL,
     .PageViolationException     = 1,
@@ -803,22 +782,6 @@ StmCheckStmImage (
 
 /**
 
-  Get STM state.
-
-  @return STM state
-
-**/
-EFI_SM_MONITOR_STATE
-EFIAPI
-GetMonitorState (
-  VOID
-  )
-{
-  return mStmState;
-}
-
-/**
-
   Load STM image to MSEG.
 
   @param StmImage      STM image
@@ -895,8 +858,6 @@ LoadMonitor (
 
   StmLoadStmImage (StmImage, StmImageSize);
 
-  mStmState |= EFI_SM_MONITOR_STATE_ENABLED;
-
   return EFI_SUCCESS;
 }
 
@@ -914,28 +875,4 @@ GetStmResource (
   )
 {
   return mStmResourcesPtr;
-}
-
-/**
-  This is STM setup BIOS callback.
-**/
-VOID
-EFIAPI
-SmmStmSetup (
-  VOID
-  )
-{
-  mStmState |= EFI_SM_MONITOR_STATE_ACTIVATED;
-}
-
-/**
-  This is STM teardown BIOS callback.
-**/
-VOID
-EFIAPI
-SmmStmTeardown (
-  VOID
-  )
-{
-  mStmState &= ~EFI_SM_MONITOR_STATE_ACTIVATED;
 }

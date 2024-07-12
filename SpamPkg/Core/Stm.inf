@@ -30,52 +30,21 @@
   Init/StmInit.c
   Init/Paging.c
   Init/Memory.c
-  Init/VmcsInit.c
-  Init/EptInit.c
-  Init/IoInit.c
-  Init/MsrInit.c
   Init/Relocate.c
-  Runtime/SmmMp.c
-  Runtime/SmmHandler.c
-  Runtime/SmmStateSync.c
-  Runtime/SmmSetup.c
-  Runtime/SmmTearDown.c
-  Runtime/SmmRsmHandler.c
-  Runtime/SmmVmcallHandler.c
-  Runtime/SmmExceptionHandler.c
-  Runtime/SmmCacheHandler.c
-  Runtime/SmmCpuidHandler.c
-  Runtime/SmmCrHandler.c
-  Runtime/SmmEptHandler.c
-  Runtime/SmmIoHandler.c
-  Runtime/SmmMsrHandler.c
-  Runtime/SmmTaskSwitchHandler.c
-  Runtime/SmiHandler.c
-  Runtime/SmiEventHandler.c
-  Runtime/SmiVmcallHandler.c
-  Runtime/StmTearDown.c
   Runtime/StmExceptionHandler.c
-  Runtime/PageTable.c
   Runtime/SpamResponderReport.c
   Runtime/SpamResponderUtilities.c
   Stm.h
   CpuDef.h
   Cpu.c
-  Dump.c
-  EventLog.c
-  StmResource.c
-  VmcsRecord.c
   StmPerformance.c
 
 [Sources.X64]
-  Init/x64/AsmStmInit.asm
-  Init/x64/AsmStmInit.s
-  Runtime/x64/VmExit.asm
-  Runtime/x64/VmExit.s
-  Runtime/x64/Exception.asm
-  Runtime/x64/Exception.s
-  Runtime/x64/SmmException.c
-  Runtime/x64/SmmStateSyncIa32eGpr.c
+  Init/x64/AsmStmInit.asm | MSFT
+  Init/x64/AsmStmInit.s   | GCC
+
+  Runtime/x64/Exception.asm | MSFT
+  Runtime/x64/Exception.s   | GCC
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -103,7 +72,6 @@
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
-  gEfiMdePkgTokenSpaceGuid.PcdPciExpressBaseAddress           ## PRODUCES
   gEfiSpamPkgTokenSpaceGuid.PcdAuxBinFile                     ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinHash                ## CONSUMES
   gEfiSpamPkgTokenSpaceGuid.PcdMmiEntryBinSize                ## CONSUMES

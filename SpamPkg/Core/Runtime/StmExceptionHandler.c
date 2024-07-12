@@ -12,7 +12,7 @@
 
 **/
 
-#include "StmRuntime.h"
+#include "Stm.h"
 
 //
 // Error code flag indicating whether or not an error code will be
