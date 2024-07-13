@@ -1044,7 +1044,7 @@ SetupSmiEntryExit (
   Status                 = GetSmBase (mMaxNumberOfCpus, &mCpuHotPlugData.SmBase);
   if (Status == EFI_OUT_OF_RESOURCES) {
     ASSERT (Status != EFI_OUT_OF_RESOURCES);
-    CpuDeadLoop ();
+    PANIC ("Not enough space for mCpuHotPlugData.SmBase");
   }
 
   if (!EFI_ERROR (Status)) {
@@ -1056,7 +1056,7 @@ SetupSmiEntryExit (
       DEBUG ((DEBUG_ERROR, "The Range of Smbase in SMRAM is not enough -- Required TileSize = 0x%08x, Actual TileSize = 0x%08x\n", TileSize, SIZE_8KB));
       FreePool (mCpuHotPlugData.SmBase);
       FreePool (gSmmCpuPrivate->ProcessorInfo);
-      CpuDeadLoop ();
+      PANIC ("TileSize larger than 8KB");
       return RETURN_BUFFER_TOO_SMALL;
     }
 
@@ -1072,7 +1072,7 @@ SetupSmiEntryExit (
     mCpuHotPlugData.SmBase = (UINTN *)AllocatePool (sizeof (UINTN) * mMaxNumberOfCpus);
     if (mCpuHotPlugData.SmBase == NULL) {
       ASSERT (mCpuHotPlugData.SmBase != NULL);
-      CpuDeadLoop ();
+      PANIC ("mCpuHotPlugData.SmBase is NULL");
     }
 
     //
@@ -1086,7 +1086,7 @@ SetupSmiEntryExit (
     Buffer      = AllocateAlignedCodePages (BufferPages, SIZE_4KB);
     if (Buffer == NULL) {
       DEBUG ((DEBUG_ERROR, "Failed to allocate %Lu pages.\n", (UINT64)BufferPages));
-      CpuDeadLoop ();
+      PANIC ("Failed to allocate buffer for all the tiles");
       return EFI_OUT_OF_RESOURCES;
     }
 
@@ -1433,7 +1433,7 @@ FindSmramInfo (
         ResetWarm ();
       }
 
-      CpuDeadLoop ();
+      PANIC ("Critical HOB missing that describes MMRAM regions");
     }
   }
 
