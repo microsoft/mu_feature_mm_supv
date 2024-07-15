@@ -47,11 +47,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #pragma pack(push,1)
 
 typedef struct {
-  UINT64    VerifyMmiEntry   : 1;  /// > bitfield
-  UINT64    VerifyMmSupv     : 1;  /// > bitfield
-  UINT64    VerifyMmPolicy   : 1;  /// > bitfield
-  UINT64    HashAlg          : 3;  /// > bitfield
-  UINT64    Reserved         : 58; /// > must be 0
+  UINT64    VerifyMmiEntry : 1;    /// > bitfield
+  UINT64    VerifyMmSupv   : 1;    /// > bitfield
+  UINT64    VerifyMmPolicy : 1;    /// > bitfield
+  UINT64    HashAlg        : 3;    /// > bitfield
+  UINT64    Reserved       : 58;   /// > must be 0
 } SEA_CAPS;
 
 typedef struct {

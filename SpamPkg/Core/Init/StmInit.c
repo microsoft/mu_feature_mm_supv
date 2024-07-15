@@ -26,7 +26,7 @@
 #include "StmInit.h"
 #include "Runtime/StmRuntimeUtil.h"
 
-SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
+SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
 
 volatile BOOLEAN  mIsBspInitialized;
 
@@ -737,11 +737,11 @@ CommonInit (
 **/
 VOID
 LaunchBack (
-  IN UINT32       Index,
-  IN X86_REGISTER *Register
+  IN UINT32        Index,
+  IN X86_REGISTER  *Register
   )
 {
-  UINTN Rflags;
+  UINTN  Rflags;
 
   //
   // Indicate operation status from caller.
@@ -775,11 +775,11 @@ GetCapabilities (
   IN OUT X86_REGISTER  *Register
   )
 {
-  STM_STATUS StmStatus;
-  EFI_STATUS Status;
-  UINT64 BufferBase;
-  UINT64 BufferSize;
-  SEA_CAPABILITIES_STRUCT RetStruct;
+  STM_STATUS               StmStatus;
+  EFI_STATUS               Status;
+  UINT64                   BufferBase;
+  UINT64                   BufferSize;
+  SEA_CAPABILITIES_STRUCT  RetStruct;
 
   if (Register == NULL) {
     Status = EFI_INVALID_PARAMETER;
@@ -828,17 +828,17 @@ GetCapabilities (
   // Enough complaints, get to work now.
   RetStruct.SeaSpecVerMajor = SEA_SPEC_VERSION_MAJOR;
   RetStruct.SeaSpecVerMinor = SEA_SPEC_VERSION_MINOR;
-  RetStruct.Reserved = 0;
-  RetStruct.SeaHeaderSize = OFFSET_OF (SEA_CAPABILITIES_STRUCT, SeaFeatures);
-  RetStruct.SeaTotalSize = sizeof (SEA_CAPABILITIES_STRUCT);
+  RetStruct.Reserved        = 0;
+  RetStruct.SeaHeaderSize   = OFFSET_OF (SEA_CAPABILITIES_STRUCT, SeaFeatures);
+  RetStruct.SeaTotalSize    = sizeof (SEA_CAPABILITIES_STRUCT);
 
   RetStruct.SeaFeatures.VerifyMmiEntry = TRUE;
   RetStruct.SeaFeatures.VerifyMmPolicy = TRUE;
-  RetStruct.SeaFeatures.VerifyMmSupv = TRUE;
-  RetStruct.SeaFeatures.HashAlg = HASH_ALG_SHA256;
-  RetStruct.SeaFeatures.Reserved = 0;
+  RetStruct.SeaFeatures.VerifyMmSupv   = TRUE;
+  RetStruct.SeaFeatures.HashAlg        = HASH_ALG_SHA256;
+  RetStruct.SeaFeatures.Reserved       = 0;
 
-  CopyMem ((VOID*)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
+  CopyMem ((VOID *)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
   Status = EFI_SUCCESS;
 
 Done:
@@ -860,13 +860,13 @@ GetResources (
   IN OUT X86_REGISTER  *Register
   )
 {
-  STM_STATUS StmStatus;
-  EFI_STATUS Status;
-  UINT64 BufferBase;
-  UINT64 BufferSize;
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0 *PolicyBuffer = NULL;
-  TPML_DIGEST_VALUES  DigestList[SUPPORTED_DIGEST_COUNT];
-  UINTN CpuIndex;
+  STM_STATUS                        StmStatus;
+  EFI_STATUS                        Status;
+  UINT64                            BufferBase;
+  UINT64                            BufferSize;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *PolicyBuffer = NULL;
+  TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
+  UINTN                             CpuIndex;
 
   if (Register == NULL) {
     Status = EFI_INVALID_PARAMETER;
@@ -941,9 +941,9 @@ GetResources (
     Status = EFI_SECURITY_VIOLATION;
     DEBUG ((DEBUG_ERROR, "%a Policy returned (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, PolicyBuffer->Size, BufferSize));
     goto Done;
-  } else if (IsZeroBuffer ((VOID*)(UINTN)BufferBase, BufferSize)) {
+  } else if (IsZeroBuffer ((VOID *)(UINTN)BufferBase, BufferSize)) {
     // First time being here, populate the content
-    CopyMem ((VOID*)(UINTN)BufferBase, PolicyBuffer, PolicyBuffer->Size);
+    CopyMem ((VOID *)(UINTN)BufferBase, PolicyBuffer, PolicyBuffer->Size);
     ReleaseSpinLock (&mHostContextCommon.ResponderLock);
     StmStatus = STM_SUCCESS;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
@@ -967,6 +967,7 @@ Done:
   if (PolicyBuffer != NULL) {
     FreePages (PolicyBuffer, EFI_SIZE_TO_PAGES (PolicyBuffer->Size));
   }
+
   return Status;
 }
 
@@ -1008,6 +1009,7 @@ SeaVmcallDispatcher (
         Status = EFI_NOT_STARTED;
         break;
       }
+
       Status = GetResources (Register);
       break;
   }
