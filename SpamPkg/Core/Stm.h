@@ -426,7 +426,7 @@ typedef struct _SEA_HOST_CONTEXT_PER_CPU {
   BASE_LIBRARY_JUMP_BUFFER        JumpBuffer;
 } SEA_HOST_CONTEXT_PER_CPU;
 
-typedef struct _STM_HOST_CONTEXT_COMMON {
+typedef struct _SEA_HOST_CONTEXT_COMMON {
   SPIN_LOCK                           DebugLock;
   SPIN_LOCK                           MemoryLock;
   SPIN_LOCK                           SmiVmcallLock;
@@ -477,6 +477,6 @@ typedef struct _STM_HOST_CONTEXT_COMMON {
   SEA_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
 } SEA_HOST_CONTEXT_COMMON;
 
-extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
+extern SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
 
 #endif

@@ -458,7 +458,7 @@ InitBasicContext (
   VOID
   )
 {
-  mHostContextCommon.HostContextPerCpu      = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  mHostContextCommon.HostContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
 /**

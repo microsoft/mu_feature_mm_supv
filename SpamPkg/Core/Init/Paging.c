@@ -229,6 +229,7 @@ GetPageTableEntry (
     *PageAttribute = PageNone;
     return NULL;
   }
+
   *PageAttribute = Page4K;
   return &L1PageTable[Index1];
 }
@@ -318,8 +319,8 @@ GetMemoryAttributes (
   // MU_CHANGE Ends
   MemAttr = (UINT64)-1;
 
-  Cr4.UintN         = AsmReadCr4 ();
-  EnablePML5Paging  = (BOOLEAN)(Cr4.Bits.LA57 == 1);
+  Cr4.UintN        = AsmReadCr4 ();
+  EnablePML5Paging = (BOOLEAN)(Cr4.Bits.LA57 == 1);
 
   do {
     PageEntry = GetPageTableEntry (PageTableBase, EnablePML5Paging, BaseAddress, &PageAttr);
