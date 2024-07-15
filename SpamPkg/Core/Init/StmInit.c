@@ -531,8 +531,6 @@ BspInit (
     DEBUG ((EFI_D_INFO, "CpuNumber from ACPI MADT - %d\n", (UINTN)mHostContextCommon.CpuNum));
   }
 
-  InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
-
   InitializeSpinLock (&mHostContextCommon.MemoryLock);
   InitializeSpinLock (&mHostContextCommon.SmiVmcallLock);
   InitializeSpinLock (&mHostContextCommon.ResponderLock);
@@ -672,48 +670,6 @@ BspInit (
   // Initialization done
   //
   mIsBspInitialized = TRUE;
-
-  return;
-}
-
-/**
-
-  This function initialize AP.
-
-  @param Index    CPU index
-  @param Register X86 register context
-
-**/
-VOID
-ApInit (
-  IN UINT32        Index,
-  IN X86_REGISTER  *Register
-  )
-{
-  while (!mIsBspInitialized) {
-    //
-    // Wait here
-    //
-  }
-
-  DEBUG ((EFI_D_INFO, "!!!Enter StmInit (AP done)!!! - %d (%x)\n", (UINTN)Index, (UINTN)ReadUnaligned32 ((UINT32 *)&Register->Rax)));
-
-  if (Index >= mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_INFO, "!!!Index(0x%x) >= mHostContextCommon.CpuNum(0x%x)\n", (UINTN)Index, (UINTN)mHostContextCommon.CpuNum));
-    CpuDeadLoop ();
-    Index = GetIndexFromStack (Register);
-  }
-
-  InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
-
-  DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)Index, Register));
-  Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-
-  if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
-    // Reset system
-    CpuDeadLoop ();
-  }
 
   return;
 }
@@ -1022,7 +978,7 @@ Done:
 
 **/
 VOID
-InitializeSmmMonitor (
+SeaVmcallDispatcher (
   IN X86_REGISTER  *Register
   )
 {
@@ -1030,27 +986,28 @@ InitializeSmmMonitor (
   UINT32      ServiceId;
   EFI_STATUS  Status;
 
-  CpuIndex = GetIndexFromStack (Register);
-  if (CpuIndex == 0) {
-    // The build process should make sure "virtual address" is same as "file pointer to raw data",
-    // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
-    // If no, GenStm tool will "load image". So here, we just need "relocate image"
-    RelocateStmImage (FALSE);
-
-    BspInit (Register);
-  } else {
-    ApInit (CpuIndex, Register);
-  }
-
-  CommonInit (CpuIndex);
-
+  CpuIndex  = GetIndexFromStack (Register);
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
 
   switch (ServiceId) {
     case SEA_API_GET_CAPABILITIES:
+      if (CpuIndex == 0) {
+        // The build process should make sure "virtual address" is same as "file pointer to raw data",
+        // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
+        // If no, GenStm tool will "load image". So here, we just need "relocate image"
+        RelocateStmImage (FALSE);
+
+        BspInit (Register);
+      }
+
+      CommonInit (CpuIndex);
       Status = GetCapabilities (Register);
       break;
     case SEA_API_GET_RESOURCES:
+      if (!mIsBspInitialized) {
+        Status = EFI_NOT_STARTED;
+        break;
+      }
       Status = GetResources (Register);
       break;
   }
