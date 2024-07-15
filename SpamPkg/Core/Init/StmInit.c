@@ -972,7 +972,7 @@ Done:
 
 /**
 
-  This function initialize STM.
+  This function handles VMCalls into SEA module in C code.
 
   @param Register X86 register context
 
