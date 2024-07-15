@@ -69,7 +69,7 @@ GoCapabilities:
   push rax
   mov  rcx, rsp ; parameter
   sub  rsp, 20h
-  call InitializeSmmMonitor ; should be SeaGetCapabilities
+  call InitializeSmmMonitor
   add  rsp, 20h
   ; should never get here
   jmp  DeadLoop
@@ -118,7 +118,7 @@ GoResource:
   push rax
   mov  rcx, rsp ; parameter
   sub  rsp, 20h
-  call InitializeSmmMonitor ; should be SeaGetResources
+  call InitializeSmmMonitor
   add  rsp, 20h
   ; should never get here
 DeadLoop:

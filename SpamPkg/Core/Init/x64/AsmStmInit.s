@@ -29,9 +29,9 @@ ASM_GLOBAL ASM_PFX(_ModuleEntryPoint)
 #   VOID
 #   )
 ASM_PFX(_ModuleEntryPoint):
-  cmpl $SEA_API_GET_CAPABILITIES, %eax # for BSP
+  cmpl $SEA_API_GET_CAPABILITIES, %eax # for getting capabilities on BSP
   jz  GoCapabilities
-  cmpl $SEA_API_GET_RESOURCES, %eax # for AP
+  cmpl $SEA_API_GET_RESOURCES, %eax # for getting resources on all cores
   jz  GoResource
   jmp DeadLoop
 
@@ -65,7 +65,7 @@ GoCapabilities:
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor) # should be SeaGetCapabilities
+  call ASM_PFX(InitializeSmmMonitor)
   addq $0x20, %rsp
   # should never get here
   jmp  DeadLoop
@@ -112,7 +112,7 @@ GoResource:
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor) # should be SeaGetResources
+  call ASM_PFX(InitializeSmmMonitor)
   addq $0x20, %rsp
   # should never get here
 DeadLoop:
