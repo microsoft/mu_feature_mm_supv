@@ -230,18 +230,24 @@ InitializePageTablePool (
   returned.
 
   @param  Pages                 The number of 4 KB pages to allocate.
+  @param  NewAllocation         Pointer to a passed in BOOLEAN that will be TRUE if new pages have been allocated
+                                for the page pool and FALSE otherwise.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
 
 **/
 VOID *
 AllocatePageTableMemory (
-  IN UINTN  Pages
+  IN UINTN     Pages,
+  OUT BOOLEAN  *NewAllocation
   )
 {
   VOID  *Buffer;
 
+  *NewAllocation = TRUE;
+
   if (Pages == 0) {
+    *NewAllocation = FALSE;
     return NULL;
   }
 
@@ -251,6 +257,7 @@ AllocatePageTableMemory (
   if ((mPageTablePool == NULL) ||
       (Pages > mPageTablePool->FreePages))
   {
+    *NewAllocation = FALSE;
     if (!InitializePageTablePool (Pages)) {
       return NULL;
     }
@@ -456,6 +463,9 @@ ConvertMemoryPageAttributes (
   EFI_PHYSICAL_ADDRESS  MaximumSupportMemAddress;
   BOOLEAN               WriteProtect;
   BOOLEAN               CetEnabled;
+  BOOLEAN               SamePageTable;
+
+  SamePageTable = TRUE;
 
   ASSERT (Attributes != 0);
   ASSERT ((Attributes & ~EFI_MEMORY_ATTRIBUTE_MASK) == 0);
@@ -563,13 +573,19 @@ ConvertMemoryPageAttributes (
     return RETURN_SUCCESS;
   }
 
+Recall:
   PageTableBufferSize = 0;
   WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
   Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
 
   if (Status == RETURN_BUFFER_TOO_SMALL) {
-    PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize));
+    PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &SamePageTable);
     ASSERT (PageTableBuffer != NULL);
+    if (!SamePageTable) {
+      // Need to check the PageTableMap again with the newly allocated pages
+      goto Recall;
+    }
+
     Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
   }
 
@@ -831,10 +847,15 @@ GenSmmPageTable (
   // MU_CHANGE: MM_SUPV: Change default to NX
   MapAttribute.Bits.Nx = 1;
 
+  // MU_CHANGE: Boolean for AllocatePageTableMemory
+  BOOLEAN  SamePageTable;
+
+  SamePageTable = TRUE;
+
   Status = PageTableMap (&PageTable, PagingMode, NULL, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_BUFFER_TOO_SMALL);
   DEBUG ((DEBUG_INFO, "GenSMMPageTable: 0x%x bytes needed for initial SMM page table\n", PageTableBufferSize));
-  PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize));
+  PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &SamePageTable);
   ASSERT (PageTableBuffer != NULL);
   Status = PageTableMap (&PageTable, PagingMode, PageTableBuffer, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_SUCCESS);

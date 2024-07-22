@@ -238,6 +238,10 @@ SmmInitPageTable (
   UINT64                    *Pml5Entry;
   UINT8                     PhysicalAddressBits;
 
+  BOOLEAN  SamePageTable;
+
+  SamePageTable = TRUE;
+
   //
   // Initialize spin lock
   //
@@ -298,7 +302,7 @@ SmmInitPageTable (
     //
     // Add pages to page pool
     //
-    FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES);
+    FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES, &SamePageTable);
     if (FreePage == NULL) {
       DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for FreePage!!!\n", __FUNCTION__));
       Status = EFI_OUT_OF_RESOURCES;
