@@ -644,17 +644,14 @@ FlushTlbForAll (
   VOID
   )
 {
-  UINTN  Index;
-
   FlushTlbOnCurrentProcessor (NULL);
-
-  for (Index = 0; Index < gMmCoreMmst.NumberOfCpus; Index++) {
-    if (Index != gMmCoreMmst.CurrentlyExecutingCpu) {
-      // Force to start up AP in blocking mode,
-      SmmBlockingStartupThisAp (FlushTlbOnCurrentProcessor, Index, NULL);
-      // Do not check return status, because AP might not be present in some corner cases.
-    }
-  }
+  InternalSmmStartupAllAPs (
+    (EFI_AP_PROCEDURE2)FlushTlbOnCurrentProcessor,
+    0,
+    NULL,
+    NULL,
+    NULL
+    );
 }
 
 /**
@@ -1106,6 +1103,7 @@ PatchSmmSaveStateMap (
   UINTN  TileCodeSize;
   UINTN  TileDataSize;
   UINTN  TileSize;
+  UINTN  PageTableBase;
 
   TileCodeSize = GetSmiHandlerSize ();
   TileCodeSize = ALIGN_VALUE (TileCodeSize, SIZE_4KB);
@@ -1114,64 +1112,101 @@ PatchSmmSaveStateMap (
   TileSize     = TileDataSize + TileCodeSize - 1;
   TileSize     = 2 * GetPowerOfTwo32 ((UINT32)TileSize);
 
+  GetPageTable (&PageTableBase, NULL);
+  PageTableBase = PageTableBase & PAGING_4K_ADDRESS_MASK_64;
+
   DEBUG ((DEBUG_INFO, "PatchSmmSaveStateMap:\n"));
   for (Index = 0; Index < mMaxNumberOfCpus - 1; Index++) {
     //
     // Code
     //
-    SmmSetMemoryAttributes (
+    ConvertMemoryPageAttributes (
+      PageTableBase,
+      mPagingMode,
       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
       TileCodeSize,
-      EFI_MEMORY_RO | EFI_MEMORY_SP
+      EFI_MEMORY_RO | EFI_MEMORY_SP,
+      TRUE,
+      NULL
       );
-    SmmClearMemoryAttributes (
+    ConvertMemoryPageAttributes (
+      PageTableBase,
+      mPagingMode,
       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
       TileCodeSize,
-      EFI_MEMORY_XP
+      EFI_MEMORY_XP,
+      FALSE,
+      NULL
       );
 
     //
     // Data
     //
-    SmmClearMemoryAttributes (
+    ConvertMemoryPageAttributes (
+      PageTableBase,
+      mPagingMode,
       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
       TileSize - TileCodeSize,
-      EFI_MEMORY_RO
+      EFI_MEMORY_RO,
+      FALSE,
+      NULL
       );
-    SmmSetMemoryAttributes (
+    ConvertMemoryPageAttributes (
+      PageTableBase,
+      mPagingMode,
       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
       TileSize - TileCodeSize,
-      EFI_MEMORY_XP | EFI_MEMORY_SP
+      EFI_MEMORY_XP | EFI_MEMORY_SP,
+      TRUE,
+      NULL
       );
   }
 
   //
   // Code
   //
-  SmmSetMemoryAttributes (
+  ConvertMemoryPageAttributes (
+    PageTableBase,
+    mPagingMode,
     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
     TileCodeSize,
-    EFI_MEMORY_RO | EFI_MEMORY_SP
+    EFI_MEMORY_RO | EFI_MEMORY_SP,
+    TRUE,
+    NULL
     );
-  SmmClearMemoryAttributes (
+  ConvertMemoryPageAttributes (
+    PageTableBase,
+    mPagingMode,
     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
     TileCodeSize,
-    EFI_MEMORY_XP
+    EFI_MEMORY_XP,
+    FALSE,
+    NULL
     );
 
   //
   // Data
   //
-  SmmClearMemoryAttributes (
+  ConvertMemoryPageAttributes (
+    PageTableBase,
+    mPagingMode,
     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
     SIZE_32KB - TileCodeSize,
-    EFI_MEMORY_RO
+    EFI_MEMORY_RO,
+    FALSE,
+    NULL
     );
-  SmmSetMemoryAttributes (
+  ConvertMemoryPageAttributes (
+    PageTableBase,
+    mPagingMode,
     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
     SIZE_32KB - TileCodeSize,
-    EFI_MEMORY_XP | EFI_MEMORY_SP
+    EFI_MEMORY_XP | EFI_MEMORY_SP,
+    TRUE,
+    NULL
     );
+
+  FlushTlbForAll ();
 }
 
 /**
