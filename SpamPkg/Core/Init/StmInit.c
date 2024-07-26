@@ -12,8 +12,19 @@
 
 **/
 
-#include "StmInit.h"
+#include <Uefi.h>
+#include <SpamResponder.h>
+#include <SmmSecurePolicy.h>
+#include <IndustryStandard/Tpm20.h>
 #include <Library/PcdLib.h>
+#include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/SecurePolicyLib.h>
+#include <x64/CpuArchSpecific.h>
+
+#include "StmInit.h"
+#include "Runtime/StmRuntimeUtil.h"
 
 SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
 
@@ -520,11 +531,9 @@ BspInit (
     DEBUG ((EFI_D_INFO, "CpuNumber from ACPI MADT - %d\n", (UINTN)mHostContextCommon.CpuNum));
   }
 
-  InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
-
   InitializeSpinLock (&mHostContextCommon.MemoryLock);
   InitializeSpinLock (&mHostContextCommon.SmiVmcallLock);
-  InitializeSpinLock (&mHostContextCommon.PciLock);
+  InitializeSpinLock (&mHostContextCommon.ResponderLock);
 
   DEBUG ((EFI_D_INFO, "HeapBottom - %08x\n", mHostContextCommon.HeapBottom));
   DEBUG ((EFI_D_INFO, "HeapTop    - %08x\n", mHostContextCommon.HeapTop));
@@ -667,48 +676,6 @@ BspInit (
 
 /**
 
-  This function initialize AP.
-
-  @param Index    CPU index
-  @param Register X86 register context
-
-**/
-VOID
-ApInit (
-  IN UINT32        Index,
-  IN X86_REGISTER  *Register
-  )
-{
-  while (!mIsBspInitialized) {
-    //
-    // Wait here
-    //
-  }
-
-  DEBUG ((EFI_D_INFO, "!!!Enter StmInit (AP done)!!! - %d (%x)\n", (UINTN)Index, (UINTN)ReadUnaligned32 ((UINT32 *)&Register->Rax)));
-
-  if (Index >= mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_INFO, "!!!Index(0x%x) >= mHostContextCommon.CpuNum(0x%x)\n", (UINTN)Index, (UINTN)mHostContextCommon.CpuNum));
-    CpuDeadLoop ();
-    Index = GetIndexFromStack (Register);
-  }
-
-  InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
-
-  DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)Index, Register));
-  Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-
-  if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
-    // Reset system
-    CpuDeadLoop ();
-  }
-
-  return;
-}
-
-/**
-
   This function initialize common part for BSP and AP.
 
   @param Index    CPU index
@@ -766,28 +733,23 @@ CommonInit (
   This function launch back to MLE.
 
   @param Index    CPU index
-
+  @param Register X86 register context
 **/
 VOID
 LaunchBack (
-  IN UINT32  Index
+  IN UINT32        Index,
+  IN X86_REGISTER  *Register
   )
 {
-  UINTN         Rflags;
-  X86_REGISTER  *Reg;
-
-  Reg = &mHostContextCommon.HostContextPerCpu[Index].Register;
+  UINTN  Rflags;
 
   //
-  // Indicate success, if BIOS resource is good.
+  // Indicate operation status from caller.
   //
-  WriteUnaligned32 ((UINT32 *)&Reg->Rax, STM_SUCCESS);
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
 
-  WriteUnaligned32 ((UINT32 *)&Reg->Rbx, 0); // Not support STM_RSC_BGM or STM_RSC_BGI or STM_RSC_MSR
-
   DEBUG ((EFI_D_INFO, "!!!LaunchBack (%d)!!!\n", (UINTN)Index));
-  Rflags = AsmVmLaunch (Reg);
+  Rflags = AsmVmLaunch (Register);
 
   AcquireSpinLock (&mHostContextCommon.DebugLock);
   DEBUG ((EFI_D_ERROR, "!!!LaunchBack FAIL!!!\n"));
@@ -799,34 +761,264 @@ LaunchBack (
 }
 
 /**
+  Function for caller to query the capabilities of SEA core.
 
-  This function initialize STM.
+  @param[in, out]  Register  The registers of the context of current VMCALL request.
+
+  @retval EFI_SUCCESS               The function completed successfully.
+  @retval EFI_INVALID_PARAMETER     The supplied buffer has NULL physical address.
+  @retval EFI_SECURITY_VIOLATION    The system status tripped on security violation.
+**/
+EFI_STATUS
+EFIAPI
+GetCapabilities (
+  IN OUT X86_REGISTER  *Register
+  )
+{
+  STM_STATUS               StmStatus;
+  EFI_STATUS               Status;
+  UINT64                   BufferBase;
+  UINT64                   BufferSize;
+  SEA_CAPABILITIES_STRUCT  RetStruct;
+
+  if (Register == NULL) {
+    Status = EFI_INVALID_PARAMETER;
+    DEBUG ((DEBUG_ERROR, "%a Incoming register being NULL!\n", __func__));
+    goto Done;
+  }
+
+  // Check the buffer not null requirement
+  BufferBase = Register->Rbx;
+  BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
+  if (BufferBase == 0) {
+    StmStatus = ERROR_INVALID_PARAMETER;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer being NULL!\n", __func__));
+    goto Done;
+  }
+
+  // Check the minimal size requirement
+  if (BufferSize < sizeof (SEA_CAPABILITIES_STRUCT)) {
+    StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer too small: 0x%x bytes!\n", __func__, BufferSize));
+    goto Done;
+  }
+
+  // Check the buffer alignment requirement
+  if (!IS_ALIGNED (BufferBase, EFI_PAGE_SIZE)) {
+    StmStatus = ERROR_SMM_BAD_BUFFER;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer not page size aligned: 0x%x bytes!\n", __func__, BufferBase));
+    goto Done;
+  }
+
+  // Check the buffer supplied is not in the MSEG or TSEG.
+  if (IsBufferInsideMmram (BufferBase, BufferSize)) {
+    StmStatus = ERROR_STM_PAGE_NOT_FOUND;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer is inside MMRAM: Base: 0x%x, Size: 0x%x !\n", __func__, BufferBase, BufferSize));
+    goto Done;
+  }
+
+  // Enough complaints, get to work now.
+  RetStruct.SeaSpecVerMajor = SEA_SPEC_VERSION_MAJOR;
+  RetStruct.SeaSpecVerMinor = SEA_SPEC_VERSION_MINOR;
+  RetStruct.Reserved        = 0;
+  RetStruct.SeaHeaderSize   = OFFSET_OF (SEA_CAPABILITIES_STRUCT, SeaFeatures);
+  RetStruct.SeaTotalSize    = sizeof (SEA_CAPABILITIES_STRUCT);
+
+  RetStruct.SeaFeatures.VerifyMmiEntry = TRUE;
+  RetStruct.SeaFeatures.VerifyMmPolicy = TRUE;
+  RetStruct.SeaFeatures.VerifyMmSupv   = TRUE;
+  RetStruct.SeaFeatures.HashAlg        = HASH_ALG_SHA256;
+  RetStruct.SeaFeatures.Reserved       = 0;
+
+  CopyMem ((VOID *)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
+  Status = EFI_SUCCESS;
+
+Done:
+  return Status;
+}
+
+/**
+  Function for caller to query the resources of SMM environment.
+
+  @param[in]  Register  The registers of the context of current VMCALL request.
+
+  @retval EFI_SUCCESS               The function completed successfully.
+  @retval EFI_INVALID_PARAMETER     The supplied buffer has NULL physical address.
+  @retval EFI_SECURITY_VIOLATION    The system status tripped on security violation.
+**/
+EFI_STATUS
+EFIAPI
+GetResources (
+  IN OUT X86_REGISTER  *Register
+  )
+{
+  STM_STATUS                        StmStatus;
+  EFI_STATUS                        Status;
+  UINT64                            BufferBase;
+  UINT64                            BufferSize;
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *PolicyBuffer = NULL;
+  TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
+  UINTN                             CpuIndex;
+
+  if (Register == NULL) {
+    Status = EFI_INVALID_PARAMETER;
+    DEBUG ((DEBUG_ERROR, "%a Incoming register being NULL!\n", __func__));
+    goto Done;
+  }
+
+  // Check the buffer not null requirement
+  BufferBase = Register->Rbx;
+  BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
+  if (BufferBase == 0) {
+    StmStatus = ERROR_INVALID_PARAMETER;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer being NULL!\n", __func__));
+    goto Done;
+  }
+
+  // Check the buffer alignment requirement
+  if (!IS_ALIGNED (BufferBase, EFI_PAGE_SIZE)) {
+    StmStatus = ERROR_SMM_BAD_BUFFER;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer not page size aligned: 0x%x bytes!\n", __func__, BufferBase));
+    goto Done;
+  }
+
+  // Check the buffer supplied is not in the MSEG or TSEG.
+  if (IsBufferInsideMmram (BufferBase, BufferSize)) {
+    StmStatus = ERROR_STM_PAGE_NOT_FOUND;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Incoming buffer is inside MMRAM: Base: 0x%x, Size: 0x%x !\n", __func__, BufferBase, BufferSize));
+    goto Done;
+  }
+
+  //
+  // Get information about the image being loaded
+  //
+  ZeroMem (DigestList, sizeof (DigestList));
+  DigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
+  DigestList[MMI_ENTRY_DIGEST_INDEX].count              = 1;
+  CopyMem (DigestList[MMI_ENTRY_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmiEntryBinHash), SHA256_DIGEST_SIZE);
+
+  DigestList[MM_SUPV_DIGEST_INDEX].digests[0].hashAlg = TPM_ALG_SHA256;
+  DigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
+  CopyMem (DigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
+
+  CpuIndex = GetIndexFromStack (Register);
+  AcquireSpinLock (&mHostContextCommon.ResponderLock);
+  Status = SpamResponderReport (
+             CpuIndex,
+             (EFI_PHYSICAL_ADDRESS)(UINTN)PcdGetPtr (PcdAuxBinFile),
+             PcdGetSize (PcdAuxBinFile),
+             PcdGet64 (PcdMmiEntryBinSize),
+             DigestList,
+             SUPPORTED_DIGEST_COUNT,
+             (VOID *)&PolicyBuffer
+             );
+
+  if (EFI_ERROR (Status)) {
+    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+    StmStatus = ERROR_STM_SECURITY_VIOLATION;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Validation routine failed: %r!\n", __func__, Status));
+    goto Done;
+  } else if (BufferSize < PolicyBuffer->Size) {
+    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+    StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Policy returned (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, PolicyBuffer->Size, BufferSize));
+    goto Done;
+  } else if (IsZeroBuffer ((VOID *)(UINTN)BufferBase, BufferSize)) {
+    // First time being here, populate the content
+    CopyMem ((VOID *)(UINTN)BufferBase, PolicyBuffer, PolicyBuffer->Size);
+    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+    StmStatus = STM_SUCCESS;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SUCCESS;
+  } else if (CompareMemoryPolicy (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase) == FALSE) {
+    // Not the first time, making sure the validation routine is giving us the same policy buffer output
+    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+    StmStatus = ERROR_STM_SECURITY_VIOLATION;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SECURITY_VIOLATION;
+    DEBUG ((DEBUG_ERROR, "%a Memory policy changed from one core the next!!!\n", __func__));
+    goto Done;
+  } else {
+    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+    StmStatus = STM_SUCCESS;
+    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    Status = EFI_SUCCESS;
+  }
+
+Done:
+  if (PolicyBuffer != NULL) {
+    FreePages (PolicyBuffer, EFI_SIZE_TO_PAGES (PolicyBuffer->Size));
+  }
+
+  return Status;
+}
+
+/**
+
+  This function handles VMCalls into SEA module in C code.
 
   @param Register X86 register context
 
 **/
 VOID
-InitializeSmmMonitor (
+SeaVmcallDispatcher (
   IN X86_REGISTER  *Register
   )
 {
-  UINT32  Index;
+  UINT32      CpuIndex;
+  UINT32      ServiceId;
+  EFI_STATUS  Status;
 
-  Index = GetIndexFromStack (Register);
-  if (Index == 0) {
-    // The build process should make sure "virtual address" is same as "file pointer to raw data",
-    // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
-    // If no, GenStm tool will "load image". So here, we just need "relocate image"
-    RelocateStmImage (FALSE);
+  CpuIndex  = GetIndexFromStack (Register);
+  ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
 
-    BspInit (Register);
-  } else {
-    Index = GetIndexFromStack (Register);
-    ApInit (Index, Register);
+  switch (ServiceId) {
+    case SEA_API_GET_CAPABILITIES:
+      if (CpuIndex == 0) {
+        // The build process should make sure "virtual address" is same as "file pointer to raw data",
+        // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
+        // If no, GenStm tool will "load image". So here, we just need "relocate image"
+        RelocateStmImage (FALSE);
+
+        BspInit (Register);
+      }
+
+      CommonInit (CpuIndex);
+      Status = GetCapabilities (Register);
+      break;
+    case SEA_API_GET_RESOURCES:
+      if (!mIsBspInitialized) {
+        Status = EFI_NOT_STARTED;
+        break;
+      }
+
+      Status = GetResources (Register);
+      break;
   }
 
-  CommonInit (Index);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ServiceId(%d) error - %r\n", (UINTN)ServiceId, Status));
+    ASSERT_EFI_ERROR (Status);
+  }
 
-  LaunchBack (Index);
+  LaunchBack (CpuIndex, Register);
   return;
 }

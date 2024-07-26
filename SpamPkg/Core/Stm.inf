@@ -18,7 +18,7 @@
   FILE_GUID                      = 829ACE7E-B715-43ef-B7C8-5375C101AEA1
   MODULE_TYPE                    = USER_DEFINED
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = AsmInitializeSmmMonitorNew
+  ENTRY_POINT                    = AsmSeaVmcallDispatcherNew
 
 #
 # The following information is for reference only and not required by the build tools.

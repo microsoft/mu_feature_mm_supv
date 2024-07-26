@@ -430,7 +430,7 @@ typedef struct _SEA_HOST_CONTEXT_COMMON {
   SPIN_LOCK                           DebugLock;
   SPIN_LOCK                           MemoryLock;
   SPIN_LOCK                           SmiVmcallLock;
-  SPIN_LOCK                           PciLock;
+  SPIN_LOCK                           ResponderLock;
   UINT32                              CpuNum;
   UINT32                              JoinedCpuNum;
   UINTN                               PageTable;
