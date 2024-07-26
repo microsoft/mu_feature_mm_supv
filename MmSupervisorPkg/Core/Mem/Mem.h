@@ -481,7 +481,7 @@ SmmGetMemoryAttributes (
 VOID *
 AllocatePageTableMemory (
   IN UINTN     Pages,
-  OUT BOOLEAN  *NewAllocation
+  OUT BOOLEAN  *NewAllocation OPTIONAL
   );
 
 /**
