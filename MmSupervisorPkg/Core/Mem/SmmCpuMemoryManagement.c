@@ -244,10 +244,15 @@ AllocatePageTableMemory (
 {
   VOID  *Buffer;
 
-  *NewAllocation = TRUE;
+  if (NewAllocation != NULL) {
+    *NewAllocation = TRUE;
+  }
 
   if (Pages == 0) {
-    *NewAllocation = FALSE;
+    if (NewAllocation != NULL) {
+      *NewAllocation = FALSE;
+    }
+
     return NULL;
   }
 
@@ -257,7 +262,10 @@ AllocatePageTableMemory (
   if ((mPageTablePool == NULL) ||
       (Pages > mPageTablePool->FreePages))
   {
-    *NewAllocation = FALSE;
+    if (NewAllocation != NULL) {
+      *NewAllocation = FALSE;
+    }
+
     if (!InitializePageTablePool (Pages)) {
       return NULL;
     }
