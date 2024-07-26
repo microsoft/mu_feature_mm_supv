@@ -15,65 +15,23 @@
 #
 #------------------------------------------------------------------------------
 
-ASM_GLOBAL ASM_PFX(InitializeSmmMonitor)
+ASM_GLOBAL ASM_PFX(SeaVmcallDispatcher)
 ASM_GLOBAL ASM_PFX(_ModuleEntryPoint)
 
-.equ STM_API_START,                 0x00010001
-.equ STM_API_INITIALIZE_PROTECTION, 0x00010007
+.equ SEA_API_GET_CAPABILITIES,  0x00010101
+.equ SEA_API_GET_RESOURCES,     0x00010102
 
 .equ STM_STACK_SIZE,                0x020000
 
 #------------------------------------------------------------------------------
 # VOID
-# AsmInitializeSmmMonitor (
+# AsmSeaVmcallDispatcher (
 #   VOID
 #   )
 ASM_PFX(_ModuleEntryPoint):
-  cmpl $STM_API_INITIALIZE_PROTECTION, %eax # for BSP
-  jz  GoBsp
-  cmpl $STM_API_START, %eax # for AP
-  jz  GoAp
-  jmp DeadLoop
-
-GoBsp:
-  # Assume ThisOffset is 0
-  # ESP is pointer to stack bottom, NOT top
-  movl $STM_STACK_SIZE, %eax     # eax = STM_STACK_SIZE, 
-  lock xaddl %eax, (%esp)        # eax = ThisOffset, ThisOffset += STM_STACK_SIZE (LOCK instruction)
-  addl $STM_STACK_SIZE, %eax     # eax = ThisOffset + STM_STACK_SIZE
-  addl %eax, %esp                # esp += ThisOffset + STM_STACK_SIZE
-
-  #
-  # Jump to C code
-  #
-  push %r15
-  push %r14
-  push %r13
-  push %r12
-  push %r11
-  push %r10
-  push %r9
-  push %r8
-  push %rdi
-  push %rsi
-  push %rbp
-  push %rbp # should be rsp
-  push %rbx
-  push %rdx
-  push %rcx
-  movl $STM_API_INITIALIZE_PROTECTION, %eax
-  push %rax
-  movq %rsp, %rcx # parameter
-  subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor)
-  addq $0x20, %rsp
-  # should never get here
-  jmp  DeadLoop
-
-GoAp:
-  #
-  # assign unique ESP for each processor
-  #
+#
+# assign unique ESP for each processor
+#
 # |------------|<-ESP (PerProc)
 # | Reg        |
 # |------------|
@@ -108,11 +66,11 @@ GoAp:
   push %rbx
   push %rdx
   push %rcx
-  movl $STM_API_START, %eax
+  movl $SEA_API_GET_RESOURCES, %eax
   push %rax
   movq %rsp, %rcx # parameter
   subq $0x20, %rsp
-  call ASM_PFX(InitializeSmmMonitor)
+  call ASM_PFX(SeaVmcallDispatcher)
   addq $0x20, %rsp
   # should never get here
 DeadLoop:
