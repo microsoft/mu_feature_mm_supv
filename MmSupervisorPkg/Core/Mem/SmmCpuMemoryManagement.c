@@ -245,14 +245,10 @@ AllocatePageTableMemory (
   VOID  *Buffer;
 
   if (NewAllocation != NULL) {
-    *NewAllocation = TRUE;
+    *NewAllocation = FALSE;
   }
 
   if (Pages == 0) {
-    if (NewAllocation != NULL) {
-      *NewAllocation = FALSE;
-    }
-
     return NULL;
   }
 
@@ -263,10 +259,15 @@ AllocatePageTableMemory (
       (Pages > mPageTablePool->FreePages))
   {
     if (NewAllocation != NULL) {
-      *NewAllocation = FALSE;
+      *NewAllocation = TRUE;
     }
 
     if (!InitializePageTablePool (Pages)) {
+      // No new allocation was done because we ran out of memory
+      if (NewAllocation != NULL) {
+        *NewAllocation = FALSE;
+      }
+
       return NULL;
     }
   }
@@ -473,7 +474,7 @@ ConvertMemoryPageAttributes (
   BOOLEAN               CetEnabled;
   BOOLEAN               SamePageTable;
 
-  SamePageTable = FALSE;
+  SamePageTable = TRUE;
 
   ASSERT (Attributes != 0);
   ASSERT ((Attributes & ~EFI_MEMORY_ATTRIBUTE_MASK) == 0);
@@ -581,7 +582,7 @@ ConvertMemoryPageAttributes (
     return RETURN_SUCCESS;
   }
 
-  while (!SamePageTable) {
+  while (SamePageTable) {
     PageTableBufferSize = 0;
     WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
     Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
