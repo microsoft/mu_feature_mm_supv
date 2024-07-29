@@ -23,7 +23,7 @@
   MODULE_TYPE                    = PEIM
   VERSION_STRING                 = 1.0
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 9a5e8e7f82cb60189868a23b5acf8d56 | 2023-10-25T17-32-17 | e77aa3b4b2bb9854c8ec3ec931b97428fe86315e     
+#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 62b661dc3105162b2715d9185fe8cd84 | 2024-07-29T18-46-54 | 5bfab09d1f243366d256ed254ded0413d9b1440d
 
 #
 # The following information is for reference only and not required by the build tools.
