@@ -238,7 +238,6 @@ extern MM_CORE_PRIVATE_DATA        *gMmCoreMailbox;
 extern EFI_MM_SYSTEM_TABLE         gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE         *gMmUserMmst;
 extern LIST_ENTRY                  gHandleList;
-extern EFI_PHYSICAL_ADDRESS        gLoadModuleAtFixAddressMmramBase;
 extern MM_SUPV_USER_COMMON_BUFFER  *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS        mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY         *mMmCoreDriverEntry;
