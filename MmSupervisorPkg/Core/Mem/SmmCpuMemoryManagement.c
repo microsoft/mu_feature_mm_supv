@@ -472,9 +472,9 @@ ConvertMemoryPageAttributes (
   EFI_PHYSICAL_ADDRESS  MaximumSupportMemAddress;
   BOOLEAN               WriteProtect;
   BOOLEAN               CetEnabled;
-  BOOLEAN               SamePageTable;
+  BOOLEAN               UpdatedPageTable;
 
-  SamePageTable = TRUE;
+  UpdatedPageTable = TRUE;
 
   ASSERT (Attributes != 0);
   ASSERT ((Attributes & ~EFI_MEMORY_ATTRIBUTE_MASK) == 0);
@@ -582,20 +582,22 @@ ConvertMemoryPageAttributes (
     return RETURN_SUCCESS;
   }
 
-  while (SamePageTable) {
+  while (UpdatedPageTable) {
     PageTableBufferSize = 0;
     WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
     Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
 
     if (Status == RETURN_BUFFER_TOO_SMALL) {
-      PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &SamePageTable);
+      PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &UpdatedPageTable);
       ASSERT (PageTableBuffer != NULL);
-      if (!SamePageTable) {
+      if (UpdatedPageTable) {
         // Need to check the PageTableMap again with the newly allocated pages
         continue;
       }
 
       Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
+    } else {
+      break; // In the off chance we don't return buffer to small we need to exit the loop or be stuck
     }
   }
 
