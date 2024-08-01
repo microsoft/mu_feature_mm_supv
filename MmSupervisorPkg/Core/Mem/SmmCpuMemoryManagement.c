@@ -589,7 +589,11 @@ ConvertMemoryPageAttributes (
 
     if (Status == RETURN_BUFFER_TOO_SMALL) {
       PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &UpdatedPageTable);
-      ASSERT (PageTableBuffer != NULL);
+      if (PageTableBuffer == NULL) {
+        DEBUG ((DEBUG_ERROR, "Failed to allocate page table memory for the page pool!\n"));
+        ASSERT (PageTableBuffer != NULL);
+        break; // We failed to allocate more memory so exit the loop and don't call into PageTableMap again
+      }
       if (UpdatedPageTable) {
         // Need to check the PageTableMap again with the newly allocated pages
         continue;
@@ -597,7 +601,7 @@ ConvertMemoryPageAttributes (
 
       Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
     } else {
-      break; // In the off chance we don't return buffer to small we need to exit the loop or be stuck
+      break; // In the off chance we don't return BUFFER_TOO_SMALL we need to exit the loop or be stuck
     }
   }
 
