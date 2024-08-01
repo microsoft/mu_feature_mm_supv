@@ -472,13 +472,16 @@ SmmGetMemoryAttributes (
   returned.
 
   @param  Pages                 The number of 4 KB pages to allocate.
+  @param  NewAllocation         Pointer to a passed in BOOLEAN that will be TRUE if new pages have been allocated
+                                for the page pool and FALSE otherwise.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
 
 **/
 VOID *
 AllocatePageTableMemory (
-  IN UINTN  Pages
+  IN UINTN     Pages,
+  OUT BOOLEAN  *NewAllocation OPTIONAL
   );
 
 /**
