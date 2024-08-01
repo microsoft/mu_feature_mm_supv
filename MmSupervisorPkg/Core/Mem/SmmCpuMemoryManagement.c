@@ -594,6 +594,7 @@ ConvertMemoryPageAttributes (
         ASSERT (PageTableBuffer != NULL);
         break; // We failed to allocate more memory so exit the loop and don't call into PageTableMap again
       }
+
       if (UpdatedPageTable) {
         // Need to check the PageTableMap again with the newly allocated pages
         continue;
