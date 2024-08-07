@@ -740,4 +740,13 @@ ProcessUserSaveStateAccess (
   IN UINT64               Arg3
   );
 
+/**
+  Function to perform post relocation logic before handing back to the IPL.
+
+**/
+VOID
+PostRelocationRun (
+  VOID
+  );
+
 #endif
