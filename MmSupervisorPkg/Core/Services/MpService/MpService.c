@@ -2068,6 +2068,11 @@ InitializeMpServiceData (
   GdtTssTables = InitGdt (Cr3, &GdtTableStepSize);
 
   //
+  // Check XD and BTS features on each processor on normal boot
+  //
+  CheckFeatureSupported ();
+
+  //
   // Install SMI handler for each CPU
   //
   for (Index = 0; Index < mMaxNumberOfCpus; Index++) {

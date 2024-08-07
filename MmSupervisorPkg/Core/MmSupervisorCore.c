@@ -424,7 +424,6 @@ MmEntryPoint (
 {
   EFI_STATUS                 Status;
   EFI_MM_COMMUNICATE_HEADER  *CommunicateHeader;
-  STATIC BOOLEAN             FirstMmi = TRUE;
   EFI_PHYSICAL_ADDRESS       CommunicationBuffer;
   UINT64                     BufferSize;
 
@@ -447,19 +446,6 @@ MmEntryPoint (
   }
 
   gMmCorePrivate->InMm = TRUE;
-
-  if (FirstMmi) {
-    //
-    // Call memory management hook function to set all cached guard pages during initialization.
-    // This is only applicable to the first time in MMI, since all page allocation/free will
-    // set/unset the guard pages on the fly.
-    //
-    MmEntryPointMemoryManagementHook ();
-
-    // Set up the code access check before any handler was iterated
-    ConfigSmmCodeAccessCheck ();
-    FirstMmi = FALSE;
-  }
 
   //
   // Check to see if this is a Synchronous MMI sent through the MM Communication
@@ -1017,6 +1003,8 @@ MmSupervisorMain (
   if (gMmCoreMailbox != NULL) {
     CopyMem (gMmCoreMailbox, gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
   }
+
+  PostRelocationRun ();
 
   DEBUG ((DEBUG_INFO, "MmMain Done!\n"));
 
