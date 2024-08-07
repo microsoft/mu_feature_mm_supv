@@ -217,6 +217,7 @@ typedef struct {
   EFI_MM_HANDLER_ENTRY_POINT    Handler;     // The mm handler's entry point
   UINTN                         CallerAddr;  // The address of caller who register the SMI handler.
   MMI_ENTRY                     *MmiEntry;
+  BOOLEAN                       ToRemove;     // To remove this MMI_HANDLER later
   VOID                          *Context;     // for profile
   UINTN                         ContextSize;  // for profile
   BOOLEAN                       IsSupervisor; // for isolation
