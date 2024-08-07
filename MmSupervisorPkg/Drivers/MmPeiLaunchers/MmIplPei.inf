@@ -60,6 +60,7 @@
   PerformanceLib  #MU_CHANGE: MM_SUPV: Added performance data points
   PeiServicesLib  #MU_CHANGE: Add PeiServicesLib to INF
   HobLib  #MU_CHANGE: Add HobLib to INF
+  PanicLib  #MU_CHANGE: Add PanicLib to INF
 
 [Ppis]
   gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
@@ -77,6 +78,8 @@
   gMmCommonRegionHobGuid                        ## PRODUCES
   gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
+  gEfiMmPeiMmramMemoryReserveGuid
+  gEfiSmmSmramMemoryGuid
 
 [FeaturePcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
