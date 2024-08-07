@@ -24,6 +24,7 @@
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
+#include <Guid/MmramMemoryReserve.h>
 
 #include <Library/BaseLib.h>
 #include <Library/HobLib.h>
@@ -37,6 +38,7 @@
 #include <Library/PeiServicesLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
+#include <Library/PanicLib.h>
 
 #include <Library/SafeIntLib.h>           // MU_CHANGE: BZ3398
 #include <Library/SecurityLockAuditLib.h> // MSCHANGE
@@ -1056,250 +1058,46 @@ GetFullMmramRanges (
   OUT UINTN                  *FullMmramRangeCount
   )
 {
-  EFI_STATUS                    Status;
-  EFI_PEI_MM_CONFIGURATION_PPI  *MmConfiguration;
-  UINTN                         Size;
-  UINTN                         Index;
-  UINTN                         Index2;
-  EFI_MMRAM_DESCRIPTOR          *FullMmramRanges;
-  UINTN                         TempMmramRangeCount;
-  UINTN                         AdditionMmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR          *TempMmramRanges;
-  UINTN                         MmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR          *MmramRanges;
-  UINTN                         MmramReservedCount;
-  EFI_MM_RESERVED_MMRAM_REGION  *MmramReservedRanges;
-  UINTN                         MaxCount;
-  BOOLEAN                       Rescan;
+  EFI_MMRAM_DESCRIPTOR  *FullMmramRanges;
+  UINTN                 MmramRangeCount;
+  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
 
-  MmramRanges     = NULL;
-  TempMmramRanges = NULL;
+  EFI_MMRAM_HOB_DESCRIPTOR_BLOCK  *MmramRangesHobData;
+  EFI_HOB_GUID_TYPE               *MmramRangesHob;
 
-  // MU_CHANGE: Changed to use MM PPI instead of protocol
-  //
-  // Get MM Configuration PPI if it is present.
-  //
-  MmConfiguration = NULL;
-  Status          = (*PeiServices)->LocatePpi (
-                                      PeiServices,
-                                      &gEfiPeiMmConfigurationPpi,
-                                      0,
-                                      NULL,
-                                      (VOID **)&MmConfiguration
-                                      );
-
-  //
-  // Get SMRAM information.
-  //
-  Size   = 0;
-  Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, NULL);
-  ASSERT (Status == EFI_BUFFER_TOO_SMALL);
-
-  MmramRangeCount = Size / sizeof (EFI_MMRAM_DESCRIPTOR);
-
-  //
-  // Get SMRAM reserved region count.
-  //
-  MmramReservedCount = 0;
-  if (MmConfiguration != NULL) {
-    while (MmConfiguration->MmramReservedRegions[MmramReservedCount].MmramReservedSize != 0) {
-      MmramReservedCount++;
+  MmramRangesHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
+  if (MmramRangesHob == NULL) {
+    MmramRangesHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
+    if (MmramRangesHob == NULL) {
+      DEBUG ((DEBUG_ERROR, "[%a] - Critical HOB missing that describes MMRAM regions. Cannot load MM.\n", __FUNCTION__));
+      ASSERT (MmramRangesHob != NULL);
+      PANIC ("Critical HOB missing that describes MMRAM regions");
     }
   }
 
-  //
-  // Reserve one entry for SMM Core in the full SMRAM ranges.
-  //
-  AdditionMmramRangeCount = 1;
-  // MU_CHANGE: Loaded Fixed Address information is unsupported
-  if (PcdGet64 (PcdLoadModuleAtFixAddressEnable) != 0) {
-    ASSERT (FALSE);
-    // //
-    // // Reserve two entries for all SMM drivers and SMM Core in the full SMRAM ranges.
-    // //
-    // AdditionMmramRangeCount = 2;
+  MmramRangesHobData = GET_GUID_HOB_DATA (MmramRangesHob);
+  if (MmramRangesHobData == NULL) {
+    return NULL;
   }
 
-  if (MmramReservedCount == 0) {
-    //
-    // No reserved SMRAM entry from SMM Configuration PPI.
-    //
-    *FullMmramRangeCount = MmramRangeCount + AdditionMmramRangeCount;
-    Size                 = (*FullMmramRangeCount) * sizeof (EFI_MMRAM_DESCRIPTOR);
-    FullMmramRanges      = (EFI_MMRAM_DESCRIPTOR *)AllocateZeroPool (Size);
-    ASSERT (FullMmramRanges != NULL);
-
-    Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, FullMmramRanges);
-    ASSERT_EFI_ERROR (Status);
-
-    return FullMmramRanges;
-  }
-
-  //
-  // Why MaxCount = X + 2 * Y?
-  // Take Y = 1 as example below, Y > 1 case is just the iteration of Y = 1.
-  //
-  //   X = 1 Y = 1     MaxCount = 3 = 1 + 2 * 1
-  //   ----            ----
-  //   |  |  ----      |--|
-  //   |  |  |  |  ->  |  |
-  //   |  |  ----      |--|
-  //   ----            ----
-  //
-  //   X = 2 Y = 1     MaxCount = 4 = 2 + 2 * 1
-  //   ----            ----
-  //   |  |            |  |
-  //   |  |  ----      |--|
-  //   |  |  |  |      |  |
-  //   |--|  |  |  ->  |--|
-  //   |  |  |  |      |  |
-  //   |  |  ----      |--|
-  //   |  |            |  |
-  //   ----            ----
-  //
-  //   X = 3 Y = 1     MaxCount = 5 = 3 + 2 * 1
-  //   ----            ----
-  //   |  |            |  |
-  //   |  |  ----      |--|
-  //   |--|  |  |      |--|
-  //   |  |  |  |  ->  |  |
-  //   |--|  |  |      |--|
-  //   |  |  ----      |--|
-  //   |  |            |  |
-  //   ----            ----
-  //
-  //   ......
-  //
-  MaxCount = MmramRangeCount + 2 * MmramReservedCount;
-
-  *FullMmramRangeCount = 0;
-  FullMmramRanges      = NULL;
-
-  Size                = MaxCount * sizeof (EFI_MM_RESERVED_MMRAM_REGION);
-  MmramReservedRanges = (EFI_MM_RESERVED_MMRAM_REGION *)AllocatePool (Size);
-  if (MmramReservedRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramReservedRanges!!!\n", __func__));
-    ASSERT (FALSE);
-    goto Cleanup;
-  }
-
-  for (Index = 0; Index < MmramReservedCount; Index++) {
-    CopyMem (&MmramReservedRanges[Index], &MmConfiguration->MmramReservedRegions[Index], sizeof (EFI_MM_RESERVED_MMRAM_REGION));
-  }
-
-  Size            = MaxCount * sizeof (EFI_MMRAM_DESCRIPTOR);
-  TempMmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
-  if (TempMmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for TempMmramRanges!!!\n", __func__));
-    ASSERT (FALSE);
-    goto Cleanup;
-  }
-
-  TempMmramRangeCount = 0;
-
-  MmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocatePool (Size);
+  MmramRanges = MmramRangesHobData->Descriptor;
   if (MmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for MmramRanges!!!\n", __func__));
-    ASSERT (FALSE);
-    goto Cleanup;
+    return NULL;
   }
 
-  Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, MmramRanges);
-  ASSERT_EFI_ERROR (Status);
+  MmramRangeCount = (UINTN)MmramRangesHobData->NumberOfMmReservedRegions;
+  if (MmramRanges == NULL) {
+    return NULL;
+  }
 
-  do {
-    Rescan = FALSE;
-    for (Index = 0; (Index < MmramRangeCount) && !Rescan; Index++) {
-      //
-      // Skip zero size entry.
-      //
-      if (MmramRanges[Index].PhysicalSize != 0) {
-        for (Index2 = 0; (Index2 < MmramReservedCount) && !Rescan; Index2++) {
-          //
-          // Skip zero size entry.
-          //
-          if (MmramReservedRanges[Index2].MmramReservedSize != 0) {
-            if (SmmIsMmramOverlap (
-                  &MmramRanges[Index],
-                  &MmramReservedRanges[Index2]
-                  ))
-            {
-              //
-              // There is overlap, need to split entry and then rescan.
-              //
-              SmmSplitMmramEntry (
-                &MmramRanges[Index],
-                &MmramReservedRanges[Index2],
-                MmramRanges,
-                &MmramRangeCount,
-                MmramReservedRanges,
-                &MmramReservedCount,
-                TempMmramRanges,
-                &TempMmramRangeCount
-                );
-              Rescan = TRUE;
-            }
-          }
-        }
-
-        if (!Rescan) {
-          //
-          // No any overlap, copy the entry to the temp SMRAM ranges.
-          // Zero MmramRanges[Index].PhysicalSize = 0;
-          //
-          CopyMem (&TempMmramRanges[TempMmramRangeCount++], &MmramRanges[Index], sizeof (EFI_MMRAM_DESCRIPTOR));
-          MmramRanges[Index].PhysicalSize = 0;
-        }
-      }
-    }
-  } while (Rescan);
-
-  ASSERT (TempMmramRangeCount <= MaxCount);
-
-  //
-  // Sort the entries
-  //
-  FullMmramRanges = AllocateZeroPool ((TempMmramRangeCount + AdditionMmramRangeCount) * sizeof (EFI_MMRAM_DESCRIPTOR));
+  MmramRangeCount += 1;
+  FullMmramRanges  = (EFI_MMRAM_DESCRIPTOR *)AllocateZeroPool (MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
   if (FullMmramRanges == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for FullMmramRanges!!!\n", __func__));
-    ASSERT (FALSE);
-    goto Cleanup;
+    return NULL;
   }
 
-  do {
-    for (Index = 0; Index < TempMmramRangeCount; Index++) {
-      if (TempMmramRanges[Index].PhysicalSize != 0) {
-        break;
-      }
-    }
-
-    ASSERT (Index < TempMmramRangeCount);
-    for (Index2 = 0; Index2 < TempMmramRangeCount; Index2++) {
-      if ((Index2 != Index) && (TempMmramRanges[Index2].PhysicalSize != 0) && (TempMmramRanges[Index2].CpuStart < TempMmramRanges[Index].CpuStart)) {
-        Index = Index2;
-      }
-    }
-
-    CopyMem (&FullMmramRanges[*FullMmramRangeCount], &TempMmramRanges[Index], sizeof (EFI_MMRAM_DESCRIPTOR));
-    *FullMmramRangeCount               += 1;
-    TempMmramRanges[Index].PhysicalSize = 0;
-  } while (*FullMmramRangeCount < TempMmramRangeCount);
-
-  ASSERT (*FullMmramRangeCount == TempMmramRangeCount);
-  *FullMmramRangeCount += AdditionMmramRangeCount;
-
-Cleanup:
-  if (MmramRanges != NULL) {
-    FreePool (MmramRanges);
-  }
-
-  if (MmramReservedRanges != NULL) {
-    FreePool (MmramReservedRanges);
-  }
-
-  if (TempMmramRanges != NULL) {
-    FreePool (TempMmramRanges);
-  }
+  CopyMem (FullMmramRanges, MmramRanges, MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+  *FullMmramRangeCount = MmramRangeCount;
 
   return FullMmramRanges;
 }
