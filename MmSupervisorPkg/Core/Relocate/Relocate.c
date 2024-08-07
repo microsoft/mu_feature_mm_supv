@@ -10,6 +10,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "Relocate.h"
 #include "Mem/Mem.h"
+#include "Mem/HeapGuard.h"
 #include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 
@@ -220,17 +221,16 @@ InitializeSmm (
         &mCpuHotPlugData
         );
 
-      //
-      // Check XD and BTS features on each processor on normal boot
-      //
-      CheckFeatureSupported ();
-
       if (IsBsp) {
         //
-        // BSP rebase is already done above.
-        // Initialize private data during S3 resume
+        // Call memory management hook function to set all cached guard pages during initialization.
+        // This is only applicable to the first time in MMI, since all page allocation/free will
+        // set/unset the guard pages on the fly.
         //
-        InitializeMpSyncData ();
+        MmEntryPointMemoryManagementHook ();
+
+        // Set up the code access check before any handler was iterated
+        ConfigSmmCodeAccessCheck ();
       }
 
       PERF_CODE (
@@ -255,21 +255,6 @@ ExecuteFirstSmiInit (
   UINTN  Index;
 
   PERF_FUNCTION_BEGIN ();
-
-  if (mSmmInitialized == NULL) {
-    mSmmInitialized = (BOOLEAN *)AllocatePool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
-  }
-
-  ASSERT (mSmmInitialized != NULL);
-  if (mSmmInitialized == NULL) {
-    PERF_FUNCTION_END ();
-    return;
-  }
-
-  //
-  // Reset the mSmmInitialized to false.
-  //
-  ZeroMem ((VOID *)mSmmInitialized, sizeof (BOOLEAN) * mMaxNumberOfCpus);
 
   //
   // Get the BSP ApicId.
@@ -657,6 +642,30 @@ GetMpInformation (
 
   FreePool (MpInfo2Hobs);
   return ProcessorInfo;
+}
+
+/**
+  Function to perform post relocation logic before handing back to the IPL.
+
+**/
+VOID
+PostRelocationRun (
+  VOID
+  )
+{
+  // MU_CHANGE: Moved first SMI and SMM CPU features to after SMM Profile init
+  //
+  // For relocated SMBASE, some MSRs & CSRs are still required to be configured in SMM Mode for SMM Initialization.
+  // Those MSRs & CSRs must be configured before normal SMI sources happen.
+  // So, here is to issue SMI IPI (All Excluding  Self SMM IPI + BSP SMM IPI) to execute first SMI init.
+  //
+  ExecuteFirstSmiInit ();
+
+  //
+  // Call hook for BSP to perform extra actions in normal mode after all
+  // SMM base addresses have been relocated on all CPUs
+  //
+  SmmCpuFeaturesSmmRelocationComplete ();
 }
 
 /**
@@ -1117,20 +1126,16 @@ SetupSmiEntryExit (
     }
   }
 
-  //
-  // For relocated SMBASE, some MSRs & CSRs are still required to be configured in SMM Mode for SMM Initialization.
-  // Those MSRs & CSRs must be configured before normal SMI sources happen.
-  // So, here is to issue SMI IPI (All Excluding  Self SMM IPI + BSP SMM IPI) to execute first SMI init.
-  //
-  ExecuteFirstSmiInit ();
-
-  //
-  // Call hook for BSP to perform extra actions in normal mode after all
-  // SMM base addresses have been relocated on all CPUs
-  //
-  SmmCpuFeaturesSmmRelocationComplete ();
-
   DEBUG ((DEBUG_INFO, "mXdSupported - 0x%x\n", mXdSupported));
+
+  if (mSmmInitialized == NULL) {
+    mSmmInitialized = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
+  }
+
+  ASSERT (mSmmInitialized != NULL);
+  if (mSmmInitialized == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   //
   // Fill in SMM Reserved Regions
