@@ -96,6 +96,10 @@ acquire platform-specific details.
   hold [`MM_CORE_PRIVATE_DATA`](https://github.com/tianocore/edk2/blob/master/StandaloneMmPkg/Include/Guid/MmCoreData.h)
   and `gMmCoreMmProfileGuid` which is used to hold `MM_CORE_MM_PROFILE_DATA` as defined in `MmSupervisorPkg`.
 
+### PPIs Required for PEI MM IPL
+
+1. MM Access PPI (`gEfiPeiMmAccessPpiGuid`)
+
 ### MM Policy
 
 The MM Supervisor policy is a data structure used to communicate the restrictions applied to certain hardware resources
