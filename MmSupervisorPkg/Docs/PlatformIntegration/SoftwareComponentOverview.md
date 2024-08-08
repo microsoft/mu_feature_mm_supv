@@ -30,7 +30,6 @@ For more general background about the steps necessary to integrate the MM Superv
 
 | DXE Driver | Location |
 | ---| ---|
-| PiSmmIpl | MmSupervisorPkg/Drivers/StandaloneMmIpl/PiSmmIpl.inf |
 | StandaloneMmUnblockMem | MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
 
 ## MM DXE Libraries

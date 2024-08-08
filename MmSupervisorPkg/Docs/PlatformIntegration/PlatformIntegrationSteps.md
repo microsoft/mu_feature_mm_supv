@@ -301,8 +301,6 @@ flash drivers, SW MMI dispatcher drivers, etc.
     <LibraryClasses>
       NULL|StandaloneMmPkg/Library/VariableMmDependency/VariableMmDependency.inf
   }
-!else
-  MmSupervisorPkg/Drivers/StandaloneMmIpl/PiSmmIpl.inf
 !endif
   MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   MmSupervisorPkg/Core/MmSupervisorCore.inf {
@@ -389,12 +387,6 @@ Note: There might be other silicon specific drivers a platform will need for the
 [FV.YOUR_DXE_FV]
 !if $(PEI_MM_IPL_ENABLED) == TRUE
   INF  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf
-!else
-  INF  MmSupervisorPkg/Drivers/StandaloneMmIpl/PiSmmIpl.inf
-  INF  MmSupervisorPkg/Core/MmSupervisorCore.inf
-  FILE FREEFORM = gMmSupervisorPolicyFileGuid {
-    SECTION RAW = $(POLICY_BIN_PATH)
-  }
 !endif
   INF  MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   INF  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
