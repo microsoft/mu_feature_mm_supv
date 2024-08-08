@@ -81,7 +81,8 @@ acquire platform-specific details.
    - [StandaloneMmPkg/Include/Guid/MpInformation.h](https://github.com/tianocore/edk2/blob/master/StandaloneMmPkg/Include/Guid/MpInformation.h)
    - Note that [`PeiStandaloneMmHobProductionLib`](https://github.com/microsoft/mu_basecore/blob/release/202102/StandaloneMmPkg/Library/PeiStandaloneMmHobProductionLib/PeiStandaloneMmHobProductionLib.inf)
    can be used to help produce this HOB.
-1. `gEfiMmPeiMmramMemoryReserveGuid`/`gEfiSmmSmramMemoryGuid` - Describes MMRAM regions present.
+1. `gEfiMmPeiMmramMemoryReserveGuid`/`gEfiSmmSmramMemoryGuid` - Describes MMRAM regions present, which must be updated
+   through the `SmmRelocationLib` if using MU releases after 202405.
    - [MdePkg/Include/Guid/SmramMemoryReserve.h](https://github.com/tianocore/edk2/blob/master/MdePkg/Include/Guid/SmramMemoryReserve.h)
 1. Resource descriptor HOBs with MMIO regions identified - Required to allow MM access to MMIO.
    - By default, the MM Supervisor will apply page table attributes based on the memory described by
@@ -98,7 +99,6 @@ acquire platform-specific details.
 ### PPIs Required for PEI MM IPL
 
 1. MM Access PPI (`gEfiPeiMmAccessPpiGuid`)
-1. MM Control PPI (`gEfiPeiMmControlPpiGuid`)
 
 ### MM Policy
 
@@ -238,6 +238,7 @@ flash drivers, SW MMI dispatcher drivers, etc.
 
 [LibraryClasses.IA32]
   MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
+  SmmRelocationLib|UefiCpuPkg/Library/SmmRelocationLib/SmmRelocationLib.inf
 
 [LibraryClasses.X64]
   MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf
