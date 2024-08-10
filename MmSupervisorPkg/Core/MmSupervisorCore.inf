@@ -146,7 +146,7 @@
   MmSaveStateLib
   SmmCpuSyncLib
   PanicLib
-  BasePeCoffLibNegative
+  PeCoffLibNegative
   SecurePolicyLib
 
 [Protocols]
