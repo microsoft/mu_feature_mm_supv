@@ -229,16 +229,23 @@ InitializePageTablePool (
   returned.
 
   @param  Pages                 The number of 4 KB pages to allocate.
+  @param  NewAllocation         Pointer to a passed in BOOLEAN that will be TRUE if new pages have been allocated
+                                for the page pool and FALSE otherwise.
 
   @return A pointer to the allocated buffer or NULL if allocation fails.
 
 **/
 VOID *
 AllocatePageTableMemory (
-  IN UINTN  Pages
+  IN UINTN     Pages,
+  OUT BOOLEAN  *NewAllocation OPTIONAL
   )
 {
   VOID  *Buffer;
+
+  if (NewAllocation != NULL) {
+    *NewAllocation = FALSE;
+  }
 
   if (Pages == 0) {
     return NULL;
@@ -250,7 +257,16 @@ AllocatePageTableMemory (
   if ((mPageTablePool == NULL) ||
       (Pages > mPageTablePool->FreePages))
   {
+    if (NewAllocation != NULL) {
+      *NewAllocation = TRUE;
+    }
+
     if (!InitializePageTablePool (Pages)) {
+      // No new allocation was done because we ran out of memory
+      if (NewAllocation != NULL) {
+        *NewAllocation = FALSE;
+      }
+
       return NULL;
     }
   }
@@ -455,6 +471,9 @@ ConvertMemoryPageAttributes (
   EFI_PHYSICAL_ADDRESS  MaximumSupportMemAddress;
   BOOLEAN               WriteProtect;
   BOOLEAN               CetEnabled;
+  BOOLEAN               UpdatedPageTable;
+
+  UpdatedPageTable = TRUE;
 
   ASSERT (Attributes != 0);
   ASSERT ((Attributes & ~EFI_MEMORY_ATTRIBUTE_MASK) == 0);
@@ -562,14 +581,28 @@ ConvertMemoryPageAttributes (
     return RETURN_SUCCESS;
   }
 
-  PageTableBufferSize = 0;
-  WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
-  Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
+  while (UpdatedPageTable) {
+    PageTableBufferSize = 0;
+    WRITE_UNPROTECT_RO_PAGES (WriteProtect, CetEnabled);
+    Status = PageTableMap (&PageTableBase, PagingMode, NULL, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
 
-  if (Status == RETURN_BUFFER_TOO_SMALL) {
-    PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize));
-    ASSERT (PageTableBuffer != NULL);
-    Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
+    if (Status == RETURN_BUFFER_TOO_SMALL) {
+      PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), &UpdatedPageTable);
+      if (PageTableBuffer == NULL) {
+        DEBUG ((DEBUG_ERROR, "Failed to allocate page table memory for the page pool!\n"));
+        ASSERT (PageTableBuffer != NULL);
+        break; // We failed to allocate more memory so exit the loop and don't call into PageTableMap again
+      }
+
+      if (UpdatedPageTable) {
+        // Need to check the PageTableMap again with the newly allocated pages
+        continue;
+      }
+
+      Status = PageTableMap (&PageTableBase, PagingMode, PageTableBuffer, &PageTableBufferSize, BaseAddress, Length, &PagingAttribute, &PagingAttrMask, IsModified);
+    } else {
+      break; // In the off chance we don't return BUFFER_TOO_SMALL we need to exit the loop or be stuck
+    }
   }
 
   WRITE_PROTECT_RO_PAGES (WriteProtect, CetEnabled);
@@ -833,7 +866,7 @@ GenSmmPageTable (
   Status = PageTableMap (&PageTable, PagingMode, NULL, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_BUFFER_TOO_SMALL);
   DEBUG ((DEBUG_INFO, "GenSMMPageTable: 0x%x bytes needed for initial SMM page table\n", PageTableBufferSize));
-  PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize));
+  PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), NULL);
   ASSERT (PageTableBuffer != NULL);
   Status = PageTableMap (&PageTable, PagingMode, PageTableBuffer, &PageTableBufferSize, 0, Length, &MapAttribute, &MapMask, NULL);
   ASSERT (Status == RETURN_SUCCESS);
@@ -1401,14 +1434,17 @@ SetMemMapAttributes (
       SupervisorMarker = 0;
     }
 
-    if (MemoryMap->Type == EfiRuntimeServicesCode) {
-      MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
-    } else {
-      ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
-      //
-      // Set other type memory as NX.
-      //
-      MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+    MemoryAttribute = MemoryMap->Attribute & (EFI_MEMORY_ACCESS_MASK | EFI_MEMORY_SP);
+    if (MemoryAttribute == 0) {
+      if (MemoryMap->Type == EfiRuntimeServicesCode) {
+        MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
+      } else {
+        ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
+        //
+        // Set other type memory as NX.
+        //
+        MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+      }
     }
 
     //

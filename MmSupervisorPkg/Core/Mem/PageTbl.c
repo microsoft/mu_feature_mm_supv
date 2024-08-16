@@ -301,7 +301,7 @@ SmmInitPageTable (
     //
     // Add pages to page pool
     //
-    FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES);
+    FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES, NULL);
     if (FreePage == NULL) {
       DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for FreePage!!!\n", __FUNCTION__));
       Status = EFI_OUT_OF_RESOURCES;
