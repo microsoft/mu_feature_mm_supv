@@ -52,7 +52,7 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
 
         return (
                 "MmSupervisorPkg",
-                "SpamPkg"
+                "SeaPkg"
                 )
 
     def GetArchitecturesSupported(self):

@@ -1,0 +1,86 @@
+## @file
+# Component description file for Stm module.
+#
+# Copyright (c) 2015 - 2016, Intel Corporation. All rights reserved.<BR>
+# This program and the accompanying materials
+# are licensed and made available under the terms and conditions of the BSD License
+# which accompanies this distribution.  The full text of the license may be found at
+# http://opensource.org/licenses/bsd-license.php.
+#
+# THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+# WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = Stm
+  FILE_GUID                      = 829ACE7E-B715-43ef-B7C8-5375C101AEA1
+  MODULE_TYPE                    = USER_DEFINED
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = AsmSeaVmcallDispatcherNew
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  Init/StmInit.c
+  Init/Paging.c
+  Init/Memory.c
+  Init/Relocate.c
+  Runtime/StmExceptionHandler.c
+  Runtime/SeaResponderReport.c
+  Runtime/SeaResponderUtilities.c
+  Stm.h
+  CpuDef.h
+  Cpu.c
+  StmPerformance.c
+
+[Sources.X64]
+  Init/x64/AsmStmInit.asm | MSFT
+  Init/x64/AsmStmInit.s   | GCC
+
+  Runtime/x64/Exception.asm | MSFT
+  Runtime/x64/Exception.s   | GCC
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  SecurityPkg/SecurityPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+  SeaPkg/SeaPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  IoLib
+  PciLib
+  SynchronizationLib
+  DebugLib
+  StmLib
+  PcdLib
+  StmPlatformLib
+  PeCoffLib
+  PeCoffLibNegative
+  HashLib
+  SafeIntLib
+  SecurePolicyLib
+
+[Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
+  gEfiSeaPkgTokenSpaceGuid.PcdAuxBinFile                     ## CONSUMES
+  gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinHash                ## CONSUMES
+  gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinSize                ## CONSUMES
+  gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash           ## CONSUMES
+
+[BuildOptions]
+#  MSFT:*_*_X64_CC_FLAGS  = /Od  /GL-
+
+# Jump-table MUST be disabled, or self-relocation will fail.
+  MSFT:*_*_X64_DLINK_FLAGS  = /BASE:0x0 /ALIGN:32 /FILEALIGN:32 /STACK:0x8000,0x8000 /HEAP:0x140000,0x140000 /OUT:$(DEBUG_DIR)\Stm.dll
+
+  GCC:*_*_X64_DLINK_FLAGS  == -o $(DEBUG_DIR)/Stm.dll -nostdlib -Wl,-n,-q,--gc-sections -z common-page-size=0x40 --entry _ModuleEntryPoint -u _ModuleEntryPoint -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map,-melf_x86_64 -Wl,--oformat,elf64-x86-64,--defsym=PECOFF_HEADER_SIZE=0x228 #--script=$(MODULE_DIR)/Stm.lds

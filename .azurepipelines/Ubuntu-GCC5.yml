@@ -19,8 +19,8 @@ variables:
 extends:
   template: MuDevOpsWrapper.yml
   parameters:
-    do_ci_build: true	
-    do_ci_setup: true	
+    do_ci_build: true
+    do_ci_setup: true
     do_pr_eval: false
     container_build: true
     os_type: Linux
@@ -29,7 +29,7 @@ extends:
         Pkgs: 'MmSupervisorPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
         ArchList: $(arch_list)
-      TARGET_SPAM:
-        Pkgs: 'SpamPkg'
+      TARGET_SEA:
+        Pkgs: 'SeaPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
         ArchList: $(arch_list)
