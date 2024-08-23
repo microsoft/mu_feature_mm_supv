@@ -1,5 +1,12 @@
 //! A module that contains the C-equivalent structs and final functions to
 //! generate the aux file.
+//! 
+//! ## License
+//!
+//! Copyright (c) Microsoft Corporation.
+//!
+//! SPDX-License-Identifier: BSD-2-Clause-Patent
+//! 
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
