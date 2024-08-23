@@ -1,0 +1,24 @@
+[package]
+name = "gen_rim"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "coswid_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Cli
+anyhow = "1.0.80"
+clap = { version = "4.5.1", features = ["derive"] }
+
+# Tool
+minicbor = { version = "0.24.2", default-features = false, features = ["derive", "alloc", "half"] }
+uuid = { version = "1.10.0", default-features = false, features = ["serde"] }
+
+# Hashing
+hex = "0.4.3"
+digest = "0.10.7"
+sha2 = "0.10.8"
+sm3 = "0.4.2"

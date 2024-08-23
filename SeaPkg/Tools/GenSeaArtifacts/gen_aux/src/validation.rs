@@ -1,4 +1,11 @@
 //! A module containing the objects used for working with Validation rules.
+//! 
+//! ## License
+//!
+//! Copyright (c) Microsoft Corporation.
+//!
+//! SPDX-License-Identifier: BSD-2-Clause-Patent
+//! 
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::Deserialize;

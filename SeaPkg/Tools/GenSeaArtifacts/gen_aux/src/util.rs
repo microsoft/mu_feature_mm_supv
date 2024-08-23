@@ -1,4 +1,11 @@
 //! A module containing utility functions for extracting information from the PDB file.
+//! 
+//! ## License
+//!
+//! Copyright (c) Microsoft Corporation.
+//!
+//! SPDX-License-Identifier: BSD-2-Clause-Patent
+//! 
 use std::collections::HashMap;
 
 use pdb::{FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex, TypeInformation};
