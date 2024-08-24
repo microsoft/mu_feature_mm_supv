@@ -27,7 +27,7 @@ STM_STACK_SIZE                EQU 08000h
 
 ;------------------------------------------------------------------------------
 ; VOID
-; AsmSeaVmcallDispatcher  (
+; AsmSeaVmcallDispatcher (
 ;   VOID
 ;   )
 _ModuleEntryPoint PROC PUBLIC
@@ -75,9 +75,9 @@ GoGetCapabilities:
   jmp  DeadLoop
 
 GoGetResources:
-  ;
-  ; assign unique ESP for each processor
-  ;
+;
+; assign unique ESP for each processor
+;
 ; |------------|<-ESP (PerProc)
 ; | Reg        |
 ; |------------|
