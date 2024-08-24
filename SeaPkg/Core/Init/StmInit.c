@@ -839,7 +839,9 @@ GetCapabilities (
   RetStruct.SeaFeatures.Reserved       = 0;
 
   CopyMem ((VOID *)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
-  Status = EFI_SUCCESS;
+  Status    = EFI_SUCCESS;
+  StmStatus = STM_SUCCESS;
+  WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
 
 Done:
   return Status;
