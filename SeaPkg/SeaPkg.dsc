@@ -82,6 +82,8 @@
   SeaPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
   SeaPkg/Library/StmLib/StmLib.inf
   SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
+  SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
+  SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
 
 [Components.X64]
   SeaPkg/Core/Stm.inf {

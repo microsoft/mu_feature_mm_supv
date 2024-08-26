@@ -1,0 +1,24 @@
+##
+# DXE SMM Enhanced Attestation (SEA) Manifest Publication Library
+#
+# This is a NULL instance that simply returns instead of publishing the manifest.
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+
+[Defines]
+  INF_VERSION         = 0x00010017
+  BASE_NAME           = DxeSeaManifestPublicationLibNull
+  FILE_GUID           = 0930E6D1-74E2-4484-87C1-DCD7710EE195
+  VERSION_STRING      = 1.0
+  MODULE_TYPE         = BASE
+  LIBRARY_CLASS       = SeaManifestPublicationLib
+
+[Sources]
+  BaseSeaManifestPublicationLibNull.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  SeaPkg/SeaPkg.dec
