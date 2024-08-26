@@ -55,8 +55,8 @@ DxeToSmmCommunicate (
   VOID                                  *CommBufferBase;
   EFI_SMM_COMMUNICATE_HEADER            *CommHeader;
   UINTN                                 MinBufferSize, BufferSize;
-  SEA_TEST_COMM_INPUT_REGION           *SeaTestCommInputBuffer;
-  SEA_TEST_COMM_OUTPUT_REGION          *SeaTestCommOutputputBuffer;
+  SEA_TEST_COMM_INPUT_REGION            *SeaTestCommInputBuffer;
+  SEA_TEST_COMM_OUTPUT_REGION           *SeaTestCommOutputputBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 

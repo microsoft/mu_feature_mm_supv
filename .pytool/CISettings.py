@@ -179,7 +179,7 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
             {
                 "Path": "MU_BASECORE",
                 "Url": "https://github.com/microsoft/mu_basecore.git",
-                "Branch": "feature/stm"
+                "Branch": "release/202311"
             },
             {
                 "Path": "Common/MU_PLUS",

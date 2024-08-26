@@ -181,8 +181,8 @@ SeaValidationTestHandler (
   IN OUT UINTN       *CommBufferSize
   )
 {
-  EFI_STATUS                   Status        = EFI_SUCCESS;
-  VOID                         *PolicyBuffer = NULL;
+  EFI_STATUS                  Status        = EFI_SUCCESS;
+  VOID                        *PolicyBuffer = NULL;
   SEA_TEST_COMM_INPUT_REGION  *CommRegion   = (SEA_TEST_COMM_INPUT_REGION *)CommBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));

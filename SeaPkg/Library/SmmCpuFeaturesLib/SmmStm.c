@@ -193,7 +193,7 @@ DiscoverSmiEntryInFvHobs (
   EFI_PEI_HOB_POINTERS            Hob;
   EFI_STATUS                      Status;
   UINTN                           SeaBinSize;
-  BOOLEAN                         MmiEntryFound      = FALSE;
+  BOOLEAN                         MmiEntryFound     = FALSE;
   BOOLEAN                         SeaResponderFound = FALSE;
   VOID                            *RawBinFileData;
   VOID                            *RawMmiEntryFileData;
