@@ -208,20 +208,26 @@ RelocateStmImage (
   EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr;
   UINT16                               Magic;
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   StmImage = (UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
 
   ImageBase = StmImage + STM_CODE_OFFSET;
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
 
   //
   // Find the image's relocate dir info
   //
   DosHdr = (EFI_IMAGE_DOS_HEADER *)ImageBase;
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   if (DosHdr->e_magic == EFI_IMAGE_DOS_SIGNATURE) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // Valid DOS header so get address of PE header
     //
     Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)(((CHAR8 *)DosHdr) + DosHdr->e_lfanew);
   } else {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // No Dos header so assume image starts with PE header.
     //
@@ -229,20 +235,25 @@ RelocateStmImage (
   }
 
   if (Hdr.Pe32->Signature != EFI_IMAGE_NT_SIGNATURE) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // Not a valid PE image so Exit
     //
     return;
   }
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
 
   Magic = Hdr.Pe32->OptionalHeader.Magic;
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
 
   if (Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // Use PE32 offset
     //
     PeImageBase = (UINTN)Hdr.Pe32->OptionalHeader.ImageBase;
   } else {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // Use PE32+ offset
     //
@@ -252,8 +263,11 @@ RelocateStmImage (
   //
   // Basic Check
   //
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   if (!IsTeardown) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     if (PeImageBase == ImageBase) {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Relocated
       //
@@ -261,14 +275,18 @@ RelocateStmImage (
       return;
     }
 
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     if (PeImageBase != 0) {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Build tool need guarantee it is 0-base address.
       //
       CpuDeadLoop ();
     }
   } else {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     if (PeImageBase == 0) {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Already Relocated back
       //
@@ -276,47 +294,58 @@ RelocateStmImage (
       return;
     }
 
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     //
     // relocated back
     //
     PeImageBase = 0;
   }
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   //
   // This is self-contain PE-COFF loader.
   //
   PeCoffRelocateImageOnTheSpot (ImageBase, PeImageBase, IsTeardown);
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   AsmWbinvd ();
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   //
   // Set value indicate we have already relocated
   //
   if (!IsTeardown) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     if (Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Use PE32 offset
       //
       Hdr.Pe32->OptionalHeader.ImageBase = (UINT32)ImageBase;
     } else {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Use PE32+ offset
       //
       Hdr.Pe32Plus->OptionalHeader.ImageBase = (UINT64)ImageBase;
     }
   } else {
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
     if (Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
       //
       // Use PE32 offset
       //
       Hdr.Pe32->OptionalHeader.ImageBase = (UINT32)0;
     } else {
+      DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
       //
       // Use PE32+ offset
       //
       Hdr.Pe32Plus->OptionalHeader.ImageBase = (UINT64)0;
     }
+    DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   }
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d]\n", __func__, __LINE__));
   return;
 }

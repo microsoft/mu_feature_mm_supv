@@ -411,16 +411,22 @@ GetIndexFromStack (
 
   StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
 
+  DEBUG((DEBUG_INFO, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
+
   //
   // Stack top of this CPU
   //
   ThisStackTop = ((UINTN)Register + SIZE_4KB - 1) & ~(SIZE_4KB - 1);
+  DEBUG((DEBUG_INFO, "[%a][L%d] - ThisStackTop = 0x%lx.\n", __func__, __LINE__, ThisStackTop));
 
   //
   // EspOffset pointer to bottom of 1st CPU
   //
   StackBottom = (UINTN)StmHeader + StmHeader->HwStmHdr.EspOffset;
+  DEBUG((DEBUG_INFO, "[%a][L%d] - StackBottom = 0x%lx.\n", __func__, __LINE__, StackBottom));
+
   Index       = (ThisStackTop - StackBottom) / StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Index = 0x%lx.\n", __func__, __LINE__, Index));
 
   //
   // Need minus one for 0-based CPU index
@@ -749,6 +755,43 @@ LaunchBack (
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
 
   DEBUG ((EFI_D_INFO, "!!!LaunchBack (%d)!!!\n", (UINTN)Index));
+  DEBUG ((EFI_D_ERROR, "VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "CR0: %08x\n", (UINTN)AsmReadCr0 ()));
+  DEBUG ((EFI_D_ERROR, "CR3: %08x\n", (UINTN)AsmReadCr3 ()));
+  DEBUG ((EFI_D_ERROR, "CR4: %08x\n", (UINTN)AsmReadCr4 ()));
+  DEBUG ((EFI_D_ERROR, "IA32_EFER_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_EFER_MSR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "IA32_SYSENTER_ESP_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_SYSENTER_ESP_MSR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "IA32_SYSENTER_EIP_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_SYSENTER_EIP_MSR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "IA32_PERF_GLOBAL_CTRL_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_PERF_GLOBAL_CTRL_MSR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "IA32_CR_PAT_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_CR_PAT_MSR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "IA32_S_CET: %08x\n", (UINTN)AsmReadMsr64 (0x6A2)));
+  DEBUG ((EFI_D_ERROR, "IA32_PKRS: %08x\n", (UINTN)AsmReadMsr64 (0x6E1)));
+
+  DEBUG ((EFI_D_ERROR, "Host-state CR0: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR0_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state CR3: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR3_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state CR4: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR4_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_64_HOST_IA32_EFER_INDEX: %08x\n", (UINTN)VmReadN (VMCS_64_HOST_IA32_EFER_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_IA32_SYSENTER_ESP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IA32_SYSENTER_ESP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_IA32_SYSENTER_EIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IA32_SYSENTER_EIP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_64_HOST_IA32_PERF_GLOBAL_CTRL_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_HOST_IA32_PERF_GLOBAL_CTRL_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_64_HOST_IA32_PAT_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_HOST_IA32_PAT_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_RIP_INDEX)));
+
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_ES_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_CS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_SS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_DS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_FS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_GS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_TR_INDEX)));
+
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_FS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_FS_BASE_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_GS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GS_BASE_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_TR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_TR_BASE_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_GDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GDTR_BASE_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_IDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IDTR_BASE_INDEX)));
+
   Rflags = AsmVmLaunch (Register);
 
   AcquireSpinLock (&mHostContextCommon.DebugLock);
@@ -781,6 +824,7 @@ GetCapabilities (
   UINT64                   BufferSize;
   SEA_CAPABILITIES_STRUCT  RetStruct;
 
+  DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   if (Register == NULL) {
     Status = EFI_INVALID_PARAMETER;
     DEBUG ((DEBUG_ERROR, "%a Incoming register being NULL!\n", __func__));
@@ -788,9 +832,12 @@ GetCapabilities (
   }
 
   // Check the buffer not null requirement
+  DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   BufferBase = Register->Rbx;
   BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
+  DEBUG((DEBUG_INFO, "[%a][L%d] - BufferBase = 0x%LX. BufferSize = 0x%LX.\n", __func__, __LINE__, BufferBase, BufferSize));
   if (BufferBase == 0) {
+    DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
     StmStatus = ERROR_INVALID_PARAMETER;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
@@ -800,6 +847,7 @@ GetCapabilities (
 
   // Check the minimal size requirement
   if (BufferSize < sizeof (SEA_CAPABILITIES_STRUCT)) {
+    DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
@@ -809,6 +857,7 @@ GetCapabilities (
 
   // Check the buffer alignment requirement
   if (!IS_ALIGNED (BufferBase, EFI_PAGE_SIZE)) {
+    DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
     StmStatus = ERROR_SMM_BAD_BUFFER;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
@@ -818,12 +867,15 @@ GetCapabilities (
 
   // Check the buffer supplied is not in the MSEG or TSEG.
   if (IsBufferInsideMmram (BufferBase, BufferSize)) {
+    DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
     StmStatus = ERROR_STM_PAGE_NOT_FOUND;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
     DEBUG ((DEBUG_ERROR, "%a Incoming buffer is inside MMRAM: Base: 0x%x, Size: 0x%x !\n", __func__, BufferBase, BufferSize));
     goto Done;
   }
+
+  DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
 
   // Enough complaints, get to work now.
   RetStruct.SeaSpecVerMajor = SEA_SPEC_VERSION_MAJOR;
@@ -832,16 +884,21 @@ GetCapabilities (
   RetStruct.SeaHeaderSize   = OFFSET_OF (SEA_CAPABILITIES_STRUCT, SeaFeatures);
   RetStruct.SeaTotalSize    = sizeof (SEA_CAPABILITIES_STRUCT);
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
+
   RetStruct.SeaFeatures.VerifyMmiEntry = TRUE;
   RetStruct.SeaFeatures.VerifyMmPolicy = TRUE;
   RetStruct.SeaFeatures.VerifyMmSupv   = TRUE;
   RetStruct.SeaFeatures.HashAlg        = HASH_ALG_SHA256;
   RetStruct.SeaFeatures.Reserved       = 0;
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   CopyMem ((VOID *)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
+  DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   Status = EFI_SUCCESS;
 
 Done:
+  DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   return Status;
 }
 
@@ -987,43 +1044,81 @@ SeaVmcallDispatcher (
   UINT32      ServiceId;
   EFI_STATUS  Status;
 
+  DEBUG ((DEBUG_INFO, "[%a] - Enter\n", __func__));
+
   if (Register == NULL) {
     ASSERT (Register != NULL);
     return;
   }
 
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rdx = 0x%lx.\n", __func__, __LINE__, Register->Rdx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rbx = 0x%lx.\n", __func__, __LINE__, Register->Rbx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rsp = 0x%lx.\n", __func__, __LINE__, Register->Rsp));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rbp = 0x%lx.\n", __func__, __LINE__, Register->Rbp));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rsi = 0x%lx.\n", __func__, __LINE__, Register->Rsi));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rdi = 0x%lx.\n", __func__, __LINE__, Register->Rdi));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R8  = 0x%lx.\n", __func__, __LINE__, Register->R8));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R9  = 0x%lx.\n", __func__, __LINE__, Register->R9));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R10 = 0x%lx.\n", __func__, __LINE__, Register->R10));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R11 = 0x%lx.\n", __func__, __LINE__, Register->R11));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R12 = 0x%lx.\n", __func__, __LINE__, Register->R12));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R13 = 0x%lx.\n", __func__, __LINE__, Register->R13));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R14 = 0x%lx.\n", __func__, __LINE__, Register->R14));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R15 = 0x%lx.\n", __func__, __LINE__, Register->R15));
+
   CpuIndex  = GetIndexFromStack (Register);
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex = %d\n", __func__, __LINE__, CpuIndex));
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - ServiceId = 0x%x\n", __func__, __LINE__, ServiceId));
 
   switch (ServiceId) {
     case SEA_API_GET_CAPABILITIES:
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - SEA_API_GET_CAPABILITIES entered.\n", __func__, __LINE__));
       if (CpuIndex == 0) {
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex == 0.\n", __func__, __LINE__));
         // The build process should make sure "virtual address" is same as "file pointer to raw data",
         // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
         // If no, GenStm tool will "load image". So here, we just need "relocate image"
         RelocateStmImage (FALSE);
 
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
+
         BspInit (Register);
+
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
       }
 
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+
       CommonInit (CpuIndex);
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
       break;
     case SEA_API_GET_RESOURCES:
+    DEBUG ((DEBUG_INFO, "[%a][L%d] - SEA_API_GET_RESOURCES entered.\n", __func__, __LINE__));
       if (!mIsBspInitialized) {
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - !mIsBspInitialized.\n", __func__, __LINE__));
         Status = EFI_NOT_STARTED;
         break;
       }
 
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - mIsBspInitialized.\n", __func__, __LINE__));
       Status = GetResources (Register);
+      DEBUG ((DEBUG_INFO, "[%a][L%d] - Returned from GetResources(). Status = %r.\n", __func__, __LINE__, Status));
       break;
   }
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ServiceId(%d) error - %r\n", (UINTN)ServiceId, Status));
+    DEBUG ((DEBUG_ERROR, "ServiceId(0x%x) error - %r\n", (UINTN)ServiceId, Status));
     ASSERT_EFI_ERROR (Status);
   }
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));
   LaunchBack (CpuIndex, Register);
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - Returned from LaunchBack().\n", __func__, __LINE__));
   return;
 }
