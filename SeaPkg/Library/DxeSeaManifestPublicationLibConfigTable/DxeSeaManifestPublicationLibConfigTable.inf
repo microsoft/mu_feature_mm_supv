@@ -1,0 +1,33 @@
+##
+# DXE SMM Enhanced Attestation (SEA) Manifest Publication Library
+#
+# Publishes the SEA Manifest to the system config table so an OS can locate it.
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+
+[Defines]
+  INF_VERSION         = 0x00010017
+  BASE_NAME           = DxeSeaManifestPublicationLibConfigTable
+  FILE_GUID           = 25E9F1DC-7705-4E48-A0EA-7AAE20B3639D
+  VERSION_STRING      = 1.0
+  MODULE_TYPE         = DXE_DRIVER
+  LIBRARY_CLASS       = SeaManifestPublicationLib|DXE_DRIVER
+
+[Sources]
+  DxeSeaManifestPublicationLibConfigTable.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  SeaPkg/SeaPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  DxeServicesLib
+  UefiBootServicesTableLib
+
+[Guids]
+  gSeaRimFileGuid                             ## CONSUMES
+  gSeaManifestConfigurationTableGuid          ## PRODUCES
