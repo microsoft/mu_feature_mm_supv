@@ -987,6 +987,11 @@ SeaVmcallDispatcher (
   UINT32      ServiceId;
   EFI_STATUS  Status;
 
+  if (Register == NULL) {
+    ASSERT (Register != NULL);
+    return;
+  }
+
   CpuIndex  = GetIndexFromStack (Register);
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
 
