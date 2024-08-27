@@ -38,18 +38,18 @@ InitializeNormalVmcs (
 {
   UINT64                                       Data64;
   VM_EXIT_CONTROLS                             VmExitCtrls;
-  VM_ENTRY_CONTROLS                            VmEntryCtrls;
+  // VM_ENTRY_CONTROLS                            VmEntryCtrls;
   GUEST_INTERRUPTIBILITY_STATE                 GuestInterruptibilityState;
   VM_EXIT_MSR_ENTRY                            *VmExitMsrEntry;
 
-  Data64 = AsmReadMsr64 (IA32_VMX_ENTRY_CTLS_MSR_INDEX);
-  VmEntryCtrls.Uint32 = (UINT32)Data64 & (UINT32)RShiftU64 (Data64, 32);
-  VmEntryCtrls.Bits.Ia32eGuest = (sizeof(UINT64) == sizeof(UINTN));
-  VmEntryCtrls.Bits.DeactivateDualMonitor = 0;
-  // Upon receiving control due to an SMI, the STM shall save the contents of the IA32_PERF_GLOBAL_CTRL MSR, disable any
-  // enabled bits in the IA32_PERF_GLOBAL_CTRL MSR
-  VmEntryCtrls.Bits.LoadIA32_PERF_GLOBAL_CTRL = 0;
-  VmEntryCtrls.Bits.LoadIA32_EFER = 1;
+  // Data64 = AsmReadMsr64 (IA32_VMX_ENTRY_CTLS_MSR_INDEX);
+  // VmEntryCtrls.Uint32 = (UINT32)Data64 & (UINT32)RShiftU64 (Data64, 32);
+  // VmEntryCtrls.Bits.Ia32eGuest = (sizeof(UINT64) == sizeof(UINTN));
+  // VmEntryCtrls.Bits.DeactivateDualMonitor = 0;
+  // // Upon receiving control due to an SMI, the STM shall save the contents of the IA32_PERF_GLOBAL_CTRL MSR, disable any
+  // // enabled bits in the IA32_PERF_GLOBAL_CTRL MSR
+  // VmEntryCtrls.Bits.LoadIA32_PERF_GLOBAL_CTRL = 0;
+  // VmEntryCtrls.Bits.LoadIA32_EFER = 1;
 
   Data64 = AsmReadMsr64 (IA32_VMX_EXIT_CTLS_MSR_INDEX);
   VmExitCtrls.Uint32 = (UINT32)Data64 & (UINT32)RShiftU64 (Data64, 32);
@@ -66,7 +66,7 @@ InitializeNormalVmcs (
   //
   // Control field
   //
-  VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX,                 VmEntryCtrls.Uint32);
+  // VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX,                 VmEntryCtrls.Uint32);
   VmWrite32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX,                  VmExitCtrls.Uint32);
 
   //
@@ -117,11 +117,11 @@ InitializeNormalVmcs (
   //
   VmWriteN  (VMCS_N_GUEST_RIP_INDEX,                     VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32(VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
   VmWriteN  (VMCS_N_GUEST_RFLAGS_INDEX,                  0x00000002); // VMCALL success
-  VmWrite32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX, GuestInterruptibilityState.Uint32);
+  // VmWrite32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX, GuestInterruptibilityState.Uint32);
 
-  VmWrite64 (VMCS_64_GUEST_IA32_PERF_GLOBAL_CTRL_INDEX,  AsmReadMsr64(IA32_PERF_GLOBAL_CTRL_MSR_INDEX));
+  // VmWrite64 (VMCS_64_GUEST_IA32_PERF_GLOBAL_CTRL_INDEX,  AsmReadMsr64(IA32_PERF_GLOBAL_CTRL_MSR_INDEX));
 
-  VmWrite64 (VMCS_64_GUEST_IA32_EFER_INDEX,              mGuestContextCommonNormal.GuestContextPerCpu[Index].Efer);
+  // VmWrite64 (VMCS_64_GUEST_IA32_EFER_INDEX,              mGuestContextCommonNormal.GuestContextPerCpu[Index].Efer);
 
   return ;
 }
