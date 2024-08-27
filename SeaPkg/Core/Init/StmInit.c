@@ -592,11 +592,6 @@ BspInit (
   DEBUG ((EFI_D_INFO, "  AcpiRsdp                    - %016lx\n", TxtProcessorSmmDescriptor->AcpiRsdp));
   DEBUG ((EFI_D_INFO, "  PhysicalAddressBits         - %02x\n", (UINTN)TxtProcessorSmmDescriptor->PhysicalAddressBits));
 
-  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_DR7_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DR7_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RSP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RSP_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RFLAGS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX)));
-
   if (TxtProcessorSmmDescriptor->Signature != TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE) {
     DEBUG ((EFI_D_INFO, "TXT Descriptor Signature ERROR - %016lx!\n", TxtProcessorSmmDescriptor->Signature));
     CpuDeadLoop ();
@@ -1246,6 +1241,16 @@ SeaVmcallDispatcher (
   DEBUG((DEBUG_INFO, "[%a][L%d] - R13 = 0x%lx.\n", __func__, __LINE__, Register->R13));
   DEBUG((DEBUG_INFO, "[%a][L%d] - R14 = 0x%lx.\n", __func__, __LINE__, Register->R14));
   DEBUG((DEBUG_INFO, "[%a][L%d] - R15 = 0x%lx.\n", __func__, __LINE__, Register->R15));
+
+  DEBUG((DEBUG_INFO, "[%a][L%d] - VMCS_32_RO_EXIT_REASON_INDEX = 0x%lx.\n", __func__, __LINE__, VmRead32 (VMCS_32_RO_EXIT_REASON_INDEX)));
+
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_CR0_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR0_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_CR3_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR3_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_CR4_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR4_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_DR7_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DR7_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RSP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RSP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RFLAGS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX)));
 
   CpuIndex  = GetIndexFromStack (Register);
   DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex = %d\n", __func__, __LINE__, CpuIndex));
