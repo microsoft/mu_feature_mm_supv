@@ -413,13 +413,67 @@ StmDumpPerformanceMeasurement (
 #define SMM_TXTPSD_OFFSET     0xfb00
 #define SMM_CPU_STATE_OFFSET  0xfc00
 
+// __declspec (align(0x10))
+typedef struct _SEA_GUEST_CONTEXT_PER_CPU {
+  X86_REGISTER             Register;
+  IA32_DESCRIPTOR          Gdtr;
+  IA32_DESCRIPTOR          Idtr;
+  UINTN                    Cr0;
+  UINTN                    Cr3;
+  UINTN                    Cr4;
+  UINTN                    Stack;
+  UINT64                   Efer;
+  BOOLEAN                  UnrestrictedGuest;
+  UINTN                    XStateBuffer;
+
+  // For CPU support Save State in MSR, we need a place holder to save it in memory in advanced.
+  // The reason is that when we switch to SMM guest, we lose the context in SMI guest.
+  STM_SMM_CPU_STATE        *SmmCpuState;
+
+  VM_EXIT_INFO_BASIC       InfoBasic;            // hold info since we need that when return to SMI guest.
+  VM_EXIT_QUALIFICATION    Qualification;        // hold info since we need that when return to SMI guest.
+  UINT32                   VmExitInstructionLength;
+  BOOLEAN                  Launched;
+  BOOLEAN                  Active;               // For SMM VMCS only, controlled by StartStmVMCALL
+  UINT64                   Vmcs;
+  UINT32                   GuestMsrEntryCount;
+  UINT64                   GuestMsrEntryAddress;
+
+ #if defined (MDE_CPU_X64)
+  // Need check alignment here because we need use FXSAVE/FXRESTORE buffer
+  UINT32                   Reserved;
+ #endif
+} SEA_GUEST_CONTEXT_PER_CPU;
+
+#if defined (MDE_CPU_X64)
+// Need check alignment here because we need use FXSAVE/FXRESTORE buffer
+C_ASSERT ((sizeof (SEA_GUEST_CONTEXT_PER_CPU) & 0xF) == 0);
+#endif
+
+typedef struct _SEA_GUEST_CONTEXT_COMMON {
+  EPT_POINTER                  EptPointer;
+  UINTN                        CompatiblePageTable;
+  UINTN                        CompatiblePaePageTable;
+  UINT64                       MsrBitmap;
+  UINT64                       IoBitmapA;
+  UINT64                       IoBitmapB;
+  UINT32                       Vmid;
+  UINTN                        ZeroXStateBuffer;
+  //
+  // BiosHwResourceRequirementsPtr: This is back up of BIOS resource - no ResourceListContinuation
+  //
+  UINT64                       BiosHwResourceRequirementsPtr;
+  SEA_GUEST_CONTEXT_PER_CPU    *GuestContextPerCpu;
+} SEA_GUEST_CONTEXT_COMMON;
+
 typedef struct _SEA_HOST_CONTEXT_PER_CPU {
   UINT32                          Index;
   UINT32                          ApicId;
   UINTN                           Stack;
   UINT32                          Smbase;
   TXT_PROCESSOR_SMM_DESCRIPTOR    *TxtProcessorSmmDescriptor;
-  X86_REGISTER                    Register;
+  UINT32                          HostMsrEntryCount;
+  UINT64                          HostMsrEntryAddress;
 
   // JumpBuffer for Setup/TearDown
   BOOLEAN                         JumpBufferValid;
@@ -477,6 +531,19 @@ typedef struct _SEA_HOST_CONTEXT_COMMON {
   SEA_HOST_CONTEXT_PER_CPU            *HostContextPerCpu;
 } SEA_HOST_CONTEXT_COMMON;
 
-extern SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
+extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
+extern SEA_GUEST_CONTEXT_COMMON  mGuestContextCommonNormal;
+
+/**
+
+  This function return XState size.
+
+  @return XState size
+
+**/
+UINTN
+CalculateXStateSize (
+  VOID
+  );
 
 #endif

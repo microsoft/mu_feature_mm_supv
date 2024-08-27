@@ -103,3 +103,41 @@ IsXStateSupported (
     return TRUE;
   }
 }
+
+/**
+  This function return XState size.
+  @return XState size
+**/
+UINTN
+CalculateXStateSize (
+  VOID
+  )
+{
+  UINT32  Eax;
+  UINT32  Ebx;
+  UINT32  Ecx;
+  UINT32  Edx;
+
+  if (!IsXStateSupported ()) {
+    // It is FxState size
+    return 512;
+  }
+
+  AsmCpuidEx (
+    CPUID_PROCESSOR_EXTENDED_STATE_EMULATION,
+    0x0,
+    &Eax,
+    &Ebx,
+    &Ecx,
+    &Edx
+    );
+
+  //
+  // ECX: Maximum size (bytes) of the XSAVE/XRSTOR save area
+  //      required by all supported features in the processor, i.e all the valid bit
+  //      fields in XFEATURE_ENABLED_MASK. This includes the size needed for
+  //      the XSAVE.HEADER.
+  // We need 512 FPU/SSE SaveArea, for whole region.
+  //
+  return Ecx + sizeof (IA32_FX_BUFFER);
+}
