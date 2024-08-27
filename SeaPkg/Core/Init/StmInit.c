@@ -14,6 +14,7 @@
 
 #include <Uefi.h>
 #include <SeaResponder.h>
+#include <Library/LocalApicLib.h>
 #include <SmmSecurePolicy.h>
 #include <IndustryStandard/Tpm20.h>
 #include <Library/PcdLib.h>
@@ -413,6 +414,8 @@ GetIndexFromStack (
   StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
 
   DEBUG((DEBUG_INFO, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - ApicId is 0x%x.\n", __func__, __LINE__, GetApicId ()));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - GetIndexFromStack is 0x%p.\n", __func__, __LINE__, GetIndexFromStack));
 
   //
   // Stack top of this CPU
@@ -588,6 +591,11 @@ BspInit (
   DEBUG ((EFI_D_INFO, "  BiosHwResourceRequirements  - %016lx\n", TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr));
   DEBUG ((EFI_D_INFO, "  AcpiRsdp                    - %016lx\n", TxtProcessorSmmDescriptor->AcpiRsdp));
   DEBUG ((EFI_D_INFO, "  PhysicalAddressBits         - %02x\n", (UINTN)TxtProcessorSmmDescriptor->PhysicalAddressBits));
+
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_DR7_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DR7_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RSP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RSP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Guest-state VMCS_N_GUEST_RFLAGS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX)));
 
   if (TxtProcessorSmmDescriptor->Signature != TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE) {
     DEBUG ((EFI_D_INFO, "TXT Descriptor Signature ERROR - %016lx!\n", TxtProcessorSmmDescriptor->Signature));
@@ -844,19 +852,36 @@ LaunchBack (
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_64_HOST_IA32_PAT_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_HOST_IA32_PAT_INDEX)));
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_RIP_INDEX)));
 
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_ES_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_CS_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_SS_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_DS_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_FS_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_GS_INDEX)));
-  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_GUEST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_TR_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_ES_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_CS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_SS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_DS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_FS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_GS_INDEX)));
+  DEBUG ((EFI_D_ERROR, "Host-state VMCS_16_HOST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_TR_INDEX)));
 
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_FS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_FS_BASE_INDEX)));
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_GS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GS_BASE_INDEX)));
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_TR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_TR_BASE_INDEX)));
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_GDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GDTR_BASE_INDEX)));
   DEBUG ((EFI_D_ERROR, "Host-state VMCS_N_HOST_IDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IDTR_BASE_INDEX)));
+
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rdx = 0x%lx.\n", __func__, __LINE__, Register->Rdx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rbx = 0x%lx.\n", __func__, __LINE__, Register->Rbx));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rsp = 0x%lx.\n", __func__, __LINE__, Register->Rsp));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rbp = 0x%lx.\n", __func__, __LINE__, Register->Rbp));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rsi = 0x%lx.\n", __func__, __LINE__, Register->Rsi));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - Rdi = 0x%lx.\n", __func__, __LINE__, Register->Rdi));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R8  = 0x%lx.\n", __func__, __LINE__, Register->R8));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R9  = 0x%lx.\n", __func__, __LINE__, Register->R9));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R10 = 0x%lx.\n", __func__, __LINE__, Register->R10));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R11 = 0x%lx.\n", __func__, __LINE__, Register->R11));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R12 = 0x%lx.\n", __func__, __LINE__, Register->R12));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R13 = 0x%lx.\n", __func__, __LINE__, Register->R13));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R14 = 0x%lx.\n", __func__, __LINE__, Register->R14));
+  DEBUG((DEBUG_INFO, "[%a][L%d] - R15 = 0x%lx.\n", __func__, __LINE__, Register->R15));
 
   Rflags = AsmVmLaunch (Register);
 
