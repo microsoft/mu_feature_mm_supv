@@ -28,6 +28,7 @@
 
 [Sources]
   Init/StmInit.c
+  Init/VmcsInit.c
   Init/Paging.c
   Init/Memory.c
   Init/Relocate.c

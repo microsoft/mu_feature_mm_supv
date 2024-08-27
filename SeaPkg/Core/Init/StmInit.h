@@ -41,4 +41,18 @@ Is1GPageSupport (
   VOID
   );
 
+/**
+
+  This function initialize VMCS for Normal Environment.
+
+  @param Index CPU index
+  @param Vmcs  VMCS pointer
+
+**/
+VOID
+InitializeNormalVmcs (
+  IN UINT32  Index,
+  IN UINT64  *Vmcs
+  );
+
 #endif
