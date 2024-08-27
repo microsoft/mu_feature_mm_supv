@@ -1273,6 +1273,10 @@ SeaVmcallDispatcher (
     ASSERT_EFI_ERROR (Status);
   }
 
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
+  VmcsInit (CpuIndex);
+  DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
+
   DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));
   LaunchBack (CpuIndex, Register);
   DEBUG ((DEBUG_INFO, "[%a][L%d] - Returned from LaunchBack().\n", __func__, __LINE__));
