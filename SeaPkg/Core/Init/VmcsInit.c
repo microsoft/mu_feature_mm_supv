@@ -36,7 +36,6 @@ InitializeNormalVmcs (
   IN UINT64   *Vmcs
   )
 {
-  UINT64                                       Data64;
   // VM_EXIT_CONTROLS                             VmExitCtrls;
   // VM_ENTRY_CONTROLS                            VmEntryCtrls;
   GUEST_INTERRUPTIBILITY_STATE                 GuestInterruptibilityState;
