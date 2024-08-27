@@ -37,7 +37,7 @@ InitializeNormalVmcs (
   )
 {
   UINT64                                       Data64;
-  VM_EXIT_CONTROLS                             VmExitCtrls;
+  // VM_EXIT_CONTROLS                             VmExitCtrls;
   // VM_ENTRY_CONTROLS                            VmEntryCtrls;
   GUEST_INTERRUPTIBILITY_STATE                 GuestInterruptibilityState;
   VM_EXIT_MSR_ENTRY                            *VmExitMsrEntry;
@@ -51,14 +51,14 @@ InitializeNormalVmcs (
   // VmEntryCtrls.Bits.LoadIA32_PERF_GLOBAL_CTRL = 0;
   // VmEntryCtrls.Bits.LoadIA32_EFER = 1;
 
-  Data64 = AsmReadMsr64 (IA32_VMX_EXIT_CTLS_MSR_INDEX);
-  VmExitCtrls.Uint32 = (UINT32)Data64 & (UINT32)RShiftU64 (Data64, 32);
-  VmExitCtrls.Bits.Ia32eHost = (sizeof(UINT64) == sizeof(UINTN));
-  VmExitCtrls.Bits.SaveVmxPreemptionTimerValue = 1; // Save VmxPreemptionTimer
-  // Upon receiving control due to an SMI, the STM shall save the contents of the IA32_PERF_GLOBAL_CTRL MSR, disable any
-  // enabled bits in the IA32_PERF_GLOBAL_CTRL MSR
-  VmExitCtrls.Bits.LoadIA32_PERF_GLOBAL_CTRL = 0;
-  VmExitCtrls.Bits.SaveIA32_EFER = 1;
+  // Data64 = AsmReadMsr64 (IA32_VMX_EXIT_CTLS_MSR_INDEX);
+  // VmExitCtrls.Uint32 = (UINT32)Data64 & (UINT32)RShiftU64 (Data64, 32);
+  // VmExitCtrls.Bits.Ia32eHost = (sizeof(UINT64) == sizeof(UINTN));
+  // VmExitCtrls.Bits.SaveVmxPreemptionTimerValue = 1; // Save VmxPreemptionTimer
+  // // Upon receiving control due to an SMI, the STM shall save the contents of the IA32_PERF_GLOBAL_CTRL MSR, disable any
+  // // enabled bits in the IA32_PERF_GLOBAL_CTRL MSR
+  // VmExitCtrls.Bits.LoadIA32_PERF_GLOBAL_CTRL = 0;
+  // VmExitCtrls.Bits.SaveIA32_EFER = 1;
 
   GuestInterruptibilityState.Uint32 = VmRead32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX);
   GuestInterruptibilityState.Bits.BlockingBySmi = 0;
@@ -67,7 +67,7 @@ InitializeNormalVmcs (
   // Control field
   //
   // VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX,                 VmEntryCtrls.Uint32);
-  VmWrite32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX,                  VmExitCtrls.Uint32);
+  // VmWrite32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX,                  VmExitCtrls.Uint32);
 
   //
   // Make sure the value is valid
