@@ -1035,7 +1035,7 @@ GetResources (
   // Check the buffer not null requirement
   BufferBase = Register->Rbx;
   BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
-  if (BufferBase == 0) {
+  if ((BufferBase == 0) && (BufferSize != 0)) {
     StmStatus = ERROR_INVALID_PARAMETER;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
@@ -1053,7 +1053,7 @@ GetResources (
   }
 
   // Check the buffer supplied is not in the MSEG or TSEG.
-  if (IsBufferInsideMmram (BufferBase, BufferSize)) {
+  if ((BufferBase != 0) && IsBufferInsideMmram (BufferBase, BufferSize)) {
     StmStatus = ERROR_STM_PAGE_NOT_FOUND;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
