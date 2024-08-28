@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "rim"
-path = "bin/rim.rs"
+path = "src/main.rs"
 
 [dependencies]
 # Cli
