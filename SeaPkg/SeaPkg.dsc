@@ -72,6 +72,8 @@
   PeCoffLibNegative|SeaPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
   PeCoffExtraActionLib|MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
   SecurePolicyLib|MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
+  LocalApicLib|UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
+  CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
 
 [Components]
   SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {

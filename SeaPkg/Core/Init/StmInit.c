@@ -1135,6 +1135,12 @@ Done:
   return Status;
 }
 
+VOID
+EFIAPI
+ProcessLibraryConstructorList (
+  VOID
+  );
+
 /**
 
   This function handles VMCalls into SEA module in C code.
@@ -1167,6 +1173,7 @@ SeaVmcallDispatcher (
         // If no, GenStm tool will "load image". So here, we just need "relocate image"
         RelocateStmImage (FALSE);
 
+        ProcessLibraryConstructorList ();
         BspInit (Register);
       }
 
