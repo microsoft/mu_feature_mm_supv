@@ -1,6 +1,6 @@
 //! A library containing necessary data structures representing CBOR formatted
 //! COSE objects.
-//! 
+//!
 //! Data structures are defined here:
 //! - https://www.rfc-editor.org/rfc/rfc9393.html
 //! - https://www.iana.org/assignments/cbor-tags/cbor-tags.xhtml
@@ -16,7 +16,7 @@ use minicbor::{Decode, Encode};
 extern crate alloc;
 use alloc::{string::String, vec::Vec};
 
-/// COSE_Sign1-coswid<payloud>
+/// COSE_Sign1-coswid<payload>
 /// https://www.rfc-editor.org/rfc/rfc9393.html#name-signed-coswid-tags
 #[derive(Encode, Decode)]
 #[cbor(array)]
@@ -63,6 +63,51 @@ where
         }
     }
 }
+
+/// Sig_structure<payload>
+/// https://www.rfc-editor.org/rfc/rfc9052.html#name-signing-and-verification-pr
+#[derive(Encode, Decode)]
+#[cbor(array)]
+pub struct SigStructure<C, Payload>
+where
+    for<'b> Payload: Encode<C> + Decode<'b, C>,
+{
+    #[n(0)]
+    pub context: String,
+    #[n(1)]
+    pub body_protected: ProtectedHeader,
+    #[n(2)]
+    pub sign_protected: Option<SignProtected>,
+    #[n(3)]
+    pub external_aad: String,
+    #[n(4)]
+    pub payload: Payload,
+    #[cbor(skip)]
+    pub _marker: core::marker::PhantomData<C>,
+}
+
+impl<C, Payload> SigStructure<C, Payload>
+where
+    for<'b> Payload: Encode<C> + Decode<'b, C>,
+{
+    pub fn new(payload: Payload, body_protected: ProtectedHeader) -> Self {
+        Self {
+            context: "Signature1".into(),
+            body_protected,
+            sign_protected: None,
+            external_aad: "".into(),
+            payload,
+            _marker: core::marker::PhantomData::<C>,
+        }
+    }
+}
+
+/// sign-protected
+/// Protected attributes
+/// https://www.rfc-editor.org/rfc/rfc9052.html#name-signing-and-verification-pr
+#[derive(Encode, Decode)]
+#[cbor(map)]
+pub struct SignProtected;
 
 /// protected-signed-coswid-header
 /// https://www.rfc-editor.org/rfc/rfc9393.html#name-signed-coswid-tags

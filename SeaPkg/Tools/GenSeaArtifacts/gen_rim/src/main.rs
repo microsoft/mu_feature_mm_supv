@@ -1,67 +1,175 @@
-//! ## License
-//!
-//! Copyright (c) Microsoft Corporation.
-//!
-//! SPDX-License-Identifier: BSD-2-Clause-Patent
-//!
 use anyhow::{anyhow, Result};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use coswid_core::*;
 use digest::Digest;
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
 
 const STM_BIN_GUID: &str = "C7600D63-09A2-4A30-A105-DAA22DE2D0FE";
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-/// Generates measurement hashes for the STM firmware binary file and wraps it in a swid+cbor RIM
-/// containing the following hashes: SHA256, SHA384, SHA512, SM3-256.
-struct Args {
-    /// Path to the STM firmware binary file to be measured
-    pub file: PathBuf,
-    /// Version of the STM firmware binary file
-    #[arg(short, long)]
-    pub rim_version: Option<String>,
-    /// Path to place the generated RIM file. Defaults to the current directory.
-    #[arg(short, long)]
-    pub output: Option<PathBuf>,
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Generates a RIM for the STM firmware binary file
+    Generate(GenerateArgs),
+    /// Generates the structure that needs to be signed
+    Signing(SigningArgs),
+}
+
+#[derive(Parser)]
+struct GenerateArgs {
+    /// The path to the STM firmware binary file, or the RIM file to update if --update_signature is used.
+    file: PathBuf,
+    /// Software Creator company name
     #[arg(long)]
-    /// Company name for registering the Software Creator in the RIM
-    pub company_name: String,
-    /// Company URL for registering the Software Creator in the RIM
+    company_name: Option<String>,
+    /// Software Creator company URL
     #[arg(long)]
-    pub company_url: String,
+    company_url: Option<String>,
+    /// Generates a new RIM from an existing RIM, updating the signature value
+    #[arg(short, long, default_value = "false")]
+    update_signature: bool,
+    /// The version of the STM firmware binary file
+    #[arg(short, long, default_value = "0.0.1")]
+    rim_version: String,
+    /// The signature to be used in the RIM
+    #[arg(short, long)]
+    signature: Option<String>,
+    /// The output path
+    #[arg(short, long)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Parser)]
+struct SigningArgs {
+    /// The path to the STM firmware binary file, or the RIM file to use for signing
+    file: PathBuf,
+    #[arg(long)]
+    company_name: Option<String>,
+    #[arg(long)]
+    company_url: Option<String>,
+    #[arg(short, long, default_value = "false")]
+    /// The version of the STM firmware binary file
+    #[arg(short, long, default_value = "0.0.1")]
+    rim_version: String,
+    #[arg(short, long)]
+    from_rim: bool,
+    #[arg(short, long)]
+    output: PathBuf,
 }
 
 fn main() -> Result<()> {
-    let args = Args::parse();
+    let cli = Cli::parse();
 
-    let measurement_payloads = generate_measurements(&args.file)?;
+    match cli.command {
+        Commands::Generate(args) => generate_rim(args)?,
+        Commands::Signing(args) => generate_signing(args)?,
+    }
 
+    Ok(())
+}
+
+/// Generates a RIM for the STM from the provided STM binary file, or updates an existing RIM file with a new signature.
+fn generate_rim(args: GenerateArgs) -> Result<()> {
+    // If the --update_signature flag is set, the provided file is a RIM file that needs to be updated
+    if args.update_signature {
+        let Some(signature) = args.signature else {
+            return Err(anyhow!(
+                "--signature is required when using --update-signature"
+            ));
+        };
+
+        let bytes = std::fs::read(&args.file).unwrap();
+        let mut rim =
+            minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
+                .map_err(|e| anyhow!(e))?;
+        rim.signature = signature;
+
+        let mut buffer = Vec::new();
+        minicbor::encode(&rim, &mut buffer).map_err(|e| anyhow!(e))?;
+        std::fs::write(args.output.unwrap_or(args.file), buffer)?;
+        return Ok(());
+    }
+
+    // Generate the STM measurements
+    let measurements = generate_measurements(&args.file)?;
+    let (Some(company_name), Some(company_url)) = (args.company_name, args.company_url) else {
+        return Err(anyhow!("--company-name and --company-url are required"));
+    };
+
+    // Generate the RIM
     let cosesign1_payload: ConciseSwidTag<(), Vec<FileMeasurement>> =
-        ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", args.company_url))
-            .with_software_version(args.rim_version.unwrap_or("1.0.0".to_string()))
+        ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
+            .with_software_version(args.rim_version)
             .with_version_scheme("1")
             .with_software_meta(SoftwareMetaEntry::new().with_product("STM Binary"))
             .with_entity(
-                EntityEntry::new(args.company_name)
-                    .with_reg_id(args.company_url)
+                EntityEntry::new(company_name)
+                    .with_reg_id(company_url)
                     .with_role("tag-creator")
                     .with_reg_id("software-creator"),
             )
-            .with_payload(measurement_payloads);
+            .with_payload(measurements);
 
     let cosesign1: CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>> = CoseSign1::new(
         ProtectedHeader::new(-39, "application/swid+cbor"),
         UnprotectedHeader::new(),
         cosesign1_payload,
-        "F".repeat(256),
+        args.signature.unwrap_or("F".repeat(256)),
     );
 
+    // Write the RIM to a file
     let mut buffer = Vec::new();
-    minicbor::encode(&cosesign1, &mut buffer).unwrap();
-    let mut file = std::fs::File::create(args.output.unwrap_or(PathBuf::from("RIM.bin"))).unwrap();
-    file.write_all(&buffer).unwrap();
+    minicbor::encode(&cosesign1, &mut buffer).map_err(|e| anyhow!(e))?;
+    std::fs::write(args.output.unwrap_or(PathBuf::from("RIM.bin")), buffer)?;
+    Ok(())
+}
+
+fn generate_signing(args: SigningArgs) -> Result<()> {
+    if args.from_rim {
+        let bytes = std::fs::read(&args.file).unwrap();
+        let rim =
+            minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
+                .map_err(|e| anyhow!(e))?;
+
+        let sig_structure: SigStructure<(), ConciseSwidTag<(), Vec<FileMeasurement>>> =
+            SigStructure::new(rim.payload, rim.protected);
+        let mut buffer = Vec::new();
+        minicbor::encode(&sig_structure, &mut buffer).map_err(|e| anyhow!(e))?;
+        std::fs::write(args.output, buffer)?;
+        return Ok(());
+    }
+
+    let measurements = generate_measurements(&args.file)?;
+    let (Some(company_name), Some(company_url)) = (args.company_name, args.company_url) else {
+        return Err(anyhow!("--company-name and --company-url are required"));
+    };
+
+    let cosesign1_payload: ConciseSwidTag<(), Vec<FileMeasurement>> =
+        ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
+            .with_software_version(args.rim_version)
+            .with_version_scheme("1")
+            .with_software_meta(SoftwareMetaEntry::new().with_product("STM Binary"))
+            .with_entity(
+                EntityEntry::new(company_name)
+                    .with_reg_id(company_url)
+                    .with_role("tag-creator")
+                    .with_reg_id("software-creator"),
+            )
+            .with_payload(measurements);
+
+    let sig_structure: SigStructure<(), ConciseSwidTag<(), Vec<FileMeasurement>>> =
+        SigStructure::new(
+            cosesign1_payload,
+            ProtectedHeader::new(-39, "application/swid+cbor"),
+        );
+    let mut buffer = Vec::new();
+    minicbor::encode(&sig_structure, &mut buffer).map_err(|e| anyhow!(e))?;
+    std::fs::write(args.output, buffer)?;
     Ok(())
 }
 

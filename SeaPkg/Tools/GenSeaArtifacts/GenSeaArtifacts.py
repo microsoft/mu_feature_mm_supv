@@ -10,7 +10,6 @@ import hashlib
 import logging
 from pathlib import Path
 import shutil
-from typing import Tuple
 
 from edk2toolext.environment.plugintypes.uefi_helper_plugin import IUefiHelperPlugin
 from edk2toollib.utility_functions import RunCmd, RunPythonScript
@@ -205,7 +204,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         company_name = config.get("company_name")
         company_url = config.get("company_url")
 
-        args = "run --bin gen_rim --"
+        args = "run --bin rim -- generate" 
         args += f' {stm_bin}'
         args += f' -o {output_path}'
         args += f' -r {rim_version}'
