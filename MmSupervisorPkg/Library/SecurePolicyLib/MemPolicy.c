@@ -570,6 +570,74 @@ Exit:
 }
 
 /**
+  Compare two policies with a given type.
+
+  @param  SmmPolicyData1    The first data to compare.
+  @param  SmmPolicyData2    The second data to compare.
+  @param  PolicyType        The type of policy to compare.
+
+  @retval FALSE       If two memory policy not identical.
+
+**/
+BOOLEAN
+EFIAPI
+ComparePolicyWithType (
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData1,
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData2,
+  UINT32                            PolicyType
+  )
+{
+  UINTN                    MemoryPolicySize;
+  UINT8                    *SmmPolicy1  = NULL;
+  UINT8                    *SmmPolicy2  = NULL;
+  SMM_SUPV_POLICY_ROOT_V1  *PolicyRoot1 = NULL;
+  SMM_SUPV_POLICY_ROOT_V1  *PolicyRoot2 = NULL;
+  UINTN                    i;
+
+  if ((SmmPolicyData1 == NULL) || (SmmPolicyData2 == NULL)) {
+    return FALSE;
+  }
+
+  // Locate memory descriptors first
+  for (i = 0; i < SmmPolicyData1->PolicyRootCount; i++) {
+    PolicyRoot1 = &((SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SmmPolicyData1 + SmmPolicyData1->PolicyRootOffset))[i];
+    if (PolicyRoot1->Type == PolicyType) {
+      // Here we found it
+      SmmPolicy1 = (UINT8 *)SmmPolicyData1 + PolicyRoot1->Offset;
+      break;
+    }
+  }
+
+  for (i = 0; i < SmmPolicyData2->PolicyRootCount; i++) {
+    PolicyRoot2 = &((SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SmmPolicyData2 + SmmPolicyData2->PolicyRootOffset))[i];
+    if (PolicyRoot2->Type == PolicyType) {
+      // Here we found it
+      SmmPolicy2 = (UINT8 *)SmmPolicyData2 + PolicyRoot2->Offset;
+      break;
+    }
+  }
+
+  if ((SmmPolicy1 == NULL) || (SmmPolicy2 == NULL) ||
+      (PolicyRoot1 == NULL) || (PolicyRoot2 == NULL) ||
+      (PolicyRoot1->Version != PolicyRoot2->Version) ||
+      (PolicyRoot1->PolicyRootSize != PolicyRoot2->PolicyRootSize) ||
+      (PolicyRoot1->AccessAttr != PolicyRoot2->AccessAttr) ||
+      (PolicyRoot1->Count != PolicyRoot2->Count))
+  {
+    return FALSE;
+  }
+
+  MemoryPolicySize = sizeof (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0) * PolicyRoot1->Count;
+  SmmPolicy1       = (UINT8 *)SmmPolicyData1 + PolicyRoot1->Offset;
+  SmmPolicy2       = (UINT8 *)SmmPolicyData2 + PolicyRoot2->Offset;
+  if (CompareMem (SmmPolicy1, SmmPolicy2, MemoryPolicySize) == 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
   Compare memory policy in two SmmPolicy.
 
   @param  SmmPolicyData1    The first data to compare.
@@ -585,54 +653,7 @@ CompareMemoryPolicy (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData2
   )
 {
-  UINTN                    MemoryPolicySize;
-  UINT8                    *SmmMemPolicy1 = NULL;
-  UINT8                    *SmmMemPolicy2 = NULL;
-  SMM_SUPV_POLICY_ROOT_V1  *PolicyRoot1   = NULL;
-  SMM_SUPV_POLICY_ROOT_V1  *PolicyRoot2   = NULL;
-  UINTN                    i;
-
-  if ((SmmPolicyData1 == NULL) || (SmmPolicyData2 == NULL)) {
-    return FALSE;
-  }
-
-  // Locate memory descriptors first
-  for (i = 0; i < SmmPolicyData1->PolicyRootCount; i++) {
-    PolicyRoot1 = &((SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SmmPolicyData1 + SmmPolicyData1->PolicyRootOffset))[i];
-    if (PolicyRoot1->Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM) {
-      // Here we found it
-      SmmMemPolicy1 = (UINT8 *)SmmPolicyData1 + PolicyRoot1->Offset;
-      break;
-    }
-  }
-
-  for (i = 0; i < SmmPolicyData2->PolicyRootCount; i++) {
-    PolicyRoot2 = &((SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)SmmPolicyData2 + SmmPolicyData2->PolicyRootOffset))[i];
-    if (PolicyRoot2->Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM) {
-      // Here we found it
-      SmmMemPolicy2 = (UINT8 *)SmmPolicyData2 + PolicyRoot2->Offset;
-      break;
-    }
-  }
-
-  if ((SmmMemPolicy1 == NULL) || (SmmMemPolicy2 == NULL) ||
-      (PolicyRoot1 == NULL) || (PolicyRoot2 == NULL) ||
-      (PolicyRoot1->Version != PolicyRoot2->Version) ||
-      (PolicyRoot1->PolicyRootSize != PolicyRoot2->PolicyRootSize) ||
-      (PolicyRoot1->AccessAttr != PolicyRoot2->AccessAttr) ||
-      (PolicyRoot1->Count != PolicyRoot2->Count))
-  {
-    return FALSE;
-  }
-
-  MemoryPolicySize = sizeof (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0) * PolicyRoot1->Count;
-  SmmMemPolicy1    = (UINT8 *)SmmPolicyData1 + PolicyRoot1->Offset;
-  SmmMemPolicy2    = (UINT8 *)SmmPolicyData2 + PolicyRoot2->Offset;
-  if (CompareMem (SmmMemPolicy1, SmmMemPolicy2, MemoryPolicySize) == 0) {
-    return TRUE; // Memory Policy Identical
-  }
-
-  return FALSE;
+  return ComparePolicyWithType (SmmPolicyData1, SmmPolicyData2, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM);
 }
 
 /**

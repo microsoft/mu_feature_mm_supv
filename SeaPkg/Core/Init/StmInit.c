@@ -1106,8 +1106,13 @@ GetResources (
     StmStatus = STM_SUCCESS;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SUCCESS;
-  } else if (CompareMemoryPolicy (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase) == FALSE) {
-    // Is this right??????
+  } else if (
+             (CompareMemoryPolicy (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase) == FALSE) ||
+             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO) == FALSE) ||
+             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR) == FALSE) ||
+             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_INSTRUCTION) == FALSE) ||
+             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE) == FALSE))
+  {
     // Not the first time, making sure the validation routine is giving us the same policy buffer output
     ReleaseSpinLock (&mHostContextCommon.ResponderLock);
     StmStatus = ERROR_STM_SECURITY_VIOLATION;
