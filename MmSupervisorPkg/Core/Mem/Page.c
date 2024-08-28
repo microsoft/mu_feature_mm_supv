@@ -175,10 +175,14 @@ CoreFreeMemoryMapStack (
     // Deque an memory map entry from mFreeMemoryMapEntryList
     //
     Entry = AllocateMemoryMapEntry ();
+    // MU_CHANGE Start - CodeQL Change
     if (Entry == NULL) {
-      ASSERT (FALSE);
-      goto Done;
+      ASSERT (Entry);
+      mFreeMapStack -= 1;
+      return;
     }
+
+    // MU_CHANGE End - CodeQL Change
 
     //
     // Update to proper entry
