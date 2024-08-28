@@ -10,9 +10,9 @@
 #
 ##
 
-#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 0958e6b72fe8eeaf87f2d0dd61ab4a62 | 2024-07-29T17-47-37 | 5bfab09d1f243366d256ed254ded0413d9b1440d
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 8f4d9ebac99e18a84fe18f790793183e | 2024-07-26T00-52-03 | 5bfab09d1f243366d256ed254ded0413d9b1440d
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 065a21955cc57cf1c06dabf3d238f34a | 2024-07-29T17-59-14 | 5bfab09d1f243366d256ed254ded0413d9b1440d
+#Override : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 22aa8d1b884e477e1e078b485974dc90 | 2024-08-28T16-51-15 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 465d5d5aecd11469c7b706462e194f94 | 2024-08-28T16-50-23 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | b775d90b4549dbd378f23de48a0f3a16 | 2024-08-28T16-42-21 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
 
 [Defines]
   INF_VERSION                    = 0x0001001A
@@ -185,6 +185,7 @@
   gMmSupervisorPkgTokenSpaceGuid.PcdEnableSyscallLogs              ## CONSUMES
 
 [FixedPcd]
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmApSyncTimeout2                ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                   ## SOMETIMES_CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackSize                     ## CONSUMES
