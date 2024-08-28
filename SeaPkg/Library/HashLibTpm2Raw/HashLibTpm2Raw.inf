@@ -38,3 +38,4 @@
   Tpm2CommandLib
   MemoryAllocationLib
   PcdLib
+  BaseCryptLib
