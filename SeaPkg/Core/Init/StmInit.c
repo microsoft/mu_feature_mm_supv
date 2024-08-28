@@ -1274,6 +1274,12 @@ Done:
   return Status;
 }
 
+VOID
+EFIAPI
+ProcessLibraryConstructorList (
+  VOID
+  );
+
 /**
 
   This function handles VMCalls into SEA module in C code.
@@ -1385,6 +1391,10 @@ SeaVmcallDispatcher (
         RelocateStmImage (FALSE);
 
         DEBUG ((DEBUG_INFO, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
+
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - Before ProcessLibraryConstructorList().\n", __func__, __LINE__));
+        ProcessLibraryConstructorList ();
+        DEBUG ((DEBUG_INFO, "[%a][L%d] - After ProcessLibraryConstructorList().\n", __func__, __LINE__));
 
         BspInit (Register);
 
