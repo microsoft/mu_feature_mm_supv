@@ -1130,6 +1130,8 @@ GetCapabilities (
   CopyMem ((VOID *)(UINTN)BufferBase, &RetStruct, RetStruct.SeaTotalSize);
   DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
   Status = EFI_SUCCESS;
+  StmStatus = STM_SUCCESS;
+  WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
 
 Done:
   DEBUG ((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
