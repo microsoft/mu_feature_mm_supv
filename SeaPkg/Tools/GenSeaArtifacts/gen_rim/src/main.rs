@@ -56,6 +56,7 @@ struct SigningArgs {
     /// The version of the STM firmware binary file
     #[arg(short, long, default_value = "0.0.1")]
     rim_version: String,
+    #[arg(short, long)]
     from_rim: bool,
     #[arg(short, long)]
     output: PathBuf,
