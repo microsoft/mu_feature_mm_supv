@@ -8,6 +8,10 @@ edition = "2021"
 name = "coswid_core"
 path = "src/lib.rs"
 
+[[bin]]
+name = "rim"
+path = "bin/rim.rs"
+
 [dependencies]
 # Cli
 anyhow = "1.0.80"
