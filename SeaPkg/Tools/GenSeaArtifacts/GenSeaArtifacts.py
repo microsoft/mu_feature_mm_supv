@@ -204,7 +204,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         company_name = config.get("company_name")
         company_url = config.get("company_url")
 
-        args = "run --bin rim generate --"
+        args = "run --bin rim -- generate" 
         args += f' {stm_bin}'
         args += f' -o {output_path}'
         args += f' -r {rim_version}'
