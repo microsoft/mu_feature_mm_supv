@@ -17,7 +17,7 @@
   PI_SPECIFICATION_VERSION       = 0x0001000A
   ENTRY_POINT                    = MmDxeSupportEntry
 
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | b8cd1e0325ad1ee8724c96b07614b9de | 2024-07-29T18-40-40 | 5bfab09d1f243366d256ed254ded0413d9b1440d
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 2e109ab26b73f3510a952e0c82b14628 | 2024-08-28T16-44-39 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
 
 #
 # The following information is for reference only and not required by the build tools.

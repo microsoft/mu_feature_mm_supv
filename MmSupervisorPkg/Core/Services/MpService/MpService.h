@@ -109,6 +109,9 @@ typedef struct {
 extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
 extern UINT64                       gPhyMask;
 
+extern UINT64  mTimeoutTicker;
+extern UINT64  mTimeoutTicker2;
+
 /**
   Schedule a procedure to run on the specified CPU.
 
@@ -208,7 +211,8 @@ StartSyncTimer (
 BOOLEAN
 EFIAPI
 IsSyncTimerTimeout (
-  IN      UINT64  Timer
+  IN      UINT64  Timer,
+  IN      UINT64  Timeout
   );
 
 /**
