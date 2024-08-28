@@ -58,6 +58,24 @@ CompareMemoryPolicy (
   );
 
 /**
+  Compare two policies with a given type.
+
+  @param  SmmPolicyData1    The first data to compare.
+  @param  SmmPolicyData2    The second data to compare.
+  @param  PolicyType        The type of policy to compare.
+
+  @retval FALSE       If two memory policy not identical.
+
+**/
+BOOLEAN
+EFIAPI
+ComparePolicyWithType (
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData1,
+  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmPolicyData2,
+  UINT32                            PolicyType
+  );
+
+/**
   Prepare a snapshot of memory policy, this will be compared against the one generated when requested.
 
   @retval EFI_SUCCESS               The security policy is successfully gathered.
