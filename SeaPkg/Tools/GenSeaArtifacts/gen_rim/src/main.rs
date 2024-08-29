@@ -36,9 +36,9 @@ struct GenerateArgs {
     /// The version of the STM firmware binary file
     #[arg(short, long, default_value = "0.0.1")]
     rim_version: String,
-    /// The signature to be used in the RIM
+    /// A binary file where the bytes are the signature to use
     #[arg(short, long)]
-    signature: Option<String>,
+    signature: Option<PathBuf>,
     /// The output path
     #[arg(short, long)]
     output: Option<PathBuf>,
@@ -48,16 +48,19 @@ struct GenerateArgs {
 struct SigningArgs {
     /// The path to the STM firmware binary file, or the RIM file to use for signing
     file: PathBuf,
+    /// Software Creator company name
     #[arg(long)]
     company_name: Option<String>,
+    /// Software Creator company URL
     #[arg(long)]
     company_url: Option<String>,
-    #[arg(short, long, default_value = "false")]
     /// The version of the STM firmware binary file
     #[arg(short, long, default_value = "0.0.1")]
     rim_version: String,
-    #[arg(short, long)]
+    /// Generate the structure that needs to be signed from an existing RIM file
+    #[arg(short, long, default_value = "false")]
     from_rim: bool,
+    /// The output path
     #[arg(short, long)]
     output: PathBuf,
 }
@@ -83,11 +86,11 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
             ));
         };
 
-        let bytes = std::fs::read(&args.file).unwrap();
+        let bytes = std::fs::read(&args.file)?;
         let mut rim =
             minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
                 .map_err(|e| anyhow!(e))?;
-        rim.signature = signature;
+        rim.signature = hex::encode(std::fs::read(&signature)?);;
 
         let mut buffer = Vec::new();
         minicbor::encode(&rim, &mut buffer).map_err(|e| anyhow!(e))?;
@@ -115,11 +118,16 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
             )
             .with_payload(measurements);
 
+    let signature = match args.signature {
+        Some(path) => hex::encode(std::fs::read(&path)?),
+        None => "F".repeat(256),
+    };
+
     let cosesign1: CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>> = CoseSign1::new(
         ProtectedHeader::new(-39, "application/swid+cbor"),
         UnprotectedHeader::new(),
         cosesign1_payload,
-        args.signature.unwrap_or("F".repeat(256)),
+        signature,
     );
 
     // Write the RIM to a file
