@@ -120,7 +120,7 @@ MmExitBootServicesHandler (
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
   { MmDriverDispatchHandler,    &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
   { MmReadyToLockHandler,       &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
-  { MmExitBootServicesHandler,  &gEfiEventExitBootServicesGuid,    NULL, TRUE  },
+  { MmExitBootServicesHandler,  &gEfiEventExitBootServicesGuid,    NULL, FALSE  },
   { MmSupvRequestHandler,       &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
   { NULL,                       NULL,                              NULL, FALSE },
 };
