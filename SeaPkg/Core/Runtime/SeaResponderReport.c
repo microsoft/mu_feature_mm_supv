@@ -149,6 +149,7 @@ VerifyAndHashImage (
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - ImageContext->ImageError = 0x%x.\n", __func__, ImageContext.ImageError));
     goto Exit;
   }
 
@@ -468,6 +469,7 @@ SeaResponderReport (
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[%a] - ImageContext->ImageError = 0x%x.\n", __func__, ImageContext.ImageError));
     DEBUG ((DEBUG_ERROR, "%a Failed to get MM supervisor image info %r.\n", __func__, Status));
     goto Exit;
   }
