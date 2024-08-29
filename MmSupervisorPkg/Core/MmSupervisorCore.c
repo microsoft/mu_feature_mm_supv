@@ -111,6 +111,7 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
   { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
   { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
+  { MmReadyToLockHandler,    &gEfiEventExitBootServicesGuid, NULL, TRUE  },
   { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
   { NULL,                    NULL,                              NULL, FALSE },
 };
@@ -294,6 +295,20 @@ Exit:
   }
 
   return Status;
+}
+
+EFI_STATUS
+EFIAPI
+MmExitBootServicesHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context         OPTIONAL,
+  IN OUT VOID        *CommBuffer      OPTIONAL,
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  )
+{
+  DEBUG ((DEBUG_ERROR, "%a - Inside exit boot services handler... gMmCorePrivate: %p, MmCoreImageBase: %p\n", __FUNCTION__, gMmCorePrivate, gMmCorePrivate->MmCoreImageBase));
+  DUMP_HEX (DEBUG_ERROR, 0, gMmCorePrivate->MmCoreImageBase, EFI_PAGE_SIZE, "");
+  return EFI_SUCCESS;
 }
 
 /**
