@@ -206,6 +206,13 @@ SmmIplGuidedEventNotify (
   IN VOID       *Context
   );
 
+VOID
+EFIAPI
+SmmIplGuidedSupvEventNotify (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  );
+
 /**
   Event notification that is fired when EndOfDxe Event Group is signaled.
 
@@ -335,7 +342,7 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // Declare event notification on Exit Boot Services Event Group.  This is used to inform the SMM Core
   // to notify SMM driver that system enter exit boot services.
   //
-  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,     SmmIplGuidedEventNotify,       &gEfiEventExitBootServicesGuid,     TPL_CALLBACK, NULL },
+  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,     SmmIplGuidedSupvEventNotify,       &gEfiEventExitBootServicesGuid,     TPL_CALLBACK, NULL },
   //
   // Declare event notification on Ready To Boot Event Group.  This is used to inform the SMM Core
   // to notify SMM driver that system enter ready to boot.
@@ -574,6 +581,47 @@ SmmIplGuidedEventNotify (
   )
 {
   SmmIplGuidedEventNotifyWorker ((EFI_GUID *)Context);
+}
+
+EFI_STATUS
+EFIAPI
+SmmIplGuidedSupvEventNotifyWorker (
+  IN EFI_GUID  *NotifierGuid
+  )
+{
+  EFI_STATUS Status;
+  UINTN      Size;
+
+  // MU_CHANGE: MM_SUPV: Specifically send ready to lock to supervisor after users
+  //
+  // Finally, we inform SMM Core that the DxeSmmReadyToLock protocol was installed
+  //
+  mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+
+  //
+  // Use Guid to initialize EFI_SMM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&mCommunicateHeader->HeaderGuid, NotifierGuid);
+  mCommunicateHeader->MessageLength = 1;
+  mCommunicateHeader->Data[0]       = 0;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size = sizeof (EFI_SMM_COMMUNICATE_HEADER);
+  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
+
+  return Status;
+}
+
+VOID
+EFIAPI
+SmmIplGuidedSupvEventNotify (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  SmmIplGuidedSupvEventNotifyWorker ((EFI_GUID *)Context);
 }
 
 /**
