@@ -287,10 +287,6 @@ ResponderValidationTestAppEntry (
   IN     EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS  Status;
-  VOID        *SourceBuffer;
-  UINTN       SourceSize;
-
   DEBUG ((DEBUG_INFO, "%a the app's up!\n", __func__));
 
   if (EFI_ERROR (LocateSmmCommonCommBuffer ())) {
@@ -299,28 +295,6 @@ ResponderValidationTestAppEntry (
   }
 
   DxeToSmmCommunicate ();
-
-  Status = GetSectionFromAnyFvByFileType (
-             EFI_FV_FILETYPE_MM_CORE_STANDALONE,
-             0,
-             EFI_SECTION_PE32,
-             0,
-             &SourceBuffer,
-             &SourceSize
-             );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to get the section from the FV - %r\n", __func__, Status));
-    return Status;
-  }
-
-  Status =  Tcg2MeasurePeImage (
-              (EFI_PHYSICAL_ADDRESS)(UINTN)SourceBuffer,
-              SourceSize
-              );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to measure and log the MM code - %r\n", __func__, Status));
-    return Status;
-  }
 
   DEBUG ((DEBUG_INFO, "%a the app's done!\n", __func__));
 
