@@ -1252,6 +1252,12 @@ PatchMmSupervisorCoreRegion (
              EFI_MEMORY_SP
              );
 
+  Status = SmmSetMemoryAttributes (
+            mMmCoreDriverEntry->ImageBuffer,
+            EFI_PAGE_SIZE,
+            EFI_MEMORY_RO
+            );
+
   if (FirmwarePolicy == NULL) {
     Status = EFI_SECURITY_VIOLATION;
     ASSERT (FALSE);
