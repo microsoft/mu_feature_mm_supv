@@ -1303,6 +1303,9 @@ SeaVmcallDispatcher (
     return;
   }
 
+  AsmWriteDr7 (0xD0001);
+  AsmWriteDr0 (0x7BFC5000);
+
   DEBUG((DEBUG_INFO, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
   DEBUG((DEBUG_INFO, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
   DEBUG((DEBUG_INFO, "[%a][L%d] - Rdx = 0x%lx.\n", __func__, __LINE__, Register->Rdx));
