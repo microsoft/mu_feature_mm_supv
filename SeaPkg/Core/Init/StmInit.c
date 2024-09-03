@@ -1378,6 +1378,9 @@ SeaVmcallDispatcher (
   DEBUG ((EFI_D_ERROR, "MSR IA32_VMX_CR4_FIXED0_MSR_INDEX: %08x\n",   (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED0_MSR_INDEX)));
   DEBUG ((EFI_D_ERROR, "MSR IA32_VMX_CR4_FIXED1_MSR_INDEX: %08x\n",   (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED1_MSR_INDEX)));
 
+  DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, 0x7BFC5000));
+  DUMP_HEX (DEBUG_ERROR, 0, 0x7BFC5000, EFI_PAGE_SIZE * 10, "    ");
+
   CpuIndex  = GetIndexFromStack (Register);
   DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex = %d\n", __func__, __LINE__, CpuIndex));
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);

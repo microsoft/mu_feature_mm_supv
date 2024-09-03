@@ -474,7 +474,7 @@ SeaResponderReport (
   DEBUG ((DEBUG_ERROR, "%a LocalMmiEntryBase: 0x%p:\n", __func__, LocalMmiEntryBase));
   DUMP_HEX (DEBUG_ERROR, 0, LocalMmiEntryBase, MmiEntryFileSize, "    ");
   DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, MmSupervisorBase));
-  DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, EFI_PAGE_SIZE, "    ");
+  DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, EFI_PAGE_SIZE * 10, "    ");
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
