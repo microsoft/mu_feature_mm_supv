@@ -19,6 +19,8 @@ MMI_ENTRY   mRootMmiEntry = {
   INITIALIZE_LIST_HEAD_VARIABLE (mRootMmiEntry.MmiHandlers),
 };
 
+extern BOOLEAN mAfterEBS;
+
 /**
   Finds the MMI entry for the requested handler type.
 
@@ -158,6 +160,10 @@ MmiManage (
   }
 
   Head = &MmiEntry->MmiHandlers;
+
+  if (mAfterEBS) {
+    DUMP_HEX (DEBUG_ERROR, 0, gMmCorePrivate->MmCoreImageBase, EFI_PAGE_SIZE * 10, "    ");
+  }
 
   for (Link = Head->ForwardLink; Link != Head; Link = Link->ForwardLink) {
     MmiHandler = CR (Link, MMI_HANDLER, Link, MMI_HANDLER_SIGNATURE);
