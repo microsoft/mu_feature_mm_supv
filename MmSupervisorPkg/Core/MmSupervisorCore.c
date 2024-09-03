@@ -305,7 +305,7 @@ Exit:
 
   return Status;
 }
-
+BOOLEAN mAfterEBS = FALSE;
 EFI_STATUS
 EFIAPI
 MmExitBootServicesHandler (
@@ -317,6 +317,7 @@ MmExitBootServicesHandler (
 {
   DEBUG ((DEBUG_ERROR, "%a - Inside exit boot services handler... gMmCorePrivate: %p, MmCoreImageBase: %p\n", __FUNCTION__, gMmCorePrivate, gMmCorePrivate->MmCoreImageBase));
   DUMP_HEX (DEBUG_ERROR, 0, gMmCorePrivate->MmCoreImageBase, EFI_PAGE_SIZE, "");
+  mAfterEBS = TRUE;
   return EFI_SUCCESS;
 }
 
