@@ -305,6 +305,21 @@ Exit:
 
   return Status;
 }
+
+VOID
+SmmWriteUnprotectReadOnlyPage (
+  OUT BOOLEAN  *WriteProtect
+  );
+
+/**
+  Write protect read-only pages.
+  @param[in]  WriteProtect      If Cr0.Bits.WP should be enabled.
+**/
+VOID
+SmmWriteProtectReadOnlyPage (
+  IN  BOOLEAN  WriteProtect
+  );
+
 BOOLEAN mAfterEBS = FALSE;
 EFI_STATUS
 EFIAPI
@@ -343,7 +358,11 @@ MmExitBootServicesHandler (
   MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
 
   DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
+
+  BOOLEAN WriteProtect;
+  SmmWriteUnprotectReadOnlyPage (&WriteProtect);
   DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
+  SmmWriteProtectReadOnlyPage (WriteProtect);
 
   mAfterEBS = TRUE;
   return EFI_SUCCESS;
