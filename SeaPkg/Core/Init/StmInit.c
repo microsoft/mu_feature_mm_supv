@@ -21,6 +21,7 @@
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/MtrrLib.h>
 #include <Library/SecurePolicyLib.h>
 #include <x64/CpuArchSpecific.h>
 
@@ -1280,6 +1281,37 @@ ProcessLibraryConstructorList (
   VOID
   );
 
+VOID
+DumpMtrrsInStm (
+  VOID
+  )
+{
+  MTRR_SETTINGS  LocalMtrrs;
+  MTRR_SETTINGS  *Mtrrs;
+  UINTN          Index;
+  UINTN          VariableMtrrCount;
+
+  DEBUG ((DEBUG_INFO, "[%a] - Enter\n"));
+
+  MtrrGetAllMtrrs (&LocalMtrrs);
+  Mtrrs = &LocalMtrrs;
+  DEBUG ((DEBUG_INFO, "MTRR Default Type: %016lx\n", Mtrrs->MtrrDefType));
+  for (Index = 0; Index < MTRR_NUMBER_OF_FIXED_MTRR; Index++) {
+    DEBUG ((DEBUG_INFO, "Fixed MTRR[%02d]   : %016lx\n", Index, Mtrrs->Fixed.Mtrr[Index]));
+  }
+
+  VariableMtrrCount = GetVariableMtrrCount ();
+  for (Index = 0; Index < VariableMtrrCount; Index++) {
+    DEBUG ((DEBUG_INFO, "Variable MTRR[%02d]: Base=%016lx Mask=%016lx\n",
+      Index,
+      Mtrrs->Variables.Mtrr[Index].Base,
+      Mtrrs->Variables.Mtrr[Index].Mask
+      ));
+  }
+  DEBUG ((DEBUG_INFO, "\n"));
+  DEBUG ((DEBUG_INFO, "[%a] - Exit\n"));
+}
+
 /**
 
   This function handles VMCalls into SEA module in C code.
@@ -1378,8 +1410,10 @@ SeaVmcallDispatcher (
   DEBUG ((EFI_D_ERROR, "MSR IA32_VMX_CR4_FIXED0_MSR_INDEX: %08x\n",   (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED0_MSR_INDEX)));
   DEBUG ((EFI_D_ERROR, "MSR IA32_VMX_CR4_FIXED1_MSR_INDEX: %08x\n",   (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED1_MSR_INDEX)));
 
-  DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, 0x7BFC5000));
-  DUMP_HEX (DEBUG_ERROR, 0, 0x7BFC5000, EFI_PAGE_SIZE * 10, "    ");
+  DumpMtrrsInStm ();
+
+  DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, 0x7BFC0000));
+  DUMP_HEX (DEBUG_ERROR, 0, 0x7BFC0000, EFI_PAGE_SIZE * 10, "    ");
 
   CpuIndex  = GetIndexFromStack (Register);
   DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex = %d\n", __func__, __LINE__, CpuIndex));

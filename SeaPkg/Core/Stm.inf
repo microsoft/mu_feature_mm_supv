@@ -63,6 +63,7 @@
   SynchronizationLib
   DebugLib
   StmLib
+  MtrrLib
   PcdLib
   StmPlatformLib
   PeCoffLib
