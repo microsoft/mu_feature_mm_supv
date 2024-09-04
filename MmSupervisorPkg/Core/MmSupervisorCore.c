@@ -336,7 +336,7 @@ MmExitBootServicesHandler (
   MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
   MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
 
-  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
+  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE) & MtrrValidAddressMask;
   MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
   // Extend the mask to account for the reserved bits.
   MmrrMask   |= 0xffffffff00000000ULL;
