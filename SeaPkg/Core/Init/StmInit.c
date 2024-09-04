@@ -1467,7 +1467,7 @@ SeaVmcallDispatcher (
 
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "ServiceId(0x%x) error - %r\n", (UINTN)ServiceId, Status));
-    ASSERT_EFI_ERROR (Status);
+    // ASSERT_EFI_ERROR (Status);
   }
 
   DEBUG ((DEBUG_INFO, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
