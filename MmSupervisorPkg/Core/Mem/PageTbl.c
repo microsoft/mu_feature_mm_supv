@@ -935,6 +935,8 @@ SmiPFHandler (
 
   AcquireSpinLock (mPFLock);
 
+  DumpCpuContext (InterruptType, SystemContext);
+
   PFAddress = AsmReadCr2 ();
 
   if (mCpuSmmRestrictedMemoryAccess && (PFAddress >= LShiftU64 (1, (mPhysicalAddressBits - 1)))) {
