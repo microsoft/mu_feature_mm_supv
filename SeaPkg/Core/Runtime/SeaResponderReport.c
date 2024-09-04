@@ -470,11 +470,26 @@ SeaResponderReport (
   DEBUG ((DEBUG_ERROR, "%a AuxFileBase: 0x%x, MmiRendezvousSymbol: 0x%x\n", __func__, AuxFileBase, MmiRendezvousSymbol));
   DEBUG ((DEBUG_ERROR, "%a MmiRendezvousSymbol Offset: 0x%x\n", __func__, MmiRendezvousSymbol->Offset));
   DEBUG ((DEBUG_ERROR, "%a MmBase + SMM_HANDLER_OFFSET: 0x%x:\n", __func__, MmBase + SMM_HANDLER_OFFSET));
-  DUMP_HEX (DEBUG_ERROR, 0, (VOID *)(UINTN)(MmBase + SMM_HANDLER_OFFSET), MmiEntryFileSize, "    ");
   DEBUG ((DEBUG_ERROR, "%a LocalMmiEntryBase: 0x%p:\n", __func__, LocalMmiEntryBase));
-  DUMP_HEX (DEBUG_ERROR, 0, LocalMmiEntryBase, MmiEntryFileSize, "    ");
   DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, MmSupervisorBase));
-  DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, EFI_PAGE_SIZE * 2, "    ");
+
+  UINT64                          MmRamBase;
+  UINT64                          MmRamLength;
+  UINT64                          MmrrMask;
+  UINT64                          MtrrValidBitsMask;
+  UINT64                          MtrrValidAddressMask;
+
+  MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
+  MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
+
+  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE);
+  MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
+  // Extend the mask to account for the reserved bits.
+  MmrrMask   |= 0xffffffff00000000ULL;
+  MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
+
+  DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
+  DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
