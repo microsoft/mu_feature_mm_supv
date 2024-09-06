@@ -332,37 +332,37 @@ MmExitBootServicesHandler (
 {
   DEBUG ((DEBUG_ERROR, "%a - Inside exit boot services handler... gMmCorePrivate: %p, MmCoreImageBase: %p\n", __FUNCTION__, gMmCorePrivate, gMmCorePrivate->MmCoreImageBase));
 
-  UINT64                          MmRamBase;
-  UINT64                          MmRamLength;
-  UINT64                          MmrrMask;
-  UINT32                          MaxExtendedFunction;
-  CPUID_VIR_PHY_ADDRESS_SIZE_EAX  VirPhyAddressSize;
-  UINT64                          MtrrValidBitsMask;
-  UINT64                          MtrrValidAddressMask;
+  // UINT64                          MmRamBase;
+  // UINT64                          MmRamLength;
+  // UINT64                          MmrrMask;
+  // UINT32                          MaxExtendedFunction;
+  // CPUID_VIR_PHY_ADDRESS_SIZE_EAX  VirPhyAddressSize;
+  // UINT64                          MtrrValidBitsMask;
+  // UINT64                          MtrrValidAddressMask;
 
-  AsmCpuid (CPUID_EXTENDED_FUNCTION, &MaxExtendedFunction, NULL, NULL, NULL);
+  // AsmCpuid (CPUID_EXTENDED_FUNCTION, &MaxExtendedFunction, NULL, NULL, NULL);
 
-  if (MaxExtendedFunction >= CPUID_VIR_PHY_ADDRESS_SIZE) {
-    AsmCpuid (CPUID_VIR_PHY_ADDRESS_SIZE, &VirPhyAddressSize.Uint32, NULL, NULL, NULL);
-  } else {
-    VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
-  }
+  // if (MaxExtendedFunction >= CPUID_VIR_PHY_ADDRESS_SIZE) {
+  //   AsmCpuid (CPUID_VIR_PHY_ADDRESS_SIZE, &VirPhyAddressSize.Uint32, NULL, NULL, NULL);
+  // } else {
+  //   VirPhyAddressSize.Bits.PhysicalAddressBits = 36;
+  // }
 
-  MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
-  MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
+  // MtrrValidBitsMask    = LShiftU64 (1, VirPhyAddressSize.Bits.PhysicalAddressBits) - 1;
+  // MtrrValidAddressMask = MtrrValidBitsMask & 0xfffffffffffff000ULL;
 
-  MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE) & MtrrValidAddressMask;
-  MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
-  // Extend the mask to account for the reserved bits.
-  MmrrMask   |= 0xffffffff00000000ULL;
-  MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
+  // MmRamBase = AsmReadMsr64 (MSR_IA32_SMRR_PHYSBASE) & MtrrValidAddressMask;
+  // MmrrMask  = AsmReadMsr64 (MSR_IA32_SMRR_PHYSMASK);
+  // // Extend the mask to account for the reserved bits.
+  // MmrrMask   |= 0xffffffff00000000ULL;
+  // MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
 
-  DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
+  // DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
 
-  BOOLEAN WriteProtect;
-  SmmWriteUnprotectReadOnlyPage (&WriteProtect);
-  DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
-  SmmWriteProtectReadOnlyPage (WriteProtect);
+  // BOOLEAN WriteProtect;
+  // SmmWriteUnprotectReadOnlyPage (&WriteProtect);
+  // DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
+  // SmmWriteProtectReadOnlyPage (WriteProtect);
 
   mAfterEBS = TRUE;
   return EFI_SUCCESS;

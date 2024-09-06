@@ -161,9 +161,9 @@ MmiManage (
 
   Head = &MmiEntry->MmiHandlers;
 
-  if (mAfterEBS) {
-    DUMP_HEX (DEBUG_ERROR, 0, gMmCorePrivate->MmCoreImageBase, EFI_PAGE_SIZE * 10, "    ");
-  }
+  // if (mAfterEBS) {
+  //   DUMP_HEX (DEBUG_ERROR, 0, gMmCorePrivate->MmCoreImageBase, EFI_PAGE_SIZE * 10, "    ");
+  // }
 
   for (Link = Head->ForwardLink; Link != Head; Link = Link->ForwardLink) {
     MmiHandler = CR (Link, MMI_HANDLER, Link, MMI_HANDLER_SIGNATURE);
