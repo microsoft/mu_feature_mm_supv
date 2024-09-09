@@ -32,6 +32,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   StandaloneMmPkg/StandaloneMmPkg.dec
+  SeaPkg/SeaPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
 
 [LibraryClasses]
@@ -49,6 +50,9 @@
 [Guids]
   gEfiSmmSmramMemoryGuid             ## CONSUMES ## HOB
   gMsegSmramGuid                     ## PRODUCES ## HOB
+
+[Ppis]
+  gMsegIdentifiedPpiGuid             ## PRODUCES
 
 [Depex]
   gEfiPeiMemoryDiscoveredPpiGuid

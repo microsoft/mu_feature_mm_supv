@@ -25,6 +25,12 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/PcdLib.h>
 
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_PEI_PPI_DESCRIPTOR  mMsegIdentifiedPpiDescriptor = {
+  EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST,
+  &gMsegIdentifiedPpiGuid,
+  NULL
+};
+
 /**
   Retrieves the data structure associated with the GUIDed HOB of type gEfiSmmSmramMemoryGuid
 
@@ -213,6 +219,7 @@ MsegSmramHobEntry (
   //
   Status = SplitSmramReserveHob ();
   if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
@@ -220,6 +227,10 @@ MsegSmramHobEntry (
   // Create MsegSmram hob.
   //
   Status = CreateMsegSmramHob ();
+  ASSERT_EFI_ERROR (Status);
+
+  Status = PeiServicesInstallPpi (&mMsegIdentifiedPpiDescriptor);
+  ASSERT_EFI_ERROR (Status);
 
   return Status;
 }

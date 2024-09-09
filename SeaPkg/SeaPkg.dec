@@ -50,3 +50,9 @@
 
   # The SHA256 hash of the MM supervisor core EFI binary file
   gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash|{0x0}|VOID*|0x00000004
+
+[Ppis]
+  ## MSEG Identified PPI
+  #
+  #  {883d59ac-13ee-4bb7-aace-ddd8a1e03982}
+  gMsegIdentifiedPpiGuid = {0x883d59ac, 0x13ee, 0x4bb7, {0xaa, 0xce, 0xdd, 0xd8, 0xa1, 0xe0, 0x39, 0x82}}
