@@ -1090,13 +1090,15 @@ GetFullMmramRanges (
     return NULL;
   }
 
+  // Need an empty entry for SMM core
   MmramRangeCount += 1;
   FullMmramRanges  = (EFI_MMRAM_DESCRIPTOR *)AllocateZeroPool (MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
   if (FullMmramRanges == NULL) {
     return NULL;
   }
 
-  CopyMem (FullMmramRanges, MmramRanges, MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+  // Be mindful on not copying junk from the next hob into our region...
+  CopyMem (FullMmramRanges, MmramRanges, (MmramRangeCount - 1) * sizeof (EFI_MMRAM_DESCRIPTOR));
   *FullMmramRangeCount = MmramRangeCount;
 
   return FullMmramRanges;
