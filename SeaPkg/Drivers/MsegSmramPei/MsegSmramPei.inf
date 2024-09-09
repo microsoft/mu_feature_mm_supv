@@ -42,13 +42,13 @@
   PeiServicesLib
   BaseMemoryLib
   BaseLib
-  
+
 [Pcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMsegSize      ## CONSUMES
 
 [Guids]
-  gEfiMmPeiMmramMemoryReserveGuid             ## CONSUMES ## HOB
-  gMsegSmramGuid                               ## PRODUCES ## HOB
+  gEfiSmmSmramMemoryGuid             ## CONSUMES ## HOB
+  gMsegSmramGuid                     ## PRODUCES ## HOB
 
 [Depex]
   gEfiPeiMemoryDiscoveredPpiGuid

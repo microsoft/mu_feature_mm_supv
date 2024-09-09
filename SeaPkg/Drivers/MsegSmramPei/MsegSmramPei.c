@@ -26,10 +26,10 @@
 #include <Library/PcdLib.h>
 
 /**
-  Retrieves the data structure associated with the GUIDed HOB of type gEfiMmPeiMmramMemoryReserveGuid
+  Retrieves the data structure associated with the GUIDed HOB of type gEfiSmmSmramMemoryGuid
 
-  @retval NULL   A HOB of type gEfiMmPeiMmramMemoryReserveGuid could not be found.
-  @retval !NULL  A pointer to the GUID data from a HIB of type gEfiMmPeiMmramMemoryReserveGuid
+  @retval NULL   A HOB of type gEfiSmmSmramMemoryGuid could not be found.
+  @retval !NULL  A pointer to the GUID data from a HIB of type gEfiSmmSmramMemoryGuid
 
 **/
 EFI_SMRAM_HOB_DESCRIPTOR_BLOCK *
@@ -42,7 +42,7 @@ GetSmramHobData (
   //
   // Search SmramMemoryReserve HOB that describes SMRAM region
   //
-  GuidHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
+  GuidHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
   if (GuidHob == NULL) {
     return NULL;
   }
@@ -53,8 +53,8 @@ GetSmramHobData (
 /**
   This routine will split SmramReserve hob to reserve Mseg page for SMRAM content.
 
-  @retval EFI_SUCCESS           The gEfiMmPeiMmramMemoryReserveGuid is splitted successfully.
-  @retval EFI_NOT_FOUND         The gEfiMmPeiMmramMemoryReserveGuid is not found.
+  @retval EFI_SUCCESS           The gEfiSmmSmramMemoryGuid is splitted successfully.
+  @retval EFI_NOT_FOUND         The gEfiSmmSmramMemoryGuid is not found.
 
 **/
 EFI_STATUS
@@ -77,7 +77,7 @@ SplitSmramReserveHob (
   //
   // Retrieve the GUID HOB data that contains the set of SMRAM descriptors
   //
-  GuidHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
+  GuidHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
   if (GuidHob == NULL) {
     return EFI_NOT_FOUND;
   }
@@ -92,7 +92,7 @@ SplitSmramReserveHob (
   BufferSize  = sizeof (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK) + (SmramRanges * sizeof (EFI_SMRAM_DESCRIPTOR));
 
   Hob.Raw = BuildGuidHob (
-              &gEfiMmPeiMmramMemoryReserveGuid,
+              &gEfiSmmSmramMemoryGuid,
               BufferSize
               );
   ASSERT (Hob.Raw);
@@ -141,7 +141,7 @@ SplitSmramReserveHob (
   This routine will create MsegSmram hob to hold MsegSmramInfo.
 
   @retval EFI_SUCCESS           The MsegSmramHob is created successfully.
-  @retval EFI_NOT_FOUND         The gEfiMmPeiMmramMemoryReserveGuid is not found.
+  @retval EFI_NOT_FOUND         The gEfiSmmSmramMemoryGuid is not found.
 
 **/
 EFI_STATUS
@@ -187,8 +187,8 @@ CreateMsegSmramHob (
   @param   PeiServices      Describes the list of possible PEI Services.
 
   @retval EFI_SUCCESS      Success create gMsegSmramGuid and
-                           split gEfiMmPeiMmramMemoryReserveGuid.
-  @retval EFI_NOT_FOUND    Can not get gEfiMmPeiMmramMemoryReserveGuid hob
+                           split gEfiSmmSmramMemoryGuid.
+  @retval EFI_NOT_FOUND    Can not get gEfiSmmSmramMemoryGuid hob
 
 **/
 EFI_STATUS
