@@ -90,7 +90,7 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
         let mut rim =
             minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
                 .map_err(|e| anyhow!(e))?;
-        rim.signature = hex::encode(std::fs::read(&signature)?);;
+        rim.signature = hex::encode(std::fs::read(&signature)?);
 
         let mut buffer = Vec::new();
         minicbor::encode(&rim, &mut buffer).map_err(|e| anyhow!(e))?;
