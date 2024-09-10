@@ -1043,9 +1043,8 @@ SmmIsMmramOverlap (
 /**
   Get full SMRAM ranges.
 
-  It will get SMRAM ranges from SmmAccess PPI and SMRAM reserved ranges from
-  MmConfiguration ppi, split the entries if there is overlap between them.
-  It will also reserve one entry for SMM core.
+  It will get SMRAM ranges from either the gEfiMmPeiMmramMemoryReserveGuid or
+  gEfiSmmSmramMemoryGuid HOB.
 
   @param[out] FullMmramRangeCount   Output pointer to full SMRAM range count.
 
@@ -1096,7 +1095,7 @@ GetFullMmramRanges (
     return NULL;
   }
 
-  CopyMem (FullMmramRanges, MmramRanges, MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+  CopyMem (FullMmramRanges, MmramRanges, (MmramRangeCount - 1) * sizeof (EFI_MMRAM_DESCRIPTOR));
   *FullMmramRangeCount = MmramRangeCount;
 
   return FullMmramRanges;
@@ -1183,7 +1182,7 @@ MmIplPeiEntry (
                              );
   ASSERT_EFI_ERROR (Status);
 
-  gMmCorePrivate->MmramRanges = (UINTN)GetFullMmramRanges (PeiServices, (UINTN *)&gMmCorePrivate->MmramRangeCount);
+  gMmCorePrivate->MmramRanges = (EFI_PHYSICAL_ADDRESS)(UINTN)GetFullMmramRanges (PeiServices, (UINTN *)&gMmCorePrivate->MmramRangeCount);
   MmramRanges                 = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
 
   //
