@@ -1092,6 +1092,8 @@ GetCapabilities (
     DEBUG((DEBUG_INFO, "[%a][L%d].\n", __func__, __LINE__));
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    // Populate rdx with the number of pages required
+    WriteUnaligned32 ((UINT32 *)&Register->Rdx, EFI_SIZE_TO_PAGES (sizeof (SEA_CAPABILITIES_STRUCT)));
     Status = EFI_SECURITY_VIOLATION;
     DEBUG ((DEBUG_ERROR, "%a Incoming buffer too small: 0x%x bytes!\n", __func__, BufferSize));
     goto Done;
@@ -1239,6 +1241,8 @@ GetResources (
     ReleaseSpinLock (&mHostContextCommon.ResponderLock);
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+    // Populate rdx with the number of pages required
+    WriteUnaligned32 ((UINT32 *)&Register->Rdx, EFI_SIZE_TO_PAGES (PolicyBuffer->Size));
     Status = EFI_SECURITY_VIOLATION;
     DEBUG ((DEBUG_ERROR, "%a Policy returned (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, PolicyBuffer->Size, BufferSize));
     goto Done;
