@@ -22,6 +22,10 @@
 
 [Includes.Common.Private]
   Private/Include
+  Library/MbedTlsLib/Include
+  Library/MbedTlsLib/mbedtls/include
+  Library/MbedTlsLib/mbedtls/include/mbedtls
+  Library/MbedTlsLib/mbedtls/library
 
 [LibraryClasses]
   HashLibRaw|Include/Library/HashLibRaw.h
