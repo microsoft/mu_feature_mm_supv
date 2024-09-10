@@ -19,6 +19,7 @@ variables:
 extends:
   template: MuDevOpsWrapper.yml
   parameters:
+    do_non_ci_setup: true
     do_ci_build: true
     do_ci_setup: true
     do_pr_eval: false

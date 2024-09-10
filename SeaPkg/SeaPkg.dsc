@@ -74,6 +74,9 @@
   SecurePolicyLib|MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
   LocalApicLib|UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
   CpuLib|MdePkg/Library/BaseCpuLib/BaseCpuLib.inf
+  BaseCryptLib|SeaPkg/Library/BaseCryptLibMbedTls/BaseCryptLib.inf
+  MbedTlsLib|SeaPkg/Library/MbedTlsLib/MbedTlsLib.inf
+  IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
 
 [Components]
   SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {

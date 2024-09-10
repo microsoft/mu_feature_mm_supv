@@ -42,8 +42,13 @@
     },
 
     ## options defined ci/Plugin/DscCompleteCheck
+    # Temporary exclusions while using local MbedTlibLib
     "DscCompleteCheck": {
-        "IgnoreInf": [],
+        "IgnoreInf": [
+          "SeaPkg/Library/MbedTlsLib/MbedTlsLib.inf",
+          "SeaPkg/Library/MbedTlsLib/MbedTlsLibFull.inf",
+          "SeaPkg/Library/BaseCryptLibMbedTls/BaseCryptLib.inf",
+          ],
         "DscPath": "SeaPkg.dsc"
     },
 
@@ -71,10 +76,20 @@
         "IgnoreHeaderFile": []
     },
 
+    "MarkdownLintCheck": {
+        "AuditOnly": False,          # If True, log all errors and then mark as skipped
+        "IgnoreFiles": [
+          "Library/BaseCryptLibMbedTls/**",
+          "Library/MbedTlsLib/**",
+        ]            # package root relative file, folder, or glob pattern to ignore
+    },
+
     ## options defined ci/Plugin/SpellCheck
     "SpellCheck": {
         "AuditOnly": False,           # Fails test but run in AuditOnly mode to collect log
         "IgnoreFiles": [              # Ignore most spell checks on code originally from EDK2
+          "Library/BaseCryptLibMbedTls/**",
+          "Library/MbedTlsLib/**",
         ],
         "IgnoreStandardPaths": [],    # Standard Plugin defined paths that should be ignore
         "AdditionalIncludePaths": [], # Additional paths to spell check (wildcards supported)
