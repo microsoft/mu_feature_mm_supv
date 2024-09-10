@@ -499,6 +499,7 @@ SeaResponderReport (
   }
 
   MmSupervisorImageSize = ImageContext.ImageSize;
+  DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, MmSupervisorImageSize, " ");
 
   if (!IsBufferInsideMmram (MmSupervisorBase, MmSupervisorImageSize)) {
     DEBUG ((DEBUG_ERROR, "%a Calculated MM supervisor core image (0x%p: 0x%x) does not reside inside MMRAM.\n", __func__, MmSupervisorBase, MmSupervisorImageSize));
