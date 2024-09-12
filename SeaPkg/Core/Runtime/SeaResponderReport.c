@@ -488,8 +488,8 @@ SeaResponderReport (
   MmrrMask   |= 0xffffffff00000000ULL;
   MmRamLength = ((~(MmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
 
-  DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
-  DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
+  // DEBUG ((DEBUG_ERROR, "%a MmRamBase: 0x%x:\n", __func__, MmRamBase));
+  // DUMP_HEX (DEBUG_ERROR, 0, MmRamBase, MmRamLength, "    ");
 
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
@@ -499,7 +499,7 @@ SeaResponderReport (
   }
 
   MmSupervisorImageSize = ImageContext.ImageSize;
-  DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, MmSupervisorImageSize, " ");
+  // DUMP_HEX (DEBUG_ERROR, 0, MmSupervisorBase, MmSupervisorImageSize, " ");
 
   if (!IsBufferInsideMmram (MmSupervisorBase, MmSupervisorImageSize)) {
     DEBUG ((DEBUG_ERROR, "%a Calculated MM supervisor core image (0x%p: 0x%x) does not reside inside MMRAM.\n", __func__, MmSupervisorBase, MmSupervisorImageSize));

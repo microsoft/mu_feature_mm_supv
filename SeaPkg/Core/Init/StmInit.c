@@ -1418,8 +1418,8 @@ SeaVmcallDispatcher (
 
   DumpMtrrsInStm ();
 
-  DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, 0x7BFC0000));
-  DUMP_HEX (DEBUG_ERROR, 0, 0x7BFC0000, EFI_PAGE_SIZE * 10, "    ");
+  // DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, 0x7BFC0000));
+  // DUMP_HEX (DEBUG_ERROR, 0, 0x7BFC0000, EFI_PAGE_SIZE * 10, "    ");
 
   CpuIndex  = GetIndexFromStack (Register);
   DEBUG ((DEBUG_INFO, "[%a][L%d] - CpuIndex = %d\n", __func__, __LINE__, CpuIndex));
