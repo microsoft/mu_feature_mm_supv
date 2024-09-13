@@ -467,6 +467,12 @@ SeaResponderReport (
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
   ImageContext.Handle    = (VOID *)MmSupervisorBase;
 
+  DEBUG ((DEBUG_ERROR, "%a AuxFileBase: 0x%x, MmiRendezvousSymbol: 0x%x\n", __func__, AuxFileBase, MmiRendezvousSymbol));
+  DEBUG ((DEBUG_ERROR, "%a MmiRendezvousSymbol Offset: 0x%x\n", __func__, MmiRendezvousSymbol->Offset));
+  DEBUG ((DEBUG_ERROR, "%a MmBase + SMM_HANDLER_OFFSET: 0x%x:\n", __func__, MmBase + SMM_HANDLER_OFFSET));
+  DEBUG ((DEBUG_ERROR, "%a LocalMmiEntryBase: 0x%p:\n", __func__, LocalMmiEntryBase));
+  DEBUG ((DEBUG_ERROR, "%a MmSupervisorBase: 0x%x:\n", __func__, MmSupervisorBase));
+
   Status = PeCoffLoaderGetImageInfo (&ImageContext);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[%a] - ImageContext->ImageError = 0x%x.\n", __func__, ImageContext.ImageError));
