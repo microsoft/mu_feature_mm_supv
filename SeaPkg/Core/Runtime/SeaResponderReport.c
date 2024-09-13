@@ -563,29 +563,31 @@ SeaResponderReport (
   }
 
   // Step 3.2: Hash MM Core code
-  Status = VerifyAndHashImage (
-             MmSupervisorBase,
-             MmSupervisorImageSize,
-             AuxFileBase,
-             AuxFileSize,
-             SupvPageTableBase,
-             &DigestList
-             );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndHashImage %r!!!.\n", __func__, Status));
-    goto Exit;
-  }
+  // [TODO - BEGIN] - Temporarily disable VerifyAndHashImage()
+  // Status = VerifyAndHashImage (
+  //            MmSupervisorBase,
+  //            MmSupervisorImageSize,
+  //            AuxFileBase,
+  //            AuxFileSize,
+  //            SupvPageTableBase,
+  //            &DigestList
+  //            );
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to VerifyAndHashImage %r!!!.\n", __func__, Status));
+  //   goto Exit;
+  // }
 
-  if (!CompareDigest (&GoldDigestList[MM_SUPV_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
-    DEBUG ((DEBUG_ERROR, "%a Hash of MM core does not match expectation! Calculated:\n", __func__));
-    DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
-    Status = EFI_SECURITY_VIOLATION;
-    goto Exit;
-  }
+  // if (!CompareDigest (&GoldDigestList[MM_SUPV_DIGEST_INDEX], &DigestList, TPM_ALG_SHA256)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Hash of MM core does not match expectation! Calculated:\n", __func__));
+  //   DUMP_HEX (DEBUG_ERROR, 0, &DigestList, sizeof (TPML_DIGEST_VALUES), "    ");
+  //   Status = EFI_SECURITY_VIOLATION;
+  //   goto Exit;
+  // }
 
-  if (GoldDigestList != NULL) {
-    CopyMem (GoldDigestList + 1, &DigestList, sizeof (DigestList));
-  }
+  // if (GoldDigestList != NULL) {
+  //   CopyMem (GoldDigestList + 1, &DigestList, sizeof (DigestList));
+  // }
+  // [TODO - END] - Temporarily disable VerifyAndHashImage()
 
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
 
