@@ -14,12 +14,14 @@
 
 #include <Uefi.h>
 #include <SeaResponder.h>
+#include <Library/LocalApicLib.h>
 #include <SmmSecurePolicy.h>
 #include <IndustryStandard/Tpm20.h>
 #include <Library/PcdLib.h>
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/MtrrLib.h>
 #include <Library/SecurePolicyLib.h>
 #include <x64/CpuArchSpecific.h>
 
@@ -412,16 +414,24 @@ GetIndexFromStack (
 
   StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
 
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ApicId is 0x%x.\n", __func__, __LINE__, GetApicId ()));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - GetIndexFromStack is 0x%p.\n", __func__, __LINE__, GetIndexFromStack));
+
   //
   // Stack top of this CPU
   //
   ThisStackTop = ((UINTN)Register + SIZE_4KB - 1) & ~(SIZE_4KB - 1);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ThisStackTop = 0x%lx.\n", __func__, __LINE__, ThisStackTop));
 
   //
   // EspOffset pointer to bottom of 1st CPU
   //
   StackBottom = (UINTN)StmHeader + StmHeader->HwStmHdr.EspOffset;
-  Index       = (ThisStackTop - StackBottom) / StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - StackBottom = 0x%lx.\n", __func__, __LINE__, StackBottom));
+
+  Index = (ThisStackTop - StackBottom) / StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Index = 0x%lx.\n", __func__, __LINE__, Index));
 
   //
   // Need minus one for 0-based CPU index
@@ -719,6 +729,9 @@ ApInit (
 
   DEBUG ((EFI_D_INFO, "!!!Enter StmInit (AP done)!!! - %d (%x)\n", (UINTN)Index, (UINTN)ReadUnaligned32 ((UINT32 *)&Register->Rax)));
 
+  DEBUG ((DEBUG_ERROR, "[%a] - Index Given = %d.\n", __func__, Index));
+  DEBUG ((DEBUG_ERROR, "[%a] - Register at 0x%lx.\n", __func__, Register));
+
   if (Index >= mHostContextCommon.CpuNum) {
     DEBUG ((EFI_D_INFO, "!!!Index(0x%x) >= mHostContextCommon.CpuNum(0x%x)\n", (UINTN)Index, (UINTN)mHostContextCommon.CpuNum));
     CpuDeadLoop ();
@@ -733,7 +746,7 @@ ApInit (
   CopyMem (Reg, Register, sizeof (X86_REGISTER));
 
   if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
+    DEBUG ((DEBUG_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
     // Reset system
     CpuDeadLoop ();
   }
@@ -816,12 +829,133 @@ LaunchBack (
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
 
   DEBUG ((EFI_D_INFO, "!!!LaunchBack (%d)!!!\n", (UINTN)Index));
+  DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "CR0: %08x\n", (UINTN)AsmReadCr0 ()));
+  DEBUG ((DEBUG_ERROR, "CR3: %08x\n", (UINTN)AsmReadCr3 ()));
+  DEBUG ((DEBUG_ERROR, "CR4: %08x\n", (UINTN)AsmReadCr4 ()));
+  DEBUG ((DEBUG_ERROR, "IA32_EFER_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_EFER_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "IA32_SYSENTER_ESP_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_SYSENTER_ESP_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "IA32_SYSENTER_EIP_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_SYSENTER_EIP_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "IA32_PERF_GLOBAL_CTRL_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_PERF_GLOBAL_CTRL_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "IA32_CR_PAT_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_CR_PAT_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "IA32_S_CET: %08x\n", (UINTN)AsmReadMsr64 (0x6A2)));
+  DEBUG ((DEBUG_ERROR, "IA32_PKRS: %08x\n", (UINTN)AsmReadMsr64 (0x6E1)));
+
+  DEBUG ((DEBUG_ERROR, "Host-state CR0: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR0_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state CR3: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR3_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state CR4: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_CR4_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_64_HOST_IA32_EFER_INDEX: %08x\n", (UINTN)VmReadN (VMCS_64_HOST_IA32_EFER_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_IA32_SYSENTER_ESP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IA32_SYSENTER_ESP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_IA32_SYSENTER_EIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IA32_SYSENTER_EIP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_64_HOST_IA32_PERF_GLOBAL_CTRL_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_HOST_IA32_PERF_GLOBAL_CTRL_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_64_HOST_IA32_PAT_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_HOST_IA32_PAT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_RIP_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_ES_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_CS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_SS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_DS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_FS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_GS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_16_HOST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_HOST_TR_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_FS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_FS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_GS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_TR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_TR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_GDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_GDTR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Host-state VMCS_N_HOST_IDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_HOST_IDTR_BASE_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rdx = 0x%lx.\n", __func__, __LINE__, Register->Rdx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rbx = 0x%lx.\n", __func__, __LINE__, Register->Rbx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rsp = 0x%lx.\n", __func__, __LINE__, Register->Rsp));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rbp = 0x%lx.\n", __func__, __LINE__, Register->Rbp));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rsi = 0x%lx.\n", __func__, __LINE__, Register->Rsi));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rdi = 0x%lx.\n", __func__, __LINE__, Register->Rdi));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R8  = 0x%lx.\n", __func__, __LINE__, Register->R8));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R9  = 0x%lx.\n", __func__, __LINE__, Register->R9));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R10 = 0x%lx.\n", __func__, __LINE__, Register->R10));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R11 = 0x%lx.\n", __func__, __LINE__, Register->R11));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R12 = 0x%lx.\n", __func__, __LINE__, Register->R12));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R13 = 0x%lx.\n", __func__, __LINE__, Register->R13));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R14 = 0x%lx.\n", __func__, __LINE__, Register->R14));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R15 = 0x%lx.\n", __func__, __LINE__, Register->R15));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_CR0_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR0_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_CR3_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR3_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_CR4_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR4_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_DR7_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DR7_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_RSP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RSP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_RFLAGS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_64_GUEST_IA32_DEBUGCTL_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_GUEST_IA32_DEBUGCTL_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_IA32_SYSENTER_ESP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_IA32_SYSENTER_ESP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_IA32_SYSENTER_EIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_IA32_SYSENTER_EIP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_64_GUEST_IA32_EFER_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_GUEST_IA32_EFER_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_ES_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_CS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_SS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_DS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_FS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_GS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_LDTR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_LDTR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_16_GUEST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_TR_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_ES_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_ES_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_CS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_CS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_SS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_SS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_DS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_DS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_FS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_FS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_GS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_LDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_TR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_TR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_GDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GDTR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_IDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_IDTR_LIMIT_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_ES_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_ES_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_CS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_SS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_SS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_DS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_FS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_FS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_GS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_GS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_LDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_LDTR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_TR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_TR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_GDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_GDTR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_IDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_IDTR_BASE_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_CONTROL_PROCESSOR_BASED_VM_EXECUTION_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_PROCESSOR_BASED_VM_EXECUTION_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_CONTROL_2ND_PROCESSOR_BASED_VM_EXECUTION_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_2ND_PROCESSOR_BASED_VM_EXECUTION_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_32_GUEST_ACTIVITY_STATE_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_ACTIVITY_STATE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_PENDING_DEBUG_EXCEPTIONS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_PENDING_DEBUG_EXCEPTIONS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_64_GUEST_VMCS_LINK_PTR_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_GUEST_VMCS_LINK_PTR_INDEX)));
+
+  // Clear CR4 fixed bit 13 for VMXE
+  DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR0_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED0_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR0_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED1_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR4_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED0_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR4_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED1_MSR_INDEX)));
+
   Rflags = AsmVmLaunch (Register);
 
   AcquireSpinLock (&mHostContextCommon.DebugLock);
-  DEBUG ((EFI_D_ERROR, "!!!LaunchBack FAIL!!!\n"));
-  DEBUG ((EFI_D_ERROR, "Rflags: %08x\n", Rflags));
-  DEBUG ((EFI_D_ERROR, "VMCS_32_RO_VM_INSTRUCTION_ERROR: %08x\n", (UINTN)VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "!!!LaunchBack FAIL!!!\n"));
+  DEBUG ((DEBUG_ERROR, "Rflags: %08x\n", Rflags));
+  DEBUG ((DEBUG_ERROR, "VMCS_32_RO_VM_INSTRUCTION_ERROR: %08x\n", (UINTN)VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX)));
   ReleaseSpinLock (&mHostContextCommon.DebugLock);
 
   CpuDeadLoop ();
@@ -889,13 +1023,13 @@ VmcsInit (
   DEBUG ((EFI_D_INFO, "CurrentVmcs(%d) - %016lx\n", (UINTN)Index, CurrentVmcs));
   if (IsOverlap (CurrentVmcs, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
     // Overlap TSEG
-    DEBUG ((EFI_D_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
+    DEBUG ((DEBUG_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
     CpuDeadLoop ();
   }
 
   Rflags = AsmVmClear (&CurrentVmcs);
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, CurrentVmcs, Rflags));
+    DEBUG ((DEBUG_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, CurrentVmcs, Rflags));
     CpuDeadLoop ();
   }
 
@@ -909,7 +1043,7 @@ VmcsInit (
 
   Rflags = AsmVmPtrLoad (&mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs);
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    DEBUG ((EFI_D_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, Rflags));
+    DEBUG ((DEBUG_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, Rflags));
     CpuDeadLoop ();
   }
 
@@ -946,6 +1080,7 @@ GetCapabilities (
   // Check the buffer not null requirement
   BufferBase = Register->Rbx;
   BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - BufferBase = 0x%LX. BufferSize = 0x%LX.\n", __func__, __LINE__, BufferBase, BufferSize));
   if (BufferBase == 0) {
     StmStatus = ERROR_INVALID_PARAMETER;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
@@ -1037,6 +1172,9 @@ GetResources (
   // Check the buffer not null requirement
   BufferBase = Register->Rbx;
   BufferSize = EFI_PAGES_TO_SIZE (Register->Rdx);
+  DEBUG ((DEBUG_ERROR, "[%a] - BufferBase 0x%lx.\n", __func__, BufferBase));
+  DEBUG ((DEBUG_ERROR, "[%a] - BufferSize 0x%lx.\n", __func__, BufferSize));
+
   if ((BufferBase == 0) && (BufferSize != 0)) {
     StmStatus = ERROR_INVALID_PARAMETER;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
@@ -1086,7 +1224,6 @@ GetResources (
              SUPPORTED_DIGEST_COUNT,
              (VOID **)&PolicyBuffer
              );
-
   if (EFI_ERROR (Status)) {
     ReleaseSpinLock (&mHostContextCommon.ResponderLock);
     StmStatus = ERROR_STM_SECURITY_VIOLATION;
@@ -1095,6 +1232,7 @@ GetResources (
     DEBUG ((DEBUG_ERROR, "%a Validation routine failed: %r!\n", __func__, Status));
     goto Done;
   } else if (BufferSize < PolicyBuffer->Size) {
+    DEBUG ((DEBUG_ERROR, "[%a] - PolicyBuffer->Size 0x%lx.\n", __func__, PolicyBuffer->Size));
     ReleaseSpinLock (&mHostContextCommon.ResponderLock);
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
@@ -1145,6 +1283,40 @@ ProcessLibraryConstructorList (
   VOID
   );
 
+VOID
+DumpMtrrsInStm (
+  VOID
+  )
+{
+  MTRR_SETTINGS  LocalMtrrs;
+  MTRR_SETTINGS  *Mtrrs;
+  UINTN          Index;
+  UINTN          VariableMtrrCount;
+
+  DEBUG ((DEBUG_ERROR, "[%a] - Enter\n", __func__));
+
+  MtrrGetAllMtrrs (&LocalMtrrs);
+  Mtrrs = &LocalMtrrs;
+  DEBUG ((DEBUG_ERROR, "MTRR Default Type: %016lx\n", Mtrrs->MtrrDefType));
+  for (Index = 0; Index < MTRR_NUMBER_OF_FIXED_MTRR; Index++) {
+    DEBUG ((DEBUG_ERROR, "Fixed MTRR[%02d]   : %016lx\n", Index, Mtrrs->Fixed.Mtrr[Index]));
+  }
+
+  VariableMtrrCount = GetVariableMtrrCount ();
+  for (Index = 0; Index < VariableMtrrCount; Index++) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "Variable MTRR[%02d]: Base=%016lx Mask=%016lx\n",
+      Index,
+      Mtrrs->Variables.Mtrr[Index].Base,
+      Mtrrs->Variables.Mtrr[Index].Mask
+      ));
+  }
+
+  DEBUG ((DEBUG_ERROR, "\n"));
+  DEBUG ((DEBUG_ERROR, "[%a] - Exit\n", __func__));
+}
+
 /**
 
   This function handles VMCalls into SEA module in C code.
@@ -1161,48 +1333,149 @@ SeaVmcallDispatcher (
   UINT32      ServiceId;
   EFI_STATUS  Status;
 
+  DEBUG ((DEBUG_ERROR, "[%a] - Enter\n", __func__));
+
   if (Register == NULL) {
     ASSERT (Register != NULL);
     return;
   }
 
-  CpuIndex  = GetIndexFromStack (Register);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rdx = 0x%lx.\n", __func__, __LINE__, Register->Rdx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rbx = 0x%lx.\n", __func__, __LINE__, Register->Rbx));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rsp = 0x%lx.\n", __func__, __LINE__, Register->Rsp));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rbp = 0x%lx.\n", __func__, __LINE__, Register->Rbp));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rsi = 0x%lx.\n", __func__, __LINE__, Register->Rsi));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rdi = 0x%lx.\n", __func__, __LINE__, Register->Rdi));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R8  = 0x%lx.\n", __func__, __LINE__, Register->R8));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R9  = 0x%lx.\n", __func__, __LINE__, Register->R9));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R10 = 0x%lx.\n", __func__, __LINE__, Register->R10));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R11 = 0x%lx.\n", __func__, __LINE__, Register->R11));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R12 = 0x%lx.\n", __func__, __LINE__, Register->R12));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R13 = 0x%lx.\n", __func__, __LINE__, Register->R13));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R14 = 0x%lx.\n", __func__, __LINE__, Register->R14));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - R15 = 0x%lx.\n", __func__, __LINE__, Register->R15));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - VMCS_32_RO_EXIT_REASON_INDEX = 0x%lx.\n", __func__, __LINE__, VmRead32 (VMCS_32_RO_EXIT_REASON_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_CR0_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR0_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_CR3_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR3_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_CR4_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CR4_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_DR7_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DR7_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RSP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RSP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RFLAGS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RFLAGS_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_ES_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_ES_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_CS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_CS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_SS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_SS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_DS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_DS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_FS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_FS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_GS_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_GS_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_LDTR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_LDTR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_16_GUEST_TR_INDEX: %04x\n", (UINTN)VmRead16 (VMCS_16_GUEST_TR_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_ES_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_ES_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_CS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_CS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_SS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_SS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_DS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_DS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_FS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_FS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_GS_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GS_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_LDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_LDTR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_TR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_TR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_GDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GDTR_LIMIT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_IDTR_LIMIT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_IDTR_LIMIT_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_ES_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_ES_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_CS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_CS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_SS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_SS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_DS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_DS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_FS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_FS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_GS_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_GS_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_LDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_LDTR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_TR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_TR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_GDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_GDTR_BASE_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_IDTR_BASE_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_IDTR_BASE_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_ES_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_CS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_SS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_DS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_FS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_GS_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_LDTR_ACCESS_RIGHT_INDEX)));
+  DEBUG ((DEBUG_ERROR, "Guest-state VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_GUEST_TR_ACCESS_RIGHT_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "MSR IA32_VMX_CR0_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED0_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "MSR IA32_VMX_CR0_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED1_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "MSR IA32_VMX_CR4_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED0_MSR_INDEX)));
+  DEBUG ((DEBUG_ERROR, "MSR IA32_VMX_CR4_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED1_MSR_INDEX)));
+
+  DumpMtrrsInStm ();
+
+  CpuIndex = GetIndexFromStack (Register);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex (From Stack) = %d\n", __func__, __LINE__, CpuIndex));
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ServiceId = 0x%x\n", __func__, __LINE__, ServiceId));
 
   switch (ServiceId) {
     case SEA_API_GET_CAPABILITIES:
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_CAPABILITIES entered.\n", __func__, __LINE__));
       if (CpuIndex == 0) {
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex == 0.\n", __func__, __LINE__));
         // The build process should make sure "virtual address" is same as "file pointer to raw data",
         // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
         // If no, GenStm tool will "load image". So here, we just need "relocate image"
         RelocateStmImage (FALSE);
 
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
+
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Before ProcessLibraryConstructorList().\n", __func__, __LINE__));
         ProcessLibraryConstructorList ();
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After ProcessLibraryConstructorList().\n", __func__, __LINE__));
+
         BspInit (Register);
+
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
       }
 
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+
       CommonInit (CpuIndex);
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
       break;
     case SEA_API_GET_RESOURCES:
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_RESOURCES entered.\n", __func__, __LINE__));
       if (!mIsBspInitialized) {
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - !mIsBspInitialized.\n", __func__, __LINE__));
         Status = EFI_NOT_STARTED;
         break;
       }
 
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - mIsBspInitialized.\n", __func__, __LINE__));
       ApInit (CpuIndex, Register);
 
       Status = GetResources (Register);
+      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetResources(). Status = %r.\n", __func__, __LINE__, Status));
       break;
   }
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "ServiceId(%d) error - %r\n", (UINTN)ServiceId, Status));
-    ASSERT_EFI_ERROR (Status);
+    DEBUG ((DEBUG_ERROR, "ServiceId(0x%x) error - %r\n", (UINTN)ServiceId, Status));
+    // ASSERT_EFI_ERROR (Status);
   }
 
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
   VmcsInit (CpuIndex);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));
   LaunchBack (CpuIndex, Register);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from LaunchBack().\n", __func__, __LINE__));
 
   return;
 }
