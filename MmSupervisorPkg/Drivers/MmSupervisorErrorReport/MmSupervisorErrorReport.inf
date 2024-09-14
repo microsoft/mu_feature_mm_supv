@@ -35,15 +35,27 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
   MsWheaPkg/MsWheaPkg.dec
+
+[Guids]
+  gMuTelemetrySectionTypeGuid                   ## SOMETIMES_CONSUMES
+  gMmGhesTableRegionGuid                        ## CONSUMES
+
+[Protocols]
+  gEfiMmReadyToLockProtocolGuid                 ## CONSUMES
 
 [LibraryClasses]
   BaseLib
   DebugLib
+  HobLib
+  BaseMemoryLib
   ReportStatusCodeLib
   StandaloneMmDriverEntryPoint
   SysCallLib
   MuTelemetryHelperLib
+  SafeIntLib
+  MemLib
   MsWheaEarlyStorageLib
 
 [Depex]
