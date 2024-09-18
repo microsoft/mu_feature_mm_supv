@@ -1084,7 +1084,7 @@ GetResources (
              PcdGet64 (PcdMmiEntryBinSize),
              DigestList,
              SUPPORTED_DIGEST_COUNT,
-             (VOID *)&PolicyBuffer
+             (VOID **)&PolicyBuffer
              );
 
   if (EFI_ERROR (Status)) {
