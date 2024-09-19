@@ -145,10 +145,13 @@ class GenSeaArtifacts(IUefiHelperPlugin):
                 stm_build_dir / "Stm.map",
                 misc_dir / "Stm.map"
             )
-
             shutil.copy2(
                 stm_build_dir / "Stm.pdb",
                 misc_dir / "Stm.pdb"
+            )
+            shutil.copy2(
+                stm_build_dir / "MmSupervisorCore.aux",
+                output_dir / "MmSupervisorCore.aux"
             )
 
             # Copy over MmSupervisorCore artifacts
@@ -183,11 +186,11 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             return -1
 
         return 0
-    
+
     @staticmethod
     def generate_rim(stm_bin: Path, output_path: Path, config: dict):
         """Generates the RIM file for the STM binary.
-        
+
         Args:
             stm_bin: Path to the STM binary.
             output_path: Path to place the RIM file including filename.
@@ -199,12 +202,12 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             raise ValueError("company_name not found in config.")
         if "company_url" not in config:
             raise ValueError("company_url not found in config.")
-        
+
         rim_version = config.get("version", "0.0.1")
         company_name = config.get("company_name")
         company_url = config.get("company_url")
 
-        args = "run --bin rim -- generate" 
+        args = "run --bin rim -- generate"
         args += f' {stm_bin}'
         args += f' -o {output_path}'
         args += f' -r {rim_version}'
