@@ -12,39 +12,82 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //!
 #![no_std]
-use minicbor::{Decode, Encode};
+use core::str::FromStr;
+
+use minicbor::{bytes::ByteVec, encode::Write, Decode, Decoder, Encode, Encoder};
 extern crate alloc;
 use alloc::{string::String, vec::Vec};
+
+/// An alias of a Byte String.
+///
+/// This is used to first encode an object as a CBOR bytes array and then
+/// encode the bytes as a CBOR byte string.
+///
+/// https://www.rfc-editor.org/rfc/rfc9052.html#section-1.4-3.6
+pub struct Bstr<Payload>(pub Payload);
+
+impl<Payload> AsRef<Payload> for Bstr<Payload> {
+    fn as_ref(&self) -> &Payload {
+        &self.0
+    }
+}
+
+impl<Payload> Bstr<Payload> {
+    pub fn new(payload: Payload) -> Self {
+        Bstr { 0: payload }
+    }
+}
+
+impl<Ctx, Payload: Encode<Ctx>> Encode<Ctx> for Bstr<Payload> {
+    fn encode<W: Write>(
+        &self,
+        e: &mut Encoder<W>,
+        ctx: &mut Ctx,
+    ) -> Result<(), minicbor::encode::Error<W::Error>> {
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut encoder = Encoder::new(&mut buffer);
+        match self.as_ref().encode(&mut encoder, ctx) {
+            Ok(_) => (),
+            Err(_) => return Err(minicbor::encode::Error::message("Failed to encode payload")),
+        }
+        e.bytes(&buffer)?;
+        Ok(())
+    }
+}
+
+impl<'bytes, Ctx, Payload: Decode<'bytes, Ctx>> Decode<'bytes, Ctx> for Bstr<Payload> {
+    fn decode(
+        d: &mut Decoder<'bytes>,
+        ctx: &mut Ctx,
+    ) -> Result<Bstr<Payload>, minicbor::decode::Error> {
+        let bytes = d.bytes()?;
+        let mut decoder = Decoder::new(&bytes);
+        let payload = Payload::decode(&mut decoder, ctx)?;
+        Ok(Bstr::new(payload))
+    }
+}
 
 /// COSE_Sign1-coswid<payload>
 /// https://www.rfc-editor.org/rfc/rfc9393.html#name-signed-coswid-tags
 #[derive(Encode, Decode)]
 #[cbor(array)]
 #[cbor(tag(18))]
-pub struct CoseSign1<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+pub struct CoseSign1<Payload> {
     #[n(0)]
     /// protected-signed-coswid-header
-    pub protected: ProtectedHeader,
+    pub protected: Bstr<ProtectedHeader>,
     #[n(1)]
     /// unprotected-signed-coswid-header
     pub unprotected: UnprotectedHeader,
     #[n(2)]
     /// The payload to be signed
-    pub payload: Payload,
+    pub payload: Bstr<Payload>,
     #[n(3)]
     /// The signature of the payload
-    pub signature: String,
-    #[cbor(skip)]
-    pub _marker: core::marker::PhantomData<C>,
+    pub signature: ByteVec,
 }
 
-impl<C, Payload> CoseSign1<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+impl<Payload> CoseSign1<Payload> {
     pub fn new<S>(
         protected: ProtectedHeader,
         unprotected: UnprotectedHeader,
@@ -52,14 +95,13 @@ where
         signature: S,
     ) -> Self
     where
-        S: Into<String>,
+        S: Into<ByteVec>,
     {
         CoseSign1 {
-            protected,
+            protected: Bstr::new(protected),
             unprotected,
-            payload,
+            payload: Bstr::new(payload),
             signature: signature.into(),
-            _marker: core::marker::PhantomData::<C>,
         }
     }
 }
@@ -68,10 +110,7 @@ where
 /// https://www.rfc-editor.org/rfc/rfc9052.html#name-signing-and-verification-pr
 #[derive(Encode, Decode)]
 #[cbor(array)]
-pub struct SigStructure<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+pub struct SigStructure<Payload> {
     #[n(0)]
     pub context: String,
     #[n(1)]
@@ -79,25 +118,19 @@ where
     #[n(2)]
     pub sign_protected: Option<SignProtected>,
     #[n(3)]
-    pub external_aad: String,
+    pub external_aad: ByteVec,
     #[n(4)]
-    pub payload: Payload,
-    #[cbor(skip)]
-    pub _marker: core::marker::PhantomData<C>,
+    pub payload: Bstr<Payload>,
 }
 
-impl<C, Payload> SigStructure<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+impl<Payload> SigStructure<Payload> {
     pub fn new(payload: Payload, body_protected: ProtectedHeader) -> Self {
         Self {
             context: "Signature1".into(),
             body_protected,
             sign_protected: None,
-            external_aad: "".into(),
-            payload,
-            _marker: core::marker::PhantomData::<C>,
+            external_aad: Vec::new().into(),
+            payload: Bstr::new(payload),
         }
     }
 }
@@ -151,13 +184,10 @@ impl UnprotectedHeader {
 #[derive(Encode, Decode)]
 #[cbor(map)]
 #[cbor(tag(1398229316))]
-pub struct ConciseSwidTag<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+pub struct ConciseSwidTag<Payload> {
     #[n(0)]
     /// The UUID of the tag
-    pub tag_id: String,
+    pub tag_id: ByteVec,
     #[n(12)]
     /// Represents the release version of the tag
     pub tag_version: u32,
@@ -197,21 +227,21 @@ where
     #[n(3)]
     /// The evidence, mutual exclusive with payload
     pub evidence: Option<Payload>,
-    #[cbor(skip)]
-    pub _marker: core::marker::PhantomData<C>,
 }
 
-impl<C, Payload> ConciseSwidTag<C, Payload>
-where
-    for<'b> Payload: Encode<C> + Decode<'b, C>,
-{
+impl<Payload> ConciseSwidTag<Payload> {
     pub fn new<S1, S2>(tag_id: S1, tag_version: u32, software_name: S2) -> Self
     where
         S1: Into<String>,
         S2: Into<String>,
     {
         ConciseSwidTag {
-            tag_id: tag_id.into(),
+            tag_id: ByteVec::from(
+                uuid::Uuid::from_str(&tag_id.into())
+                    .unwrap()
+                    .into_bytes()
+                    .to_vec(),
+            ),
             tag_version,
             corpus: None,
             patch: None,
@@ -225,7 +255,6 @@ where
             link: None,
             payload: None,
             evidence: None,
-            _marker: core::marker::PhantomData::<C>,
         }
     }
     pub fn with_corpus(mut self, corpus: bool) -> Self {
@@ -471,13 +500,14 @@ pub struct CoseMac0 {}
 #[derive(Encode, Decode)]
 #[cbor(array)]
 /// A COSE Algorithm payload
+/// https://www.rfc-editor.org/rfc/rfc9393.html#section-2.9.1
 pub struct CoseAlgorithmPayload {
     #[n(0)]
     /// The algorithm identifier.
     pub algorithm_id: i16,
     #[n(1)]
     /// The digest of the file.
-    pub digest: String,
+    pub digest: ByteVec,
 }
 
 #[derive(Encode, Decode)]
@@ -504,7 +534,7 @@ impl FileMeasurement {
     where
         S1: Into<String>,
         S2: Into<String>,
-        S3: Into<String>,
+        S3: Into<ByteVec>,
     {
         FileMeasurement {
             file: file.into(),
@@ -515,5 +545,121 @@ impl FileMeasurement {
                 digest: digest.into(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const MAJOR_TYPE: u8 = 0b0100_0000;
+    const BYTE_1: u8 = 0b0001_1000;
+    const BYTE_2: u8 = 0b0001_1001;
+    const BYTE_4: u8 = 0b0001_1010;
+
+    #[test]
+    fn test_bstr_encoded_properly_payload_len_less_than_limit_direct() {
+        // payload lenght less that LIMIT_DIRECT
+        let payload = "*".repeat(10);
+        let payload_len = payload.len() as u8 + 1; // +1 for the cbor string header
+
+        let bstr = Bstr::new(payload.clone());
+
+        // bstr buffer
+        let mut bstr_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut bstr_buf);
+        bstr.encode(&mut encoder, &mut ()).unwrap();
+
+        // str buffer
+        let mut str_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut str_buf);
+        payload.encode(&mut encoder, &mut ()).unwrap();
+
+        assert_eq!(bstr_buf[0], MAJOR_TYPE | payload_len);
+        assert_eq!(bstr_buf[1..], str_buf);
+    }
+
+    #[test]
+    fn test_bstr_encoded_properly_payload_len_less_than_limit_1_byte() {
+        // payload lenght less that LIMIT_BYTE_1
+        let payload = "*".repeat(0xf0);
+        let payload_len = payload.len() as u8 + 2; // + 2 for the cbor string header
+
+        let bstr = Bstr::new(payload.clone());
+
+        // bstr buffer
+        let mut bstr_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut bstr_buf);
+        bstr.encode(&mut encoder, &mut ()).unwrap();
+
+        // str buffer
+        let mut str_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut str_buf);
+        payload.encode(&mut encoder, &mut ()).unwrap();
+
+        assert_eq!(bstr_buf[0], MAJOR_TYPE | BYTE_1);
+        assert_eq!(bstr_buf[1], payload_len.to_be_bytes()[0]);
+        assert_eq!(bstr_buf[2..], str_buf);
+    }
+
+    #[test]
+    fn test_bstr_encoded_properly_payload_len_less_than_limit_2_byte() {
+        // payload lenght less that LIMIT_BYTE_2
+        let payload = "*".repeat(0xfff0);
+        let payload_len = payload.len() as u16 + 3; // + 3 for the cbor string header
+
+        let bstr = Bstr::new(payload.clone());
+
+        // bstr buffer
+        let mut bstr_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut bstr_buf);
+        bstr.encode(&mut encoder, &mut ()).unwrap();
+
+        // str buffer
+        let mut str_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut str_buf);
+        payload.encode(&mut encoder, &mut ()).unwrap();
+
+        assert_eq!(bstr_buf[0], MAJOR_TYPE | BYTE_2);
+        assert_eq!(bstr_buf[1..2], payload_len.to_be_bytes()[0..1]);
+        assert_eq!(bstr_buf[3..], str_buf);
+    }
+
+    #[test]
+    fn test_bstr_encoded_properly_payload_len_less_than_limit_4_byte() {
+        // payload lenght less that LIMIT_BYTE_2
+        let payload = "*".repeat(0xffff_fff0);
+        let payload_len = payload.len() as u32 + 3; // + 3 for the cbor string header
+
+        let bstr = Bstr::new(payload.clone());
+
+        // bstr buffer
+        let mut bstr_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut bstr_buf);
+        bstr.encode(&mut encoder, &mut ()).unwrap();
+
+        // str buffer
+        let mut str_buf = Vec::new();
+        let mut encoder = Encoder::new(&mut str_buf);
+        payload.encode(&mut encoder, &mut ()).unwrap();
+
+        assert_eq!(bstr_buf[0], MAJOR_TYPE | BYTE_4);
+        assert_eq!(bstr_buf[1..4], payload_len.to_be_bytes()[0..3]);
+        assert_eq!(bstr_buf[5..], str_buf);
+    }
+
+    #[test]
+    fn test_bstr_encoded_properly_decodes_with_payload_len_less_than_limit_direct() {
+        let payload = "*".repeat(10);
+
+        let bstr = Bstr::new(payload.clone());
+
+        let mut buffer = Vec::new();
+        let mut encoder = Encoder::new(&mut buffer);
+        bstr.encode(&mut encoder, &mut ()).unwrap();
+
+        let mut decoder = Decoder::new(&buffer);
+        let decoded_bstr: Bstr<String> = Bstr::decode(&mut decoder, &mut ()).unwrap();
+        assert_eq!(decoded_bstr.payload, payload);
     }
 }

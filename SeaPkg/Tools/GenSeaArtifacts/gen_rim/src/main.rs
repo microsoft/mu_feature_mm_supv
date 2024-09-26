@@ -87,10 +87,9 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
         };
 
         let bytes = std::fs::read(&args.file)?;
-        let mut rim =
-            minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
-                .map_err(|e| anyhow!(e))?;
-        rim.signature = hex::encode(std::fs::read(&signature)?);
+        let mut rim = minicbor::decode::<CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>>>(&bytes)
+            .map_err(|e| anyhow!(e))?;
+        rim.signature = std::fs::read(&signature)?.into();
 
         let mut buffer = Vec::new();
         minicbor::encode(&rim, &mut buffer).map_err(|e| anyhow!(e))?;
@@ -105,7 +104,7 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
     };
 
     // Generate the RIM
-    let cosesign1_payload: ConciseSwidTag<(), Vec<FileMeasurement>> =
+    let cosesign1_payload: ConciseSwidTag<Vec<FileMeasurement>> =
         ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
             .with_software_version(args.rim_version)
             .with_version_scheme("1")
@@ -119,11 +118,11 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
             .with_payload(measurements);
 
     let signature = match args.signature {
-        Some(path) => hex::encode(std::fs::read(&path)?),
-        None => "F".repeat(256),
+        Some(path) => std::fs::read(&path)?,
+        None => vec![0xFF, 0xFF],
     };
 
-    let cosesign1: CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>> = CoseSign1::new(
+    let cosesign1: CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>> = CoseSign1::new(
         ProtectedHeader::new(-39, "application/swid+cbor"),
         UnprotectedHeader::new(),
         cosesign1_payload,
@@ -140,12 +139,11 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
 fn generate_signing(args: SigningArgs) -> Result<()> {
     if args.from_rim {
         let bytes = std::fs::read(&args.file).unwrap();
-        let rim =
-            minicbor::decode::<CoseSign1<(), ConciseSwidTag<(), Vec<FileMeasurement>>>>(&bytes)
-                .map_err(|e| anyhow!(e))?;
+        let rim = minicbor::decode::<CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>>>(&bytes)
+            .map_err(|e| anyhow!(e))?;
 
-        let sig_structure: SigStructure<(), ConciseSwidTag<(), Vec<FileMeasurement>>> =
-            SigStructure::new(rim.payload, rim.protected);
+        let sig_structure: SigStructure<ConciseSwidTag<Vec<FileMeasurement>>> =
+            SigStructure::new(rim.payload.0, rim.protected.0);
         let mut buffer = Vec::new();
         minicbor::encode(&sig_structure, &mut buffer).map_err(|e| anyhow!(e))?;
         std::fs::write(args.output, buffer)?;
@@ -157,7 +155,7 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
         return Err(anyhow!("--company-name and --company-url are required"));
     };
 
-    let cosesign1_payload: ConciseSwidTag<(), Vec<FileMeasurement>> =
+    let cosesign1_payload: ConciseSwidTag<Vec<FileMeasurement>> =
         ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
             .with_software_version(args.rim_version)
             .with_version_scheme("1")
@@ -170,11 +168,10 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
             )
             .with_payload(measurements);
 
-    let sig_structure: SigStructure<(), ConciseSwidTag<(), Vec<FileMeasurement>>> =
-        SigStructure::new(
-            cosesign1_payload,
-            ProtectedHeader::new(-39, "application/swid+cbor"),
-        );
+    let sig_structure: SigStructure<ConciseSwidTag<Vec<FileMeasurement>>> = SigStructure::new(
+        cosesign1_payload,
+        ProtectedHeader::new(-39, "application/swid+cbor"),
+    );
     let mut buffer = Vec::new();
     minicbor::encode(&sig_structure, &mut buffer).map_err(|e| anyhow!(e))?;
     std::fs::write(args.output, buffer)?;
@@ -227,6 +224,6 @@ fn generate_measurements(file: &PathBuf) -> Result<Vec<FileMeasurement>> {
     ])
 }
 
-fn hash_file<D: Digest>(file: &PathBuf) -> Result<String> {
-    Ok(hex::encode(D::digest(std::fs::read(file)?)))
+fn hash_file<D: Digest>(file: &PathBuf) -> Result<Vec<u8>> {
+    Ok(D::digest(std::fs::read(file)?).to_vec())
 }
