@@ -87,7 +87,7 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
         };
 
         let bytes = std::fs::read(&args.file)?;
-        let mut rim = minicbor::decode::<CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>>>(&bytes)
+        let mut rim = minicbor::decode::<CoseSign1<ConciseSwidTag<FileListPayload>>>(&bytes)
             .map_err(|e| anyhow!(e))?;
         rim.signature = std::fs::read(&signature)?.into();
 
@@ -104,7 +104,7 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
     };
 
     // Generate the RIM
-    let cosesign1_payload: ConciseSwidTag<Vec<FileMeasurement>> =
+    let cosesign1_payload: ConciseSwidTag<FileListPayload> =
         ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
             .with_software_version(args.rim_version)
             .with_version_scheme("1")
@@ -122,7 +122,7 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
         None => vec![0xFF, 0xFF],
     };
 
-    let cosesign1: CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>> = CoseSign1::new(
+    let cosesign1: CoseSign1<ConciseSwidTag<FileListPayload>> = CoseSign1::new(
         ProtectedHeader::new(-39, "application/swid+cbor"),
         UnprotectedHeader::new(),
         cosesign1_payload,
@@ -139,10 +139,10 @@ fn generate_rim(args: GenerateArgs) -> Result<()> {
 fn generate_signing(args: SigningArgs) -> Result<()> {
     if args.from_rim {
         let bytes = std::fs::read(&args.file).unwrap();
-        let rim = minicbor::decode::<CoseSign1<ConciseSwidTag<Vec<FileMeasurement>>>>(&bytes)
+        let rim = minicbor::decode::<CoseSign1<ConciseSwidTag<FileListPayload>>>(&bytes)
             .map_err(|e| anyhow!(e))?;
 
-        let sig_structure: SigStructure<ConciseSwidTag<Vec<FileMeasurement>>> =
+        let sig_structure: SigStructure<ConciseSwidTag<FileListPayload>> =
             SigStructure::new(rim.payload.0, rim.protected.0);
         let mut buffer = Vec::new();
         minicbor::encode(&sig_structure, &mut buffer).map_err(|e| anyhow!(e))?;
@@ -155,7 +155,7 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
         return Err(anyhow!("--company-name and --company-url are required"));
     };
 
-    let cosesign1_payload: ConciseSwidTag<Vec<FileMeasurement>> =
+    let cosesign1_payload: ConciseSwidTag<FileListPayload> =
         ConciseSwidTag::new(STM_BIN_GUID, 0, format!("{} STM Binary", company_url))
             .with_software_version(args.rim_version)
             .with_version_scheme("1")
@@ -168,7 +168,7 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
             )
             .with_payload(measurements);
 
-    let sig_structure: SigStructure<ConciseSwidTag<Vec<FileMeasurement>>> = SigStructure::new(
+    let sig_structure: SigStructure<ConciseSwidTag<FileListPayload>> = SigStructure::new(
         cosesign1_payload,
         ProtectedHeader::new(-39, "application/swid+cbor"),
     );
@@ -178,7 +178,7 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
     Ok(())
 }
 
-fn generate_measurements(file: &PathBuf) -> Result<Vec<FileMeasurement>> {
+fn generate_measurements(file: &PathBuf) -> Result<FileListPayload> {
     // https://www.iana.org/assignments/named-information/named-information.xhtml
     const SHA256_ID: i16 = 1; // Standard
     const SHA384_ID: i16 = 7; // Standard
@@ -193,7 +193,7 @@ fn generate_measurements(file: &PathBuf) -> Result<Vec<FileMeasurement>> {
     }
     let file_len = file.metadata()?.len();
     let file_name = file.file_name().expect("Is a File").to_string_lossy();
-    Ok(vec![
+    Ok(FileListPayload::new(vec![
         FileMeasurement::new(
             file_name.clone(),
             "ALGO_SHA256",
@@ -222,9 +222,19 @@ fn generate_measurements(file: &PathBuf) -> Result<Vec<FileMeasurement>> {
             SM3_ID,
             hash_file::<sm3::Sm3>(file)?,
         ),
-    ])
+    ]))
 }
 
 fn hash_file<D: Digest>(file: &PathBuf) -> Result<Vec<u8>> {
     Ok(D::digest(std::fs::read(file)?).to_vec())
+}
+
+#[derive(minicbor::Encode, minicbor::Decode)]
+#[cbor(map)]
+struct FileListPayload(#[n(17)]Vec<FileMeasurement>);
+
+impl FileListPayload {
+    fn new(measurements: Vec<FileMeasurement>) -> Self {
+        Self(measurements)
+    }
 }

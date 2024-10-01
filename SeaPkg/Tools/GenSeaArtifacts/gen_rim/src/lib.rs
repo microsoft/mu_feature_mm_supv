@@ -516,7 +516,6 @@ pub struct CoseAlgorithmPayload {
 
 #[derive(Encode, Decode)]
 #[cbor(map)]
-#[cbor(tag(16))]
 /// A File Measurement payload
 pub struct FileMeasurement {
     #[n(23)]
