@@ -144,11 +144,13 @@ pub struct SignProtected;
 
 /// protected-signed-coswid-header
 /// https://www.rfc-editor.org/rfc/rfc9393.html#name-signed-coswid-tags
+/// Use the following for the algorithm_identifier:
+/// https://www.iana.org/assignments/named-information/named-information.xhtml
 #[derive(Encode, Decode)]
 #[cbor(map)]
 pub struct ProtectedHeader {
     #[n(1)]
-    /// The algorithm used to sign the payload - 18556 + Algorithm Identifier
+    /// The algorithm used to sign the payload
     pub algorithm_identifier: i16,
     /// Should always be "application/swid+cbor"
     #[n(3)]
@@ -501,6 +503,8 @@ pub struct CoseMac0 {}
 #[cbor(array)]
 /// A COSE Algorithm payload
 /// https://www.rfc-editor.org/rfc/rfc9393.html#section-2.9.1
+/// algorithm ID should be from:
+/// https://www.iana.org/assignments/named-information/named-information.xhtml
 pub struct CoseAlgorithmPayload {
     #[n(0)]
     /// The algorithm identifier.
@@ -524,7 +528,7 @@ pub struct FileMeasurement {
     #[n(20)]
     /// The size of the file in bytes.
     size: u64,
-    #[n(18556)]
+    #[n(7)]
     /// The algorithm and digest of the file.
     alg: CoseAlgorithmPayload,
 }

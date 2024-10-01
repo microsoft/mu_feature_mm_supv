@@ -179,10 +179,11 @@ fn generate_signing(args: SigningArgs) -> Result<()> {
 }
 
 fn generate_measurements(file: &PathBuf) -> Result<Vec<FileMeasurement>> {
-    const SHA256_ID: i16 = 18556 + 5; // Standard
-    const SHA384_ID: i16 = 18556 + 6; // Standard
-    const SHA512_ID: i16 = 18556 + 7; // Standard
-    const SM3_ID: i16 = 18556 + 30; // Not Standard
+    // https://www.iana.org/assignments/named-information/named-information.xhtml
+    const SHA256_ID: i16 = 1; // Standard
+    const SHA384_ID: i16 = 7; // Standard
+    const SHA512_ID: i16 = 8; // Standard
+    const SM3_ID: i16 = 30; // Not Standard
 
     if !file.exists() {
         return Err(anyhow!("Path does not exist: {:?}", file));
