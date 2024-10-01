@@ -157,6 +157,7 @@ MmiManage (
   PERF_FUNCTION_BEGIN ();
 
   mMmiManageCallingDepth++;
+  WillReturn     = FALSE;
   Status         = EFI_NOT_FOUND;
   ReturnStatus   = Status;
   SupervisorPath = FALSE;
