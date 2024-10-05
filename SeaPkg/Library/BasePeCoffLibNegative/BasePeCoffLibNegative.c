@@ -764,6 +764,7 @@ Done:
   @return EFI_SUCCESS               The PE/COFF image was reverted.
   @return EFI_INVALID_PARAMETER     The parameter is invalid.
   @return EFI_COMPROMISED_DATA      The PE/COFF image is compromised.
+  @return EFI_BAD_BUFFER_SIZE       A Memory Attributes entry in the the cfg file is not referencing an address
 **/
 EFI_STATUS
 EFIAPI
@@ -880,6 +881,19 @@ PeCoffImageDiffValidation (
         }
 
         // Inspection of the memory attributes of the target image
+        if (ImageValidationEntryHdr->Size > sizeof (AddrInTarget)) {
+          DEBUG ((
+            DEBUG_ERROR,
+            "%a: A new cfg entry is larger than a memory address!  Only pointers can have their memory attributes validated!  Address: %p, Address size: %x, Entry Size: %x\n",
+            __func__,
+            AddrInTarget,
+            sizeof (AddrInTarget),
+            ImageValidationEntryHdr->Size
+            ));
+          Status = EFI_BAD_BUFFER_SIZE;
+          break;
+        }
+
         AddrInTarget = 0;
         CopyMem (&AddrInTarget, (UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
         Status = InspectTargetRangeAttribute (
