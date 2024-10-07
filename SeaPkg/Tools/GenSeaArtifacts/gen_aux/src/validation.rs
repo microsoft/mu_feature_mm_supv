@@ -6,6 +6,8 @@
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
+use std::str::FromStr;
+
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::Deserialize;
@@ -34,6 +36,9 @@ pub struct ValidationRule {
     /// The size of the symbol that the validation should be performed on. This
     /// is used in conjunction with the `offset` attribute only.
     pub size: Option<u32>,
+    /// The build target that the rule is associated with.
+    #[serde(default = "ValidationTarget::all")]
+    pub target: Vec<ValidationTarget>,
 }
 
 impl ValidationRule {
@@ -129,3 +134,32 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ValidationType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+pub enum ValidationTarget{
+    #[default]
+    #[serde(alias = "DEBUG", alias = "Debug", alias = "debug")]
+    Debug,
+    #[serde(alias = "RELEASE", alias = "Release", alias = "release")]
+    Release,
+    #[serde(alias = "NOOPT", alias = "NoOpt", alias = "Noopt", alias = "noopt")]
+    NoOpt,
+}
+
+impl ValidationTarget {
+    pub fn all() -> Vec<ValidationTarget> {
+        vec![ValidationTarget::Debug, ValidationTarget::Release, ValidationTarget::NoOpt]
+    }
+}
+
+impl FromStr for ValidationTarget {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "DEBUG" | "Debug" | "debug" => Ok(ValidationTarget::Debug),
+            "RELEASE" | "Release" | "release" => Ok(ValidationTarget::Release),
+            "NOOPT" | "NoOpt" | "Noopt" | "noopt" => Ok(ValidationTarget::NoOpt),
+            _ => Err(format!("Unknown target: {}", s)),
+        }
+    }
+}
