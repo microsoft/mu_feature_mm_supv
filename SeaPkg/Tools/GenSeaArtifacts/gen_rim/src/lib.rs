@@ -241,7 +241,7 @@ impl<Payload> ConciseSwidTag<Payload> {
             tag_id: ByteVec::from(
                 uuid::Uuid::from_str(&tag_id.into())
                     .unwrap()
-                    .into_bytes()
+                    .to_bytes_le()
                     .to_vec(),
             ),
             tag_version,
