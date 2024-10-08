@@ -6,11 +6,10 @@
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
-use std::str::FromStr;
-
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::Deserialize;
+use clap::ValueEnum;
 
 use crate::Symbol;
 
@@ -134,7 +133,7 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ValidationType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default, ValueEnum)]
 pub enum ValidationTarget{
     #[default]
     #[serde(alias = "DEBUG", alias = "Debug", alias = "debug")]
@@ -142,24 +141,11 @@ pub enum ValidationTarget{
     #[serde(alias = "RELEASE", alias = "Release", alias = "release")]
     Release,
     #[serde(alias = "NOOPT", alias = "NoOpt", alias = "Noopt", alias = "noopt")]
-    NoOpt,
+    Noopt,
 }
 
 impl ValidationTarget {
     pub fn all() -> Vec<ValidationTarget> {
-        vec![ValidationTarget::Debug, ValidationTarget::Release, ValidationTarget::NoOpt]
-    }
-}
-
-impl FromStr for ValidationTarget {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "DEBUG" | "Debug" | "debug" => Ok(ValidationTarget::Debug),
-            "RELEASE" | "Release" | "release" => Ok(ValidationTarget::Release),
-            "NOOPT" | "NoOpt" | "Noopt" | "noopt" => Ok(ValidationTarget::NoOpt),
-            _ => Err(format!("Unknown target: {}", s)),
-        }
+        vec![ValidationTarget::Debug, ValidationTarget::Release, ValidationTarget::Noopt]
     }
 }

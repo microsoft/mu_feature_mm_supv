@@ -241,7 +241,7 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, targ
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
     args += f" --config {str(aux_config_path)}"
-    args += f" --target {target}"
+    args += f" --target {target.lower()}"
 
     ret = RunCmd("cargo", args)
     if ret != 0:
