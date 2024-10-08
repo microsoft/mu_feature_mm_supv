@@ -51,6 +51,7 @@ The rule comes with the following standard options:
 
 ``` toml
 [[rule]]
+target = 'Optional[List[String]]'
 symbol = 'Required[String]'
 field = 'Optional[String]'
 offset = 'Optional[Int]'
@@ -58,6 +59,7 @@ size = 'Optional[Int]'
 validation.type = 'Required[String]'
 ```
 
+- `target`: A list of build targets this rule applies to. Can be `debug`, `release`, or `noopt`. By default, is all three
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
 - `offset`: Updates the address to `symbol.address + offset`. Offset can be negative. Providing an offset requires that the

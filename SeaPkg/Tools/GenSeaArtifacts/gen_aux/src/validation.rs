@@ -9,6 +9,7 @@
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::Deserialize;
+use clap::ValueEnum;
 
 use crate::Symbol;
 
@@ -34,6 +35,9 @@ pub struct ValidationRule {
     /// The size of the symbol that the validation should be performed on. This
     /// is used in conjunction with the `offset` attribute only.
     pub size: Option<u32>,
+    /// The build target that the rule is associated with.
+    #[serde(default = "ValidationTarget::all")]
+    pub target: Vec<ValidationTarget>,
 }
 
 impl ValidationRule {
@@ -129,3 +133,19 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ValidationType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default, ValueEnum)]
+pub enum ValidationTarget{
+    #[default]
+    #[serde(alias = "DEBUG", alias = "Debug", alias = "debug")]
+    Debug,
+    #[serde(alias = "RELEASE", alias = "Release", alias = "release")]
+    Release,
+    #[serde(alias = "NOOPT", alias = "NoOpt", alias = "Noopt", alias = "noopt")]
+    Noopt,
+}
+
+impl ValidationTarget {
+    pub fn all() -> Vec<ValidationTarget> {
+        vec![ValidationTarget::Debug, ValidationTarget::Release, ValidationTarget::Noopt]
+    }
+}

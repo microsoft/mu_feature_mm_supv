@@ -18,7 +18,7 @@ pub mod util;
 pub mod validation;
 
 use auxgen::{Symbol, AuxBuilder};
-use validation::{ValidationRule, ValidationType};
+use validation::{ValidationRule, ValidationType, ValidationTarget};
 
 pub const POINTER_LENGTH: u64 = 8;
 
@@ -38,6 +38,8 @@ pub struct Args {
     /// Path to the config file.
     #[arg(short, long)]
     pub config: Option<PathBuf>,
+    #[arg(short, long, value_enum)]
+    pub target: ValidationTarget,
     // Display the parse Symbol information.
     #[arg(short, long)]
     pub debug: bool
@@ -137,7 +139,7 @@ pub fn main() -> Result<()> {
         .with_image(&efi)?
         .with_config(args.config)?
         .with_symbols(parsed_symbols.values().cloned().collect())
-        .generate(&type_information)?;
+        .generate(&type_information, args.target)?;
 
     if args.debug {
         println!("{:?}", aux.header);

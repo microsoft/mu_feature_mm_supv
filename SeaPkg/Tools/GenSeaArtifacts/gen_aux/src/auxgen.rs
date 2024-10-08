@@ -10,7 +10,7 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{Config, ValidationRule, ValidationType, KeySymbol};
+use crate::{Config, KeySymbol, ValidationRule, ValidationTarget, ValidationType};
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -250,7 +250,7 @@ impl AuxBuilder {
     /// config file have entries in the aux file. If `autogen=true` is
     /// specified in the configuration file, a rule (with no validation) will
     /// be generated, so that all symbols are reverted to their original value.
-    pub fn generate(mut self, info: &TypeInformation) -> anyhow::Result<AuxFile> {
+    pub fn generate(mut self, info: &TypeInformation, target: ValidationTarget) -> anyhow::Result<AuxFile> {
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
         
@@ -270,7 +270,7 @@ impl AuxBuilder {
 
         if self.auto_generate{
             for symbol in &self.symbols {
-                let rule = self.rules.iter().find(|&entry| &entry.symbol == &symbol.name);
+                let rule = self.rules.iter().find(|&entry| &entry.symbol == &symbol.name && entry.target.contains(&target));
                 if rule.is_none() {
                     self.rules.push(ValidationRule {
                         symbol: symbol.name.clone(),
@@ -278,12 +278,17 @@ impl AuxBuilder {
                         validation: ValidationType::None,
                         offset: None,
                         size: None,
+                        target: ValidationTarget::all(),
                     })
                 }
             }
         }
 
         for rule in self.rules.iter_mut() {
+            if !rule.target.contains(&target) {
+                println!("Rule: {:?} Skipped... Does not apply to target: {:?}", rule, target);
+                continue;
+            }
             let symbol = self.symbols
                 .iter()
                 .find(|&entry| &entry.name == &rule.symbol)
