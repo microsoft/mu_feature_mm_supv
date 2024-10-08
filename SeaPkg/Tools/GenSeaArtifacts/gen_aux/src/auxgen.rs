@@ -10,7 +10,7 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{validation::ValidationTarget, Config, KeySymbol, ValidationRule, ValidationType};
+use crate::{Config, KeySymbol, ValidationRule, ValidationTarget, ValidationType};
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
