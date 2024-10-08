@@ -58,6 +58,7 @@ offset = 'Optional[Int]'
 size = 'Optional[Int]'
 validation.type = 'Required[String]'
 ```
+
 - `target`: A list of build targets this rule applies to. Can be `debug`, `release`, or `noopt`. By default, is all three
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
