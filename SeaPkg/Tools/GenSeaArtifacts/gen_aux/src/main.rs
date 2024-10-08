@@ -38,7 +38,7 @@ pub struct Args {
     /// Path to the config file.
     #[arg(short, long)]
     pub config: Option<PathBuf>,
-    #[arg(short, long, default_value = "DEBUG")]
+    #[arg(short, long)]
     pub target: ValidationTarget,
     // Display the parse Symbol information.
     #[arg(short, long)]
