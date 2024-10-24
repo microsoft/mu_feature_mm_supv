@@ -49,9 +49,6 @@ MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
 VOID   *mMmHobStart;
 UINTN  mMmHobSize;
 
-// Indicator to check if this is the first MMI.
-STATIC BOOLEAN  mFirstMmi = TRUE;
-
 //
 // MM Core global variable for MM System Table.  Only accessed as a physical structure in MMRAM.
 //
