@@ -217,6 +217,7 @@ typedef struct {
   EFI_MM_HANDLER_ENTRY_POINT    Handler;     // The mm handler's entry point
   UINTN                         CallerAddr;  // The address of caller who register the SMI handler.
   MMI_ENTRY                     *MmiEntry;
+  BOOLEAN                       ToRemove;     // To remove this MMI_HANDLER later
   VOID                          *Context;     // for profile
   UINTN                         ContextSize;  // for profile
   BOOLEAN                       IsSupervisor; // for isolation
@@ -239,7 +240,6 @@ extern MM_CORE_PRIVATE_DATA              *gMmCoreMailbox;
 extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
 extern LIST_ENTRY                        gHandleList;
-extern EFI_PHYSICAL_ADDRESS              gLoadModuleAtFixAddressMmramBase;
 extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;

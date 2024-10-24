@@ -497,22 +497,6 @@ AllocateCodePages (
   );
 
 /**
-  Allocate aligned pages for code.
-
-  @param[in]  Pages                 Number of pages to be allocated.
-  @param[in]  Alignment             The requested alignment of the allocation.
-                                    Must be a power of two.
-                                    If Alignment is zero, then byte alignment is used.
-
-  @return Allocated memory.
-**/
-VOID *
-AllocateAlignedCodePages (
-  IN UINTN  Pages,
-  IN UINTN  Alignment
-  );
-
-/**
   This function modifies the page attributes for the memory region specified by BaseAddress and
   Length from their current attributes to the attributes specified by Attributes.
   Caller should make sure BaseAddress and Length is at page boundary.

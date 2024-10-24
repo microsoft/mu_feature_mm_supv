@@ -49,9 +49,6 @@ MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
 VOID   *mMmHobStart;
 UINTN  mMmHobSize;
 
-// Indicator to check if this is the first MMI.
-STATIC BOOLEAN  mFirstMmi = TRUE;
-
 //
 // MM Core global variable for MM System Table.  Only accessed as a physical structure in MMRAM.
 //
@@ -450,19 +447,6 @@ MmEntryPoint (
   }
 
   gMmCorePrivate->InMm = TRUE;
-
-  if (mFirstMmi) {
-    //
-    // Call memory management hook function to set all cached guard pages during initialization.
-    // This is only applicable to the first time in MMI, since all page allocation/free will
-    // set/unset the guard pages on the fly.
-    //
-    MmEntryPointMemoryManagementHook ();
-
-    // Set up the code access check before any handler was iterated
-    ConfigSmmCodeAccessCheck ();
-    mFirstMmi = FALSE;
-  }
 
   //
   // Check to see if this is a Synchronous MMI sent through the MM Communication
@@ -1147,6 +1131,8 @@ MmSupervisorMain (
   if (gMmCoreMailbox != NULL) {
     CopyMem (gMmCoreMailbox, gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
   }
+
+  PostRelocationRun ();
 
   DEBUG ((DEBUG_INFO, "MmMain Done!\n"));
 

@@ -1,7 +1,7 @@
 /** @file
 SMM Timer feature support
 
-Copyright (c) 2009 - 2015, Intel Corporation. All rights reserved.<BR>
+Copyright (c) 2009 - 2024, Intel Corporation. All rights reserved.<BR>
 SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
@@ -12,6 +12,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/TimerLib.h>
 
 UINT64  mTimeoutTicker = 0;
+
+UINT64  mTimeoutTicker2 = 0;
+
 //
 //  Number of counts in a roll-over cycle of the performance counter.
 //
@@ -39,6 +42,10 @@ InitializeSmmTimer (
                      MultU64x64 (TimerFrequency, PcdGet64 (PcdCpuSmmApSyncTimeout)),
                      1000 * 1000
                      );
+  mTimeoutTicker2 = DivU64x32 (
+                      MultU64x64 (TimerFrequency, PcdGet64 (PcdCpuSmmApSyncTimeout2)),
+                      1000 * 1000
+                      );
   if (End < Start) {
     mCountDown = TRUE;
     mCycle     = Start - End;
@@ -62,15 +69,17 @@ StartSyncTimer (
 }
 
 /**
-  Check if the SMM AP Sync timer is timeout.
+  Check if the SMM AP Sync Timer is timeout specified by Timeout.
 
-  @param Timer  The start timer from the begin.
+  @param Timer    The start timer from the begin.
+  @param Timeout  The timeout ticker to wait.
 
 **/
 BOOLEAN
 EFIAPI
 IsSyncTimerTimeout (
-  IN      UINT64  Timer
+  IN      UINT64  Timer,
+  IN      UINT64  Timeout
   )
 {
   UINT64  CurrentTimer;
@@ -108,5 +117,5 @@ IsSyncTimerTimeout (
     }
   }
 
-  return (BOOLEAN)(Delta >= mTimeoutTicker);
+  return (BOOLEAN)(Delta >= Timeout);
 }

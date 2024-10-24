@@ -18,12 +18,6 @@
 
 LIST_ENTRY  mMmUserPoolLists[MmPoolTypeMax][MAX_POOL_INDEX];
 
-//
-// To cache the SMRAM base since when Loading modules At fixed address feature is enabled,
-// all module is assigned an offset relative the SMRAM base in build time.
-//
-GLOBAL_REMOVE_IF_UNREFERENCED  EFI_PHYSICAL_ADDRESS  gLoadModuleAtFixAddressMmramBase = 0;
-
 /**
   Check to see if the heap guard is enabled for page and/or pool allocation.
 

@@ -80,6 +80,8 @@
   UefiRuntimeServicesTableLib|MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
   SortLib|MdeModulePkg/Library/BaseSortLib/BaseSortLib.inf
   PeCoffGetEntryPointLib|MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
+  ExceptionPersistenceLib|MdeModulePkg/Library/BaseExceptionPersistenceLibNull/BaseExceptionPersistenceLibNull.inf
+  ResetSystemLib|MdeModulePkg/Library/BaseResetSystemLibNull/BaseResetSystemLibNull.inf
 
 [LibraryClasses.X64.MM_CORE_STANDALONE]
   ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
@@ -154,7 +156,6 @@
 
   MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
-  MmSupervisorPkg/Drivers/StandaloneMmIpl/PiSmmIpl.inf
   MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplX64Relay.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf
