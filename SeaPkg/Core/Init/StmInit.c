@@ -826,7 +826,8 @@ LaunchBack (
   IN X86_REGISTER  *Register
   )
 {
-  UINTN  Rflags;
+  UINTN             Rflags;
+  VM_ENTRY_CONTROLS VmEntryCtrls;
 
   //
   // Indicate operation status from caller.
@@ -958,6 +959,11 @@ LaunchBack (
 
   DEBUG ((DEBUG_ERROR, "Register @ LaunchBack Before AsmVmLaunch: 0x%lx\n", (UINTN)Register));
 
+  VmEntryCtrls.Uint32 = VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX);
+  DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX = 0x%x.\n", VmEntryCtrls.Uint32));
+  VmEntryCtrls.Bits.DeactivateDualMonitor = 1;
+  VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX, VmEntryCtrls.Uint32);
+  DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX (after deactivate dual monitor) = 0x%x.\n", VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
 
   Rflags = AsmVmLaunch (Register);
 
