@@ -41,8 +41,7 @@
   StmPerformance.c
 
 [Sources.X64]
-  Init/x64/AsmStmInit.asm | MSFT
-  Init/x64/AsmStmInit.s   | GCC
+  Init/x64/AsmStmInit.nasm
 
   Runtime/x64/Exception.asm | MSFT
   Runtime/x64/Exception.s   | GCC

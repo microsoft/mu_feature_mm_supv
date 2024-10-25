@@ -31,7 +31,8 @@
 SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 SEA_GUEST_CONTEXT_COMMON  mGuestContextCommonNormal;
 
-volatile BOOLEAN  mIsBspInitialized;
+volatile BOOLEAN        mIsBspInitialized;
+extern volatile UINT64  SerializationLock;
 
 /*++
   STM runtime:
@@ -469,7 +470,7 @@ InitBasicContext (
   VOID
   )
 {
-  mHostContextCommon.HostContextPerCpu         = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  mHostContextCommon.HostContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
   DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mHostContextCommon.HostContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mHostContextCommon.HostContextPerCpu));
   mGuestContextCommonNormal.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
   DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mGuestContextCommonNormal.GuestContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mGuestContextCommonNormal.GuestContextPerCpu));
@@ -663,6 +664,7 @@ BspInit (
       mHostContextCommon.PhysicalAddressBits = 32;
     }
   }
+
   DEBUG ((DEBUG_INFO, "mHostContextCommon.PhysicalAddressBits - 0x%08x!\n", (UINT8)mHostContextCommon.PhysicalAddressBits));
 
   mHostContextCommon.MaximumSupportAddress = (LShiftU64 (1, mHostContextCommon.PhysicalAddressBits) - 1);
@@ -796,7 +798,7 @@ CommonInit (
   StackBase = (UINTN)StmHeader +
               STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
               StmHeader->SwStmHdr.AdditionalDynamicMemorySize;
-  StackSize                                         = StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  StackSize = StmHeader->SwStmHdr.PerProcDynamicMemorySize;
   DEBUG ((DEBUG_INFO, "%a - Stack(%d) - StackSize = 0x%lx\n", __func__, (UINTN)Index, StackSize));
   mHostContextCommon.HostContextPerCpu[Index].Stack = (UINTN)(StackBase + StackSize * (Index + 1)); // Stack Top
 
@@ -826,8 +828,8 @@ LaunchBack (
   IN X86_REGISTER  *Register
   )
 {
-  UINTN             Rflags;
-  VM_ENTRY_CONTROLS VmEntryCtrls;
+  UINTN              Rflags;
+  VM_ENTRY_CONTROLS  VmEntryCtrls;
 
   //
   // Indicate operation status from caller.
@@ -964,6 +966,8 @@ LaunchBack (
   VmEntryCtrls.Bits.DeactivateDualMonitor = 1;
   VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX, VmEntryCtrls.Uint32);
   DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX (after deactivate dual monitor) = 0x%x.\n", VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
+
+  SerializationLock = 0;
 
   Rflags = AsmVmLaunch (Register);
 
@@ -1464,6 +1468,7 @@ SeaVmcallDispatcher (
         CommonInit (CpuIndex);
         DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
       }
+
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
