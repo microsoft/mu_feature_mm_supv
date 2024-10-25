@@ -790,7 +790,7 @@ CommonInit (
   }
 
   mHostContextCommon.HostContextPerCpu[Index].Index  = Index;
-  mHostContextCommon.HostContextPerCpu[Index].ApicId = (UINT8)ReadLocalApicId ();
+  mHostContextCommon.HostContextPerCpu[Index].ApicId = ReadLocalApicId ();
 
   StmHeader = mHostContextCommon.StmHeader;
   StackBase = (UINTN)StmHeader +
@@ -1452,10 +1452,12 @@ SeaVmcallDispatcher (
         DEBUG ((DEBUG_ERROR, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
       }
 
-      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
-
-      CommonInit (CpuIndex);
-      DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+      if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
+        DEBUG ((DEBUG_INFO, "[%a] - Performing common init for CPU %d for the first time.\n", __func__, CpuIndex));
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+        CommonInit (CpuIndex);
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+      }
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
@@ -1469,7 +1471,18 @@ SeaVmcallDispatcher (
       }
 
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - mIsBspInitialized.\n", __func__, __LINE__));
-      ApInit (CpuIndex, Register);
+      // CpuIndex 0 is the BSP structure
+      if (ReadLocalApicId () != mHostContextCommon.HostContextPerCpu[0].ApicId) {
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Performing AP stack init for CPU index %d.\n", __func__, __LINE__, CpuIndex));
+        ApInit (CpuIndex, Register);
+      }
+
+      if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
+        DEBUG ((DEBUG_INFO, "[%a] - Performing common init for CPU %d for the first time.\n", __func__, CpuIndex));
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+        CommonInit (CpuIndex);
+        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+      }
 
       Status = GetResources (Register);
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetResources(). Status = %r.\n", __func__, __LINE__, Status));
