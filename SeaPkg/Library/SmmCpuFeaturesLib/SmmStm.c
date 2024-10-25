@@ -487,6 +487,7 @@ SmmCpuFeaturesInstallSmiHandler (
   // Initialize values in template before copy
   //
   tSmiStack = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
+  DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));
   if ((gStmSmiHandlerIdtr.Base == 0) && (gStmSmiHandlerIdtr.Limit == 0)) {
     gStmSmiHandlerIdtr.Base  = IdtBase;
     gStmSmiHandlerIdtr.Limit = (UINT16)(IdtSize - 1);
@@ -499,6 +500,7 @@ SmmCpuFeaturesInstallSmiHandler (
   // Set the value at the top of the CPU stack to the CPU Index
   //
   *(UINTN *)(UINTN)tSmiStack = CpuIndex;
+  DEBUG ((DEBUG_ERROR, "[%a] - Set stack address (0x%x) to 0x%lx.\n", __func__, tSmiStack, CpuIndex));
 
   //
   // Copy template to CPU specific SMI handler location from what is located from the FV
@@ -762,6 +764,13 @@ StmCheckStmImage (
       MinMsegSize = StmHeader->HwStmHdr.Cr3Offset + EFI_PAGES_TO_SIZE (6);
     }
   }
+
+  DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.StaticImageSize             = %08x\n", StmHeader->SwStmHdr.StaticImageSize));
+  DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.AdditionalDynamicMemorySize = %08x\n", StmHeader->SwStmHdr.AdditionalDynamicMemorySize));
+  DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.PerProcDynamicMemorySize    = %08x\n", StmHeader->SwStmHdr.PerProcDynamicMemorySize));
+  DEBUG ((DEBUG_ERROR, "  VMCS Size                                       = %08x\n", GetVmcsSize ()));
+  DEBUG ((DEBUG_ERROR, "  Max CPUs                                        = %08x\n", gMmst->NumberOfCpus));
+  DEBUG ((DEBUG_ERROR, "  StmHeader->HwStmHdr.Cr3Offset                   = %08x\n", StmHeader->HwStmHdr.Cr3Offset));
 
   //
   // Check if it exceeds MSEG size

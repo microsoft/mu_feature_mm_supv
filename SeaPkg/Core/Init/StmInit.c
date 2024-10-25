@@ -416,7 +416,7 @@ GetIndexFromStack (
 
   DEBUG ((DEBUG_ERROR, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
   DEBUG ((DEBUG_ERROR, "[%a][L%d] - ApicId is 0x%x.\n", __func__, __LINE__, GetApicId ()));
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - GetIndexFromStack is 0x%p.\n", __func__, __LINE__, GetIndexFromStack));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - GetIndexFromStack (this function) is at 0x%p.\n", __func__, __LINE__, GetIndexFromStack));
 
   //
   // Stack top of this CPU
@@ -470,7 +470,9 @@ InitBasicContext (
   )
 {
   mHostContextCommon.HostContextPerCpu         = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mHostContextCommon.HostContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mHostContextCommon.HostContextPerCpu));
   mGuestContextCommonNormal.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
+  DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mGuestContextCommonNormal.GuestContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mGuestContextCommonNormal.GuestContextPerCpu));
 }
 
 /**
@@ -661,8 +663,10 @@ BspInit (
       mHostContextCommon.PhysicalAddressBits = 32;
     }
   }
+  DEBUG ((DEBUG_INFO, "mHostContextCommon.PhysicalAddressBits - 0x%08x!\n", (UINT8)mHostContextCommon.PhysicalAddressBits));
 
   mHostContextCommon.MaximumSupportAddress = (LShiftU64 (1, mHostContextCommon.PhysicalAddressBits) - 1);
+  DEBUG ((DEBUG_INFO, "mHostContextCommon.MaximumSupportAddress - 0x%lx!\n", (UINT8)mHostContextCommon.MaximumSupportAddress));
 
   mHostContextCommon.PageTable = AsmReadCr3 ();
   AsmReadGdtr (&mHostContextCommon.Gdtr);
@@ -793,6 +797,7 @@ CommonInit (
               STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
               StmHeader->SwStmHdr.AdditionalDynamicMemorySize;
   StackSize                                         = StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  DEBUG ((DEBUG_INFO, "%a - Stack(%d) - StackSize = 0x%lx\n", __func__, (UINTN)Index, StackSize));
   mHostContextCommon.HostContextPerCpu[Index].Stack = (UINTN)(StackBase + StackSize * (Index + 1)); // Stack Top
 
   if ((VmxMisc.Uint64 & BIT15) != 0) {
@@ -827,6 +832,8 @@ LaunchBack (
   // Indicate operation status from caller.
   //
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, VmReadN (VMCS_N_GUEST_RFLAGS_INDEX) & ~RFLAGS_CF);
+
+  DEBUG ((DEBUG_ERROR, "Register @ LaunchBack: 0x%lx\n", (UINTN)Register));
 
   DEBUG ((EFI_D_INFO, "!!!LaunchBack (%d)!!!\n", (UINTN)Index));
   DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX: %08x\n", (UINTN)VmRead32 (VMCS_32_CONTROL_VMEXIT_CONTROLS_INDEX)));
@@ -944,11 +951,13 @@ LaunchBack (
   DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_N_GUEST_PENDING_DEBUG_EXCEPTIONS_INDEX: %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_PENDING_DEBUG_EXCEPTIONS_INDEX)));
   DEBUG ((DEBUG_ERROR, "On exit Guest-state VMCS_64_GUEST_VMCS_LINK_PTR_INDEX: %08x\n", (UINTN)VmRead64 (VMCS_64_GUEST_VMCS_LINK_PTR_INDEX)));
 
-  // Clear CR4 fixed bit 13 for VMXE
   DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR0_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED0_MSR_INDEX)));
   DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR0_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR0_FIXED1_MSR_INDEX)));
   DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR4_FIXED0_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED0_MSR_INDEX)));
   DEBUG ((DEBUG_ERROR, "On Exit MSR IA32_VMX_CR4_FIXED1_MSR_INDEX: %08x\n", (UINTN)AsmReadMsr64 (IA32_VMX_CR4_FIXED1_MSR_INDEX)));
+
+  DEBUG ((DEBUG_ERROR, "Register @ LaunchBack Before AsmVmLaunch: 0x%lx\n", (UINTN)Register));
+
 
   Rflags = AsmVmLaunch (Register);
 
@@ -1339,6 +1348,9 @@ SeaVmcallDispatcher (
     ASSERT (Register != NULL);
     return;
   }
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Register at 0x%p.\n", __func__, __LINE__, Register));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ServiceId (local stack var) at 0x%p.\n", __func__, __LINE__, &ServiceId));
 
   DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
   DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));

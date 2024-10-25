@@ -13,6 +13,7 @@
 **/
 
 #include "StmInit.h"
+#include <Library/DebugLib.h>
 
 VOID
 _ModuleEntryPoint (
@@ -105,7 +106,11 @@ InitializeNormalVmcs (
   VmWriteN (VMCS_N_HOST_TR_BASE_INDEX, 0);
   VmWriteN (VMCS_N_HOST_GDTR_BASE_INDEX, mHostContextCommon.Gdtr.Base);
   VmWriteN (VMCS_N_HOST_IDTR_BASE_INDEX, mHostContextCommon.Idtr.Base);
+
+  DEBUG ((DEBUG_INFO, "[%a] - Current VMCS_N_HOST_RSP_INDEX is 0x%lx.\n", __func__, VmReadN(VMCS_N_HOST_RSP_INDEX)));
+  DEBUG ((DEBUG_INFO, "[%a] - mHostContextCommon.HostContextPerCpu[Index].Stack being written is 0x%lx.\n", __func__, mHostContextCommon.HostContextPerCpu[Index].Stack));
   VmWriteN (VMCS_N_HOST_RSP_INDEX, mHostContextCommon.HostContextPerCpu[Index].Stack);
+  DEBUG ((DEBUG_INFO, "[%a] - VMCS_N_HOST_RSP_INDEX value read back after write is 0x%lx.\n", __func__, VmReadN(VMCS_N_HOST_RSP_INDEX)));
   // Making sure we can still thunk back to the same place...
   VmWriteN (VMCS_N_HOST_RIP_INDEX, (UINTN)_ModuleEntryPoint);
 
