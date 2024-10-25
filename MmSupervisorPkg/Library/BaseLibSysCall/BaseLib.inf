@@ -12,10 +12,7 @@
 #
 ##
 
-# Secure
 #Override : 00000002 | MdePkg/Library/BaseLib/BaseLib.inf | d1eaa238fe7b99e66c2ff5985473e4a3 | 2024-10-23T18-51-53 | bf73b8a3c074d0280e664de6bf8c3d1091c3072c
-# Non-Secure
-#Override : 00000002 | StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf | 360b405f82e6baf8de6d85ca03fed261 | 2024-10-23T18-50-33 | bf73b8a3c074d0280e664de6bf8c3d1091c3072
 
 [Defines]
   INF_VERSION                    = 0x00010005
