@@ -396,52 +396,6 @@ GetMinMsegSize (
 
 /**
 
-  This function return the index of CPU according to stack.
-
-  @param Register  stack value of this CPU
-
-  @return CPU index
-
-**/
-UINT32
-GetIndexFromStack (
-  IN X86_REGISTER  *Register
-  )
-{
-  STM_HEADER  *StmHeader;
-  UINTN       ThisStackTop;
-  UINTN       StackBottom;
-  UINTN       Index;
-
-  StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
-
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ApicId is 0x%x.\n", __func__, __LINE__, GetApicId ()));
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - GetIndexFromStack (this function) is at 0x%p.\n", __func__, __LINE__, GetIndexFromStack));
-
-  //
-  // Stack top of this CPU
-  //
-  ThisStackTop = ((UINTN)Register + SIZE_4KB - 1) & ~(SIZE_4KB - 1);
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - ThisStackTop = 0x%lx.\n", __func__, __LINE__, ThisStackTop));
-
-  //
-  // EspOffset pointer to bottom of 1st CPU
-  //
-  StackBottom = (UINTN)StmHeader + StmHeader->HwStmHdr.EspOffset;
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - StackBottom = 0x%lx.\n", __func__, __LINE__, StackBottom));
-
-  Index = (ThisStackTop - StackBottom) / StmHeader->SwStmHdr.PerProcDynamicMemorySize;
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Index = 0x%lx.\n", __func__, __LINE__, Index));
-
-  //
-  // Need minus one for 0-based CPU index
-  //
-  return (UINT32)(Index - 1);
-}
-
-/**
-
   This function initialize STM heap.
 
   @param StmHeader MSEG STM header
@@ -713,49 +667,6 @@ BspInit (
   // Initialization done
   //
   mIsBspInitialized = TRUE;
-
-  return;
-}
-
-/**
-
-  This function initialize AP.
-
-  @param Index    CPU index
-  @param Register X86 register context
-
-**/
-VOID
-ApInit (
-  IN UINT32        Index,
-  IN X86_REGISTER  *Register
-  )
-{
-  X86_REGISTER  *Reg;
-
-  DEBUG ((EFI_D_INFO, "!!!Enter StmInit (AP done)!!! - %d (%x)\n", (UINTN)Index, (UINTN)ReadUnaligned32 ((UINT32 *)&Register->Rax)));
-
-  DEBUG ((DEBUG_ERROR, "[%a] - Index Given = %d.\n", __func__, Index));
-  DEBUG ((DEBUG_ERROR, "[%a] - Register at 0x%lx.\n", __func__, Register));
-
-  if (Index >= mHostContextCommon.CpuNum) {
-    DEBUG ((EFI_D_INFO, "!!!Index(0x%x) >= mHostContextCommon.CpuNum(0x%x)\n", (UINTN)Index, (UINTN)mHostContextCommon.CpuNum));
-    CpuDeadLoop ();
-    Index = GetIndexFromStack (Register);
-  }
-
-  InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
-
-  DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)Index, Register));
-  Reg           = &mGuestContextCommonNormal.GuestContextPerCpu[Index].Register;
-  Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
-  CopyMem (Reg, Register, sizeof (X86_REGISTER));
-
-  if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
-    DEBUG ((DEBUG_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
-    // Reset system
-    CpuDeadLoop ();
-  }
 
   return;
 }
@@ -1180,7 +1091,6 @@ GetResources (
   UINT64                            BufferSize;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *PolicyBuffer = NULL;
   TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
-  UINTN                             CpuIndex;
 
   if (Register == NULL) {
     Status = EFI_INVALID_PARAMETER;
@@ -1232,10 +1142,8 @@ GetResources (
   DigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
   CopyMem (DigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
 
-  CpuIndex = GetIndexFromStack (Register);
   AcquireSpinLock (&mHostContextCommon.ResponderLock);
   Status = SeaResponderReport (
-             CpuIndex,
              (EFI_PHYSICAL_ADDRESS)(UINTN)PcdGetPtr (PcdAuxBinFile),
              PcdGetSize (PcdAuxBinFile),
              PcdGet64 (PcdMmiEntryBinSize),
@@ -1352,6 +1260,8 @@ SeaVmcallDispatcher (
   UINT32      ServiceId;
   EFI_STATUS  Status;
 
+  CpuIndex = 0;
+
   DEBUG ((DEBUG_ERROR, "[%a] - Enter\n", __func__));
 
   if (Register == NULL) {
@@ -1436,65 +1346,42 @@ SeaVmcallDispatcher (
 
   DumpMtrrsInStm ();
 
-  CpuIndex = GetIndexFromStack (Register);
-  DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex (From Stack) = %d\n", __func__, __LINE__, CpuIndex));
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - LocalApicId (From ReadLocalApicId) = 0x%x\n", __func__, __LINE__, ReadLocalApicId ()));
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
   DEBUG ((DEBUG_ERROR, "[%a][L%d] - ServiceId = 0x%x\n", __func__, __LINE__, ServiceId));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex (Hardcoded) == 0.\n", __func__, __LINE__));
+  // The build process should make sure "virtual address" is same as "file pointer to raw data",
+  // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
+  // If no, GenStm tool will "load image". So here, we just need "relocate image"
+  RelocateStmImage (FALSE);
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Before ProcessLibraryConstructorList().\n", __func__, __LINE__));
+  ProcessLibraryConstructorList ();
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - After ProcessLibraryConstructorList().\n", __func__, __LINE__));
+
+  BspInit (Register);
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
+
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+  CommonInit (0);
+  DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
 
   switch (ServiceId) {
     case SEA_API_GET_CAPABILITIES:
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_CAPABILITIES entered.\n", __func__, __LINE__));
-      if (CpuIndex == 0) {
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex == 0.\n", __func__, __LINE__));
-        // The build process should make sure "virtual address" is same as "file pointer to raw data",
-        // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
-        // If no, GenStm tool will "load image". So here, we just need "relocate image"
-        RelocateStmImage (FALSE);
-
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
-
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Before ProcessLibraryConstructorList().\n", __func__, __LINE__));
-        ProcessLibraryConstructorList ();
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After ProcessLibraryConstructorList().\n", __func__, __LINE__));
-
-        BspInit (Register);
-
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
-      }
-
-      if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
-        DEBUG ((DEBUG_INFO, "[%a] - Performing common init for CPU %d for the first time.\n", __func__, CpuIndex));
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
-        CommonInit (CpuIndex);
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
-      }
-
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
       break;
+
     case SEA_API_GET_RESOURCES:
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_RESOURCES entered.\n", __func__, __LINE__));
-      if (!mIsBspInitialized) {
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - !mIsBspInitialized.\n", __func__, __LINE__));
-        Status = EFI_NOT_STARTED;
-        break;
-      }
 
-      DEBUG ((DEBUG_ERROR, "[%a][L%d] - mIsBspInitialized.\n", __func__, __LINE__));
-      // CpuIndex 0 is the BSP structure
-      if (ReadLocalApicId () != mHostContextCommon.HostContextPerCpu[0].ApicId) {
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Performing AP stack init for CPU index %d.\n", __func__, __LINE__, CpuIndex));
-        ApInit (CpuIndex, Register);
-      }
-
-      if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
-        DEBUG ((DEBUG_INFO, "[%a] - Performing common init for CPU %d for the first time.\n", __func__, CpuIndex));
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
-        CommonInit (CpuIndex);
-        DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
-      }
-
+      // Treat all cores as the BSP structure
       Status = GetResources (Register);
       DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetResources(). Status = %r.\n", __func__, __LINE__, Status));
       break;
