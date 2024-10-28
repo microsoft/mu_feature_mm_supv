@@ -33,13 +33,13 @@ AllocatePages (
 
   AcquireSpinLock (&mHostContextCommon.MemoryLock);
   if (STM_PAGES_TO_SIZE (Pages) >= mHostContextCommon.HeapTop) {
-    DEBUG ((EFI_D_ERROR, "AllocatePages(%x) overflow\n", Pages));
+    SAFE_DEBUG ((EFI_D_ERROR, "AllocatePages(%x) overflow\n", Pages));
     ReleaseSpinLock (&mHostContextCommon.MemoryLock);
     CpuDeadLoop ();
   }
 
   if (mHostContextCommon.HeapBottom > mHostContextCommon.HeapTop - STM_PAGES_TO_SIZE (Pages)) {
-    DEBUG ((EFI_D_ERROR, "AllocatePages(%x) fail\n", Pages));
+    SAFE_DEBUG ((EFI_D_ERROR, "AllocatePages(%x) fail\n", Pages));
     ReleaseSpinLock (&mHostContextCommon.MemoryLock);
     CpuDeadLoop ();
   }

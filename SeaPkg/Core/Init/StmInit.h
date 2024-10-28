@@ -17,6 +17,33 @@
 
 #include "Stm.h"
 
+extern SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
+
+/**
+  Macro that calls DebugPrint().
+
+  If MDEPKG_NDEBUG is not defined and the DEBUG_PROPERTY_DEBUG_PRINT_ENABLED
+  bit of PcdDebugProperyMask is set, then this macro passes Expression to
+  DebugPrint().
+
+  @param  Expression  Expression containing an error level, a format string,
+                      and a variable argument list based on the format string.
+
+
+**/
+#if !defined (MDEPKG_NDEBUG)
+#define SAFE_DEBUG(Expression)        \
+    do {                           \
+      if (DebugPrintEnabled ()) {  \
+        AcquireSpinLock (&mHostContextCommon.DebugLock); \
+        _DEBUGLIB_DEBUG (Expression);       \
+        ReleaseSpinLock (&mHostContextCommon.DebugLock); \
+      }                            \
+    } while (FALSE)
+#else
+#define DEBUG(Expression)
+#endif
+
 /**
 
   This function create page table for STM host.

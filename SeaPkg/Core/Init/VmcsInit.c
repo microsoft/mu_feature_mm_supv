@@ -13,6 +13,8 @@
 **/
 
 #include "StmInit.h"
+#include <Base.h>
+#include <x64/Vmx.h>
 #include <Library/DebugLib.h>
 
 VOID
@@ -33,8 +35,9 @@ _ModuleEntryPoint (
 **/
 VOID
 InitializeNormalVmcs (
-  IN UINT32  Index,
-  IN UINT64  *Vmcs
+  IN UINT32   Index,
+  IN UINT64   *Vmcs,
+  IN BOOLEAN  IncrementGuestRip
   )
 {
   // VM_EXIT_CONTROLS                             VmExitCtrls;
@@ -107,10 +110,10 @@ InitializeNormalVmcs (
   VmWriteN (VMCS_N_HOST_GDTR_BASE_INDEX, mHostContextCommon.Gdtr.Base);
   VmWriteN (VMCS_N_HOST_IDTR_BASE_INDEX, mHostContextCommon.Idtr.Base);
 
-  DEBUG ((DEBUG_INFO, "[%a] - Current VMCS_N_HOST_RSP_INDEX is 0x%lx.\n", __func__, VmReadN(VMCS_N_HOST_RSP_INDEX)));
-  DEBUG ((DEBUG_INFO, "[%a] - mHostContextCommon.HostContextPerCpu[Index].Stack being written is 0x%lx.\n", __func__, mHostContextCommon.HostContextPerCpu[Index].Stack));
+  SAFE_DEBUG ((DEBUG_INFO, "[%a] - Current VMCS_N_HOST_RSP_INDEX is 0x%lx.\n", __func__, VmReadN (VMCS_N_HOST_RSP_INDEX)));
+  SAFE_DEBUG ((DEBUG_INFO, "[%a] - mHostContextCommon.HostContextPerCpu[Index].Stack being written is 0x%lx.\n", __func__, mHostContextCommon.HostContextPerCpu[Index].Stack));
   VmWriteN (VMCS_N_HOST_RSP_INDEX, mHostContextCommon.HostContextPerCpu[Index].Stack);
-  DEBUG ((DEBUG_INFO, "[%a] - VMCS_N_HOST_RSP_INDEX value read back after write is 0x%lx.\n", __func__, VmReadN(VMCS_N_HOST_RSP_INDEX)));
+  SAFE_DEBUG ((DEBUG_INFO, "[%a] - VMCS_N_HOST_RSP_INDEX value read back after write is 0x%lx.\n", __func__, VmReadN (VMCS_N_HOST_RSP_INDEX)));
   // Making sure we can still thunk back to the same place...
   VmWriteN (VMCS_N_HOST_RIP_INDEX, (UINTN)_ModuleEntryPoint);
 
@@ -119,7 +122,11 @@ InitializeNormalVmcs (
   //
   // Guest field
   //
-  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  if (IncrementGuestRip) {
+    SAFE_DEBUG ((DEBUG_INFO, "[%a] - Incrementing Guest RIP.\n", __func__));
+    VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
+  }
+
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, 0x00000002);                   // VMCALL success
   // VmWrite32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX, GuestInterruptibilityState.Uint32);
 
