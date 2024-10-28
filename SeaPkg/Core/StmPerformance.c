@@ -91,10 +91,8 @@ StmStartPerformanceMeasurement (
 
  #if 0
   if (Status != RETURN_SUCCESS) {
-    AcquireSpinLock (&mHostContextCommon.DebugLock);
     DEBUG ((EFI_D_ERROR, "StmStartPerformanceMeasurement(%x) - %a, %a\n", (UINTN)CpuIndex, Token, Description));
     STM_PERF_DUMP;
-    ReleaseSpinLock (&mHostContextCommon.DebugLock);
     CpuDeadLoop ();
   }
 
@@ -176,10 +174,8 @@ StmEndPerformanceMeasurement (
 
  #if 0
   if (Status != RETURN_SUCCESS) {
-    AcquireSpinLock (&mHostContextCommon.DebugLock);
     DEBUG ((EFI_D_ERROR, "StmEndPerformanceMeasurement(%x) - %a, %a\n", (UINTN)CpuIndex, Token, Description));
     STM_PERF_DUMP;
-    ReleaseSpinLock (&mHostContextCommon.DebugLock);
     CpuDeadLoop ();
   }
 
