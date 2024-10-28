@@ -878,6 +878,10 @@ LaunchBack (
   VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX, VmEntryCtrls.Uint32);
   DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX (after deactivate dual monitor) = 0x%x.\n", VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
 
+  RelocateStmImage (TRUE);
+
+  DEBUG ((DEBUG_ERROR, "Message after RelocateStmImage (TRUE)\n"));
+
   SerializationLock = 0;
 
   Rflags = AsmVmLaunch (Register);
