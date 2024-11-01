@@ -78,8 +78,9 @@ Is1GPageSupport (
 **/
 VOID
 InitializeNormalVmcs (
-  IN UINT32  Index,
-  IN UINT64  *Vmcs
+  IN UINT32   Index,
+  IN UINT64   *Vmcs,
+  IN BOOLEAN  IncrementGuestRip
   );
 
 #endif

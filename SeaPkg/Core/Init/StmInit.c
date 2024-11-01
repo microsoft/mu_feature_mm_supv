@@ -932,7 +932,8 @@ IsOverlap (
 **/
 VOID
 VmcsInit (
-  IN UINT32  Index
+  IN UINT32   Index,
+  IN BOOLEAN  IncrementGuestRip
   )
 {
   UINT64      CurrentVmcs;
@@ -951,6 +952,8 @@ VmcsInit (
   mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs = (UINT64)(VmcsBase + VmcsSize * (Index * 2));
 
   SAFE_DEBUG ((EFI_D_INFO, "SmiVmcsPtr(%d) - %016lx\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs));
+  SAFE_DEBUG ((EFI_D_INFO, "Increment Guest RIP = %a.\n", IncrementGuestRip ? "True" : "False"));
+
   SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (before store): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
 
   AsmVmPtrStore (&CurrentVmcs);
@@ -983,7 +986,7 @@ VmcsInit (
 
   SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (after load): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
 
-  InitializeNormalVmcs (Index, &mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs);
+  InitializeNormalVmcs (Index, &mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, IncrementGuestRip);
 }
 
 /**
@@ -1407,7 +1410,7 @@ SeaVmcallDispatcher (
   }
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
-  VmcsInit (CpuIndex);
+  VmcsInit (CpuIndex, ((ServiceId == SEA_API_GET_CAPABILITIES) || (ServiceId == SEA_API_GET_RESOURCES && ReadLocalApicId () != 0)));
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));
