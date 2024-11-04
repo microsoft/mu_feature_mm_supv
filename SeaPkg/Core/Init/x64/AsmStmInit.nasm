@@ -19,7 +19,7 @@
 
 extern ASM_PFX(SeaVmcallDispatcher)
 
-global ASM_PFX(SerializationLock)
+global ASM_PFX(mSerializationLock)
 global ASM_PFX(_ModuleEntryPoint)
 
 SEA_API_GET_CAPABILITIES  EQU 00010101h
@@ -34,7 +34,7 @@ MAX_PROCESSORS EQU 1024
 
 SECTION .data
 
-SerializationLock dq 0 ; 0 means lock is free
+mSerializationLock dq 0 ; 0 means lock is free
 
 ScratchSpaceRcx   dq 0 ; Use it as an extra register.
 ScratchSpaceRdx   dq 0 ; Use it as an extra register.
@@ -69,7 +69,7 @@ SECTION .text
 %macro ATOMIC_LOCATE_STACK    0
   mov rax, 1
 .try_get_lock:
-  xchg rax, qword [SerializationLock]  ; Atomically swap value in rax with lock
+  xchg rax, qword [mSerializationLock]  ; Atomically swap value in rax with lock
   test rax, rax     ; Check if lock was zero
   jnz .try_get_lock             ; If not zero, lock is already held, retry
 

@@ -132,7 +132,5 @@ InitializeNormalVmcs (
 
   // VmWrite64 (VMCS_64_GUEST_IA32_PERF_GLOBAL_CTRL_INDEX,  AsmReadMsr64(IA32_PERF_GLOBAL_CTRL_MSR_INDEX));
 
-  // VmWrite64 (VMCS_64_GUEST_IA32_EFER_INDEX,              mGuestContextCommonNormal.GuestContextPerCpu[Index].Efer);
-
   return;
 }

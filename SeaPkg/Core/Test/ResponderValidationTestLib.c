@@ -38,6 +38,7 @@ extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash using TPM.
 
+  @param[in]  CpuIndex           The index of the CPU.
   @param[in]  AuxFileBase        The base address of the auxiliary file.
   @param[in]  AuxFileSize        The size of the auxiliary file.
   @param[in]  MmiEntryFileSize   The size of the MMI entry file.
@@ -54,6 +55,7 @@ extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 EFI_STATUS
 EFIAPI
 SeaResponderReport (
+  IN  UINTN                 CpuIndex,
   IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
   IN  UINT64                AuxFileSize,
   IN  UINT64                MmiEntryFileSize,
@@ -209,6 +211,7 @@ SeaValidationTestHandler (
   }
 
   Status = SeaResponderReport (
+             gMmst->CurrentlyExecutingCpu,
              (EFI_PHYSICAL_ADDRESS)(UINTN)CommRegion->SupervisorAuxFileBase,
              CommRegion->SupervisorAuxFileSize,
              CommRegion->MmiEntryFileSize,

@@ -48,6 +48,8 @@ AllocatePages (
   mHostContextCommon.HeapTop = Address;
 
   ZeroMem ((VOID *)(UINTN)Address, STM_PAGES_TO_SIZE (Pages));
+  SAFE_DEBUG ((DEBUG_INFO, "[%a] - Buffer at 0x%lx. Pages = 0x%x.\n", __func__, (UINTN)Address, Pages));
+
   ReleaseSpinLock (&mHostContextCommon.MemoryLock);
   return (VOID *)(UINTN)Address;
 }
@@ -67,9 +69,13 @@ FreePages (
   IN UINTN  Pages
   )
 {
+  SAFE_DEBUG ((DEBUG_INFO, "[%a] - Buffer at 0x%lx. Pages = 0x%x.\n", __func__, (UINTN)Buffer, Pages));
+
+  AcquireSpinLock (&mHostContextCommon.MemoryLock);
   if ((UINT64)(UINTN)Buffer == mHostContextCommon.HeapTop) {
     mHostContextCommon.HeapTop += STM_PAGES_TO_SIZE (Pages);
   }
+  ReleaseSpinLock (&mHostContextCommon.MemoryLock);
 
   return;
 }

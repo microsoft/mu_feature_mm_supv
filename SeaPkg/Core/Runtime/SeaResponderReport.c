@@ -285,6 +285,7 @@ Done:
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash using TPM.
 
+  @param[in]  CpuIndex           The index of the CPU.
   @param[in]  AuxFileBase        The base address of the auxiliary file.
   @param[in]  AuxFileSize        The size of the auxiliary file.
   @param[in]  MmiEntryFileSize   The size of the MMI entry file.
@@ -301,6 +302,7 @@ Done:
 EFI_STATUS
 EFIAPI
 SeaResponderReport (
+  IN  UINTN                 CpuIndex,
   IN  EFI_PHYSICAL_ADDRESS  AuxFileBase,
   IN  UINT64                AuxFileSize,
   IN  UINT64                MmiEntryFileSize,
@@ -354,7 +356,7 @@ SeaResponderReport (
 
   MmBase = AsmReadMsr64 (MSR_IA32_SMBASE);
   if (MmBase == 0) {
-    DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE\n", __func__));
+    DEBUG ((DEBUG_ERROR, "%a Host system has NULL MMBASE for core 0x%x\n", __func__, CpuIndex));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }

@@ -32,7 +32,7 @@ SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 SEA_GUEST_CONTEXT_COMMON  mGuestContextCommonNormal;
 
 volatile BOOLEAN        mIsBspInitialized;
-extern volatile UINT64  SerializationLock;
+extern volatile UINT64  mSerializationLock;
 
 /*++
   STM runtime:
@@ -141,234 +141,57 @@ GetCpuNumFromTxt (
   return BiosToOsData->NumLogProcs;
 }
 
-#define EBDA_BASE_ADDRESS  0x40E
-
 /**
+  This function returns the CPU index based on its stack location.
 
-  This function find ACPI RSDPTR in TXT heap region.
+  @param[in] Register       Stack value of this CPU
+  @param[in] PrintDbgMsgs   Whether to print debug messages or not.
+                            This allows the function to be called before debug printing is available.
 
-  @return ACPI RSDPTR in TXT heap region
-
-**/
-VOID *
-FindTxtAcpiRsdPtr (
-  VOID
-  )
-{
-  TXT_OS_TO_SINIT_DATA  *OsSinitData;
-
-  OsSinitData = GetTxtOsToSinitData ();
-  if (OsSinitData->Version < 5) {
-    return NULL;
-  }
-
-  return (VOID *)(UINTN)OsSinitData->RsdpPtr;
-}
-
-/**
-
-  This function find ACPI RSDPTR in UEFI or legacy region.
-
-  @return ACPI RSDPTR in UEFI or legacy region
-
-**/
-VOID *
-FindAcpiRsdPtr (
-  VOID
-  )
-{
-  if (mHostContextCommon.AcpiRsdp != 0) {
-    return (VOID *)(UINTN)mHostContextCommon.AcpiRsdp;
-  } else {
-    UINTN  Address;
-
-    //
-    // Search EBDA
-    //
-    Address = (*(UINT16 *)(UINTN)(EBDA_BASE_ADDRESS)) << 4;
-    for ( ; Address < 0xA0000; Address += 0x10) {
-      if (*(UINT64 *)(Address) == EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER_SIGNATURE) {
-        return (VOID *)(Address);
-      }
-    }
-
-    //
-    // First Seach 0x0e0000 - 0x0fffff for RSD Ptr
-    //
-    for (Address = 0xe0000; Address < 0xfffff; Address += 0x10) {
-      if (*(UINT64 *)(Address) == EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER_SIGNATURE) {
-        return (VOID *)Address;
-      }
-    }
-
-    //
-    // Not found
-    //
-    return NULL;
-  }
-}
-
-/**
-
-  This function scan ACPI table in RSDT.
-
-  @param Rsdt      ACPI RSDT
-  @param Signature ACPI table signature
-
-  @return ACPI table
-
-**/
-VOID *
-ScanTableInRSDT (
-  IN EFI_ACPI_DESCRIPTION_HEADER  *Rsdt,
-  IN UINT32                       Signature
-  )
-{
-  UINTN                        Index;
-  UINT32                       EntryCount;
-  UINT32                       *EntryPtr;
-  EFI_ACPI_DESCRIPTION_HEADER  *Table;
-
-  EntryCount = (Rsdt->Length - sizeof (EFI_ACPI_DESCRIPTION_HEADER)) / sizeof (UINT32);
-
-  EntryPtr = (UINT32 *)(Rsdt + 1);
-  for (Index = 0; Index < EntryCount; Index++, EntryPtr++) {
-    Table = (EFI_ACPI_DESCRIPTION_HEADER *)((UINTN)(*EntryPtr));
-    if (Table->Signature == Signature) {
-      return Table;
-    }
-  }
-
-  return NULL;
-}
-
-/**
-
-  This function scan ACPI table in XSDT.
-
-  @param Xsdt      ACPI XSDT
-  @param Signature ACPI table signature
-
-  @return ACPI table
-
-**/
-VOID *
-ScanTableInXSDT (
-  IN EFI_ACPI_DESCRIPTION_HEADER  *Xsdt,
-  IN UINT32                       Signature
-  )
-{
-  UINTN                        Index;
-  UINT32                       EntryCount;
-  UINT64                       EntryPtr;
-  UINTN                        BasePtr;
-  EFI_ACPI_DESCRIPTION_HEADER  *Table;
-
-  EntryCount = (Xsdt->Length - sizeof (EFI_ACPI_DESCRIPTION_HEADER)) / sizeof (UINT64);
-
-  BasePtr = (UINTN)(Xsdt + 1);
-  for (Index = 0; Index < EntryCount; Index++) {
-    CopyMem (&EntryPtr, (VOID *)(BasePtr + Index * sizeof (UINT64)), sizeof (UINT64));
-    Table = (EFI_ACPI_DESCRIPTION_HEADER *)((UINTN)(EntryPtr));
-    if (Table->Signature == Signature) {
-      return Table;
-    }
-  }
-
-  return NULL;
-}
-
-/**
-
-  This function find ACPI table according to signature.
-
-  @param RsdPtr    ACPI RSDPTR
-  @param Signature ACPI table signature
-
-  @return ACPI table
-
-**/
-VOID *
-FindAcpiPtr (
-  VOID    *RsdPtr,
-  UINT32  Signature
-  )
-{
-  EFI_ACPI_DESCRIPTION_HEADER                   *AcpiTable;
-  EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER  *Rsdp;
-  EFI_ACPI_DESCRIPTION_HEADER                   *Rsdt;
-  EFI_ACPI_DESCRIPTION_HEADER                   *Xsdt;
-
-  if (RsdPtr == NULL) {
-    return NULL;
-  }
-
-  AcpiTable = NULL;
-
-  Rsdp = (EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER *)RsdPtr;
-  Rsdt = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Rsdp->RsdtAddress;
-  Xsdt = NULL;
-  if ((Rsdp->Revision >= 2) && (Rsdp->XsdtAddress < (UINT64)(UINTN)-1)) {
-    Xsdt = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Rsdp->XsdtAddress;
-  }
-
-  //
-  // Check Xsdt
-  //
-  if (Xsdt != NULL) {
-    AcpiTable = ScanTableInXSDT (Xsdt, Signature);
-  }
-
-  //
-  // Check Rsdt
-  //
-  if ((AcpiTable == NULL) && (Rsdt != NULL)) {
-    AcpiTable = ScanTableInRSDT (Rsdt, Signature);
-  }
-
-  return AcpiTable;
-}
-
-/**
-
-  This function return CPU number from MADT.
-
-  @return CPU number
-
+  @return CPU index
 **/
 UINT32
-GetCpuNumFromAcpi (
-  VOID
+GetIndexFromStack (
+  IN X86_REGISTER  *Register,
+  IN BOOLEAN       PrintDbgMsgs
   )
 {
-  UINT32                                               Index;
-  EFI_ACPI_2_0_MULTIPLE_APIC_DESCRIPTION_TABLE_HEADER  *Madt;
-  UINTN                                                Length;
-  EFI_ACPI_2_0_PROCESSOR_LOCAL_APIC_STRUCTURE          *LocalApic;
+  STM_HEADER  *StmHeader;
+  UINTN       ThisStackTop;
+  UINTN       StackBottom;
+  UINTN       Index;
 
-  Madt = FindAcpiPtr (FindAcpiRsdPtr (), EFI_ACPI_2_0_MULTIPLE_APIC_DESCRIPTION_TABLE_SIGNATURE);
-  if (Madt == NULL) {
-    return 1;
+  StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
+
+  if (PrintDbgMsgs) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - StmHeader at 0x%p.\n", __func__, __LINE__, StmHeader));
   }
 
-  Index     = 0;
-  Length    = Madt->Header.Length;
-  LocalApic = (EFI_ACPI_2_0_PROCESSOR_LOCAL_APIC_STRUCTURE *)(Madt + 1);
-  while ((UINTN)LocalApic < (UINTN)Madt + Length) {
-    if (LocalApic->Type == EFI_ACPI_2_0_PROCESSOR_LOCAL_APIC) {
-      if ((LocalApic->Flags & EFI_ACPI_2_0_LOCAL_APIC_ENABLED) != 0) {
-        Index++;
-      }
-    } else if (LocalApic->Type == EFI_ACPI_4_0_PROCESSOR_LOCAL_X2APIC) {
-      if ((((EFI_ACPI_4_0_PROCESSOR_LOCAL_X2APIC_STRUCTURE *)LocalApic)->Flags & EFI_ACPI_4_0_LOCAL_APIC_ENABLED) != 0) {
-        Index++;
-      }
-    }
-
-    LocalApic = (EFI_ACPI_2_0_PROCESSOR_LOCAL_APIC_STRUCTURE *)((UINTN)LocalApic + LocalApic->Length);
+  //
+  // Stack top of this CPU
+  //
+  ThisStackTop = ((UINTN)Register + SIZE_4KB - 1) & ~(SIZE_4KB - 1);
+  if (PrintDbgMsgs) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - ThisStackTop = 0x%lx.\n", __func__, __LINE__, ThisStackTop));
   }
 
-  return Index;
+  //
+  // EspOffset pointer to bottom of 1st CPU
+  //
+  StackBottom = (UINTN)StmHeader + StmHeader->HwStmHdr.EspOffset;
+  if (PrintDbgMsgs) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - StackBottom = 0x%lx.\n", __func__, __LINE__, StackBottom));
+  }
+
+  Index = (ThisStackTop - StackBottom) / StmHeader->SwStmHdr.PerProcDynamicMemorySize;
+  if (PrintDbgMsgs) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Index = 0x%lx.\n", __func__, __LINE__, Index));
+  }
+
+  //
+  // Need minus one for 0-based CPU index
+  //
+  return (UINT32)(Index - 1);
 }
 
 /**
@@ -425,9 +248,7 @@ InitBasicContext (
   )
 {
   mHostContextCommon.HostContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_HOST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
-  DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mHostContextCommon.HostContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mHostContextCommon.HostContextPerCpu));
   mGuestContextCommonNormal.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
-  SAFE_DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mGuestContextCommonNormal.GuestContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mGuestContextCommonNormal.GuestContextPerCpu));
 }
 
 /**
@@ -447,14 +268,10 @@ BspInit (
   X86_REGISTER                  *Reg;
   IA32_IDT_GATE_DESCRIPTOR      *IdtGate;
   UINT32                        SubIndex;
-  UINTN                         XStateSize;
   UINT32                        RegEax;
   IA32_VMX_MISC_MSR             VmxMisc;
 
   StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
-
-  InitHeap (StmHeader);
-  // after that we can use mHostContextCommon
 
   SAFE_DEBUG ((EFI_D_INFO, "!!!STM build time - %a %a!!!\n", (CHAR8 *)__DATE__, (CHAR8 *)__TIME__));
   SAFE_DEBUG ((EFI_D_INFO, "!!!STM Relocation DONE!!!\n"));
@@ -473,35 +290,9 @@ BspInit (
     mHostContextCommon.CpuNum = GetCpuNumFromTxt ();
     SAFE_DEBUG ((EFI_D_INFO, "CpuNumber from TXT Region - %d\n", (UINTN)mHostContextCommon.CpuNum));
   } else {
-    {
-      EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER  *Rsdp;
-      EFI_ACPI_DESCRIPTION_HEADER                   *Rsdt;
-      EFI_ACPI_DESCRIPTION_HEADER                   *Xsdt;
-
-      mHostContextCommon.AcpiRsdp = TxtProcessorSmmDescriptor->AcpiRsdp;
-      Rsdp                        = FindAcpiRsdPtr ();
-      SAFE_DEBUG ((EFI_D_INFO, "Rsdp - %08x\n", Rsdp));
-      if (Rsdp == NULL) {
-        CpuDeadLoop ();
-      }
-
-      Rsdt = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Rsdp->RsdtAddress;
-      SAFE_DEBUG ((EFI_D_INFO, "Rsdt - %08x\n", Rsdt));
-      SAFE_DEBUG ((EFI_D_INFO, "RsdtLen - %08x\n", Rsdt->Length));
-      if ((Rsdp->Revision >= 2) && (Rsdp->XsdtAddress < (UINT64)(UINTN)-1)) {
-        Xsdt = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Rsdp->XsdtAddress;
-        SAFE_DEBUG ((EFI_D_INFO, "Xsdt - %016lx\n", Xsdt));
-        SAFE_DEBUG ((EFI_D_INFO, "XsdtLen - %08x\n", Xsdt->Length));
-      }
-    }
-
-    mHostContextCommon.CpuNum = GetCpuNumFromAcpi ();
-    SAFE_DEBUG ((EFI_D_INFO, "CpuNumber from ACPI MADT - %d\n", (UINTN)mHostContextCommon.CpuNum));
+    SAFE_DEBUG ((DEBUG_ERROR, "SENTER must be enabled for before SEA execution.\n"));
+    CpuDeadLoop ();
   }
-
-  InitializeSpinLock (&mHostContextCommon.MemoryLock);
-  InitializeSpinLock (&mHostContextCommon.SmiVmcallLock);
-  InitializeSpinLock (&mHostContextCommon.ResponderLock);
 
   SAFE_DEBUG ((EFI_D_INFO, "HeapBottom - %08x\n", mHostContextCommon.HeapBottom));
   SAFE_DEBUG ((EFI_D_INFO, "HeapTop    - %08x\n", mHostContextCommon.HeapTop));
@@ -543,8 +334,6 @@ BspInit (
   SAFE_DEBUG ((EFI_D_INFO, "    RegisterViolationException- %04x\n", (UINTN)TxtProcessorSmmDescriptor->StmProtectionExceptionHandler.RegisterViolationException));
   SAFE_DEBUG ((EFI_D_INFO, "    IoViolationException      - %04x\n", (UINTN)TxtProcessorSmmDescriptor->StmProtectionExceptionHandler.IoViolationException));
   SAFE_DEBUG ((EFI_D_INFO, "    PciViolationException     - %04x\n", (UINTN)TxtProcessorSmmDescriptor->StmProtectionExceptionHandler.PciViolationException));
-  SAFE_DEBUG ((EFI_D_INFO, "  BiosHwResourceRequirements  - %016lx\n", TxtProcessorSmmDescriptor->BiosHwResourceRequirementsPtr));
-  SAFE_DEBUG ((EFI_D_INFO, "  AcpiRsdp                    - %016lx\n", TxtProcessorSmmDescriptor->AcpiRsdp));
   SAFE_DEBUG ((EFI_D_INFO, "  PhysicalAddressBits         - %02x\n", (UINTN)TxtProcessorSmmDescriptor->PhysicalAddressBits));
 
   if (TxtProcessorSmmDescriptor->Signature != TXT_PROCESSOR_SMM_DESCRIPTOR_SIGNATURE) {
@@ -556,8 +345,6 @@ BspInit (
     SAFE_DEBUG ((EFI_D_INFO, "TXT Descriptor Size ERROR - %08x!\n", TxtProcessorSmmDescriptor->Size));
     CpuDeadLoop ();
   }
-
-  InitBasicContext ();
 
   SAFE_DEBUG ((EFI_D_INFO, "Register(%d) - %08x\n", (UINTN)0, Register));
   Reg           = &mGuestContextCommonNormal.GuestContextPerCpu[0].Register;
@@ -588,13 +375,10 @@ BspInit (
     SAFE_DEBUG ((EFI_D_INFO, "  StmSmmRevID(%02d)             - %08x\n", (UINTN)SubIndex, (UINTN)StmHeader->SwStmHdr.StmSmmRevID[SubIndex]));
   }
 
-  mHostContextCommon.AcpiRsdp = TxtProcessorSmmDescriptor->AcpiRsdp;
-
   //
   // Check MSEG BASE/SIZE in TXT region
   //
-  mHostContextCommon.StmSize = GetMinMsegSize (StmHeader);
-  SAFE_DEBUG ((EFI_D_INFO, "MinMsegSize - %08x!\n", (UINTN)mHostContextCommon.StmSize));
+  SAFE_DEBUG ((EFI_D_INFO, "MinMsegSize - %08x!\n", GetMinMsegSize (StmHeader)));
 
   mHostContextCommon.PhysicalAddressBits = TxtProcessorSmmDescriptor->PhysicalAddressBits;
   AsmCpuid (CPUID_EXTENDED_INFORMATION, &RegEax, NULL, NULL, NULL);
@@ -618,9 +402,6 @@ BspInit (
 
   SAFE_DEBUG ((DEBUG_INFO, "mHostContextCommon.PhysicalAddressBits - 0x%08x!\n", (UINT8)mHostContextCommon.PhysicalAddressBits));
 
-  mHostContextCommon.MaximumSupportAddress = (LShiftU64 (1, mHostContextCommon.PhysicalAddressBits) - 1);
-  SAFE_DEBUG ((DEBUG_INFO, "mHostContextCommon.MaximumSupportAddress - 0x%lx!\n", (UINT8)mHostContextCommon.MaximumSupportAddress));
-
   mHostContextCommon.PageTable = AsmReadCr3 ();
   AsmReadGdtr (&mHostContextCommon.Gdtr);
 
@@ -631,15 +412,6 @@ BspInit (
   mHostContextCommon.Idtr.Base  = (UINTN)AllocatePages (STM_SIZE_TO_PAGES (mHostContextCommon.Idtr.Limit + 1));
   IdtGate                       = (IA32_IDT_GATE_DESCRIPTOR *)mHostContextCommon.Idtr.Base;
   InitializeExternalVectorTablePtr (IdtGate);
-
-  //
-  // Allocate XState buffer
-  //
-  XStateSize                                 = CalculateXStateSize ();
-  mGuestContextCommonNormal.ZeroXStateBuffer = (UINTN)AllocatePages (STM_SIZE_TO_PAGES (XStateSize));
-  for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
-    mGuestContextCommonNormal.GuestContextPerCpu[SubIndex].XStateBuffer = (UINTN)AllocatePages (STM_SIZE_TO_PAGES (XStateSize));
-  }
 
   for (SubIndex = 0; SubIndex < mHostContextCommon.CpuNum; SubIndex++) {
     mHostContextCommon.HostContextPerCpu[SubIndex].HostMsrEntryCount          = 1;
@@ -658,12 +430,56 @@ BspInit (
   //
   CreateHostPaging ();
 
-  STM_PERF_INIT;
+  // Disable perf init for now to reduce heap allocations
+  // STM_PERF_INIT;
 
   //
   // Initialization done
   //
   mIsBspInitialized = TRUE;
+
+  return;
+}
+
+/**
+  This function initializes an AP.
+
+  @param[in]  Index        CPU index
+  @param[in]  Register     X86 register context
+**/
+VOID
+ApInit (
+  IN UINT32        Index,
+  IN X86_REGISTER  *Register
+  )
+{
+  X86_REGISTER  *Reg;
+
+  SAFE_DEBUG ((DEBUG_INFO, "!!!Enter StmInit (AP done)!!! - %d (%x)\n", (UINTN)Index, (UINTN)ReadUnaligned32 ((UINT32 *)&Register->Rax)));
+
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - Index Given = %d.\n", __func__, Index));
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - Register at 0x%lx.\n", __func__, Register));
+
+  if (Index >= mHostContextCommon.CpuNum) {
+    SAFE_DEBUG ((DEBUG_INFO, "!!!Index(0x%x) >= mHostContextCommon.CpuNum(0x%x)\n", (UINTN)Index, (UINTN)mHostContextCommon.CpuNum));
+    CpuDeadLoop ();
+    Index = GetIndexFromStack (Register, TRUE);
+  }
+
+  // Todo: Currently not using JoinedCpuNum. It might be used in teardown in the future.
+  // InterlockedIncrement (&mHostContextCommon.JoinedCpuNum);
+
+  SAFE_DEBUG ((DEBUG_INFO, "Register(%d) - %08x\n", (UINTN)Index, Register));
+  Reg           = &mGuestContextCommonNormal.GuestContextPerCpu[Index].Register;
+  Register->Rsp = VmReadN (VMCS_N_GUEST_RSP_INDEX);
+  CopyMem (Reg, Register, sizeof (X86_REGISTER));
+
+  // Todo: Currently not using JoinedCpuNum. It might be used in teardown in the future.
+  // if (mHostContextCommon.JoinedCpuNum > mHostContextCommon.CpuNum) {
+  //   SAFE_DEBUG ((DEBUG_ERROR, "JoinedCpuNum(%d) > CpuNum(%d)\n", (UINTN)mHostContextCommon.JoinedCpuNum, (UINTN)mHostContextCommon.CpuNum));
+  //   // Reset system
+  //   CpuDeadLoop ();
+  // }
 
   return;
 }
@@ -707,7 +523,7 @@ CommonInit (
               STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
               StmHeader->SwStmHdr.AdditionalDynamicMemorySize;
   StackSize = StmHeader->SwStmHdr.PerProcDynamicMemorySize;
-  DEBUG ((DEBUG_INFO, "%a - Stack(%d) - StackSize = 0x%lx\n", __func__, (UINTN)Index, StackSize));
+  SAFE_DEBUG ((DEBUG_INFO, "%a - Stack(%d) - StackSize = 0x%lx\n", __func__, (UINTN)Index, StackSize));
   mHostContextCommon.HostContextPerCpu[Index].Stack = (UINTN)(StackBase + StackSize * (Index + 1)); // Stack Top
 
   if ((VmxMisc.Uint64 & BIT15) != 0) {
@@ -875,11 +691,17 @@ LaunchBack (
   VmWrite32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX, VmEntryCtrls.Uint32);
   SAFE_DEBUG ((DEBUG_ERROR, "VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX (after deactivate dual monitor) = 0x%x.\n", VmRead32 (VMCS_32_CONTROL_VMENTRY_CONTROLS_INDEX)));
 
-  RelocateStmImage (TRUE);
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - mHostContextCommon at Exit (0x%lx [0x%lx]):\n", __func__, (UINTN)&mHostContextCommon, sizeof(mHostContextCommon)));
+  DUMP_HEX (DEBUG_INFO, 0, (VOID *)&mHostContextCommon, sizeof (mHostContextCommon), "");
 
-  SAFE_DEBUG ((DEBUG_ERROR, "Message after RelocateStmImage (TRUE)\n"));
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - mGuestContextCommonNormal at Exit (0x%lx [0x%lx]):\n", __func__,  (UINTN)&mGuestContextCommonNormal, sizeof(mGuestContextCommonNormal)));
+  DUMP_HEX (DEBUG_INFO, 0, (VOID *)&mGuestContextCommonNormal, sizeof (mGuestContextCommonNormal), "");
 
-  SerializationLock = 0;
+  // RelocateStmImage (TRUE);
+
+  // SAFE_DEBUG ((DEBUG_ERROR, "Message after RelocateStmImage (TRUE)\n"));
+
+  mSerializationLock = 0;
 
   Rflags = AsmVmResume (Register);
   if (VmRead32 (VMCS_32_RO_VM_INSTRUCTION_ERROR_INDEX) == VmxFailErrorVmResumeWithNonLaunchedVmcs) {
@@ -958,11 +780,12 @@ VmcsInit (
 
   AsmVmPtrStore (&CurrentVmcs);
   SAFE_DEBUG ((EFI_D_INFO, "CurrentVmcs(%d) - %016lx\n", (UINTN)Index, CurrentVmcs));
-  if (IsOverlap (CurrentVmcs, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
-    // Overlap TSEG
-    SAFE_DEBUG ((DEBUG_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
-    CpuDeadLoop ();
-  }
+  // Todo: Need to set TsegBase and TsegLength somewheere?
+  // if (IsOverlap (CurrentVmcs, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
+  //   // Overlap TSEG
+  //   SAFE_DEBUG ((DEBUG_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
+  //   CpuDeadLoop ();
+  // }
 
   Rflags = AsmVmClear (&CurrentVmcs);
   if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
@@ -1098,6 +921,7 @@ GetResources (
   EFI_STATUS                        Status;
   UINT64                            BufferBase;
   UINT64                            BufferSize;
+  UINTN                             CpuIndex;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *PolicyBuffer = NULL;
   TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
 
@@ -1151,8 +975,10 @@ GetResources (
   DigestList[MM_SUPV_DIGEST_INDEX].count              = 1;
   CopyMem (DigestList[MM_SUPV_DIGEST_INDEX].digests[0].digest.sha256, PcdGetPtr (PcdMmSupervisorCoreHash), SHA256_DIGEST_SIZE);
 
+  CpuIndex = GetIndexFromStack (Register, TRUE);
   AcquireSpinLock (&mHostContextCommon.ResponderLock);
   Status = SeaResponderReport (
+             CpuIndex,
              (EFI_PHYSICAL_ADDRESS)(UINTN)PcdGetPtr (PcdAuxBinFile),
              PcdGetSize (PcdAuxBinFile),
              PcdGet64 (PcdMmiEntryBinSize),
@@ -1267,26 +1093,63 @@ SeaVmcallDispatcher (
   IN X86_REGISTER  *Register
   )
 {
+  EFI_STATUS  Status;
+  BOOLEAN     IsFirstEntryOnBsp;
+  BOOLEAN     IsFirstEntryOnThisCore;
   UINT32      CpuIndex;
   UINT32      ServiceId;
-  EFI_STATUS  Status;
-
-  CpuIndex = 0;
+  STM_HEADER  *StmHeader;
 
   if (Register == NULL) {
     ASSERT (Register != NULL);
     return;
   }
 
-  if (ReadUnaligned32 ((UINT32 *)&Register->Rax) == SEA_API_GET_CAPABILITIES) {
+  IsFirstEntryOnBsp = (IsBsp () && mHostContextCommon.StmHeader == NULL);
+  if (IsFirstEntryOnBsp) {
+    // The build process should make sure "virtual address" is same as "file pointer to raw data",
+    // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
+    // If no, GenStm tool will "load image". So here, we just need "relocate image".
+    RelocateStmImage (FALSE);
+
     // Initialize debug lock on first entry (assume GetCapabilities() is called once and first entry)
     InitializeSpinLock (&mHostContextCommon.DebugLock);
+    InitializeSpinLock (&mHostContextCommon.MemoryLock);
+    InitializeSpinLock (&mHostContextCommon.ResponderLock);
+
+    StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
+
+    // Note: After this mHostContextCommon can be used.
+    InitHeap (StmHeader);
+    InitBasicContext ();
+
+    ProcessLibraryConstructorList ();
+
+    SAFE_DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mHostContextCommon.HostContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mHostContextCommon.HostContextPerCpu));
+    SAFE_DEBUG ((DEBUG_INFO, "[%a] - (CpuNum = %d) mGuestContextCommonNormal.GuestContextPerCpu = 0x%p.\n", __func__, mHostContextCommon.CpuNum, mGuestContextCommonNormal.GuestContextPerCpu));
+
+    SAFE_DEBUG ((DEBUG_INFO, "[%a][L%d] - Performing BSP init.\n", __func__, __LINE__));
+    BspInit (Register);
+    SAFE_DEBUG ((DEBUG_INFO, "[%a][L%d] - Done with first entry on BSP init.\n", __func__, __LINE__));
   }
+
+  CpuIndex = GetIndexFromStack (Register, TRUE);
+  IsFirstEntryOnThisCore = ((mHostContextCommon.HostContextPerCpu == NULL) || (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0));
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a] - Enter\n", __func__));
 
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - mHostContextCommon at Entry (0x%lx [0x%lx]):\n", __func__, (UINTN)&mHostContextCommon, sizeof(mHostContextCommon)));
+  DUMP_HEX (DEBUG_INFO, 0, (VOID *)&mHostContextCommon, sizeof (mHostContextCommon), "");
+
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a] - mGuestContextCommonNormal at Entry (0x%lx [0x%lx]):\n", __func__,  (UINTN)&mGuestContextCommonNormal, sizeof(mGuestContextCommonNormal)));
+  DUMP_HEX (DEBUG_INFO, 0, (VOID *)&mGuestContextCommonNormal, sizeof (mGuestContextCommonNormal), "");
+
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Register at 0x%p.\n", __func__, __LINE__, Register));
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - ServiceId (local stack var) at 0x%p.\n", __func__, __LINE__, &ServiceId));
+
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex = 0x%x.\n", __func__, __LINE__, CpuIndex));
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - First entry on this core = %a.\n", __func__, __LINE__, IsFirstEntryOnThisCore ? "True" : "False"));
+  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - First entry on BSP = %a.\n", __func__, __LINE__, IsFirstEntryOnBsp ? "True" : "False"));
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rax = 0x%lx.\n", __func__, __LINE__, Register->Rax));
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Rcx = 0x%lx.\n", __func__, __LINE__, Register->Rcx));
@@ -1363,42 +1226,36 @@ SeaVmcallDispatcher (
   DumpMtrrsInStm ();
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - LocalApicId (From ReadLocalApicId) = 0x%x\n", __func__, __LINE__, ReadLocalApicId ()));
+
   ServiceId = ReadUnaligned32 ((UINT32 *)&Register->Rax);
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - ServiceId = 0x%x\n", __func__, __LINE__, ServiceId));
 
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - CpuIndex (Hardcoded) == 0.\n", __func__, __LINE__));
-  // The build process should make sure "virtual address" is same as "file pointer to raw data",
-  // in final PE/COFF image, so that we can let StmLoad load binary to memory directly.
-  // If no, GenStm tool will "load image". So here, we just need "relocate image"
-  RelocateStmImage (FALSE);
+  if (ReadLocalApicId () != mHostContextCommon.HostContextPerCpu[0].ApicId) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Performing AP stack init for CPU index %d.\n", __func__, __LINE__, CpuIndex));
+    ApInit (CpuIndex, Register);
+  }
 
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - After RelocateStmImage().\n", __func__, __LINE__));
-
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Before ProcessLibraryConstructorList().\n", __func__, __LINE__));
-  ProcessLibraryConstructorList ();
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - After ProcessLibraryConstructorList().\n", __func__, __LINE__));
-
-  BspInit (Register);
-
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - After BspInit() call.\n", __func__, __LINE__));
-
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
-  CommonInit (0);
-  SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+  if (IsFirstEntryOnThisCore) {
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling CommonInit()...\n", __func__, __LINE__));
+    CommonInit (CpuIndex);
+    SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from CommonInit().\n", __func__, __LINE__));
+  }
 
   switch (ServiceId) {
     case SEA_API_GET_CAPABILITIES:
       SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_CAPABILITIES entered.\n", __func__, __LINE__));
-
-      SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling GetCapabilities()...\n", __func__, __LINE__));
       Status = GetCapabilities (Register);
       SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetCapabilities(). Status = %r.\n", __func__, __LINE__, Status));
       break;
 
     case SEA_API_GET_RESOURCES:
-      SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_RESOURCES entered.\n", __func__, __LINE__));
+      if (!mIsBspInitialized) {
+        SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - !mIsBspInitialized.\n", __func__, __LINE__));
+        Status = EFI_NOT_STARTED;
+        break;
+      }
 
-      // Treat all cores as the BSP structure
+      SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - SEA_API_GET_RESOURCES entered.\n", __func__, __LINE__));
       Status = GetResources (Register);
       SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Returned from GetResources(). Status = %r.\n", __func__, __LINE__, Status));
       break;
@@ -1406,11 +1263,10 @@ SeaVmcallDispatcher (
 
   if (EFI_ERROR (Status)) {
     SAFE_DEBUG ((DEBUG_ERROR, "ServiceId(0x%x) error - %r\n", (UINTN)ServiceId, Status));
-    // ASSERT_EFI_ERROR (Status);
   }
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
-  VmcsInit (CpuIndex, ((ServiceId == SEA_API_GET_CAPABILITIES) || (ServiceId == SEA_API_GET_RESOURCES && ReadLocalApicId () != 0)));
+  VmcsInit (CpuIndex, IsFirstEntryOnThisCore);
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));
