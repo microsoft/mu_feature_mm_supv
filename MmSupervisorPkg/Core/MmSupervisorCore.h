@@ -44,6 +44,7 @@
 #include <Library/ReportStatusCodeLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
+#include <Library/HobPrintLib.h>
 #include <Library/PerformanceLib.h>
 
 #include <Library/StandaloneMmMemLib.h>
