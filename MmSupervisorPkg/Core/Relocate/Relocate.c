@@ -112,6 +112,7 @@ EFI_HANDLE                   mSmmExceptionTestProtocolHandle = NULL;
 
 BOOLEAN  mSmmRebootOnException = TRUE;
 // MSCHANGE [END]
+
 /**
   Initialize IDT to setup exception handlers for SMM.
 
