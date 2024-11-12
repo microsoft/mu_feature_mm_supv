@@ -127,6 +127,9 @@
   UnitTestPersistenceLib|UnitTestFrameworkPkg/Library/UnitTestPersistenceLibNull/UnitTestPersistenceLibNull.inf
   UnitTestResultReportLib|UnitTestFrameworkPkg/Library/UnitTestResultReportLib/UnitTestResultReportLibDebugLib.inf
 
+[Components]
+  MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
+
 [Components.IA32]
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
 
