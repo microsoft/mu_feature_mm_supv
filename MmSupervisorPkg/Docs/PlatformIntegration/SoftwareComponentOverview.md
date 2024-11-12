@@ -36,6 +36,7 @@ For more general background about the steps necessary to integrate the MM Superv
 
 | DXE Library | Location |
 | ---| ---|
+| DxeMmSupervisorVersionPublicationLib | MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf |
 | MmSupervisorUnblockMemoryLib | MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf |
 
 ## MM Standalone Mode MM Core

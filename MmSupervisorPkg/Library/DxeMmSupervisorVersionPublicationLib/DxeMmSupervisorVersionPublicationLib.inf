@@ -1,0 +1,45 @@
+## @file
+#  Publishes the MM Supervisor version information through optional interfaces.
+#
+#  This library should be linked to a platform firmware DXE driver if the platform would like to make
+#  the version information available to firmware and OS consumers.
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = DxeMmSupervisorVersionPublicationLib
+  FILE_GUID                      = B9468AED-A0C2-4A97-A1B3-475317D77658
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = NULL|DXE_DRIVER DXE_RUNTIME_DRIVER UEFI_APPLICATION UEFI_DRIVER
+  CONSTRUCTOR                    = DxeMmSupervisorVersionPublicationLibConstructor
+
+[Sources]
+  DxeMmSupervisorVersionPublicationLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib
+  PrintLib
+  UefiBootServicesTableLib
+  UefiLib
+  UefiRuntimeServicesTableLib
+  VariablePolicyHelperLib
+
+[Protocols]
+  gEdkiiVariablePolicyProtocolGuid          ## NOTIFY   ## CONSUMES
+  gMmSupervisorCommunicationProtocolGuid    ## CONSUMES
+
+[Guids]
+  gMmSupervisorRequestHandlerGuid
+  gMmSupervisorVerVendorGuid
