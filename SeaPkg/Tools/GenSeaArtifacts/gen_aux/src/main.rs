@@ -10,7 +10,7 @@ use pdb::FallibleIterator;
 use clap::Parser;
 use pdb::PDB;
 use anyhow::Result;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use scroll::Pread;
 
 pub mod auxgen;
@@ -26,6 +26,9 @@ pub const POINTER_LENGTH: u64 = 8;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
+    /// Generate a config file with a failed validation entry for every symbol
+    #[arg(long)]
+    pub generate_config: bool,
     /// Path to the PDB file to parse.
     #[arg(short, long)]
     pub pdb: PathBuf,
@@ -35,7 +38,7 @@ pub struct Args {
     /// Path to the output auxillary file.
     #[arg(short, long)]
     pub output: Option<PathBuf>,
-    /// Path to the config file.
+    /// Path to the config file to read (or write to if generating a config).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
     #[arg(short, long, value_enum)]
@@ -47,7 +50,7 @@ pub struct Args {
 
 /// A struct that represents an signature/address pair to be added to the
 /// auxillary file header.
-#[derive(Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
     pub symbol: Option<String>,
@@ -88,14 +91,14 @@ impl std::fmt::Debug for KeySymbol {
 }
 
 /// Configuration options available in the config file.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     /// A list of key symbols to be added to the auxillary file header.
     #[serde(alias = "key", default = "Vec::new")]
     pub key_symbols: Vec<KeySymbol>,
     /// A list of validation rules that ultimately create a validation entry in
     /// the auxillary file.
-    #[serde(alias = "rule", default = "Vec::new")]
+    #[serde(alias = "rule", default = "Vec::new", rename = "rule")]
     pub rules: Vec<ValidationRule>,
     /// An option that if true, will generate a validation entry of 
     /// verification type NONE for every symbol without a rule in the config
@@ -132,26 +135,43 @@ pub fn main() -> Result<()> {
     while let Some(symbol) = raw_symbol_iter.next()? {
         util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
     }
+    if args.generate_config {
+        let sections = pdb.sections()?.unwrap_or_default();
+        let rules: Vec<ValidationRule> = parsed_symbols
+            .values()
+            .filter(|symbol| symbol.in_readonly_section(&sections))
+            .map(|symbol| symbol.into())
+            .collect();
 
-    let output = args.output.unwrap_or(args.efi.with_extension("aux"));
-    let efi = std::fs::read(args.efi)?;
-    let aux = AuxBuilder::default()
-        .with_image(&efi)?
-        .with_config(args.config)?
-        .with_symbols(parsed_symbols.values().cloned().collect())
-        .generate(&type_information, args.target)?;
+        let config = Config {
+            rules,
+            ..Default::default()
+        };
 
-    if args.debug {
-        println!("{:?}", aux.header);
-        for symbol in aux.key_symbols.iter() {
-            println!("  {:?}", symbol);
+        let output = args.config.unwrap_or("config.toml".into());
+        let config_string = toml::to_string(&config)?;
+        std::fs::write(output, config_string)?;
+    } else {
+        let output = args.output.unwrap_or(args.efi.with_extension("aux"));
+        let efi = std::fs::read(args.efi)?;
+        let aux = AuxBuilder::default()
+            .with_image(&efi)?
+            .with_config(args.config)?
+            .with_symbols(parsed_symbols.values().cloned().collect())
+            .generate(&type_information, args.target)?;
+    
+        if args.debug {
+            println!("{:?}", aux.header);
+            for symbol in aux.key_symbols.iter() {
+                println!("  {:?}", symbol);
+            }
+            for entry in aux.entries.iter() {
+                println!("  {:?}", entry);
+            }
         }
-        for entry in aux.entries.iter() {
-            println!("  {:?}", entry);
-        }
+    
+        aux.to_file(output)?;
     }
-
-    aux.to_file(output)?;
 
     Ok(())
 }
