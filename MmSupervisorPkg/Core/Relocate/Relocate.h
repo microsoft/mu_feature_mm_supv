@@ -694,23 +694,6 @@ SmmReadyToLockInSmiHandlerProfile (
   );
 
 /**
-  Initialize SMM profile in SmmReadyToLock protocol callback function.
-
-  @param  Protocol   Points to the protocol's unique identifier.
-  @param  Interface  Points to the interface instance.
-  @param  Handle     The handle on which the interface was installed.
-
-  @retval EFI_SUCCESS SmmReadyToLock protocol callback runs successfully.
-**/
-EFI_STATUS
-EFIAPI
-InitSmmProfileCallBack (
-  IN CONST EFI_GUID  *Protocol,
-  IN VOID            *Interface,
-  IN EFI_HANDLE      Handle
-  );
-
-/**
   This function is called by SyscallDispatcher to process user request on registering
   a child SMI handler from user space.
 

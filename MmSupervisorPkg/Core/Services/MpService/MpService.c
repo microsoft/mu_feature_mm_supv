@@ -1703,10 +1703,6 @@ SmiRendezvous (
       InitializeSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
     }
 
-    // if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-    //   ActivateSmmProfile (CpuIndex);
-    // }
-
     if (BspInProgress) {
       //
       // BSP has been elected. Follow AP path, regardless of ValidSmi flag
@@ -1763,10 +1759,6 @@ SmiRendezvous (
             mSmmMpSyncData->CandidateBsp[Index] = FALSE;
           }
         }
-
-        // if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-        //   SmmProfileRecordSmiNum ();
-        // }
 
         //
         // BSP Handler is always called with a ValidSmi == TRUE

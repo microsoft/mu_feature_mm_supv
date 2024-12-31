@@ -762,22 +762,6 @@ ExecuteMmCoreFromMmram (
       DataInHob          = GET_GUID_HOB_DATA (GuidHob);
       DataInHob->Address = (UINTN)gMmCorePrivate;
 
-      // MU_CHANGE: TODO: SMM profile disabled, just like supervisor itself
-      // if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-      //   GuidHob = GetFirstGuidHob (&gMmCoreMmProfileGuid);
-      //   BufferInHob = GET_GUID_HOB_DATA (GuidHob);
-
-      //   BufferInHob->Address = 0xFFFFFFFF;
-      //   BufferInHob->Size = PcdGet32 (PcdCpuSmmProfileSize) + SIZE_4MB;
-      //   Status = gBS->AllocatePages (
-      //                   AllocateMaxAddress,
-      //                   EfiReservedMemoryType,
-      //                   EFI_SIZE_TO_PAGES (BufferInHob->Size),
-      //                   &BufferInHob->Address
-      //                   );
-      //   ASSERT_EFI_ERROR (Status);
-      // }
-
       // MU_CHANGE Starts: To load x64 MM foundation, mode switch is needed
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
       HobStart   = GetHobList ();
