@@ -18,7 +18,7 @@ global  ASM_PFX(gcSmiIdtr)
 global  ASM_PFX(gcSmiGdtr)
 global  ASM_PFX(gcPsd)
 
-    SECTION .data
+    SECTION .rdata
 
 NullSeg: DQ 0                   ; reserved by architecture
 CodeSeg32:
@@ -118,6 +118,15 @@ TssSeg:
             DD      0                   ; Reserved
 GDT_SIZE equ $ -   NullSeg
 
+;
+; CODE & DATA segments for SMM runtime
+;
+CODE_SEL    equ   CodeSeg64R0 -   NullSeg
+DATA_SEL    equ   DataSeg64R0 -   NullSeg
+CODE32_SEL  equ   CodeSeg32 -   NullSeg
+
+    SECTION .data
+
 ; Create TSS Descriptor just after GDT
 TssDescriptor:
             DD      0                   ; Reserved
@@ -161,13 +170,6 @@ ASM_PFX(gcPsd):
             times   24 DB 0
             DQ      0
 PSD_SIZE  equ $ -   ASM_PFX(gcPsd)
-
-;
-; CODE & DATA segments for SMM runtime
-;
-CODE_SEL    equ   CodeSeg64R0 -   NullSeg
-DATA_SEL    equ   DataSeg64R0 -   NullSeg
-CODE32_SEL  equ   CodeSeg32 -   NullSeg
 
 ASM_PFX(gcSmiGdtr):
     DW      GDT_SIZE - 1
