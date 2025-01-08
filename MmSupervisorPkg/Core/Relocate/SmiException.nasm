@@ -129,8 +129,6 @@ CODE_SEL    equ   CodeSeg64R0 -   NullSeg
 DATA_SEL    equ   DataSeg64R0 -   NullSeg
 CODE32_SEL  equ   CodeSeg32 -   NullSeg
 
-    SECTION .data
-
 ; Create TSS Descriptor just after GDT
 TssDescriptor:
             DD      0                   ; Reserved
@@ -174,6 +172,8 @@ ASM_PFX(gcPsd):
             times   24 DB 0
             DQ      0
 PSD_SIZE  equ $ -   ASM_PFX(gcPsd)
+
+    SECTION .data
 
 ASM_PFX(gcSmiIdtr):
     DW      0
