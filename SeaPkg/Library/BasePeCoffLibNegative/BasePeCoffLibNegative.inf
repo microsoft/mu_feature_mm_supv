@@ -1,0 +1,51 @@
+## @file
+#  PE/COFF Loader Library implementation.
+#  The IPF version library supports loading IPF and EBC PE/COFF image.
+#  The IA32 version library support loading IA32, X64 and EBC PE/COFF images.
+#  The X64 version library support loading IA32, X64 and EBC PE/COFF images.
+#  The RISC-V version library support loading RISC-V images.
+#  The LoongArch version library support loading LoongArch images.
+#
+#  Caution: This module requires additional review when modified.
+#  This library will have external input - PE/COFF image.
+#  This external input must be validated carefully to avoid security issue like
+#  buffer overflow, integer overflow.
+#
+#  Copyright (c) 2006 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Portions copyright (c) 2008 - 2009, Apple Inc. All rights reserved.<BR>
+#  Portions Copyright (c) 2020, Hewlett Packard Enterprise Development LP. All rights reserved.<BR>
+#  Portions Copyright (c) 2022, Loongson Technology Corporation Limited. All rights reserved.<BR>
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#
+##
+# Non-Secure
+#Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 768803561c4b0314d6304a05c8050905 | 2024-10-24T21-28-00 | bf73b8a3c074d0280e664de6bf8c3d1091c3072c
+# Secure
+#Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 39668b80ae31206ea3a072479ff9eb8e | 2024-10-24T21-27-40 | 530d7aa7e92472806c06e766bba5aaff09eedd6d
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BasePeCoffLibNegative
+  FILE_GUID                      = 065ABD42-6822-4F49-9A27-0384445EAAFE
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = PeCoffLibNegative
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 EBC ARM AARCH64
+#
+
+[Sources]
+  BasePeCoffLibNegative.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  SeaPkg/SeaPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  PeCoffExtraActionLib
+  BaseMemoryLib
+

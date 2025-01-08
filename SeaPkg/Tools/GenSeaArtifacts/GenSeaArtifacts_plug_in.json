@@ -1,0 +1,5 @@
+{
+  "scope": "global",
+  "name": "Sea Core Artifact File Generator",
+  "module": "GenSeaArtifacts"
+}

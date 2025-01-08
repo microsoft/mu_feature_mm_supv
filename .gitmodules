@@ -1,0 +1,3 @@
+[submodule "SeaPkg/Library/MbedTlsLib/mbedtls"]
+	path = SeaPkg/Library/MbedTlsLib/mbedtls
+	url = https://github.com/ARMmbed/mbedtls
