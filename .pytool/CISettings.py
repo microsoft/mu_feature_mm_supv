@@ -11,13 +11,14 @@ from edk2toolext.environment import shell_environment
 from edk2toolext.invocables.edk2_ci_build import CiBuildSettingsManager
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 from edk2toolext.invocables.edk2_ci_setup import CiSetupSettingsManager
+from edk2toolext.invocables.edk2_setup import SetupSettingsManager, RequiredSubmodule
 from edk2toollib.utility_functions import GetHostInfo
 from pathlib import Path
 
 from edk2toolext import codeql as codeql_helpers
 
 
-class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsManager):
+class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsManager, SetupSettingsManager):
 
     def __init__(self):
         self.ActualPackages = []
@@ -52,6 +53,7 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
 
         return (
                 "MmSupervisorPkg",
+                "SeaPkg"
                 )
 
     def GetArchitecturesSupported(self):
@@ -149,6 +151,15 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
             pass
 
         return scopes
+
+    def GetRequiredSubmodules(self):
+        ''' return iterable containing RequiredSubmodule objects.
+        If no RequiredSubmodules return an empty iterable
+        '''
+        rs = []
+        rs.append(RequiredSubmodule(
+            "SeaPkg/Library/MbedTlsLib/mbedtls", False))
+        return rs
 
     def GetName(self):
         return "MmSupv"
