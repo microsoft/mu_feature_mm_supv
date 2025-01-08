@@ -118,6 +118,10 @@ TssSeg:
             DD      0                   ; Reserved
 GDT_SIZE equ $ -   NullSeg
 
+ASM_PFX(gcSmiGdtr):
+    DW      GDT_SIZE - 1
+    DQ        NullSeg
+
 ;
 ; CODE & DATA segments for SMM runtime
 ;
@@ -170,10 +174,6 @@ ASM_PFX(gcPsd):
             times   24 DB 0
             DQ      0
 PSD_SIZE  equ $ -   ASM_PFX(gcPsd)
-
-ASM_PFX(gcSmiGdtr):
-    DW      GDT_SIZE - 1
-    DQ        NullSeg
 
 ASM_PFX(gcSmiIdtr):
     DW      0
