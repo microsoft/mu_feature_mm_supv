@@ -36,7 +36,7 @@ The proposed flow currently supports 2 platforms for development:
 and verify the returned version and patch level is non-zero AND meets other system requirements. Known limitations for GCC
 toolchain:
     * **Patch level information, which should be embedded into image version of built Pe/Coff header cannot be integrated
-    when using GCC toolchain. User builds with GCC tools are welcome to reach out to MsCoreUefi@microsoft.com for
+    when using GCC toolchain. User builds with GCC tools are welcome to reach out to `MsCoreUefi@microsoft.com` for
     technical discussion in that regards.**
     * **Driver version embedded into subsystem version of Pe/Coff header is being parsed by objcopy when using GCC
     toolchain. This tool would parse input numeric strings with implicit base (i.e. strings beginning with 0s will be
