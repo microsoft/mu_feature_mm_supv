@@ -2510,8 +2510,7 @@ IfReadOnlyPageTableNeeded (
   //      BIT3: SMM pool guard enabled
   //  - SMM profile feature enabled
   //
-  if (!IsRestrictedMemoryAccess ())
-  {
+  if (!IsRestrictedMemoryAccess ()) {
     if (sizeof (UINTN) == sizeof (UINT64)) {
       //
       // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.

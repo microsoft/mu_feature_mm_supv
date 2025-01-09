@@ -241,14 +241,14 @@ SmmInitPageTable (
   VOID
   )
 {
-  UINTN                     PageTable;
-  LIST_ENTRY                *FreePage;
-  UINTN                     Index;
-  EFI_STATUS                Status;
-  UINT64                    *PdptEntry;
-  UINT64                    *Pml4Entry;
-  UINT64                    *Pml5Entry;
-  UINT8                     PhysicalAddressBits;
+  UINTN       PageTable;
+  LIST_ENTRY  *FreePage;
+  UINTN       Index;
+  EFI_STATUS  Status;
+  UINT64      *PdptEntry;
+  UINT64      *Pml4Entry;
+  UINT64      *Pml5Entry;
+  UINT8       PhysicalAddressBits;
 
   //
   // Initialize spin lock
