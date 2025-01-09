@@ -1,0 +1,35 @@
+## @file
+# This library provides basic operation for supervisor policy manipulation.
+#
+# Copyright (C) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = SecurePolicyLib
+  FILE_GUID                      = D783E653-2CA2-4730-AB01-7C796C61A0DE
+  MODULE_TYPE                    = MM_CORE_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  LIBRARY_CLASS                  = SecurePolicyLib|MM_CORE_STANDALONE
+
+#  VALID_ARCHITECTURES           = X64
+
+[Sources]
+  GeneralPolicy.c
+  MemPolicy.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  BaseMemoryLib
+  DebugLib

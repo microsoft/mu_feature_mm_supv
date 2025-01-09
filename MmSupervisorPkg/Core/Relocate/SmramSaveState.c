@@ -20,7 +20,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/IhvSmmSaveStateSupervisionLib.h>
 
 #include "Relocate.h"
-#include "Policy/Policy.h"
 #include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 

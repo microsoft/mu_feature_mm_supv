@@ -17,10 +17,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/BaseLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/DebugLib.h>
+#include <Library/SecurePolicyLib.h>
 
 #include "MmSupervisorCore.h"
-#include "Policy/Policy.h"
 #include "Mem/Mem.h"
+
+SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot = NULL;
 
 /**
   Function that combines current memory policy and firmware secure policy for requestor.
@@ -91,7 +93,7 @@ FetchNUpdateSecurityPolicy (
   CopyMem (DrtmSmmPolicyData, FirmwarePolicy, FirmwarePolicy->Size);
 
   // Then leave the heavy lifting job to the library
-  Status = PopulateMemoryPolicyEntries (DrtmSmmPolicyData, MaxPolicyBufferSize);
+  Status = PopulateMemoryPolicyEntries (DrtmSmmPolicyData, MaxPolicyBufferSize, 0);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
     goto Exit;

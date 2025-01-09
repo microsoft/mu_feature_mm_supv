@@ -26,7 +26,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Services/MpService/MpService.h"
 #include "Relocate/Relocate.h"
 #include "Request/Request.h"
-#include "Policy/Policy.h"
 
 //
 // attributes for reserved memory before it is promoted to system memory
@@ -1819,6 +1818,7 @@ SkipResourceDescriptor (
   @retval FALSE This buffer is from MMRAM.
 **/
 BOOLEAN
+EFIAPI
 IsBufferInsideMmram (
   IN EFI_PHYSICAL_ADDRESS  Buffer,
   IN UINT64                Length
