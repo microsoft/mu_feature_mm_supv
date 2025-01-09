@@ -30,7 +30,7 @@ For more general background about the steps necessary to integrate the MM Superv
 
 | DXE Driver | Location |
 | ---| ---|
-| StandaloneMmUnblockMem | MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
+| StandaloneMmUnblockMem | MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf |
 
 ## MM DXE Libraries
 
