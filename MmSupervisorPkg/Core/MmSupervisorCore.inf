@@ -81,10 +81,6 @@
   Services/MpService/MpService.c
   Services/MpService/SyncTimer.c
 
-  Policy/GeneralPolicy.c
-  Policy/MemPolicy.c
-  Policy/Policy.h
-
   PrivilegeMgmt/PrivilegeMgmt.h
   PrivilegeMgmt/CallGateTransfer.c
   PrivilegeMgmt/AsmCallGateTransfer.nasm
@@ -148,6 +144,8 @@
   MmSaveStateLib
   SmmCpuSyncLib
   PanicLib
+  PeCoffLibNegative
+  SecurePolicyLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -228,6 +226,7 @@
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
   gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
+  gMmSupervisorCoreGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
