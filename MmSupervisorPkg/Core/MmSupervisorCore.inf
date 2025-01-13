@@ -61,8 +61,6 @@
   Mem/SmmCpuMemoryManagement.c
   Mem/SmmProfile.c
   Mem/SmmProfile.h
-  Mem/SmmProfileArch.c
-  Mem/SmmProfileArch.h
   Mem/SmmProfileInternal.h
   Misc/InstallConfigurationTable.c
   Misc/MemoryAttributesTable.c
@@ -174,7 +172,6 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmEnableBspElection             ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuHotPlugSupport                   ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackGuard                    ## CONSUMES
-  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmApPerfLogEnable                  ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
@@ -185,7 +182,6 @@
 [FixedPcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmApSyncTimeout2                ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
-  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                   ## SOMETIMES_CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackSize                     ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmCodeAccessCheckEnable         ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmSyncMode                      ## CONSUMES

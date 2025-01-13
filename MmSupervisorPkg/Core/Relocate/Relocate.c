@@ -330,13 +330,6 @@ LockMmCoreBeforeExit (
   SetPageTableBase (mSmmCr3);
 
   //
-  // Start SMM Profile feature
-  //
-  if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-    SmmProfileStart ();
-  }
-
-  //
   // Create a mix of 2MB and 4KB page table. Update some memory ranges absent and execute-disable.
   //
   InitPaging ();
@@ -1182,7 +1175,6 @@ SetupSmiEntryExit (
   //
   // Initialize SMM Profile feature
   //
-  InitSmmProfile (Cr3);
   mSmmCr3 = Cr3;
 
   DEBUG ((DEBUG_INFO, "SMM CPU Module exit from SMRAM with EFI_SUCCESS\n"));
