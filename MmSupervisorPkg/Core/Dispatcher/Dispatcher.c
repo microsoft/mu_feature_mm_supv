@@ -97,6 +97,7 @@ BOOLEAN  gRequestDispatch = FALSE;
   Loads an EFI image into SMRAM.
 
   @param  DriverEntry             EFI_MM_DRIVER_ENTRY instance
+  @param  ImageContext            Allocated ImageContext to be filled out by this function
 
   @return EFI_STATUS
 
@@ -104,34 +105,38 @@ BOOLEAN  gRequestDispatch = FALSE;
 EFI_STATUS
 EFIAPI
 MmLoadImage (
-  IN OUT EFI_MM_DRIVER_ENTRY  *DriverEntry
+  IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
   )
 {
-  UINTN                         PageCount;
-  EFI_STATUS                    Status;
-  EFI_PHYSICAL_ADDRESS          DstBuffer;
-  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+  UINTN                 PageCount;
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  DstBuffer;
 
   DEBUG ((DEBUG_INFO, "MmLoadImage - %g\n", &DriverEntry->FileName));
+
+  if (ImageContext == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Status = EFI_SUCCESS;
 
   //
   // Initialize ImageContext
   //
-  ImageContext.Handle    = DriverEntry->Pe32Data;
-  ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
+  ImageContext->Handle    = DriverEntry->Pe32Data;
+  ImageContext->ImageRead = PeCoffLoaderImageReadFromMemory;
 
   //
   // Get information about the image being loaded
   //
-  Status = PeCoffLoaderGetImageInfo (&ImageContext);
+  Status = PeCoffLoaderGetImageInfo (ImageContext);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to read Pe/Coff loader image info %r\n", __FUNCTION__, Status));
     return Status;
   }
 
-  PageCount = (UINTN)EFI_SIZE_TO_PAGES ((UINTN)ImageContext.ImageSize + ImageContext.SectionAlignment);
+  PageCount = (UINTN)EFI_SIZE_TO_PAGES ((UINTN)ImageContext->ImageSize + ImageContext->SectionAlignment);
   DstBuffer = (UINTN)(-1);
 
   // Note that the buffer will be protected after analyzing the PE/Coff data.
@@ -146,18 +151,18 @@ MmLoadImage (
     return Status;
   }
 
-  ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS)DstBuffer;
+  ImageContext->ImageAddress = (EFI_PHYSICAL_ADDRESS)DstBuffer;
 
   //
   // Align buffer on section boundary
   //
-  ImageContext.ImageAddress += ImageContext.SectionAlignment - 1;
-  ImageContext.ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)(ImageContext.SectionAlignment - 1));
+  ImageContext->ImageAddress += ImageContext->SectionAlignment - 1;
+  ImageContext->ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)(ImageContext->SectionAlignment - 1));
 
   //
   // Load the image to our new buffer
   //
-  Status = PeCoffLoaderLoadImage (&ImageContext);
+  Status = PeCoffLoaderLoadImage (ImageContext);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to load image into our allocated buffer %r\n", __FUNCTION__, Status));
     MmFreePages (DstBuffer, PageCount);
@@ -167,8 +172,10 @@ MmLoadImage (
   //
   // Relocate the image in our new buffer
   //
-  Status = PeCoffLoaderRelocateImage (&ImageContext);
+  Status = PeCoffLoaderRelocateImage (ImageContext);
   if (EFI_ERROR (Status)) {
+    // if relocate fails, we don't need to call unload image here, as the extra action that may change page attributes
+    // only is called on a successful return
     DEBUG ((DEBUG_ERROR, "%a Failed to relocate image %r\n", __FUNCTION__, Status));
     MmFreePages (DstBuffer, PageCount);
     return Status;
@@ -177,12 +184,12 @@ MmLoadImage (
   //
   // Flush the instruction cache so the image data are written before we execute it
   //
-  InvalidateInstructionCacheRange ((VOID *)(UINTN)ImageContext.ImageAddress, (UINTN)ImageContext.ImageSize);
+  InvalidateInstructionCacheRange ((VOID *)(UINTN)ImageContext->ImageAddress, (UINTN)ImageContext->ImageSize);
 
   //
   // Save Image EntryPoint in DriverEntry
   //
-  DriverEntry->ImageEntryPoint = ImageContext.EntryPoint;
+  DriverEntry->ImageEntryPoint = ImageContext->EntryPoint;
   DriverEntry->ImageBuffer     = DstBuffer;
   DriverEntry->NumberOfPage    = PageCount;
 
@@ -195,6 +202,7 @@ MmLoadImage (
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to allocate pool for loaded image protocol %r\n", __FUNCTION__, Status));
+    PeCoffLoaderUnloadImage (ImageContext);
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
@@ -211,7 +219,7 @@ MmLoadImage (
   DriverEntry->LoadedImage->FilePath     = NULL;
 
   DriverEntry->LoadedImage->ImageBase     = (VOID *)(UINTN)DriverEntry->ImageBuffer;
-  DriverEntry->LoadedImage->ImageSize     = ImageContext.ImageSize;
+  DriverEntry->LoadedImage->ImageSize     = ImageContext->ImageSize;
   DriverEntry->LoadedImage->ImageCodeType = EfiRuntimeServicesCode;
   DriverEntry->LoadedImage->ImageDataType = EfiRuntimeServicesData;
 
@@ -249,18 +257,18 @@ MmLoadImage (
   DEBUG ((
     DEBUG_INFO | DEBUG_LOAD,
     "Loading MM driver at 0x%11p EntryPoint=0x%11p ",
-    (VOID *)(UINTN)ImageContext.ImageAddress,
-    FUNCTION_ENTRY_POINT (ImageContext.EntryPoint)
+    (VOID *)(UINTN)ImageContext->ImageAddress,
+    FUNCTION_ENTRY_POINT (ImageContext->EntryPoint)
     ));
 
   //
   // Print Module Name by Pdb file path.
   // Windows and Unix style file path are all trimmed correctly.
   //
-  if (ImageContext.PdbPointer != NULL) {
+  if (ImageContext->PdbPointer != NULL) {
     StartIndex = 0;
-    for (Index = 0; ImageContext.PdbPointer[Index] != 0; Index++) {
-      if ((ImageContext.PdbPointer[Index] == '\\') || (ImageContext.PdbPointer[Index] == '/')) {
+    for (Index = 0; ImageContext->PdbPointer[Index] != 0; Index++) {
+      if ((ImageContext->PdbPointer[Index] == '\\') || (ImageContext->PdbPointer[Index] == '/')) {
         StartIndex = Index + 1;
       }
     }
@@ -271,7 +279,7 @@ MmLoadImage (
     // If the length is bigger than 255, trim the redundant characters to avoid overflow in array boundary.
     //
     for (Index = 0; Index < sizeof (EfiFileName) - 4; Index++) {
-      EfiFileName[Index] = ImageContext.PdbPointer[Index + StartIndex];
+      EfiFileName[Index] = ImageContext->PdbPointer[Index + StartIndex];
       if (EfiFileName[Index] == 0) {
         EfiFileName[Index] = '.';
       }
@@ -407,10 +415,11 @@ MmDispatcher (
   VOID
   )
 {
-  EFI_STATUS           Status;
-  LIST_ENTRY           *Link;
-  EFI_MM_DRIVER_ENTRY  *DriverEntry;
-  BOOLEAN              ReadyToRun;
+  EFI_STATUS                    Status;
+  LIST_ENTRY                    *Link;
+  EFI_MM_DRIVER_ENTRY           *DriverEntry;
+  BOOLEAN                       ReadyToRun;
+  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
 
   DEBUG ((DEBUG_INFO, "MmDispatcher\n"));
 
@@ -449,7 +458,7 @@ MmDispatcher (
       // skip the LoadImage
       //
       if (DriverEntry->ImageHandle == NULL) {
-        Status = MmLoadImage (DriverEntry);
+        Status = MmLoadImage (DriverEntry, &ImageContext);
 
         //
         // Update the driver state to reflect that it's been loaded
@@ -485,6 +494,11 @@ MmDispatcher (
                  );
       if (EFI_ERROR (Status)) {
         DEBUG ((DEBUG_INFO, "StartImage Status - %r\n", Status));
+
+        // we need to unload the image before we free the pages. On some architectures (e.g. x86), this is a no-op, but
+        // on others (e.g. AARCH64) this will remove the image memory protections set on the region so that when the
+        // memory is freed, it has the default attributes set and can be used generically
+        PeCoffLoaderUnloadImage (&ImageContext);
         MmFreePages (DriverEntry->ImageBuffer, DriverEntry->NumberOfPage);
         Status = gMmCoreMmst.MmUninstallProtocolInterface (DriverEntry->ImageHandle, &gEfiLoadedImageProtocolGuid, DriverEntry->LoadedImage);
         if (!EFI_ERROR (Status)) {
