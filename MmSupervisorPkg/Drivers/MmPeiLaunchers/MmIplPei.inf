@@ -81,9 +81,6 @@
   gEfiMmPeiMmramMemoryReserveGuid
   gEfiSmmSmramMemoryGuid
 
-[FeaturePcd]
-  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
-
 [Pcd]
   # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable        ## CONSUMES

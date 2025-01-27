@@ -330,13 +330,6 @@ LockMmCoreBeforeExit (
   SetPageTableBase (mSmmCr3);
 
   //
-  // Start SMM Profile feature
-  //
-  if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-    SmmProfileStart ();
-  }
-
-  //
   // Create a mix of 2MB and 4KB page table. Update some memory ranges absent and execute-disable.
   //
   InitPaging ();
@@ -875,7 +868,9 @@ SetupSmiEntryExit (
       DEBUG ((DEBUG_INFO, "  CET_IBT - 0x%08x\n", RegEdx & CPUID_CET_IBT));
       if ((RegEcx & CPUID_CET_SS) == 0) {
         mCetSupported = FALSE;
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+        }
       }
 
       if (mCetSupported) {
@@ -888,11 +883,15 @@ SetupSmiEntryExit (
       }
     } else {
       mCetSupported = FALSE;
-      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+      if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+      }
     }
   } else {
     mCetSupported = FALSE;
-    PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    }
   }
 
   //
@@ -1176,7 +1175,6 @@ SetupSmiEntryExit (
   //
   // Initialize SMM Profile feature
   //
-  InitSmmProfile (Cr3);
   mSmmCr3 = Cr3;
 
   DEBUG ((DEBUG_INFO, "SMM CPU Module exit from SMRAM with EFI_SUCCESS\n"));

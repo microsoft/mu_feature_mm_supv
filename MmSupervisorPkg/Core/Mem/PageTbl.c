@@ -241,16 +241,14 @@ SmmInitPageTable (
   VOID
   )
 {
-  UINTN                     PageTable;
-  LIST_ENTRY                *FreePage;
-  UINTN                     Index;
-  UINTN                     PageFaultHandlerHookAddress;
-  IA32_IDT_GATE_DESCRIPTOR  *IdtEntry;
-  EFI_STATUS                Status;
-  UINT64                    *PdptEntry;
-  UINT64                    *Pml4Entry;
-  UINT64                    *Pml5Entry;
-  UINT8                     PhysicalAddressBits;
+  UINTN       PageTable;
+  LIST_ENTRY  *FreePage;
+  UINTN       Index;
+  EFI_STATUS  Status;
+  UINT64      *PdptEntry;
+  UINT64      *Pml4Entry;
+  UINT64      *Pml5Entry;
+  UINT8       PhysicalAddressBits;
 
   //
   // Initialize spin lock
@@ -261,7 +259,10 @@ SmmInitPageTable (
   m1GPageTableSupport           = Is1GPageSupport ();
   m5LevelPagingNeeded           = Is5LevelPagingNeeded ();
   mPhysicalAddressBits          = CalculateMaximumSupportAddress (m5LevelPagingNeeded);
-  PatchInstructionX86 (gPatch5LevelPagingNeeded, m5LevelPagingNeeded, 1);
+  if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    PatchInstructionX86 (gPatch5LevelPagingNeeded, m5LevelPagingNeeded, 1);
+  }
+
   if (m5LevelPagingNeeded) {
     mPagingMode = m1GPageTableSupport ? Paging5Level1GB : Paging5Level;
   } else {
@@ -323,25 +324,6 @@ SmmInitPageTable (
       InsertTailList (&mPagePool, FreePage);
       FreePage += EFI_PAGE_SIZE / sizeof (*FreePage);
     }
-  }
-
-  if (FeaturePcdGet (PcdCpuSmmProfileEnable) ||
-      HEAP_GUARD_NONSTOP_MODE ||
-      NULL_DETECTION_NONSTOP_MODE)
-  {
-    //
-    // Set own Page Fault entry instead of the default one, because SMM Profile
-    // feature depends on IRET instruction to do Single Step
-    //
-    PageFaultHandlerHookAddress = (UINTN)PageFaultIdtHandlerSmmProfile;
-    IdtEntry                    = (IA32_IDT_GATE_DESCRIPTOR *)gcSmiIdtr.Base;
-    IdtEntry                   += EXCEPT_IA32_PAGE_FAULT;
-    IdtEntry->Bits.OffsetLow    = (UINT16)PageFaultHandlerHookAddress;
-    IdtEntry->Bits.Reserved_0   = 0;
-    IdtEntry->Bits.GateType     = IA32_IDT_GATE_TYPE_INTERRUPT_32;
-    IdtEntry->Bits.OffsetHigh   = (UINT16)(PageFaultHandlerHookAddress >> 16);
-    IdtEntry->Bits.OffsetUpper  = (UINT32)(PageFaultHandlerHookAddress >> 32);
-    IdtEntry->Bits.Reserved_1   = 0;
   }
 
   //
@@ -946,6 +928,8 @@ SmiPFHandler (
 
   AcquireSpinLock (mPFLock);
 
+  DumpCpuContext (InterruptType, SystemContext);
+
   PFAddress = AsmReadCr2 ();
 
   if (mCpuSmmRestrictedMemoryAccess && (PFAddress >= LShiftU64 (1, (mPhysicalAddressBits - 1)))) {
@@ -996,11 +980,6 @@ SmiPFHandler (
           DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
           );
       }
-
-      if (HEAP_GUARD_NONSTOP_MODE) {
-        GuardPagePFHandler (SystemContext.SystemContextX64->ExceptionData);
-        goto Exit;
-      }
     }
 
     // MSCHANGE - Allow system to reset instead of halt in test mode.
@@ -1041,11 +1020,6 @@ SmiPFHandler (
         DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
         );
 
-      if (NULL_DETECTION_NONSTOP_MODE) {
-        GuardPagePFHandler (SystemContext.SystemContextX64->ExceptionData);
-        goto Exit;
-      }
-
       // MSCHANGE - Allow system to reset instead of halt in test mode.
       goto HaltOrReboot;
       // CpuDeadLoop ();
@@ -1078,12 +1052,6 @@ SmiPFHandler (
     }
   }
 
-  // if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-  //   SmmProfilePFHandler (
-  //     SystemContext.SystemContextX64->Rip,
-  //     SystemContext.SystemContextX64->ExceptionData
-  //     );
-  // } else {
   {
     SmiDefaultPFHandler ();
   }

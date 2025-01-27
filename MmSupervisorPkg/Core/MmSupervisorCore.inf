@@ -19,7 +19,7 @@
   BASE_NAME                      = MmSupervisorCore
   FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
-  VERSION_STRING                 = 13.001
+  VERSION_STRING                 = 14.002
   PI_SPECIFICATION_VERSION       = 0x00010032
   ENTRY_POINT                    = MmSupervisorMain
 
@@ -27,8 +27,8 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 13.0019
-  DEBUG_DRIVER_VERSION     = 13.0018
+  RELEASE_DRIVER_VERSION   = 14.0029
+  DEBUG_DRIVER_VERSION     = 14.0028
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
@@ -61,8 +61,6 @@
   Mem/SmmCpuMemoryManagement.c
   Mem/SmmProfile.c
   Mem/SmmProfile.h
-  Mem/SmmProfileArch.c
-  Mem/SmmProfileArch.h
   Mem/SmmProfileInternal.h
   Misc/InstallConfigurationTable.c
   Misc/MemoryAttributesTable.c
@@ -80,10 +78,6 @@
   Services/CpuService/CpuService.h
   Services/MpService/MpService.c
   Services/MpService/SyncTimer.c
-
-  Policy/GeneralPolicy.c
-  Policy/MemPolicy.c
-  Policy/Policy.h
 
   PrivilegeMgmt/PrivilegeMgmt.h
   PrivilegeMgmt/CallGateTransfer.c
@@ -148,6 +142,8 @@
   MmSaveStateLib
   SmmCpuSyncLib
   PanicLib
+  PeCoffLibNegative
+  SecurePolicyLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -176,7 +172,6 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmEnableBspElection             ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuHotPlugSupport                   ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackGuard                    ## CONSUMES
-  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileEnable                 ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmFeatureControlMsrLock         ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmApPerfLogEnable                  ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdSmmExceptionTestModeSupport         ## CONSUMES ## MS_CHANGE
@@ -187,7 +182,6 @@
 [FixedPcd]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmApSyncTimeout2                ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuMaxLogicalProcessorNumber        ## SOMETIMES_CONSUMES
-  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                   ## SOMETIMES_CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmStackSize                     ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmCodeAccessCheckEnable         ## CONSUMES
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmSyncMode                      ## CONSUMES
@@ -228,6 +222,7 @@
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
   gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
+  gMmSupervisorCoreGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister

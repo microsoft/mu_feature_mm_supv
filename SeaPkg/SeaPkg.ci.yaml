@@ -1,0 +1,171 @@
+##
+# CI configuration for MmSupervisorPkg
+#
+# Copyright (c) Microsoft Corporation
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+{
+    "PrEval": {
+        "DscPath": "SeaPkg.dsc",
+    },
+    ## options defined ci/Plugin/CompilerPlugin
+    "CompilerPlugin": {
+        "DscPath": "SeaPkg.dsc"
+    },
+
+    ## options defined ci/Plugin/CharEncodingCheck
+    "CharEncodingCheck": {
+        "IgnoreFiles": []
+    },
+
+    ## options defined ci/Plugin/DependencyCheck
+    "DependencyCheck": {
+        "AcceptableDependencies": [
+            "MdePkg/MdePkg.dec",
+            "MdeModulePkg/MdeModulePkg.dec",
+            "StandaloneMmPkg/StandaloneMmPkg.dec",
+            "UefiCpuPkg/UefiCpuPkg.dec",
+            "SecurityPkg/SecurityPkg.dec",
+            "CryptoPkg/CryptoPkg.dec",
+            "MmSupervisorPkg/MmSupervisorPkg.dec",
+            "SeaPkg/SeaPkg.dec"
+        ],
+        "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
+        ],
+        "AcceptableDependencies-UEFI_APPLICATION": [
+            "ShellPkg/ShellPkg.dec",
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec",
+            "UefiTestingPkg/UefiTestingPkg.dec"
+        ],
+        "IgnoreInf": []
+    },
+
+    ## options defined ci/Plugin/DscCompleteCheck
+    # Temporary exclusions while using local MbedTlibLib
+    "DscCompleteCheck": {
+        "IgnoreInf": [
+          "SeaPkg/Library/MbedTlsLib/MbedTlsLib.inf",
+          "SeaPkg/Library/MbedTlsLib/MbedTlsLibFull.inf",
+          "SeaPkg/Library/BaseCryptLibMbedTls/BaseCryptLib.inf",
+          ],
+        "DscPath": "SeaPkg.dsc"
+    },
+
+    ## options defined ci/Plugin/HostUnitTestCompilerPlugin
+    "HostUnitTestCompilerPlugin": {
+    },
+
+    ## options defined ci/Plugin/GuidCheck
+    "GuidCheck": {
+        "IgnoreGuidName": [],
+        "IgnoreGuidValue": [],
+        "IgnoreFoldersAndFiles": [],
+        "IgnoreDuplicates": []
+    },
+
+    ## options defined ci/Plugin/HostUnitTestDscCompleteCheck
+    "HostUnitTestDscCompleteCheck": {
+        "IgnoreInf": [""],
+        "DscPath": ""
+    },
+
+    ## options defined ci/Plugin/LibraryClassCheck
+    "LibraryClassCheck": {
+        "IgnoreLibraryClass": [],
+        "IgnoreHeaderFile": []
+    },
+
+    "MarkdownLintCheck": {
+        "AuditOnly": False,          # If True, log all errors and then mark as skipped
+        "IgnoreFiles": [
+          "Library/BaseCryptLibMbedTls/**",
+          "Library/MbedTlsLib/**",
+        ]            # package root relative file, folder, or glob pattern to ignore
+    },
+
+    ## options defined ci/Plugin/SpellCheck
+    "SpellCheck": {
+        "AuditOnly": False,           # Fails test but run in AuditOnly mode to collect log
+        "IgnoreFiles": [              # Ignore most spell checks on code originally from EDK2
+          "Library/BaseCryptLibMbedTls/**",
+          "Library/MbedTlsLib/**",
+        ],
+        "IgnoreStandardPaths": [],    # Standard Plugin defined paths that should be ignore
+        "AdditionalIncludePaths": [], # Additional paths to spell check (wildcards supported)
+        "ExtendWords": [
+            "cmpxchgq",
+            "deassert",
+            "descriptyors",
+            "dlink",
+            "evtype",
+            "extrn",
+            "fddch",
+            "fefch",
+            "ffach",
+            "ffbch",
+            "fmask",
+            "fsbif",
+            "fword",
+            "fxrestore",
+            "interruptibility",
+            "invept",
+            "invpcid",
+            "invvpid",
+            "iomap",
+            "iretq",
+            "lcppo",
+            "lfanew",
+            "loong",
+            "loongson",
+            "lstar",
+            "mbedtls",
+            "mmbase",
+            "movzwl",
+            "movzwq",
+            "movzx",
+            "nostdlib",
+            "oformat",
+            "ossinitdata",
+            "osxmmexcpt",
+            "pcrmapping",
+            "pdpte",
+            "pdptr",
+            "propery",
+            "ptrld",
+            "pushfq",
+            "rdmsr",
+            "rdpmc",
+            "rdtsc",
+            "rdtscp",
+            "rendez",
+            "revid",
+            "rsdptr",
+            "sinit",
+            "sldtw",
+            "unrelocated",
+            "vmcall",
+            "vmclear",
+            "vmentry",
+            "vmexit",
+            "vmfunc",
+            "vmlaunch",
+            "vmptrld",
+            "vmptrst",
+            "vmread",
+            "vmresume",
+            "vmwrite",
+            "vmxoff",
+            "vmxon",
+            "wrmsr",
+            "xaddl",
+            "xapic",
+            "xfeature",
+            "xgetbv",
+            "xrstor",
+            "xsave",
+            "xsetbv",
+            "xstate"
+        ]
+    }
+}

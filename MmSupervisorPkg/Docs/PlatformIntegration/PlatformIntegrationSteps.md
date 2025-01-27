@@ -301,6 +301,9 @@ flash drivers, SW MMI dispatcher drivers, etc.
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf {
     <LibraryClasses>
       NULL|StandaloneMmPkg/Library/VariableMmDependency/VariableMmDependency.inf
+      # Note: This library can be linked against any DXE_DRIVER or DXE_RUNTIME_DRIVER in the platform. It is an
+      #       optional library that publishes a UEFI variable with MM Supervisor information.
+      NULL|MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
   }
 !endif
   MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf

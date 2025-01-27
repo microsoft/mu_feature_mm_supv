@@ -26,7 +26,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Services/MpService/MpService.h"
 #include "Relocate/Relocate.h"
 #include "Request/Request.h"
-#include "Policy/Policy.h"
 
 //
 // attributes for reserved memory before it is promoted to system memory
@@ -1819,6 +1818,7 @@ SkipResourceDescriptor (
   @retval FALSE This buffer is from MMRAM.
 **/
 BOOLEAN
+EFIAPI
 IsBufferInsideMmram (
   IN EFI_PHYSICAL_ADDRESS  Buffer,
   IN UINT64                Length
@@ -2510,20 +2510,7 @@ IfReadOnlyPageTableNeeded (
   //      BIT3: SMM pool guard enabled
   //  - SMM profile feature enabled
   //
-
-  // MU_CHANGE START
-
-  /*if (!IsRestrictedMemoryAccess () ||
-      ((PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0) ||
-      FeaturePcdGet (PcdCpuSmmProfileEnable))
-  {*/
-  // MU_CHANGE END
-  if (!IsRestrictedMemoryAccess () ||
-      // MU_CHANGE: MM_SUPV: Update to remove exclusivity between static paging and heap guard
-      // ((gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0) ||
-      FeaturePcdGet (PcdCpuSmmProfileEnable))
-  {
-    // MU_CHANGE END
+  if (!IsRestrictedMemoryAccess ()) {
     if (sizeof (UINTN) == sizeof (UINT64)) {
       //
       // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
@@ -2539,11 +2526,6 @@ IfReadOnlyPageTableNeeded (
           (gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0)
         );
       // MU_CHANGE END
-
-      //
-      // Restriction on access to non-SMRAM memory and SMM profile could not be enabled at the same time.
-      //
-      ASSERT (!(IsRestrictedMemoryAccess () && FeaturePcdGet (PcdCpuSmmProfileEnable)));
     }
 
     return FALSE;

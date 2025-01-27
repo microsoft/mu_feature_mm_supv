@@ -762,22 +762,6 @@ ExecuteMmCoreFromMmram (
       DataInHob          = GET_GUID_HOB_DATA (GuidHob);
       DataInHob->Address = (UINTN)gMmCorePrivate;
 
-      // MU_CHANGE: TODO: SMM profile disabled, just like supervisor itself
-      // if (FeaturePcdGet (PcdCpuSmmProfileEnable)) {
-      //   GuidHob = GetFirstGuidHob (&gMmCoreMmProfileGuid);
-      //   BufferInHob = GET_GUID_HOB_DATA (GuidHob);
-
-      //   BufferInHob->Address = 0xFFFFFFFF;
-      //   BufferInHob->Size = PcdGet32 (PcdCpuSmmProfileSize) + SIZE_4MB;
-      //   Status = gBS->AllocatePages (
-      //                   AllocateMaxAddress,
-      //                   EfiReservedMemoryType,
-      //                   EFI_SIZE_TO_PAGES (BufferInHob->Size),
-      //                   &BufferInHob->Address
-      //                   );
-      //   ASSERT_EFI_ERROR (Status);
-      // }
-
       // MU_CHANGE Starts: To load x64 MM foundation, mode switch is needed
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
       HobStart   = GetHobList ();
@@ -1043,9 +1027,8 @@ SmmIsMmramOverlap (
 /**
   Get full SMRAM ranges.
 
-  It will get SMRAM ranges from SmmAccess PPI and SMRAM reserved ranges from
-  MmConfiguration ppi, split the entries if there is overlap between them.
-  It will also reserve one entry for SMM core.
+  It will get SMRAM ranges from either the gEfiMmPeiMmramMemoryReserveGuid or
+  gEfiSmmSmramMemoryGuid HOB.
 
   @param[out] FullMmramRangeCount   Output pointer to full SMRAM range count.
 
@@ -1185,7 +1168,7 @@ MmIplPeiEntry (
                              );
   ASSERT_EFI_ERROR (Status);
 
-  gMmCorePrivate->MmramRanges = (UINTN)GetFullMmramRanges (PeiServices, (UINTN *)&gMmCorePrivate->MmramRangeCount);
+  gMmCorePrivate->MmramRanges = (EFI_PHYSICAL_ADDRESS)(UINTN)GetFullMmramRanges (PeiServices, (UINTN *)&gMmCorePrivate->MmramRangeCount);
   MmramRanges                 = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
 
   //
