@@ -54,7 +54,6 @@
   ImagePropertiesRecordLib|MdeModulePkg/Library/ImagePropertiesRecordLib/ImagePropertiesRecordLib.inf
   NULL|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
   PanicLib|MdePkg/Library/BasePanicLibNull/BasePanicLibNull.inf
-  PeCoffLibNegative|SeaPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
 
 [LibraryClasses.IA32]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
