@@ -10,11 +10,6 @@
 #
 ##
 
-# Secure:
-#Track : 00000002 | StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf | 98f131b1f5af39032366ce4299edb90a | 2024-10-22T17-12-20 | 95432a0aa891e8a3c24de2daf4c462b29d8eb2fc
-# Non-Secure:
-#Track : 00000002 | StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf | 93ab6b0a531dd4546a1b90803577ad59 | 2025-01-27T20-45-47 | 11bb18a62ee52283a05617114375f34a90b8fe5a
-
 [Defines]
   INF_VERSION                    = 0x0001001B
   BASE_NAME                      = HobLib

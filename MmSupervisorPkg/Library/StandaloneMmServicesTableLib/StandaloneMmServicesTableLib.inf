@@ -10,8 +10,6 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf | 39a3882c173b3129dab11bce2f000b47 | 2022-03-17T00-28-36 | dcf8b1b78a3fa0317c396c950a00ee30ea42d43e
-
 [Defines]
   INF_VERSION                    = 0x0001001B
   BASE_NAME                      = StandaloneMmServicesTableLib
