@@ -38,8 +38,8 @@
   DebugLib
 
 [Guids]
-  gMmCoreDataHobGuid                            ## SOMETIMES_PRODUCES
   gMmCoreMmProfileGuid                          ## SOMETIMES_PRODUCES
+  gMmCoreDataHobGuid
 
 [Depex]
   TRUE

@@ -1979,6 +1979,13 @@ SetNonSmmMemMapAttributes (
     goto Exit;
   }
 
+  DEBUG ((DEBUG_INFO, "%a - Memory resources coalesced:\n", __FUNCTION__));
+  for (UINTN i = 0; i < MemIdx; i++) {
+    DEBUG ((DEBUG_INFO, "Memory Address Point - 0x%lx, Type - 0x%x\n", TempBuffer[i].Address, TempBuffer[i].Type));
+  }
+
+  DEBUG ((DEBUG_INFO, "\n"));
+
   if ((MemIdx == 0) || (MemIdx & BIT0)) {
     // Should not happen
     DEBUG ((DEBUG_ERROR, "%a - Memory resources has odd number of ends - 0x%x\n", __FUNCTION__, MemIdx));

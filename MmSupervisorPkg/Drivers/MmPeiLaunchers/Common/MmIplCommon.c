@@ -81,6 +81,7 @@ SmmCommunicationCommunicateWorker (
     return EFI_INVALID_PARAMETER;
   }
 
+  DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker\n"));
   CommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)CommBuffer;
 
   if (CommSize == NULL) {
@@ -106,6 +107,7 @@ SmmCommunicationCommunicateWorker (
     }
   }
 
+  DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: TempCommSize = %d\n", TempCommSize));
   // MU_CHANGE Starts: MM_SUPV: Only allow MM communication data shared through buffer allocated by this IPL
   if (TalkToSupervisor) {
     CommunicateHeader         = mMmSupvCommonBuffer;
@@ -159,6 +161,7 @@ SmmCommunicationCommunicateWorker (
   //
   // Generate Software SMI
   //
+  DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: InternalMmControlTrigger\n"));
   Status = InternalMmControlTrigger ();
   if (EFI_ERROR (Status)) {
     return EFI_UNSUPPORTED;
@@ -366,7 +369,7 @@ QuerySupervisorVersion (
   RequestHeader->Signature = MM_SUPERVISOR_REQUEST_SIG;
   RequestHeader->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
   RequestHeader->Request   = MM_SUPERVISOR_REQUEST_VERSION_INFO;
-
+  DEBUG ((DEBUG_INFO, "%a Requesting supervisor version information...\n", __func__));
   //
   // Generate the Software SMI and return the result
   //
@@ -376,6 +379,7 @@ QuerySupervisorVersion (
     return Status;
   }
 
+  DEBUG ((DEBUG_INFO, "%a Supervisor communication returned with status 0x%x!!\n", __func__, RequestHeader->Result));
   Status = EFI_SUCCESS;
   if ((UINTN)RequestHeader->Result != 0) {
     Status = ENCODE_ERROR ((UINTN)RequestHeader->Result);
