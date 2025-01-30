@@ -20,10 +20,6 @@
 #
 #
 ##
-# Non-Secure
-#Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 768803561c4b0314d6304a05c8050905 | 2024-10-24T21-28-00 | bf73b8a3c074d0280e664de6bf8c3d1091c3072c
-# Secure
-#Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 39668b80ae31206ea3a072479ff9eb8e | 2024-10-24T21-27-40 | 530d7aa7e92472806c06e766bba5aaff09eedd6d
 
 [Defines]
   INF_VERSION                    = 0x00010005
