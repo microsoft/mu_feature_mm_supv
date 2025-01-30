@@ -1256,10 +1256,6 @@ MmIplPeiEntry (
   gMmCorePrivate->MmramRanges = (EFI_PHYSICAL_ADDRESS)(UINTN)GetFullMmramRanges ((UINTN *)&gMmCorePrivate->MmramRangeCount);
   MmramRanges                 = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
 
-  for (UINTN i = 0; i < gMmCorePrivate->MmramRangeCount; i++) {
-    DEBUG ((DEBUG_INFO, "MmramRanges[%d]: CpuStart: 0x%lx, PhysicalSize: 0x%lx\n", i, MmramRanges[i].CpuStart, MmramRanges[i].PhysicalSize));
-  }
-
   //
   // Open all SMRAM ranges
   //
@@ -1294,7 +1290,6 @@ MmIplPeiEntry (
   //
   mCurrentMmramRange = NULL;
   for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
-    DEBUG ((DEBUG_INFO, "MmramRanges[%d]: CpuStart: 0x%lx, PhysicalSize: 0x%lx\n", Index, MmramRanges[Index].CpuStart, MmramRanges[Index].PhysicalSize));
     //
     // Skip any SMRAM region that is already allocated, needs testing, or needs ECC initialization
     //
@@ -1420,7 +1415,6 @@ MmIplPeiEntry (
 
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail after setup.
   Status = QuerySupervisorVersion (&VersionInfo);
-  DEBUG ((DEBUG_INFO, "QuerySupervisorVersion returned - %r\n", Status));
   if (EFI_ERROR (Status)) {
     return Status;
   }
@@ -1430,7 +1424,6 @@ MmIplPeiEntry (
   // Trigger to dispatch MM drivers from inside MM
   //
   if (!EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "Triggering MM driver dispatching\n"));
     Status = MmDriverDispatchNotify ();
     DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
   }
