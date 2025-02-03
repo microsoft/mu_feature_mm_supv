@@ -1,0 +1,36 @@
+#/** @file
+#  Driver to initialize and provide user mode performance data in an MM Supervisor environment.
+#
+#  This driver is expected to be linked against a PerformanceLib instance that implements the
+#  code typically in a MM Core for user mode performance data. This includes installing the
+#  performance protocol and registering a MMI to return performance data to the MMI caller.
+#
+#  Copyright (c) Microsoft Corporation.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#**/
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmSupervisorRing3Performance
+  FILE_GUID                      = 8B479EAC-C3C8-4A1C-BF58-2BEDAE9E1CFB
+  MODULE_TYPE                    = MM_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  ENTRY_POINT                    = MmSupervisorRing3PerformanceEntryPoint
+
+[Sources]
+  MmSupervisorRing3Performance.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  StandaloneMmDriverEntryPoint
+  PerformanceLib
+
+[Depex]
+  TRUE

@@ -285,6 +285,9 @@ flash drivers, SW MMI dispatcher drivers, etc.
   IoLib|MmSupervisorPkg/Library/BaseIoLibIntrinsicSysCall/BaseIoLibIntrinsic.inf
   SysCallLib|MmSupervisorPkg/Library/SysCallLib/SysCallLib.inf
 
+  # This library instance is only necessary if performance tracing is enabled in MM code.
+  PerformanceLib|MdeModulePkg/Library/SmmPerformanceLib/StandaloneMmPerformanceLib.inf
+
 [Components.IA32]
   MmSupervisorPkg/Drivers/StandaloneMmHob/StandaloneMmHob.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
@@ -312,7 +315,19 @@ flash drivers, SW MMI dispatcher drivers, etc.
       # Note that this should be whatever suits the target platform + MM standalone conversion for constructor input arguments
       SmmCpuFeaturesLib|$(PLATFORM_SI_PACKAGE)/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLib.inf
   }
-  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
+  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf {
+    <LibraryClasses>
+      # Because the Ring 3 Broker is the first MM_STANDALONE driver to load. The MM Performance protocol will
+      # not be installed yet.
+      PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
+  }
+  # Note: The following driver is only necessary if performance tracing is enabled in MM code.
+  MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf {
+    <LibraryClasses>
+      # It is recommended to link this instance of the Standalone MM Core performance library against this
+      # driver.
+      PerformanceLib|MdeModulePkg/Library/SmmCorePerformanceLib/StandaloneMmCorePerformanceLib.inf
+  }
 
   MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterStandaloneMm.inf
   UefiCpuPkg/CpuIo2Smm/CpuIo2StandaloneMm.inf

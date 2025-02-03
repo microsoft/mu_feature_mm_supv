@@ -158,6 +158,7 @@
 
   MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
+  MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf
   MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplX64Relay.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf
