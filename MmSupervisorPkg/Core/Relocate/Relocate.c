@@ -698,7 +698,7 @@ SetupSmiEntryExit (
   //
   // Initialize address fixup
   //
-  PiSmmCpuSmiEntryFixupAddress ();
+  //PiSmmCpuSmiEntryFixupAddress ();
 
   //
   // Initialize Debug Agent to support source level debug in SMM code
