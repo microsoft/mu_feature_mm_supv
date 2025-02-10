@@ -31,6 +31,16 @@ impl std::fmt::Debug for Symbol {
     }
 }
 
+impl Symbol {
+    /// Returns true if the symbol is in a section that is read-only (READ, !WRITE, !EXECUTE)
+    pub fn in_readonly_section(&self, sections: &[pdb::ImageSectionHeader]) -> bool {
+        sections
+            .iter()
+            .filter(|s| s.characteristics.read() && !s.characteristics.write() && !s.characteristics.execute())
+            .any(|s| self.address >= s.virtual_address && self.address < s.virtual_address + s.virtual_size)
+    }
+}
+
 /// A struct representing the header of the aux file.
 #[derive(Debug, Pwrite)]
 pub struct ImageValidationDataHeader {

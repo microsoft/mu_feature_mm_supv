@@ -8,7 +8,7 @@
 //! 
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use clap::ValueEnum;
 
 use crate::Symbol;
@@ -18,7 +18,7 @@ use crate::Symbol;
 /// is created for each rule and written to the auxillary file. Each entry is
 /// used to run the appropriate validation on the symbol in the firmware, and
 /// also revert the symbol to it's original value.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ValidationRule {
     /// The symbol that the rule is associated with.
     pub symbol: String,
@@ -36,7 +36,7 @@ pub struct ValidationRule {
     /// is used in conjunction with the `offset` attribute only.
     pub size: Option<u32>,
     /// The build target that the rule is associated with.
-    #[serde(default = "ValidationTarget::all")]
+    #[serde(default = "ValidationTarget::all", skip_serializing)]
     pub target: Vec<ValidationTarget>,
 }
 
@@ -71,6 +71,19 @@ impl ValidationRule {
     }
 }
 
+impl From<&Symbol> for ValidationRule {
+    fn from(symbol: &Symbol) -> Self {
+        ValidationRule {
+            symbol: symbol.name.clone(),
+            field: None,
+            validation: ValidationType::Content{ content: 0xDEADBEEFu32.to_le_bytes().to_vec() },
+            offset: None,
+            size: Some(2),
+            target: Vec::new()
+        }
+    }
+}
+
 /// An enum representing the type of validation to be performed on the symbol
 ///
 /// This enum also contains the data required to perform the validation and is
@@ -87,7 +100,7 @@ impl ValidationRule {
 /// MemAttr - IMAGE_VALIDATION_MEM_ATTR
 /// Ref - IMAGE_VALIDATION_SELF_REF
 ///
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 #[allow(non_camel_case_types)]
 #[repr(u32)]
@@ -133,7 +146,7 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ValidationType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, ValueEnum)]
 pub enum ValidationTarget{
     #[default]
     #[serde(alias = "DEBUG", alias = "Debug", alias = "debug")]
