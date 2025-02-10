@@ -697,8 +697,12 @@ SetupSmiEntryExit (
 
   //
   // Initialize address fixup
-  //
-  PiSmmCpuSmiEntryFixupAddress ();
+  //s
+
+  // This is only necessary when using the MmSupervisorCore SmiEntry.nasm.  Ignore it with SEA.
+  if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    PiSmmCpuSmiEntryFixupAddress ();
+  }
 
   //
   // Initialize Debug Agent to support source level debug in SMM code
