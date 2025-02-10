@@ -697,7 +697,7 @@ SetupSmiEntryExit (
 
   //
   // Initialize address fixup
-  //s
+  //
 
   // This is only necessary when using the MmSupervisorCore SmiEntry.nasm.  Ignore it with SEA.
   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
