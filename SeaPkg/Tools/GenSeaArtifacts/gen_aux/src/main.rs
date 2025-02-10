@@ -18,7 +18,7 @@ pub mod util;
 pub mod validation;
 
 use auxgen::{Symbol, AuxBuilder};
-use validation::{ValidationRule, ValidationType, ValidationTarget};
+use validation::{ValidationRule, ValidationType};
 
 pub const POINTER_LENGTH: u64 = 8;
 
@@ -41,8 +41,11 @@ pub struct Args {
     /// Path to the config file to read (or write to if generating a config).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
-    #[arg(short, long, value_enum)]
-    pub target: ValidationTarget,
+    /// A list of scopes to include in the auxillary file. Rules without scopes\n
+    /// are always applied. Rules with scopes are only applied if the scope is
+    /// also provided via this argument.
+    #[arg(short, long = "scope")]
+    pub scopes: Vec<String>,
     // Display the parse Symbol information.
     #[arg(short, long)]
     pub debug: bool
@@ -154,11 +157,12 @@ pub fn main() -> Result<()> {
     } else {
         let output = args.output.unwrap_or(args.efi.with_extension("aux"));
         let efi = std::fs::read(args.efi)?;
+        let scopes = args.scopes.iter().map(|s| s.to_ascii_lowercase()).collect();
         let aux = AuxBuilder::default()
             .with_image(&efi)?
             .with_config(args.config)?
             .with_symbols(parsed_symbols.values().cloned().collect())
-            .generate(&type_information, args.target)?;
+            .generate(&type_information, scopes)?;
     
         if args.debug {
             println!("{:?}", aux.header);
