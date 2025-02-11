@@ -10,7 +10,7 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{Config, KeySymbol, ValidationRule, ValidationTarget, ValidationType};
+use crate::{Config, KeySymbol, ValidationRule, ValidationType};
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -260,7 +260,16 @@ impl AuxBuilder {
     /// config file have entries in the aux file. If `autogen=true` is
     /// specified in the configuration file, a rule (with no validation) will
     /// be generated, so that all symbols are reverted to their original value.
-    pub fn generate(mut self, info: &TypeInformation, target: ValidationTarget) -> anyhow::Result<AuxFile> {
+    pub fn generate(self, info: &TypeInformation, scopes: Vec<String>) -> anyhow::Result<AuxFile> {
+        // Filter out rules that are not in scope
+        let (mut rules, filtered): (Vec<_>, Vec<_>) = self.rules
+            .into_iter()
+            .partition(|rule| rule.is_in_scope(&scopes));
+        
+        for rule in filtered {
+            println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
+        }
+        
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
         
@@ -280,25 +289,13 @@ impl AuxBuilder {
 
         if self.auto_generate{
             for symbol in &self.symbols {
-                let rule = self.rules.iter().find(|&entry| &entry.symbol == &symbol.name && entry.target.contains(&target));
-                if rule.is_none() {
-                    self.rules.push(ValidationRule {
-                        symbol: symbol.name.clone(),
-                        field: None,
-                        validation: ValidationType::None,
-                        offset: None,
-                        size: None,
-                        target: ValidationTarget::all(),
-                    })
+                if !rules.iter().any(|rule| &rule.symbol == &symbol.name) {
+                    rules.push(ValidationRule::new(symbol.name.clone()));
                 }
             }
         }
 
-        for rule in self.rules.iter_mut() {
-            if !rule.target.contains(&target) {
-                println!("Rule: {:?} Skipped... Does not apply to target: {:?}", rule, target);
-                continue;
-            }
+        for rule in rules.iter_mut() {
             let symbol = self.symbols
                 .iter()
                 .find(|&entry| &entry.name == &rule.symbol)

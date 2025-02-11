@@ -9,7 +9,6 @@
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::{Serialize, Deserialize};
-use clap::ValueEnum;
 
 use crate::Symbol;
 
@@ -35,12 +34,26 @@ pub struct ValidationRule {
     /// The size of the symbol that the validation should be performed on. This
     /// is used in conjunction with the `offset` attribute only.
     pub size: Option<u32>,
-    /// The build target that the rule is associated with.
-    #[serde(default = "ValidationTarget::all", skip_serializing)]
-    pub target: Vec<ValidationTarget>,
+    /// A scope that the validation rule should be applied to. This validation
+    /// rule is only applied if it's scope matches any of the scopes passed to
+    /// the tool on the command line. If the rule has no scope, it is always
+    /// applied.
+    pub scope: Option<String>
 }
 
 impl ValidationRule {
+    /// Creates a new empty validation rule with the given symbol name.
+    pub fn new(symbol: String) -> Self {
+        ValidationRule {
+            symbol,
+            field: None,
+            validation: ValidationType::None,
+            offset: None,
+            size: None,
+            scope: None
+        }
+    }
+
     /// Resolve any symbols in the rule to their actual addresses
     pub fn resolve(&mut self, symbol: &Symbol, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
         
@@ -69,6 +82,14 @@ impl ValidationRule {
 
         Ok(())
     }
+
+    /// Returns true if the rule is in scope
+    pub fn is_in_scope(&self, scopes: &[String]) -> bool {
+        if let Some(scope) = &self.scope {
+            return scopes.iter().any(|s| s.eq_ignore_ascii_case(scope));
+        }
+        true
+    }
 }
 
 impl From<&Symbol> for ValidationRule {
@@ -79,7 +100,7 @@ impl From<&Symbol> for ValidationRule {
             validation: ValidationType::Content{ content: 0xDEADBEEFu32.to_le_bytes().to_vec() },
             offset: None,
             size: Some(2),
-            target: Vec::new()
+            scope: None,
         }
     }
 }
@@ -143,22 +164,5 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ValidationType {
         let value: u32 = self.into();
         this.pwrite_with(value, 0, ctx)?;
         Ok(4)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, ValueEnum)]
-pub enum ValidationTarget{
-    #[default]
-    #[serde(alias = "DEBUG", alias = "Debug", alias = "debug")]
-    Debug,
-    #[serde(alias = "RELEASE", alias = "Release", alias = "release")]
-    Release,
-    #[serde(alias = "NOOPT", alias = "NoOpt", alias = "Noopt", alias = "noopt")]
-    Noopt,
-}
-
-impl ValidationTarget {
-    pub fn all() -> Vec<ValidationTarget> {
-        vec![ValidationTarget::Debug, ValidationTarget::Release, ValidationTarget::Noopt]
     }
 }

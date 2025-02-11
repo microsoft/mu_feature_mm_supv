@@ -27,7 +27,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
 
     @staticmethod
-    def generate_sea_includes(build_target: str, aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path):
+    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path):
         """Generates SEA artifacts.
 
         Generates the following artifacts:
@@ -35,7 +35,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         - MmSupervisorCore.efi (As Build by edk2 build system)
 
         Args:
-            build_target: Build Target (DEBUG, RELEASE, NOOPT)
+            scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
             aux_config_path: Path to the aux gen config file.
             mm_supervisor_build_dir: Path to the MM Supervisor build output.
             sea_build_dir: Path to the Sea Package build output.
@@ -50,7 +50,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             temp_hash_dir = stm_build_dir / "temp_hash.bin"
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, build_target, stm_build_dir)
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -253,13 +253,13 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
         return 0
 
-def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, target: str, output_dir: Path):
+def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path):
     """Generates the auxiliary file for the MmsupervisorCore.
 
     Args:
         aux_config_path: Path to the aux gen config file.
         mm_supervisor_build_dir: Path to the MM Supervisor build output.
-        target: Build Target (DEBUG, RELEASE, NOOPT)
+        scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
         output_dir: Path to place the artifacts.
 
     Raises:
@@ -273,7 +273,8 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, targ
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
     args += f" --config {str(aux_config_path)}"
-    args += f" --target {target.lower()}"
+    for scope in scopes: 
+        args += f" --scope {scope}"
 
     ret = RunCmd("cargo", args)
     if ret != 0:
