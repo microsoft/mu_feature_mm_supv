@@ -8,9 +8,10 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
 use std::{fmt, io::Write, mem::size_of};
+use goblin::pe::symbol;
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{Config, KeySymbol, ValidationRule, ValidationType};
+use crate::{ConfigFile, KeySymbol, ValidationRule, ValidationType};
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -184,12 +185,16 @@ pub struct AuxBuilder {
     loaded_image: Vec<u8>,
     /// A list of symbols to generate rules for
     symbols: Vec<Symbol>,
-    /// A list of key symbols to be added to the auxillary file header.
+    /// A list of key symbols to be added to the auxiliary file header.
     key_symbols: Vec<KeySymbol>,
     // A list of rules that apply to a certain symbol
     rules: Vec<ValidationRule>,
     // Auto Generate rules for symbols that don't have any
     auto_generate: bool,
+    // Exit if a symbol is missing a rule in the config file
+    exit_on_missing_rules: bool,
+    // Symbols filtered out of the aux file
+    excluded_symbols: Vec<String>,
 }
 
 impl AuxBuilder {
@@ -241,10 +246,18 @@ impl AuxBuilder {
     pub fn with_config(mut self, path: Option<std::path::PathBuf>) -> anyhow::Result<Self> {
         if let Some(path) = path {
             let data = std::fs::read_to_string(path)?;
-            let config = toml::from_str::<Config>(&data)?;
-            self.auto_generate = config.auto_gen;
-            self.rules = config.rules;
-            self.key_symbols = config.key_symbols;
+            let file = toml::from_str::<ConfigFile>(&data)?;
+            
+            if file.config.auto_gen && file.config.no_missing_rules {
+                return Err(anyhow::anyhow!("auto_gen and no_missing_symbols cannot be true at the same time."));
+            }
+            
+            self.exit_on_missing_rules = file.config.no_missing_rules;
+            self.auto_generate = file.config.auto_gen;
+            self.excluded_symbols = file.config.excluded_symbols;
+            self.rules = file.rules;
+            self.key_symbols = file.key_symbols;
+            
         }
         Ok(self)
     }
@@ -256,6 +269,24 @@ impl AuxBuilder {
         self
     }
 
+    pub fn add_missing_rules(symbols: &Vec<Symbol>, rules: &mut Vec<ValidationRule>) {
+        for symbol in symbols {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name) {
+                rules.push(ValidationRule::new(symbol.name.clone()));
+            }
+        }
+    }
+
+    pub fn find_symbols_with_no_rule(symbols: &Vec::<Symbol>, rules: &Vec<ValidationRule>) -> Vec<Symbol> {
+        let mut missing = Vec::new();
+        for symbol in symbols {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name) {
+                missing.push(symbol.clone());
+            }
+        }
+        missing
+    }
+
     /// Generates the aux file. By default, only rules specified in the
     /// config file have entries in the aux file. If `autogen=true` is
     /// specified in the configuration file, a rule (with no validation) will
@@ -264,10 +295,28 @@ impl AuxBuilder {
         // Filter out rules that are not in scope
         let (mut rules, filtered): (Vec<_>, Vec<_>) = self.rules
             .into_iter()
-            .partition(|rule| rule.is_in_scope(&scopes));
+            .partition(|rule| rule.is_in_scope(&scopes) && !self.excluded_symbols.contains(&rule.symbol));
         
         for rule in filtered {
             println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
+        }
+
+        // Add missing rules if auto_generate is enabled
+        if self.auto_generate {
+            Self::add_missing_rules(&self.symbols, &mut rules);
+        }
+
+        // Ensure that all symbols have rules if exit_on_missing_rules is enabled
+        if self.exit_on_missing_rules {
+            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&self.symbols, &rules);
+            if !symbols_with_no_rule.is_empty() {
+                println!("ERROR: Rules missing for the following symbols in the configuration file.");
+                for symbol in symbols_with_no_rule {
+                    println!(" 0x{:08X} - {:?}", symbol.address, symbol.name);
+                }
+                let e = "`exit_on_missing_rule` is enabled in the configuration file and the symbols above do not have rules.";
+                return Err(anyhow::anyhow!(e))
+            }
         }
         
         let mut aux = AuxFile::default();
@@ -286,14 +335,6 @@ impl AuxBuilder {
         }
 
         let mut offset_in_default = 0;
-
-        if self.auto_generate{
-            for symbol in &self.symbols {
-                if !rules.iter().any(|rule| &rule.symbol == &symbol.name) {
-                    rules.push(ValidationRule::new(symbol.name.clone()));
-                }
-            }
-        }
 
         for rule in rules.iter_mut() {
             let symbol = self.symbols
