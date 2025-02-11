@@ -138,6 +138,7 @@ pub fn main() -> Result<()> {
     while let Some(symbol) = raw_symbol_iter.next()? {
         util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
     }
+
     if args.generate_config {
         let sections = pdb.sections()?.unwrap_or_default();
         let rules: Vec<ValidationRule> = parsed_symbols

@@ -9,7 +9,6 @@
 use pdb::TypeInformation;
 use scroll::{ctx, Endian, Pwrite};
 use serde::{Serialize, Deserialize};
-use clap::ValueEnum;
 
 use crate::Symbol;
 
@@ -43,6 +42,18 @@ pub struct ValidationRule {
 }
 
 impl ValidationRule {
+    /// Creates a new empty validation rule with the given symbol name.
+    pub fn new(symbol: String) -> Self {
+        ValidationRule {
+            symbol,
+            field: None,
+            validation: ValidationType::None,
+            offset: None,
+            size: None,
+            scope: None
+        }
+    }
+
     /// Resolve any symbols in the rule to their actual addresses
     pub fn resolve(&mut self, symbol: &Symbol, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
         
@@ -70,6 +81,14 @@ impl ValidationRule {
         }
 
         Ok(())
+    }
+
+    /// Returns true if the rule is in scope
+    pub fn is_in_scope(&self, scopes: &[String]) -> bool {
+        if let Some(scope) = &self.scope {
+            return scopes.iter().any(|s| s.eq_ignore_ascii_case(scope));
+        }
+        true
     }
 }
 
