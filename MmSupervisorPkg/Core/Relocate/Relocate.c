@@ -698,7 +698,11 @@ SetupSmiEntryExit (
   //
   // Initialize address fixup
   //
-  PiSmmCpuSmiEntryFixupAddress ();
+
+  // If a feature lib has its own entry code we shouldn't fixup the addresses.
+  if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    PiSmmCpuSmiEntryFixupAddress ();
+  }
 
   //
   // Initialize Debug Agent to support source level debug in SMM code
