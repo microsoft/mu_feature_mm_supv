@@ -75,7 +75,6 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
             let size = get_size_from_index(&info, data.type_index)? as u32;
             let name = data.name.to_string().to_string();
-
             let type_index = Some(data.type_index);
             
             // A data symbol should always take precedence over an existing
