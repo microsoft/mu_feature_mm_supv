@@ -22,7 +22,7 @@ use validation::{ValidationRule, ValidationType};
 
 pub const POINTER_LENGTH: u64 = 8;
 
-/// Command line arguments for the Auxillary File Generator.
+/// Command line arguments for the Auxiliary File Generator.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -41,7 +41,7 @@ pub struct Args {
     /// Path to the config file to read (or write to if generating a config).
     #[arg(short, long)]
     pub config: Option<PathBuf>,
-    /// A list of scopes to include in the auxillary file. Rules without scopes\n
+    /// A list of scopes to include in the auxiliary file. Rules without scopes
     /// are always applied. Rules with scopes are only applied if the scope is
     /// also provided via this argument.
     #[arg(short, long = "scope")]
@@ -52,7 +52,7 @@ pub struct Args {
 }
 
 /// A struct that represents an signature/address pair to be added to the
-/// auxillary file header.
+/// auxiliary file header.
 #[derive(Serialize, Deserialize, Default)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
@@ -96,11 +96,11 @@ impl std::fmt::Debug for KeySymbol {
 /// Configuration options available in the config file.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
-    /// A list of key symbols to be added to the auxillary file header.
+    /// A list of key symbols to be added to the auxiliary file header.
     #[serde(alias = "key", default = "Vec::new")]
     pub key_symbols: Vec<KeySymbol>,
     /// A list of validation rules that ultimately create a validation entry in
-    /// the auxillary file.
+    /// the auxiliary file.
     #[serde(alias = "rule", default = "Vec::new", rename = "rule")]
     pub rules: Vec<ValidationRule>,
     /// An option that if true, will generate a validation entry of 
