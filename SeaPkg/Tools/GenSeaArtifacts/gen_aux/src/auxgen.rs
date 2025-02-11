@@ -13,7 +13,7 @@ use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{ConfigFile, KeySymbol, ValidationRule, ValidationType};
 
 /// The type of symbol in the PDB file.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub enum SymbolType {
     #[default]
     None,
@@ -337,7 +337,7 @@ impl AuxBuilder {
             if !symbols_with_no_rule.is_empty() {
                 println!("ERROR: Rules missing for the following symbols in the configuration file.");
                 for symbol in symbols_with_no_rule {
-                    println!(" 0x{:08X} - {:?} - {:?}", symbol.address, symbol.symbol_type, symbol.name);
+                    println!(" 0x{:08X} - {:?}", symbol.address, symbol.name);
                 }
                 let e = "`exit_on_missing_rule` is enabled in the configuration file and the symbols above do not have rules.";
                 return Err(anyhow::anyhow!(e))
