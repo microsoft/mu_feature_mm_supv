@@ -138,7 +138,6 @@ pub fn main() -> Result<()> {
     while let Some(symbol) = raw_symbol_iter.next()? {
         util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
     }
-
     if args.generate_config {
         let sections = pdb.sections()?.unwrap_or_default();
         let rules: Vec<ValidationRule> = parsed_symbols
@@ -158,12 +157,11 @@ pub fn main() -> Result<()> {
     } else {
         let output = args.output.unwrap_or(args.efi.with_extension("aux"));
         let efi = std::fs::read(args.efi)?;
-        let scopes = args.scopes.iter().map(|s| s.to_ascii_lowercase()).collect();
         let aux = AuxBuilder::default()
             .with_image(&efi)?
             .with_config(args.config)?
             .with_symbols(parsed_symbols.values().cloned().collect())
-            .generate(&type_information, scopes)?;
+            .generate(&type_information, args.scopes)?;
     
         if args.debug {
             println!("{:?}", aux.header);
