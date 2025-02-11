@@ -261,7 +261,6 @@ impl AuxBuilder {
     /// specified in the configuration file, a rule (with no validation) will
     /// be generated, so that all symbols are reverted to their original value.
     pub fn generate(self, info: &TypeInformation, scopes: Vec<String>) -> anyhow::Result<AuxFile> {
-        
         // Filter out rules that are not in scope
         let (mut rules, filtered): (Vec<_>, Vec<_>) = self.rules
             .into_iter()
@@ -270,7 +269,6 @@ impl AuxBuilder {
         for rule in filtered {
             println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
         }
-
         
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
