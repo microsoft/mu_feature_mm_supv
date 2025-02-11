@@ -699,7 +699,7 @@ SetupSmiEntryExit (
   // Initialize address fixup
   //
 
-  // This is only necessary when using the MmSupervisorCore SmiEntry.nasm.  Ignore it with SEA.
+  // If a feature lib has its own entry code we shouldn't fixup the addresses.
   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
     PiSmmCpuSmiEntryFixupAddress ();
   }
