@@ -8,10 +8,20 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
 use std::{fmt, io::Write, mem::size_of};
-use goblin::pe::symbol;
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{ConfigFile, KeySymbol, ValidationRule, ValidationType};
+
+/// The type of symbol in the PDB file.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub enum SymbolType {
+    #[default]
+    None,
+    Public,
+    Data,
+    Procedure,
+    Label,
+}
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -24,6 +34,8 @@ pub struct Symbol {
     pub size: u32,
     // The type index of the symbol
     pub type_index: Option<TypeIndex>,
+    // The type of the symbol
+    pub symbol_type: SymbolType,
 }
 
 impl std::fmt::Debug for Symbol {
@@ -269,6 +281,8 @@ impl AuxBuilder {
         self
     }
 
+    /// Generates rules for any symbols that do not have a rule in the config file. Ignores any symbols in the
+    /// `excluded_symbols` list in the configuration file (that filter is done before calling this function).
     pub fn add_missing_rules(symbols: &Vec<Symbol>, rules: &mut Vec<ValidationRule>) {
         for symbol in symbols {
             if !rules.iter().any(|rule| rule.symbol == symbol.name) {
@@ -277,10 +291,12 @@ impl AuxBuilder {
         }
     }
 
+    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` and
+    /// any symbols in the `excluded_symbols` list in the configuration file (that filter is done before calling this function).
     pub fn find_symbols_with_no_rule(symbols: &Vec::<Symbol>, rules: &Vec<ValidationRule>) -> Vec<Symbol> {
         let mut missing = Vec::new();
         for symbol in symbols {
-            if !rules.iter().any(|rule| rule.symbol == symbol.name) {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name || symbol.symbol_type == SymbolType::Procedure) {
                 missing.push(symbol.clone());
             }
         }
@@ -295,24 +311,33 @@ impl AuxBuilder {
         // Filter out rules that are not in scope
         let (mut rules, filtered): (Vec<_>, Vec<_>) = self.rules
             .into_iter()
-            .partition(|rule| rule.is_in_scope(&scopes) && !self.excluded_symbols.contains(&rule.symbol));
+            .partition(|rule| rule.is_in_scope(&scopes));
         
         for rule in filtered {
             println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
         }
 
+        // Filter out symbols that are excluded
+        let (symbols, filtered) = self.symbols
+            .into_iter()
+            .partition(|symbol| !self.excluded_symbols.contains(&symbol.name));
+        
+        for symbol in filtered {
+            println!("Symbol: {:?} Skipped... Excluded via `excluded_symbols` in config file", symbol);
+        }
+
         // Add missing rules if auto_generate is enabled
         if self.auto_generate {
-            Self::add_missing_rules(&self.symbols, &mut rules);
+            Self::add_missing_rules(&symbols, &mut rules);
         }
 
         // Ensure that all symbols have rules if exit_on_missing_rules is enabled
         if self.exit_on_missing_rules {
-            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&self.symbols, &rules);
+            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&symbols, &rules);
             if !symbols_with_no_rule.is_empty() {
                 println!("ERROR: Rules missing for the following symbols in the configuration file.");
                 for symbol in symbols_with_no_rule {
-                    println!(" 0x{:08X} - {:?}", symbol.address, symbol.name);
+                    println!(" 0x{:08X} - {:?} - {:?}", symbol.address, symbol.symbol_type, symbol.name);
                 }
                 let e = "`exit_on_missing_rule` is enabled in the configuration file and the symbols above do not have rules.";
                 return Err(anyhow::anyhow!(e))
@@ -323,7 +348,7 @@ impl AuxBuilder {
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
         
         for mut symbol in self.key_symbols {
-            symbol.resolve(&self.symbols)?;
+            symbol.resolve(&symbols)?;
             aux.key_symbols.push(symbol);
             aux.header.key_symbol_count += 1;
             aux.header.size += 8;
@@ -337,7 +362,7 @@ impl AuxBuilder {
         let mut offset_in_default = 0;
 
         for rule in rules.iter_mut() {
-            let symbol = self.symbols
+            let symbol = symbols
                 .iter()
                 .find(|&entry| &entry.name == &rule.symbol)
                 .ok_or(
@@ -345,7 +370,7 @@ impl AuxBuilder {
                         "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
                         rule.symbol
                 ))?;
-            rule.resolve(symbol, &self.symbols, info)?;
+            rule.resolve(symbol, &symbols, info)?;
             
             let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
             entry.offset_to_default = offset_in_default;

@@ -17,7 +17,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 
-use auxgen::{Symbol, AuxBuilder};
+use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
 
 pub const POINTER_LENGTH: u64 = 8;
@@ -102,9 +102,10 @@ pub struct Config {
     pub auto_gen: bool,
     /// An option that if true, will cause the generator to abort if any
     /// symbols are found that do not have a corresponding rule in the config
+    #[serde(default, alias = "NoMissingRules")]
     pub no_missing_rules: bool,
-    /// A list of symbols to exclude when if `auto_gen` or `no_missing_symbols` are
-    /// set to true.
+    /// A list of symbols to exclude from including in the auxiliary file.
+    #[serde(default, alias = "ExcludedSymbols")]
     pub excluded_symbols: Vec<String>,
 }
 
@@ -120,7 +121,6 @@ pub struct ConfigFile {
     /// the auxiliary file.
     #[serde(alias = "rule", default = "Vec::new", rename = "rule")]
     pub rules: Vec<ValidationRule>,
-
 }
 
 pub fn main() -> Result<()> {
