@@ -982,6 +982,21 @@ PeCoffImageDiffValidation (
         }
 
         break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
+        if (ImageValidationEntryHdr->Size > sizeof (UINTN)) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is expected to be a pointer but has size 0x%x\n", __func__, ImageValidationEntryHdr, ImageValidationEntryHdr->Size));
+          Status = EFI_INVALID_PARAMETER;
+          break;
+        }
+
+        if ((UINT8 *)((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset) == NULL) {
+          DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is a NULL ptr\n", __func__, ImageValidationEntryHdr));
+          Status = EFI_SECURITY_VIOLATION;
+          break;
+        }
+
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
+        break;
       default:
         // Does not support unknown validation type
         DEBUG ((
