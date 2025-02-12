@@ -1,9 +1,9 @@
-# Auxillary File Generation Tool
+# Auxiliary File Generation Tool
 
 This tool generates the binary file used to verify the state of a module after execution and revert it to it's original
 state. Any rule specified in the configuration file will be 1. Reverted and 2. Verified (depending on the verification type).
 
-## Auxillary File Format
+## Auxiliary File Format
 
 ```text
 +--------------------------------------------+
@@ -121,6 +121,14 @@ at a specific address. `validation.reference` and `validation.address` is mutual
 validation.type = "self"
 validation.reference = "Optional[String]"
 validation.address = "Optional[int]"
+```
+
+#### Validation Type: Pointer
+
+The pointer validation type verifies that the symbol is in-fact a pointer and subject to pointer-specific validation such as not being null.
+
+``` toml
+validation.type = "pointer"
 ```
 
 ### config

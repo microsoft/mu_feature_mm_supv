@@ -93,9 +93,9 @@ impl Default for ImageValidationDataHeader {
 /// type depending on the validation_type field. The other possible header
 /// types are:
 /// 
-/// - IMAGE_VALIDATION_CONTENT
-/// - IMAGE_VALIDATION_MEM_ATTR
-/// - IMAGE_VALIDATION_SELF_REF
+/// - validation_type = 0x2: IMAGE_VALIDATION_CONTENT
+/// - validation_type = 0x3: IMAGE_VALIDATION_MEM_ATTR
+/// - validation_type = 0x4: IMAGE_VALIDATION_SELF_REF
 /// 
 #[derive(Clone)]
 pub struct ImageValidationEntryHeader {
@@ -157,7 +157,8 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
                 } else {
                     return Err(scroll::Error::Custom("SELF validation type must have an address".to_string()))
                 }
-            }
+            },
+            ValidationType::Pointer => {},
         }
         Ok(offset)
     }
@@ -185,7 +186,8 @@ impl ImageValidationEntryHeader {
             ValidationType::NonZero => 0,
             ValidationType::Content{content} => content.len() as u32,
             ValidationType::MemAttr {..} => 24,
-            ValidationType::Ref{..} => 4
+            ValidationType::Ref{..} => 4,
+            ValidationType::Pointer => 0,
         }
     }
 }

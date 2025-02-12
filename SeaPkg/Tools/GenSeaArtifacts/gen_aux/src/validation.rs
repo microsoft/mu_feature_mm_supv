@@ -108,7 +108,7 @@ impl From<&Symbol> for ValidationRule {
 /// An enum representing the type of validation to be performed on the symbol
 ///
 /// This enum also contains the data required to perform the validation and is
-/// written to the auxillary file in the validation entry section. See the
+/// written to the auxiliary file in the validation entry section. See the
 /// TryIntoCtx impl for
 /// [ImageValidationEntryHeader](crate::auxgen::ImageValidationEntryHeader) for
 /// more information.
@@ -120,6 +120,7 @@ impl From<&Symbol> for ValidationRule {
 /// Content - IMAGE_VALIDATION_CONTENT
 /// MemAttr - IMAGE_VALIDATION_MEM_ATTR
 /// Ref - IMAGE_VALIDATION_SELF_REF
+/// Pointer - IMAGE_VALIDATION_ENTRY_HEADER
 ///
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -142,7 +143,10 @@ pub enum ValidationType {
     MemAttr{memory_size: u64, must_have: u64, must_not_have: u64} = 3,
     /// Firmware will validate that two symbols are equal.
     #[serde(alias = "SELF", alias = "Self", alias = "self")]
-    Ref{reference: Option<String>, address: Option<u32>} = 4
+    Ref{reference: Option<String>, address: Option<u32>} = 4,
+    /// Firmware will validate that the symbol is a pointer and is not null
+    #[serde(alias = "POINTER", alias = "pointer")]
+    Pointer = 5,
 }
 
 impl Into<u32> for &ValidationType {
@@ -152,7 +156,8 @@ impl Into<u32> for &ValidationType {
             ValidationType::NonZero{..} => 1,
             ValidationType::Content{..} => 2,
             ValidationType::MemAttr{..} => 3,
-            ValidationType::Ref{..} => 4
+            ValidationType::Ref{..} => 4,
+            ValidationType::Pointer{..} => 5,
         }
     }
 }
