@@ -49,8 +49,9 @@ For more general background about the steps necessary to integrate the MM Superv
 
 | MM Driver | Location |
 | ---| ---|
-| MmSupervisorRing3Broker | MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf |
-| MmSupervisorErrorReport | MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf |
+| MmSupervisorRing3Broker       | MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf |
+| MmSupervisorRing3Performance  | MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf |
+| MmSupervisorErrorReport       | MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf |
 
 ## MM Standalone User Mode Libraries
 
