@@ -269,7 +269,6 @@ impl AuxBuilder {
             self.excluded_symbols = file.config.excluded_symbols;
             self.rules = file.rules;
             self.key_symbols = file.key_symbols;
-            
         }
         Ok(self)
     }
