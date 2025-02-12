@@ -123,10 +123,33 @@ validation.reference = "Optional[String]"
 validation.address = "Optional[int]"
 ```
 
-### autogen
+### config
+
+The below configuration options reside in a top level `[config]` section of the configuration file.
+
+``` toml
+[config]
+autogen = false
+no_missing_rules = true
+excluded_symbols = ["K"]
+```
+
+#### autogen
 
 `autogen = true/false` config option tells the tool if it should generate validation rules of type `None` for any symbol
-that does not currently have a rule created.
+that does not currently have a rule created. Use `excluded_symbols` to prevent rules to be generated from certain
+symbols.
+
+#### no_missing_rules
+
+`no_missing_rules = true/false` config option tells the tool to stop processing if there is a symbol that does not
+currently have a rule created. Cannot be used with `autogen`. Use `excluded_symbols` to prevent the process from
+stopping if a rule is missing for that particular symbol.
+
+#### excluded_symbols
+
+`excluded_symbols = Optional[List[String]]` config option to always filter out these symbols from the aux file.
+Additionally ensures these symbols are ignored for the `no_missing_rules` and `autogen` flags
 
 ## Adding a new rule
 

@@ -17,7 +17,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 
-use auxgen::{Symbol, AuxBuilder};
+use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
 
 pub const POINTER_LENGTH: u64 = 8;
@@ -93,9 +93,27 @@ impl std::fmt::Debug for KeySymbol {
     }
 }
 
-/// Configuration options available in the config file.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
+    /// An option that if true, will generate a validation entry of 
+    /// verification type NONE for every symbol without a rule in the config
+    /// file.
+    #[serde(default, alias = "AutoGen", alias = "autogen")]
+    pub auto_gen: bool,
+    /// An option that if true, will cause the generator to abort if any
+    /// symbols are found that do not have a corresponding rule in the config
+    #[serde(default, alias = "NoMissingRules")]
+    pub no_missing_rules: bool,
+    /// A list of symbols to exclude from including in the auxiliary file.
+    #[serde(default, alias = "ExcludedSymbols")]
+    pub excluded_symbols: Vec<String>,
+}
+
+/// Configuration options available in the config file.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ConfigFile {
+    #[serde(alias = "config", default = "Config::default")]
+    pub config: Config,
     /// A list of key symbols to be added to the auxiliary file header.
     #[serde(alias = "key", default = "Vec::new")]
     pub key_symbols: Vec<KeySymbol>,
@@ -103,11 +121,6 @@ pub struct Config {
     /// the auxiliary file.
     #[serde(alias = "rule", default = "Vec::new", rename = "rule")]
     pub rules: Vec<ValidationRule>,
-    /// An option that if true, will generate a validation entry of 
-    /// verification type NONE for every symbol without a rule in the config
-    /// file.
-    #[serde(default, alias = "AutoGen", alias = "autogen")]
-    pub auto_gen: bool,
 }
 
 pub fn main() -> Result<()> {
@@ -146,7 +159,7 @@ pub fn main() -> Result<()> {
             .map(|symbol| symbol.into())
             .collect();
 
-        let config = Config {
+        let config = ConfigFile {
             rules,
             ..Default::default()
         };
