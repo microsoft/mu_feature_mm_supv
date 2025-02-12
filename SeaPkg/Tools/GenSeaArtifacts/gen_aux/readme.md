@@ -125,7 +125,8 @@ validation.address = "Optional[int]"
 
 #### Validation Type: Pointer
 
-The pointer validation type verifies that the symbol is in-fact a pointer and subject to pointer-specific validation such as not being null.
+The pointer validation type verifies that the symbol is in-fact a pointer and subject to pointer-specific validation
+such as not being null.
 
 ``` toml
 validation.type = "pointer"
