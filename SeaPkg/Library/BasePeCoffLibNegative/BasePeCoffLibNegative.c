@@ -828,6 +828,19 @@ PeCoffImageDiffValidation (
       return EFI_INVALID_PARAMETER;
     }
 
+    // Ensure this entry's default value does not overflow the Auxiliary file buffer.
+    if (ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size > ReferenceDataSize) {
+      DEBUG ((
+        DEBUG_ERROR,
+        "%a: Current entry's default value: 0x%x total length: 0x%x exceeds reference data limit 0x%x\n",
+        __func__,
+        ImageValidationEntryHdr->OffsetToDefault,
+        ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size,
+        ReferenceDataSize
+        ));
+      return EFI_COMPROMISED_DATA;
+    }
+
     switch (ImageValidationEntryHdr->ValidationType) {
       case IMAGE_VALIDATION_ENTRY_TYPE_NONE:
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
@@ -844,7 +857,8 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
         ImageValidationEntryContent = (IMAGE_VALIDATION_CONTENT *)(ImageValidationEntryHdr);
-        if (sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > ReferenceDataSize) {
+        // Ensure "Content" in the header (TargetContent) does not overflow the Auxiliary file buffer.
+        if ((UINT8 *)ImageValidationEntryContent + sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > (UINT8 *)ReferenceData + ReferenceDataSize) {
           DEBUG ((
             DEBUG_ERROR,
             "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
@@ -937,19 +951,6 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
         ImageValidationEntrySelfRef = (IMAGE_VALIDATION_SELF_REF *)(ImageValidationEntryHdr);
-        if (ImageValidationEntrySelfRef->Header.OffsetToDefault + ImageValidationEntrySelfRef->Header.Size > ReferenceDataSize) {
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
-            __func__,
-            ImageValidationEntrySelfRef->Header.OffsetToDefault,
-            ImageValidationEntrySelfRef->Header.Size,
-            ReferenceDataSize
-            ));
-          Status = EFI_COMPROMISED_DATA;
-          break;
-        }
-
         // For now, self reference is only valid for address type in x64 mode or below
         if (ImageValidationEntrySelfRef->Header.Size > sizeof (EFI_PHYSICAL_ADDRESS)) {
           DEBUG ((

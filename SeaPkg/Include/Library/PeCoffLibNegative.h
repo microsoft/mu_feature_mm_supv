@@ -56,10 +56,10 @@ typedef struct {
 
 typedef struct {
   UINT32    EntrySignature;
-  UINT32    Offset; // Offset to the start of the target image
-  UINT32    Size;   // Size of this entry
-  UINT32    ValidationType;
-  UINT32    OffsetToDefault;
+  UINT32    Offset;           // Offset to the data to validate in the loaded image.
+  UINT32    Size;             // Size (in bytes) of the data to validate in the loaded image.
+  UINT32    ValidationType;   // The Validation type to be performed on this data.
+  UINT32    OffsetToDefault;  // Offset to the default value in the aux file this header is contained in.
 } IMAGE_VALIDATION_ENTRY_HEADER;
 
 typedef struct {
