@@ -64,11 +64,13 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = None;
+            let symbol_type = crate::SymbolType::Public;
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 size,
                 name,
                 type_index,
+                symbol_type,
             });
         }
         Ok(pdb::SymbolData::Data(data)) => {
@@ -76,6 +78,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = get_size_from_index(&info, data.type_index)? as u32;
             let name = data.name.to_string().to_string();
             let type_index = Some(data.type_index);
+            let symbol_type = crate::SymbolType::Data;
             
             // A data symbol should always take precedence over an existing
             // symbol on a collision (typically label). If there is a collision
@@ -90,6 +93,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
                 size,
                 name,
                 type_index,
+                symbol_type,
             });
         }
         Ok(pdb::SymbolData::Procedure(data)) => {
@@ -97,11 +101,13 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = Some(data.type_index);
+            let symbol_type = crate::SymbolType::Procedure;
             map.entry(name.clone()).or_insert( crate::Symbol {
                 address,
                 size,
                 name,
                 type_index,
+                symbol_type,
             });
         }
         Ok(pdb::SymbolData::Label(data)) => {
@@ -109,11 +115,13 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let size = POINTER_LENGTH as u32;
             let name = data.name.to_string().to_string();
             let type_index = None;
+            let symbol_type = crate::SymbolType::Label;
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 size,
                 name,
                 type_index,
+                symbol_type,
             });
         }
         _ => {}

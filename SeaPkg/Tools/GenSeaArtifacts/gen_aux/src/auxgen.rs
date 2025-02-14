@@ -10,7 +10,18 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{TypeIndex, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{Config, KeySymbol, ValidationRule, ValidationType};
+use crate::{ConfigFile, KeySymbol, ValidationRule, ValidationType};
+
+/// The type of symbol in the PDB file.
+#[derive(Default, Clone, PartialEq)]
+pub enum SymbolType {
+    #[default]
+    None,
+    Public,
+    Data,
+    Procedure,
+    Label,
+}
 
 /// A struct representing a symbol in the PDB file.
 #[derive(Default, Clone)]
@@ -23,6 +34,8 @@ pub struct Symbol {
     pub size: u32,
     // The type index of the symbol
     pub type_index: Option<TypeIndex>,
+    // The type of the symbol
+    pub symbol_type: SymbolType,
 }
 
 impl std::fmt::Debug for Symbol {
@@ -184,12 +197,16 @@ pub struct AuxBuilder {
     loaded_image: Vec<u8>,
     /// A list of symbols to generate rules for
     symbols: Vec<Symbol>,
-    /// A list of key symbols to be added to the auxillary file header.
+    /// A list of key symbols to be added to the auxiliary file header.
     key_symbols: Vec<KeySymbol>,
     // A list of rules that apply to a certain symbol
     rules: Vec<ValidationRule>,
     // Auto Generate rules for symbols that don't have any
     auto_generate: bool,
+    // Exit if a symbol is missing a rule in the config file
+    exit_on_missing_rules: bool,
+    // Symbols filtered out of the aux file
+    excluded_symbols: Vec<String>,
 }
 
 impl AuxBuilder {
@@ -241,10 +258,17 @@ impl AuxBuilder {
     pub fn with_config(mut self, path: Option<std::path::PathBuf>) -> anyhow::Result<Self> {
         if let Some(path) = path {
             let data = std::fs::read_to_string(path)?;
-            let config = toml::from_str::<Config>(&data)?;
-            self.auto_generate = config.auto_gen;
-            self.rules = config.rules;
-            self.key_symbols = config.key_symbols;
+            let file = toml::from_str::<ConfigFile>(&data)?;
+            
+            if file.config.auto_gen && file.config.no_missing_rules {
+                return Err(anyhow::anyhow!("auto_gen and no_missing_symbols cannot be true at the same time."));
+            }
+            
+            self.exit_on_missing_rules = file.config.no_missing_rules;
+            self.auto_generate = file.config.auto_gen;
+            self.excluded_symbols = file.config.excluded_symbols;
+            self.rules = file.rules;
+            self.key_symbols = file.key_symbols;
         }
         Ok(self)
     }
@@ -254,6 +278,28 @@ impl AuxBuilder {
     pub fn with_symbols(mut self, symbols: Vec<Symbol>) -> Self {
         self.symbols = symbols;
         self
+    }
+
+    /// Generates rules for any symbols that do not have a rule in the config file. Ignores any symbols in the
+    /// `excluded_symbols` list in the configuration file (that filter is done before calling this function).
+    pub fn add_missing_rules(symbols: &Vec<Symbol>, rules: &mut Vec<ValidationRule>) {
+        for symbol in symbols {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name) {
+                rules.push(ValidationRule::new(symbol.name.clone()));
+            }
+        }
+    }
+
+    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` and
+    /// any symbols in the `excluded_symbols` list in the configuration file (that filter is done before calling this function).
+    pub fn find_symbols_with_no_rule(symbols: &Vec::<Symbol>, rules: &Vec<ValidationRule>) -> Vec<Symbol> {
+        let mut missing = Vec::new();
+        for symbol in symbols {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name || symbol.symbol_type == SymbolType::Procedure) {
+                missing.push(symbol.clone());
+            }
+        }
+        missing
     }
 
     /// Generates the aux file. By default, only rules specified in the
@@ -269,12 +315,39 @@ impl AuxBuilder {
         for rule in filtered {
             println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
         }
+
+        // Filter out symbols that are excluded
+        let (symbols, filtered) = self.symbols
+            .into_iter()
+            .partition(|symbol| !self.excluded_symbols.contains(&symbol.name));
+        
+        for symbol in filtered {
+            println!("Symbol: {:?} Skipped... Excluded via `excluded_symbols` in config file", symbol);
+        }
+
+        // Add missing rules if auto_generate is enabled
+        if self.auto_generate {
+            Self::add_missing_rules(&symbols, &mut rules);
+        }
+
+        // Ensure that all symbols have rules if exit_on_missing_rules is enabled
+        if self.exit_on_missing_rules {
+            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&symbols, &rules);
+            if !symbols_with_no_rule.is_empty() {
+                println!("ERROR: Rules missing for the following symbols in the configuration file.");
+                for symbol in symbols_with_no_rule {
+                    println!(" 0x{:08X} - {:?}", symbol.address, symbol.name);
+                }
+                let e = "`exit_on_missing_rule` is enabled in the configuration file and the symbols above do not have rules.";
+                return Err(anyhow::anyhow!(e))
+            }
+        }
         
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
         
         for mut symbol in self.key_symbols {
-            symbol.resolve(&self.symbols)?;
+            symbol.resolve(&symbols)?;
             aux.key_symbols.push(symbol);
             aux.header.key_symbol_count += 1;
             aux.header.size += 8;
@@ -287,16 +360,8 @@ impl AuxBuilder {
 
         let mut offset_in_default = 0;
 
-        if self.auto_generate{
-            for symbol in &self.symbols {
-                if !rules.iter().any(|rule| &rule.symbol == &symbol.name) {
-                    rules.push(ValidationRule::new(symbol.name.clone()));
-                }
-            }
-        }
-
         for rule in rules.iter_mut() {
-            let symbol = self.symbols
+            let symbol = symbols
                 .iter()
                 .find(|&entry| &entry.name == &rule.symbol)
                 .ok_or(
@@ -304,7 +369,7 @@ impl AuxBuilder {
                         "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
                         rule.symbol
                 ))?;
-            rule.resolve(symbol, &self.symbols, info)?;
+            rule.resolve(symbol, &symbols, info)?;
             
             let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
             entry.offset_to_default = offset_in_default;
