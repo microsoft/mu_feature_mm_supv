@@ -93,8 +93,7 @@ Done:
 
   @param[in] ImageBase      The base address of the image.
   @param[in] ImageSize      The size of the image.
-  @param[in] AuxFileBase    The base address of the auxiliary file.
-  @param[in] AuxFileLength  The length of the auxiliary file.
+  @param[in] AuxFileHdr     The header of the auxiliary file.
   @param[in] PageTableBase  The base address of the page table.
   @param[out] DigestList    The digest list of the image.
 
@@ -105,12 +104,11 @@ Done:
 EFI_STATUS
 EFIAPI
 VerifyAndHashImage (
-  IN  UINTN               ImageBase,
-  IN  UINT64              ImageSize,
-  IN  UINT64              AuxFileBase,
-  IN  UINT64              AuxFileLength,
-  IN  UINT64              PageTableBase,
-  OUT TPML_DIGEST_VALUES  *DigestList
+  IN  UINTN                         ImageBase,
+  IN  UINT64                        ImageSize,
+  IN  IMAGE_VALIDATION_DATA_HEADER  *AuxFileHdr,
+  IN  UINT64                        PageTableBase,
+  OUT TPML_DIGEST_VALUES            *DigestList
   )
 {
   EFI_STATUS                    Status;
@@ -159,7 +157,7 @@ VerifyAndHashImage (
     goto Exit;
   }
 
-  Status = PeCoffImageDiffValidation ((VOID *)ImageBase, Buffer, ImageSize, (VOID *)AuxFileBase, AuxFileLength, PageTableBase);
+  Status = PeCoffImageDiffValidation ((VOID *)ImageBase, Buffer, ImageSize, AuxFileHdr, PageTableBase);
   if (EFI_ERROR (Status)) {
     goto Exit;
   }
@@ -332,6 +330,7 @@ SeaResponderReport (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
   KEY_SYMBOL                        *KeySymbols;
   PE_COFF_LOADER_IMAGE_CONTEXT      ImageContext;
+  IMAGE_VALIDATION_DATA_HEADER      *AuxFileHdr;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
@@ -367,27 +366,34 @@ SeaResponderReport (
     goto Exit;
   }
 
-  if ((IMAGE_VALIDATION_DATA_HEADER *)(VOID *)AuxFileBase == 0) {
+  AuxFileHdr = (IMAGE_VALIDATION_DATA_HEADER *)(VOID *)AuxFileBase;
+  if (AuxFileHdr == NULL) {
     DEBUG ((DEBUG_ERROR, "%a Reported aux file base address is NULL!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (!IsBufferInsideMmram (AuxFileBase, AuxFileSize)) {
-    DEBUG ((DEBUG_ERROR, "%a Reported aux file (0x%p: 0x%x) does not reside in MMRAM region!\n", __func__, AuxFileBase, AuxFileSize));
+  if (AuxFileHdr->Size > AuxFileSize) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file size is larger than the actual size 0x%x 0x%x\n", __func__, AuxFileHdr->Size, AuxFileSize));
+    Status = EFI_COMPROMISED_DATA;
+    goto Exit;
+  }
+
+  if (!IsBufferInsideMmram (AuxFileBase, AuxFileHdr->Size)) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file (0x%p: 0x%x) does not reside in MMRAM region!\n", __func__, AuxFileBase, AuxFileHdr->Size));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  if (((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
-    DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature %p %x\n", __func__, AuxFileBase, ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->HeaderSignature));
+  if (AuxFileHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
+    DEBUG ((DEBUG_ERROR, "%a Reported aux file does not have valid signature 0x%p 0x%x\n", __func__, AuxFileHdr, AuxFileHdr->HeaderSignature));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
-  KeySymbols = (KEY_SYMBOL *)(AuxFileBase + ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->OffsetToFirstKeySymbol);
+  KeySymbols = (KEY_SYMBOL *)((UINT8 *)AuxFileHdr + AuxFileHdr->OffsetToFirstKeySymbol);
 
-  for (Index = 0; Index < ((IMAGE_VALIDATION_DATA_HEADER *)AuxFileBase)->KeySymbolCount; Index++) {
+  for (Index = 0; Index < AuxFileHdr->KeySymbolCount; Index++) {
     switch (KeySymbols[Index].Signature) {
       case KEY_SYMBOL_FW_POLICY_SIGNATURE:
         FirmwarePolicySymbol = &KeySymbols[Index];
@@ -566,8 +572,7 @@ SeaResponderReport (
   Status = VerifyAndHashImage (
              MmSupervisorBase,
              MmSupervisorImageSize,
-             AuxFileBase,
-             AuxFileSize,
+             AuxFileHdr,
              SupvPageTableBase,
              &DigestList
              );

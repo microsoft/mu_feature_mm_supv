@@ -757,8 +757,7 @@ Done:
                                             should not touch the content of this buffer.
   @param[in,out]  TargetImage               The pointer to the target image buffer.
   @param[in]      TargetImageSize           The size of the target image buffer.
-  @param[in]      ReferenceData             The pointer to the reference data buffer to assist .
-  @param[in]      ReferenceDataSize         The size of the reference data buffer.
+  @param[in]      ImageValidationHdr        The pointer to the auxiliary file data buffer to assist.
   @param[in]      PageTableBase             The base address of the page table.
 
   @return EFI_SUCCESS               The PE/COFF image was reverted.
@@ -769,15 +768,13 @@ Done:
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
-  IN      VOID                  *OriginalImageBaseAddress,
-  IN OUT  VOID                  *TargetImage,
-  IN      UINTN                 TargetImageSize,
-  IN      CONST VOID            *ReferenceData,
-  IN      UINTN                 ReferenceDataSize,
-  IN      EFI_PHYSICAL_ADDRESS  PageTableBase
+  IN      VOID                                *OriginalImageBaseAddress,
+  IN OUT  VOID                                *TargetImage,
+  IN      UINTN                               TargetImageSize,
+  IN      CONST IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr,
+  IN      EFI_PHYSICAL_ADDRESS                PageTableBase
   )
 {
-  IMAGE_VALIDATION_DATA_HEADER   *ImageValidationHdr;
   IMAGE_VALIDATION_ENTRY_HEADER  *ImageValidationEntryHdr;
   IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   IMAGE_VALIDATION_MEM_ATTR      *ImageValidationEntryMemAttr;
@@ -789,32 +786,26 @@ PeCoffImageDiffValidation (
   EFI_PHYSICAL_ADDRESS           AddrInTarget;
   EFI_PHYSICAL_ADDRESS           AddrInOrigin;
 
-  if ((TargetImageSize == 0) || (ReferenceDataSize == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a: Invalid input size 0x%x and 0x%x\n", __func__, TargetImageSize, ReferenceDataSize));
+  if ((TargetImage == NULL) || (ImageValidationHdr == NULL)) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ImageValidationHdr));
     return EFI_INVALID_PARAMETER;
   }
 
-  if ((TargetImage == NULL) || (ReferenceData == NULL)) {
-    DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ReferenceData));
+  if ((TargetImageSize == 0) || (ImageValidationHdr->Size == 0)) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid input size 0x%x and 0x%x\n", __func__, TargetImageSize, ImageValidationHdr->Size));
     return EFI_INVALID_PARAMETER;
   }
 
-  ImageValidationHdr = (IMAGE_VALIDATION_DATA_HEADER *)ReferenceData;
   if (ImageValidationHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
     DEBUG ((DEBUG_ERROR, "%a: Invalid signature 0x%x at 0x%p\n", __func__, ImageValidationHdr->HeaderSignature, ImageValidationHdr));
     return EFI_INVALID_PARAMETER;
   }
 
-  if (ImageValidationHdr->Size != ReferenceDataSize) {
-    DEBUG ((DEBUG_ERROR, "%a: Invalid size 0x%x vs. 0x%x\n", __func__, ImageValidationHdr->Size, ReferenceDataSize));
-    return EFI_COMPROMISED_DATA;
-  }
-
   ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
-    if ((UINT8 *)(ImageValidationEntryHdr) >= ((UINT8 *)ReferenceData + ReferenceDataSize)) {
-      DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8 *)ReferenceData + ReferenceDataSize));
+    if ((UINT8 *)(ImageValidationEntryHdr) >= ((UINT8 *)ImageValidationHdr + ImageValidationHdr->Size)) {
+      DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8 *)ImageValidationHdr + ImageValidationHdr->Size));
       return EFI_COMPROMISED_DATA;
     }
 
@@ -829,14 +820,14 @@ PeCoffImageDiffValidation (
     }
 
     // Ensure this entry's default value does not overflow the Auxiliary file buffer.
-    if (ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size > ReferenceDataSize) {
+    if (ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size > ImageValidationHdr->Size) {
       DEBUG ((
         DEBUG_ERROR,
         "%a: Current entry's default value: 0x%x total length: 0x%x exceeds reference data limit 0x%x\n",
         __func__,
         ImageValidationEntryHdr->OffsetToDefault,
         ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size,
-        ReferenceDataSize
+        ImageValidationHdr->Size
         ));
       return EFI_COMPROMISED_DATA;
     }
@@ -858,14 +849,14 @@ PeCoffImageDiffValidation (
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
         ImageValidationEntryContent = (IMAGE_VALIDATION_CONTENT *)(ImageValidationEntryHdr);
         // Ensure "Content" in the header (TargetContent) does not overflow the Auxiliary file buffer.
-        if ((UINT8 *)ImageValidationEntryContent + sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > (UINT8 *)ReferenceData + ReferenceDataSize) {
+        if ((UINT8 *)ImageValidationEntryContent + sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size > (UINT8 *)ImageValidationHdr + ImageValidationHdr->Size) {
           DEBUG ((
             DEBUG_ERROR,
             "%a: Current entry range 0x%p: 0x%x exceeds reference data limit 0x%x\n",
             __func__,
             ImageValidationEntryContent,
             sizeof (*ImageValidationEntryContent) + ImageValidationEntryHdr->Size,
-            ReferenceDataSize
+            ImageValidationHdr->Size
             ));
           Status = EFI_COMPROMISED_DATA;
           break;
@@ -1015,7 +1006,7 @@ PeCoffImageDiffValidation (
     }
 
     // We should not do this when the above validation fails
-    CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ReferenceData + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+    CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
 
     ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
