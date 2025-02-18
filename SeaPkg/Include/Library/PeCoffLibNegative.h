@@ -56,10 +56,10 @@ typedef struct {
 
 typedef struct {
   UINT32    EntrySignature;
-  UINT32    Offset; // Offset to the start of the target image
-  UINT32    Size;   // Size of this entry
-  UINT32    ValidationType;
-  UINT32    OffsetToDefault;
+  UINT32    Offset;           // Offset to the data to validate in the loaded image.
+  UINT32    Size;             // Size (in bytes) of the data to validate in the loaded image.
+  UINT32    ValidationType;   // The Validation type to be performed on this data.
+  UINT32    OffsetToDefault;  // Offset to the default value in the aux file this header is contained in.
 } IMAGE_VALIDATION_ENTRY_HEADER;
 
 typedef struct {
@@ -201,8 +201,7 @@ PeCoffLoaderImageNegativeReadFromMemory (
                                             should not touch the content of this buffer.
   @param[in,out]  TargetImage               The pointer to the target image buffer.
   @param[in]      TargetImageSize           The size of the target image buffer.
-  @param[in]      ReferenceData             The pointer to the reference data buffer to assist .
-  @param[in]      ReferenceDataSize         The size of the reference data buffer.
+  @param[in]      ImageValidationHdr        The pointer to the auxiliary file data buffer to assist.
   @param[in]      PageTableBase             The base address of the page table.
 
   @return EFI_SUCCESS               The PE/COFF image was reverted.
@@ -212,12 +211,11 @@ PeCoffLoaderImageNegativeReadFromMemory (
 EFI_STATUS
 EFIAPI
 PeCoffImageDiffValidation (
-  IN      VOID                  *OriginalImageBaseAddress,
-  IN OUT  VOID                  *TargetImage,
-  IN      UINTN                 TargetImageSize,
-  IN      CONST VOID            *ReferenceData,
-  IN      UINTN                 ReferenceDataSize,
-  IN      EFI_PHYSICAL_ADDRESS  PageTableBase
+  IN      VOID                                *OriginalImageBaseAddress,
+  IN OUT  VOID                                *TargetImage,
+  IN      UINTN                               TargetImageSize,
+  IN      CONST IMAGE_VALIDATION_DATA_HEADER  *ImageValidationEntryHdr,
+  IN      EFI_PHYSICAL_ADDRESS                PageTableBase
   );
 
 #endif // BASE_PECOFF_LIB_NEGATIVE_H_

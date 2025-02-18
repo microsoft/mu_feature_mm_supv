@@ -107,7 +107,7 @@ pub struct ImageValidationEntryHeader {
     /// The type of validation to perform on the symbol. Contains the data
     /// necessary to perform the validation.
     validation_type: ValidationType,
-    /// Offset of the default value in the raw data
+    /// Offset of the default value in the aux file.
     offset_to_default: u32
 }
 
