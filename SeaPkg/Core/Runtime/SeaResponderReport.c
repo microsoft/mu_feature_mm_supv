@@ -104,10 +104,10 @@ Done:
 EFI_STATUS
 EFIAPI
 VerifyAndHashImage (
-  IN  UINTN                         ImageBase,
+  IN  EFI_PHYSICAL_ADDRESS          ImageBase,
   IN  UINT64                        ImageSize,
   IN  IMAGE_VALIDATION_DATA_HEADER  *AuxFileHdr,
-  IN  UINT64                        PageTableBase,
+  IN  EFI_PHYSICAL_ADDRESS          PageTableBase,
   OUT TPML_DIGEST_VALUES            *DigestList
   )
 {
@@ -321,10 +321,10 @@ SeaResponderReport (
   UINT8                             *LocalMmiEntryBase = NULL;
   PER_CORE_MMI_ENTRY_STRUCT_HDR     *MmiEntryStructHdr;
   UINT32                            MmiEntryStructHdrSize;
-  UINT64                            MmSupervisorBase;
+  EFI_PHYSICAL_ADDRESS              MmSupervisorBase;
   UINT64                            MmSupervisorImageSize;
   UINT64                            FirmwarePolicyBase;
-  UINT64                            SupvPageTableBase;
+  EFI_PHYSICAL_ADDRESS              SupvPageTableBase;
   TPML_DIGEST_VALUES                DigestList;
   UINT8                             *DrtmSmmPolicyData;
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
@@ -508,7 +508,7 @@ SeaResponderReport (
   }
 
   // CR3 should be pointing to the page table from symbol list in the aux file
-  SupvPageTableBase = *(UINT64 *)(MmSupervisorBase + PageTableSymbol->Offset);
+  SupvPageTableBase = *(EFI_PHYSICAL_ADDRESS *)(MmSupervisorBase + PageTableSymbol->Offset);
   if (Fixup32Ptr[FIXUP32_CR3_OFFSET] != SupvPageTableBase) {
     DEBUG ((DEBUG_ERROR, "%a Calculated page table 0x%p does not match MM entry code populated value 0x%p.\n", __func__, SupvPageTableBase, Fixup32Ptr[FIXUP32_CR3_OFFSET]));
     Status = EFI_SECURITY_VIOLATION;
