@@ -14,6 +14,7 @@
 #include <Register/Cpuid.h>
 #include <Register/SmramSaveStateMap.h>
 #include <SeaResponder.h>
+#include <SeaAuxiliary.h>
 #include <SmmSecurePolicy.h>
 #include <x64/Smx.h>
 

@@ -30,6 +30,7 @@
 [LibraryClasses]
   HashLibRaw|Include/Library/HashLibRaw.h
   PeCoffLibNegative|Include/Library/PeCoffLibNegative.h
+  PeCoffValidationLib|Include/Library/PeCoffValidationLib.h
   SeaManifestPublicationLib|Include/Library/SeaManifestPublicationLib.h
   StmLib|Include/Library/StmLib.h
   StmPlatformLib|Include/Library/StmPlatformLib.h
