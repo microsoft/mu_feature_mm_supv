@@ -1780,6 +1780,9 @@ CompareAddressPoint (
            ((MEMORY_ADDRESS_POINT *)Buffer2)->Type;
   }
 
+  DEBUG ((DEBUG_ERROR, "%a - Identical Address Point Detected!!!\n", __func__));
+  DEBUG ((DEBUG_ERROR, "Address(0x%0lx) Type(0x%x)\n", ((MEMORY_ADDRESS_POINT *)Buffer1)->Address, ((MEMORY_ADDRESS_POINT *)Buffer1)->Type));
+
   // This should not happen that resource hob has 2 identical address points
   ASSERT (FALSE);
   return 0;
