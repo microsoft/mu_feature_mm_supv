@@ -765,7 +765,8 @@ PeCoffImageDiffValidation (
 
     switch (ImageValidationEntryHdr->ValidationType) {
       case IMAGE_VALIDATION_ENTRY_TYPE_NONE:
-        Status = EFI_SUCCESS;
+        Status                      = EFI_SUCCESS;
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
         Status                      = PeCoffImageValidationNonZero (TargetImage, ImageValidationEntryHdr);
