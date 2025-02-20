@@ -118,7 +118,7 @@ PeCoffImageValidationNonZero (
     goto Done;
   }
 
-  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO)) {
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO)) {
     DEBUG ((
       DEBUG_ERROR,
       "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n",
