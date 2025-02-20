@@ -34,6 +34,7 @@
   PrintLib|MdePkg/Library/BasePrintLib/BasePrintLib.inf
   UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
+  PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
 
 [LibraryClasses.common.PEIM]
   PeimEntryPoint|MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
@@ -90,6 +91,7 @@
   SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
   SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
   SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
+  SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
 
 [Components.X64]
   SeaPkg/Core/Stm.inf {

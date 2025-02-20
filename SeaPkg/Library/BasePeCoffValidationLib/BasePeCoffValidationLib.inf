@@ -1,0 +1,30 @@
+## @file
+#  SEA PE/COFF Image Validation Library implementation.
+#
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BasePeCoffValidationLib
+  FILE_GUID                      = CD335760-582B-4373-9A3A-9E6721EF2C96
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = PeCoffValidationLib
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64 EBC ARM AARCH64
+#
+
+[Sources]
+  BasePeCoffValidationLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  SeaPkg/SeaPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  BaseMemoryLib
