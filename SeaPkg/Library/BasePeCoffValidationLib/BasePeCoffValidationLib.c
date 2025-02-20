@@ -67,7 +67,7 @@ InspectTargetRangeAttribute (
   AlignedAddress = ALIGN_VALUE (Address - EFI_PAGE_SIZE + 1, EFI_PAGE_SIZE);
 
   // To cover head portion from "Address" alignment adjustment
-  Status = SafeUintnAdd (Size, Address - AlignedAddress, &Size);
+  Status = SafeUintnAdd (Size, (UINTN)(Address - AlignedAddress), &Size);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -221,7 +221,7 @@ PeCoffImageValidationMemAttr (
 
   AddrInTarget = 0;
   CopyMem (&AddrInTarget, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size);
-  Status = InspectTargetRangeAttribute (PageTableBase, AddrInTarget, MemAttrHdr->TargetMemorySize, &MemAttr);
+  Status = InspectTargetRangeAttribute (PageTableBase, AddrInTarget, (UINTN)MemAttrHdr->TargetMemorySize, &MemAttr);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to read memory attribute of 0x%p: 0x%x for entry at 0x%p - %r\n", __func__, AddrInTarget, MemAttrHdr->TargetMemorySize, MemAttrHdr, Status));
     goto Done;
