@@ -91,6 +91,7 @@
   SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
   SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
   SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
+  SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
 
 [Components.X64]
   SeaPkg/Core/Stm.inf {
