@@ -207,7 +207,14 @@ PeCoffImageValidationMemAttr (
   }
 
   if (Hdr->Size > sizeof (AddrInTarget)) {
-    DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p has invalid size: 0x%x\n", __func__, Hdr, Hdr->Size));
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: Current entry 0x%p has invalid size of0x%x, max is 0x%x\n",
+      __func__,
+      Hdr,
+      Hdr->Size,
+      sizeof (AddrInTarget)
+      ));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
