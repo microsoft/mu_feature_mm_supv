@@ -110,6 +110,25 @@ PeCoffImageValidationNonZero (
 {
   EFI_STATUS  Status;
 
+  if ((TargetImage == NULL) || (Hdr == NULL)) {
+    DEBUG ((DEBUG_ERROR, "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p\n", __func__, TargetImage, Hdr));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n",
+      __func__,
+      Hdr->EntrySignature,
+      Hdr->ValidationType,
+      Hdr
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
   if (IsZeroBuffer ((UINT8 *)TargetImage + Hdr->Offset, Hdr->Size)) {
     DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is all 0s\n", __func__, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size));
     Status = EFI_SECURITY_VIOLATION;
@@ -131,6 +150,8 @@ Done:
   @param[in] ImageValidationHdr  The pointer to the auxiliary file data buffer to assist.
 
   @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The provided header has an invalid signature
   @retval EFI_COMPROMISED_DATA    The content to match against overflows the auxiliary file.
   @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image does not match the reference data.
 **/
@@ -144,6 +165,32 @@ PeCoffImageValidationContent (
 {
   IMAGE_VALIDATION_CONTENT  *ContentHdr;
   EFI_STATUS                Status;
+
+  if ((TargetImage == NULL) || (Hdr == NULL) || (ImageValidationHdr == NULL)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p, ImageValidationHdr 0x%p\n",
+      __func__,
+      TargetImage,
+      Hdr,
+      ImageValidationHdr
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_CONTENT)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n",
+      __func__,
+      Hdr->EntrySignature,
+      Hdr->ValidationType,
+      Hdr
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
 
   ContentHdr = (IMAGE_VALIDATION_CONTENT *)Hdr;
   // Ensure "Content" in the header (TargetContent) does not overflow the Auxiliary file buffer.
@@ -182,6 +229,8 @@ Done:
   @param[in] PageTableBase  The base address of the page table.
 
   @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid signature.
   @retval EFI_INVALID_PARAMETER   The validation entry has invalid must have and must not have attributes.
   @retval EFI_INVALID_PARAMETER   The validation entry data size is invalid. It must be a pointer size.
   @retval EFI_SECURITY_VIOLATION  The target image does not meet the memory attribute requirements.
@@ -198,6 +247,24 @@ PeCoffImageValidationMemAttr (
   IMAGE_VALIDATION_MEM_ATTR  *MemAttrHdr;
   EFI_PHYSICAL_ADDRESS       AddrInTarget;
   EFI_STATUS                 Status;
+
+  if ((TargetImage == NULL) || (Hdr == NULL)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p\n",
+      __func__,
+      TargetImage,
+      Hdr
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR)) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n", __func__, Hdr->EntrySignature, Hdr->ValidationType, Hdr));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
 
   MemAttrHdr = (IMAGE_VALIDATION_MEM_ATTR *)Hdr;
   if ((MemAttrHdr->TargetMemoryAttributeMustHave == 0) && (MemAttrHdr->TargetMemoryAttributeMustNotHave == 0)) {
@@ -251,7 +318,9 @@ Done:
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
 
   @retval EFI_SUCCESS             The target image passes the validation.
-  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid signature.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid size.
   @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
@@ -266,6 +335,25 @@ PeCoffImageValidationSelfRef (
   EFI_STATUS                 Status;
   EFI_PHYSICAL_ADDRESS       AddrInTarget;
   EFI_PHYSICAL_ADDRESS       AddrInOrigin;
+
+  if ((TargetImage == NULL) || (Hdr == NULL) || (OriginalImageBaseAddress == NULL)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p, OriginalImageBaseAddress 0x%p\n",
+      __func__,
+      TargetImage,
+      Hdr,
+      OriginalImageBaseAddress
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF)) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n", __func__, Hdr->EntrySignature, Hdr->ValidationType, Hdr));
+    Status = EFI_COMPROMISED_DATA;
+    goto Done;
+  }
 
   SelfRefHdr = (IMAGE_VALIDATION_SELF_REF *)Hdr;
   // For now, self reference is only valid for address type in x64 mode or below
@@ -312,7 +400,9 @@ Done:
   @param[in] Hdr          The header of the validation entry.
 
   @retval EFI_SUCCESS             The target image passes the validation.
-  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid signature.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid size.
   @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
@@ -323,6 +413,24 @@ PeCoffImageValidationPointer (
   )
 {
   EFI_STATUS  Status;
+
+  if ((TargetImage == NULL) || (Hdr == NULL)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p\n",
+      __func__,
+      TargetImage,
+      Hdr
+      ));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_POINTER)) {
+    DEBUG ((DEBUG_ERROR, "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n", __func__, Hdr->EntrySignature, Hdr->ValidationType, Hdr));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
 
   if (Hdr->Size > sizeof (UINTN)) {
     DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is expected to be a pointer but has size 0x%x\n", __func__, Hdr, Hdr->Size));

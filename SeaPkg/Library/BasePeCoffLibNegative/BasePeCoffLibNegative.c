@@ -740,11 +740,6 @@ PeCoffImageDiffValidation (
       return EFI_COMPROMISED_DATA;
     }
 
-    if (ImageValidationEntryHdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) {
-      DEBUG ((DEBUG_ERROR, "%a: Invalid current signature 0x%x at 0x%p\n", __func__, ImageValidationEntryHdr->EntrySignature, ImageValidationEntryHdr));
-      return EFI_COMPROMISED_DATA;
-    }
-
     if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
       DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%x exceeds target image limit 0x%x\n", __func__, ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size, TargetImageSize));
       return EFI_INVALID_PARAMETER;

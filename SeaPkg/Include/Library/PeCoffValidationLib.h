@@ -48,6 +48,8 @@ PeCoffImageValidationNonZero (
   @param[in] ImageValidationHdr  The pointer to the auxiliary file data buffer to assist.
 
   @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The provided header has an invalid signature
   @retval EFI_COMPROMISED_DATA    The content to match against overflows the auxiliary file.
   @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image does not match the reference data.
 **/
@@ -69,6 +71,8 @@ PeCoffImageValidationContent (
   @param[in] PageTableBase  The base address of the page table.
 
   @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid signature.
   @retval EFI_INVALID_PARAMETER   The validation entry has invalid must have and must not have attributes.
   @retval EFI_INVALID_PARAMETER   The validation entry data size is invalid. It must be a pointer size.
   @retval EFI_SECURITY_VIOLATION  The target image does not meet the memory attribute requirements.
@@ -90,7 +94,9 @@ PeCoffImageValidationMemAttr (
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
 
   @retval EFI_SUCCESS             The target image passes the validation.
-  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid signature.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid size.
   @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
@@ -109,7 +115,9 @@ PeCoffImageValidationSelfRef (
   @param[in] Hdr          The header of the validation entry.
 
   @retval EFI_SUCCESS             The target image passes the validation.
-  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid signature.
+  @retval EFI_INVALID_PARAMETER   The validation entry has an invalid size.
   @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
