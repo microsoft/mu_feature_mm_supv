@@ -713,6 +713,7 @@ PeCoffImageDiffValidation (
   )
 {
   IMAGE_VALIDATION_ENTRY_HEADER  *ImageValidationEntryHdr;
+  IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   UINTN                          Index;
   EFI_STATUS                     Status;
 
@@ -767,19 +768,24 @@ PeCoffImageDiffValidation (
         Status = EFI_SUCCESS;
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
-        Status = PeCoffImageValidationNonZero (TargetImage, ImageValidationEntryHdr);
+        Status                      = PeCoffImageValidationNonZero (TargetImage, ImageValidationEntryHdr);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
-        Status = PeCoffImageValidationContent (TargetImage, ImageValidationEntryHdr, ImageValidationHdr);
+        Status                      = PeCoffImageValidationContent (TargetImage, ImageValidationEntryHdr, ImageValidationHdr);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINT8 *)(ImageValidationEntryHdr + 1) + ImageValidationEntryHdr->Size);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
-        Status = PeCoffImageValidationMemAttr (TargetImage, ImageValidationEntryHdr, PageTableBase);
+        Status                      = PeCoffImageValidationMemAttr (TargetImage, ImageValidationEntryHdr, PageTableBase);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_MEM_ATTR *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
-        Status = PeCoffImageValidationSelfRef (TargetImage, ImageValidationEntryHdr, OriginalImageBaseAddress);
+        Status                      = PeCoffImageValidationSelfRef (TargetImage, ImageValidationEntryHdr, OriginalImageBaseAddress);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_SELF_REF *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
-        Status = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr);
+        Status                      = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
         break;
       default:
         Status = EFI_INVALID_PARAMETER;
@@ -800,7 +806,7 @@ PeCoffImageDiffValidation (
     // We should not do this when the above validation fails
     CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
 
-    ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINT8 *)ImageValidationEntryHdr + ImageValidationEntryHdr->Size);
+    ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
 
   return Status;
