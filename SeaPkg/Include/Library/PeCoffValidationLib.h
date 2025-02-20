@@ -1,7 +1,7 @@
 /** @file
   Defines function definitions for validating a loaded PE/COFF image post execution
-  against an auxiliary file (defined in SeaAuxiliary.h) that contains auxiliary
-  multiple validation entries. A validation entry specifies a specific region in the
+  against an auxiliary file (defined in SeaAuxiliary.h) that contains multiple
+  auxiliary validation entries. A validation entry specifies a specific region in the
   target image buffer to validate against, a validation type to perform, and any
   necessary data to assist in the validation.
 
