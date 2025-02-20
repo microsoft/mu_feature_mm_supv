@@ -201,7 +201,7 @@ PeCoffImageValidationMemAttr (
 
   MemAttrHdr = (IMAGE_VALIDATION_MEM_ATTR *)Hdr;
   if ((MemAttrHdr->TargetMemoryAttributeMustHave == 0) && (MemAttrHdr->TargetMemoryAttributeMustNotHave == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p has invalid must have 0x%x and must not have 0x%x\n", __func__, MemAttrHdr, MemAttrHdr->TargetMemoryAttributeMustHave, MemAttrHdr->TargetMemoryAttributeMustNotHave));
+    DEBUG ((DEBUG_ERROR, "%a: Entry 0x%p cannot have zero for must and must not have attribute values\n", __func__, MemAttrHdr));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
