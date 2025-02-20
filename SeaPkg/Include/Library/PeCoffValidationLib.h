@@ -35,8 +35,8 @@
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationNonZero (
-  IN VOID                           *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   );
 
 /**
@@ -54,9 +54,9 @@ PeCoffImageValidationNonZero (
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationContent (
-  IN VOID                                *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER       *Hdr,
-  IN CONST IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN CONST IMAGE_VALIDATION_DATA_HEADER   *ImageValidationHdr
   );
 
 /**
@@ -76,9 +76,9 @@ PeCoffImageValidationContent (
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationMemAttr (
-  IN VOID                           *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
-  IN EFI_PHYSICAL_ADDRESS           PageTableBase
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN EFI_PHYSICAL_ADDRESS                 PageTableBase
   );
 
 /**
@@ -96,9 +96,9 @@ PeCoffImageValidationMemAttr (
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
-  IN VOID                           *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
-  IN VOID                           *OriginalImageBaseAddress
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN CONST VOID                           *OriginalImageBaseAddress
   );
 
 /**
@@ -115,8 +115,8 @@ PeCoffImageValidationSelfRef (
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationPointer (
-  IN VOID                           *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   );
 
 #endif // PECOFF_VALIDATION_LIB_H_
