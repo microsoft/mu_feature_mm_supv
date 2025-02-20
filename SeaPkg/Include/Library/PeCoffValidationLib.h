@@ -63,7 +63,7 @@ PeCoffImageValidationContent (
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
-  belongs to a user page that is mapped inside MM and teh page attributes match the requirements specified
+  belongs to a user page that is mapped inside MM and the page attributes match the requirements specified
   by the validation entry.
 
   @param[in] TargetImage    The pointer to the target image buffer.
