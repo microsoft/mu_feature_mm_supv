@@ -1,5 +1,5 @@
 /** @file -- SeaAuxiliary.h
-  Defines necessary structures and constants for parsing auxiliary data for 
+  Defines necessary structures and constants for parsing auxiliary data for
   PE/COFF image validation.
 
   Copyright (c) Microsoft Corporation.

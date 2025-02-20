@@ -767,19 +767,19 @@ PeCoffImageDiffValidation (
         Status = EFI_SUCCESS;
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO:
-        Status = PeCoffImageValidationNonZero(TargetImage, ImageValidationEntryHdr);
+        Status = PeCoffImageValidationNonZero (TargetImage, ImageValidationEntryHdr);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_CONTENT:
-        Status = PeCoffImageValidationContent(TargetImage, ImageValidationEntryHdr, ImageValidationHdr);
+        Status = PeCoffImageValidationContent (TargetImage, ImageValidationEntryHdr, ImageValidationHdr);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR:
-        Status = PeCoffImageValidationMemAttr(TargetImage, ImageValidationEntryHdr, PageTableBase);
+        Status = PeCoffImageValidationMemAttr (TargetImage, ImageValidationEntryHdr, PageTableBase);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
-        Status = PeCoffImageValidationSelfRef(TargetImage, ImageValidationEntryHdr, OriginalImageBaseAddress);
+        Status = PeCoffImageValidationSelfRef (TargetImage, ImageValidationEntryHdr, OriginalImageBaseAddress);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
-        Status = PeCoffImageValidationPointer(TargetImage, ImageValidationEntryHdr);
+        Status = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr);
         break;
       default:
         Status = EFI_INVALID_PARAMETER;

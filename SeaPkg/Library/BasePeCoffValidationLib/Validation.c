@@ -4,7 +4,7 @@
   multiple validation entries. A validation entry specifies a specific region in the
   target image buffer to validate against, a validation type to perform, and any
   necessary data to assist in the validation.
-  
+
   There currently exists five validation types:
   - Non-Zero: Validates that the specified region in the target image buffer is not all zero.
   - Content: Validates that the specified region in the target image buffer matches the content in the reference data.
@@ -100,9 +100,9 @@ EFI_STATUS
 PeCoffImageValidationNonZero (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
-)
+  )
 {
-  EFI_STATUS Status;
+  EFI_STATUS  Status;
 
   if (IsZeroBuffer ((UINT8 *)TargetImage + Hdr->Offset, Hdr->Size)) {
     DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is all 0s\n", __func__, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size));
@@ -112,8 +112,8 @@ PeCoffImageValidationNonZero (
 
   Status = EFI_SUCCESS;
 
-  Done:
-    return Status;
+Done:
+  return Status;
 }
 
 /**
@@ -130,13 +130,13 @@ PeCoffImageValidationNonZero (
 **/
 EFI_STATUS
 PeCoffImageValidationContent (
-  IN VOID                               *TargetImage,
-  IN IMAGE_VALIDATION_ENTRY_HEADER      *Hdr,
-  IN CONST IMAGE_VALIDATION_DATA_HEADER *ImageValidationHdr
-)
+  IN VOID                                *TargetImage,
+  IN IMAGE_VALIDATION_ENTRY_HEADER       *Hdr,
+  IN CONST IMAGE_VALIDATION_DATA_HEADER  *ImageValidationHdr
+  )
 {
-  IMAGE_VALIDATION_CONTENT *ContentHdr;
-  EFI_STATUS               Status;
+  IMAGE_VALIDATION_CONTENT  *ContentHdr;
+  EFI_STATUS                Status;
 
   ContentHdr = (IMAGE_VALIDATION_CONTENT *)Hdr;
   // Ensure "Content" in the header (TargetContent) does not overflow the Auxiliary file buffer.
@@ -161,8 +161,8 @@ PeCoffImageValidationContent (
 
   Status = EFI_SUCCESS;
 
-  Done:
-    return Status;
+Done:
+  return Status;
 }
 
 /**
@@ -172,7 +172,7 @@ PeCoffImageValidationContent (
     @param[in] TargetImage    The pointer to the target image buffer.
     @param[in] Hdr            The header of the validation entry.
     @param[in] PageTableBase  The base address of the page table.
-    
+
     @returns EFI_SUCCESS             The target image passes the validation.
     @returns EFI_INVALID_PARAMETER   The validation entry has invalid must have and must not have attributes.
     @returns EFI_INVALID_PARAMETER   The validation entry data size is invalid. It must be a pointer size.
@@ -183,7 +183,7 @@ PeCoffImageValidationMemAttr (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
   IN EFI_PHYSICAL_ADDRESS           PageTableBase
-)
+  )
 {
   UINT64                     MemAttr;
   IMAGE_VALIDATION_MEM_ATTR  *MemAttrHdr;
@@ -222,8 +222,8 @@ PeCoffImageValidationMemAttr (
 
   Status = EFI_SUCCESS;
 
-  Done:
-    return Status;
+Done:
+  return Status;
 }
 
 /**
@@ -243,13 +243,13 @@ PeCoffImageValidationSelfRef (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
   IN VOID                           *OriginalImageBaseAddress
-)
+  )
 {
-  IMAGE_VALIDATION_SELF_REF *SelfRefHdr;
-  EFI_STATUS Status;
-  EFI_PHYSICAL_ADDRESS AddrInTarget;
-  EFI_PHYSICAL_ADDRESS AddrInOrigin;
-  
+  IMAGE_VALIDATION_SELF_REF  *SelfRefHdr;
+  EFI_STATUS                 Status;
+  EFI_PHYSICAL_ADDRESS       AddrInTarget;
+  EFI_PHYSICAL_ADDRESS       AddrInOrigin;
+
   SelfRefHdr = (IMAGE_VALIDATION_SELF_REF *)Hdr;
   // For now, self reference is only valid for address type in x64 mode or below
   if (Hdr->Size > sizeof (EFI_PHYSICAL_ADDRESS)) {
@@ -259,7 +259,7 @@ PeCoffImageValidationSelfRef (
       __func__,
       SelfRefHdr,
       Hdr->Size
-    ));
+      ));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
@@ -276,17 +276,16 @@ PeCoffImageValidationSelfRef (
       Hdr,
       AddrInTarget,
       AddrInOrigin
-    ));
+      ));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
 
   Status = EFI_SUCCESS;
 
-  Done:
-    return Status;
+Done:
+  return Status;
 }
-
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
@@ -303,9 +302,9 @@ EFI_STATUS
 PeCoffImageValidationPointer (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
-)
+  )
 {
-  EFI_STATUS Status;
+  EFI_STATUS  Status;
 
   if (Hdr->Size > sizeof (UINTN)) {
     DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is expected to be a pointer but has size 0x%x\n", __func__, Hdr, Hdr->Size));
@@ -321,6 +320,6 @@ PeCoffImageValidationPointer (
 
   Status = EFI_SUCCESS;
 
-  Done:
-    return Status;
+Done:
+  return Status;
 }
