@@ -19,8 +19,8 @@
 
 **/
 
-#ifndef BASE_PECOFF_VALIDATION_LIB_H_
-#define BASE_PECOFF_VALIDATION_LIB_H_
+#ifndef PECOFF_VALIDATION_LIB_H_
+#define PECOFF_VALIDATION_LIB_H_
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
@@ -29,10 +29,11 @@
   @param[in] TargetImage  The pointer to the target image buffer.
   @param[in] Hdr          The header of the validation entry.
 
-  @return EFI_SUCCESS             The target image passes the validation.
-  @return EFI_SECURITY_VIOLATION  The specified buffer in the target image is all zero.
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image is all zero.
 **/
 EFI_STATUS
+EFIAPI
 PeCoffImageValidationNonZero (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
@@ -46,11 +47,12 @@ PeCoffImageValidationNonZero (
   @param[in] Hdr                 The header of the validation entry.
   @param[in] ImageValidationHdr  The pointer to the auxiliary file data buffer to assist.
 
-  @return EFI_SUCCESS             The target image passes the validation.
-  @return EFI_COMPROMISED_DATA    The content to match against overflows the auxiliary file.
-  @return EFI_SECURITY_VIOLATION  The specified buffer in the target image does not match the reference data.
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_COMPROMISED_DATA    The content to match against overflows the auxiliary file.
+  @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image does not match the reference data.
 **/
 EFI_STATUS
+EFIAPI
 PeCoffImageValidationContent (
   IN VOID                                *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER       *Hdr,
@@ -66,12 +68,13 @@ PeCoffImageValidationContent (
   @param[in] Hdr            The header of the validation entry.
   @param[in] PageTableBase  The base address of the page table.
 
-  @returns EFI_SUCCESS             The target image passes the validation.
-  @returns EFI_INVALID_PARAMETER   The validation entry has invalid must have and must not have attributes.
-  @returns EFI_INVALID_PARAMETER   The validation entry data size is invalid. It must be a pointer size.
-  @returns EFI_SECURITY_VIOLATION  The target image does not meet the memory attribute requirements.
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid must have and must not have attributes.
+  @retval EFI_INVALID_PARAMETER   The validation entry data size is invalid. It must be a pointer size.
+  @retval EFI_SECURITY_VIOLATION  The target image does not meet the memory attribute requirements.
 **/
 EFI_STATUS
+EFIAPI
 PeCoffImageValidationMemAttr (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
@@ -86,11 +89,12 @@ PeCoffImageValidationMemAttr (
   @param[in] Hdr                       The header of the validation entry.
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
 
-  @return EFI_SUCCESS             The target image passes the validation.
-  @return EFI_INVALID_PARAMETER   The validation entry has invalid size.
-  @return EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
+EFIAPI
 PeCoffImageValidationSelfRef (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
@@ -101,17 +105,18 @@ PeCoffImageValidationSelfRef (
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
   is a pointer, and that the pointer is not NULL.
 
-  @param[in] TargetImage               The pointer to the target image buffer.
-  @param[in] Hdr                       The header of the validation entry.
+  @param[in] TargetImage  The pointer to the target image buffer.
+  @param[in] Hdr          The header of the validation entry.
 
-  @return EFI_SUCCESS             The target image passes the validation.
-  @return EFI_INVALID_PARAMETER   The validation entry has invalid size.
-  @return EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   The validation entry has invalid size.
+  @retval EFI_SECURITY_VIOLATION  The target image does not match the content in the original image buffer.
 **/
 EFI_STATUS
+EFIAPI
 PeCoffImageValidationPointer (
   IN VOID                           *TargetImage,
   IN IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   );
 
-#endif // BASE_PECOFF_VALIDATION_LIB_H_
+#endif // PECOFF_VALIDATION_LIB_H_

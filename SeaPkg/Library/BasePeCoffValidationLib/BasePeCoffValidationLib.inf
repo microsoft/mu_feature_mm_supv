@@ -1,5 +1,5 @@
 ## @file
-#  PE/COFF Image Validation Library implementation.
+#  SEA PE/COFF Image Validation Library implementation.
 #
 #  Copyright (c) Microsoft Corporation.
 #
@@ -19,7 +19,7 @@
 #
 
 [Sources]
-  Validation.c
+  BasePeCoffValidationLib.c
 
 [Packages]
   MdePkg/MdePkg.dec
