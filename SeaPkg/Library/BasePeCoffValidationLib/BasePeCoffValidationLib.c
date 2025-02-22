@@ -396,10 +396,13 @@ Done:
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
-  is a pointer, and that the pointer is not NULL.
+  is a pointer, and that the pointer is not NULL. Will validate if the pointer is within the MSEG, which will
+  pass or fail based on the validation entry's `in_mseg` field.
 
   @param[in] TargetImage  The pointer to the target image buffer.
   @param[in] Hdr          The header of the validation entry.
+  @param[in] MsegBase     The base address of the MSEG.
+  @param[in] MsegSize     The size of the MSEG.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -411,10 +414,14 @@ EFI_STATUS
 EFIAPI
 PeCoffImageValidationPointer (
   IN CONST VOID                           *TargetImage,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN EFI_PHYSICAL_ADDRESS                 MsegBase,
+  IN UINTN                                MsegSize
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS                Status;
+  IMAGE_VALIDATION_POINTER  *PointerHdr;
+  BOOLEAN                   InMseg;
 
   if ((TargetImage == NULL) || (Hdr == NULL)) {
     DEBUG ((
@@ -442,6 +449,29 @@ PeCoffImageValidationPointer (
 
   if ((UINT8 *)((UINT8 *)TargetImage + Hdr->Offset) == NULL) {
     DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is a NULL ptr\n", __func__, Hdr));
+    Status = EFI_SECURITY_VIOLATION;
+    goto Done;
+  }
+
+  PointerHdr = (IMAGE_VALIDATION_POINTER *)Hdr;
+  if (PointerHdr->InMseg > 1) {
+    DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p is of type pointer but InMseg value is not 0 or 1: 0x%x\n", __func__, Hdr, PointerHdr->InMseg));
+    Status = EFI_COMPROMISED_DATA;
+    goto Done;
+  }
+
+  InMseg = ((UINTN)((UINT8 *)TargetImage + Hdr->Offset) >= MsegBase) && ((UINTN)((UINT8 *)TargetImage + Hdr->Offset) < MsegBase + MsegSize);
+  if ((BOOLEAN)PointerHdr->InMseg != InMseg) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: Current entry 0x%p is expected to be a pointer either inside or outside of MSEG. MSEG Start: 0x%x, MSEG Size: 0x%x, Pointer: 0x%p, Expected InMSEG?: %x\n",
+      __func__,
+      Hdr,
+      MsegBase,
+      MsegSize,
+      (UINT8 *)TargetImage + Hdr->Offset,
+      PointerHdr->InMseg
+      ));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }

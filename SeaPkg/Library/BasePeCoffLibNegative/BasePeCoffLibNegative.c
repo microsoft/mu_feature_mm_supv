@@ -26,6 +26,7 @@
 #include <Uefi.h>
 #include <Base.h>
 #include <SeaAuxiliary.h>
+#include <Library/BaseLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
@@ -34,6 +35,9 @@
 #include <Library/PeCoffValidationLib.h>
 #include <Library/PeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
+#include <Register/Intel/ArchitecturalMsr.h>
+#include <Register/Intel/StmApi.h>
+#include <Register/Intel/Cpuid.h>
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
@@ -687,6 +691,84 @@ PeCoffLoaderImageNegativeReadFromMemory (
 }
 
 /**
+  Get 4K page aligned VMCS size.
+
+  @return 4K page aligned VMCS size
+**/
+UINT32
+GetAlignedVmcsSize (
+  VOID
+  )
+{
+  MSR_IA32_VMX_BASIC_REGISTER  VmxBasic;
+
+  //
+  // Read VMCS size and and align to 4KB
+  //
+  VmxBasic.Uint64 = AsmReadMsr64 (MSR_IA32_VMX_BASIC);
+  return ALIGN_VALUE (VmxBasic.Bits.VmcsSize, SIZE_4KB);
+}
+
+/**
+  Gets the MSEG base from the MSR and calculates the MSEG size.
+
+  @param[out] MsegBase  The MSEG base address.
+  @param[out] MsegSize  The MSEG size.
+
+  @retval EFI_SUCCESS    The MSEG base and size are retrieved successfully.
+  @retval EFI_NOT_FOUND  The gMsegSmRamGuid HOB is not found.
+  @retval EFI_NOT_FOUND  The PhysicalSize is 0.
+
+**/
+EFI_STATUS
+GetMsegBaseAndSize (
+  OUT EFI_PHYSICAL_ADDRESS  *MsegBase,
+  OUT UINTN                 *MsegSize
+  )
+{
+  EFI_STATUS                         Status;
+  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
+  CPUID_VERSION_INFO_EBX             VersionInfoEbx;
+  STM_HEADER                         *StmHeader;
+  UINTN                              NumberOfCpus;
+
+  //
+  // Find the MSEG Base address
+  //
+  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
+
+  if (SmmMonitorCtl.Bits.Valid != 1) {
+    DEBUG ((DEBUG_ERROR, "%a: SmmMonitorCtl Register is not valid\n", __func__));
+    Status = EFI_NOT_FOUND;
+    goto Done;
+  }
+
+  if (SmmMonitorCtl.Bits.MsegBase == 0) {
+    DEBUG ((DEBUG_ERROR, "%a: MSEG base is 0\n", __func__));
+    Status = EFI_NOT_FOUND;
+    goto Done;
+  }
+
+  *MsegBase = (EFI_PHYSICAL_ADDRESS)SmmMonitorCtl.Bits.MsegBase;
+
+  //
+  // Calculate the Minimum MSEG size
+  //
+  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
+  AsmCpuid (CPUID_VERSION_INFO, NULL, &VersionInfoEbx.Uint32, NULL, NULL);
+  NumberOfCpus = VersionInfoEbx.Bits.MaximumAddressableIdsForLogicalProcessors;
+
+  *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
+               StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
+               (StmHeader->SwStmHdr.PerProcDynamicMemorySize + GetAlignedVmcsSize () * 2) * NumberOfCpus);
+
+  Status = EFI_SUCCESS;
+
+Done:
+  return Status;
+}
+
+/**
   Revert fixups and global data changes to an executed PE/COFF image that was loaded
   with PeCoffLoaderLoadImage() and relocated with PeCoffLoaderRelocateImage().
 
@@ -716,6 +798,8 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   UINTN                          Index;
   EFI_STATUS                     Status;
+  EFI_PHYSICAL_ADDRESS           MsegBase;
+  UINTN                          MsegSize;
 
   if ((TargetImage == NULL) || (ImageValidationHdr == NULL)) {
     DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ImageValidationHdr));
@@ -730,6 +814,15 @@ PeCoffImageDiffValidation (
   if (ImageValidationHdr->HeaderSignature != IMAGE_VALIDATION_DATA_SIGNATURE) {
     DEBUG ((DEBUG_ERROR, "%a: Invalid signature 0x%x at 0x%p\n", __func__, ImageValidationHdr->HeaderSignature, ImageValidationHdr));
     return EFI_INVALID_PARAMETER;
+  }
+
+  //
+  // Get MSEG base and size for Pointer rules
+  //
+  Status = GetMsegBaseAndSize (&MsegBase, &MsegSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a: Failed to get MSEG base and size\n", __func__));
+    return Status;
   }
 
   ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
@@ -780,7 +873,7 @@ PeCoffImageDiffValidation (
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_SELF_REF *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
-        Status                      = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr);
+        Status                      = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr, MsegBase, MsegSize);
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
         break;
       default:

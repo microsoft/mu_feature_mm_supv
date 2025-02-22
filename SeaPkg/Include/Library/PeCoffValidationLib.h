@@ -111,10 +111,13 @@ PeCoffImageValidationSelfRef (
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
-  is a pointer, and that the pointer is not NULL.
+  is a pointer, and that the pointer is not NULL. Will validate if the pointer is within the MSEG, which will
+  pass or fail based on the validation entry's `in_mseg` field.
 
   @param[in] TargetImage  The pointer to the target image buffer.
   @param[in] Hdr          The header of the validation entry.
+  @param[in] MsegBase     The base address of the MSEG.
+  @param[in] MsegSize     The size of the MSEG.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -126,7 +129,9 @@ EFI_STATUS
 EFIAPI
 PeCoffImageValidationPointer (
   IN CONST VOID                           *TargetImage,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN EFI_PHYSICAL_ADDRESS                 MsegBase,
+  IN UINTN                                MsegSize
   );
 
 #endif // PECOFF_VALIDATION_LIB_H_
