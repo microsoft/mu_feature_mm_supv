@@ -62,6 +62,11 @@ typedef struct {
   UINT32                           TargetOffset;
 } IMAGE_VALIDATION_SELF_REF;
 
+typedef struct {
+  IMAGE_VALIDATION_ENTRY_HEADER    Header;
+  UINT32                           InMseg;
+} IMAGE_VALIDATION_POINTER;
+
 #pragma pack()
 
 #endif // SEA_AUXILIARY_H_
