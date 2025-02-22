@@ -158,7 +158,9 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
                     return Err(scroll::Error::Custom("SELF validation type must have an address".to_string()))
                 }
             },
-            ValidationType::Pointer => {},
+            ValidationType::Pointer{in_mseg} => {
+                this.gwrite(*in_mseg as u32, &mut offset)?;
+            },
         }
         Ok(offset)
     }
@@ -187,7 +189,7 @@ impl ImageValidationEntryHeader {
             ValidationType::Content{content} => content.len() as u32,
             ValidationType::MemAttr {..} => 24,
             ValidationType::Ref{..} => 4,
-            ValidationType::Pointer => 0,
+            ValidationType::Pointer{..} => 4,
         }
     }
 }
