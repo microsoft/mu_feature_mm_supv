@@ -130,6 +130,7 @@ such as not being null.
 
 ``` toml
 validation.type = "pointer"
+validation.in_mseg = true # Default: false
 ```
 
 ### config

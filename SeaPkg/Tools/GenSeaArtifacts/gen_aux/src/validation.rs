@@ -146,7 +146,10 @@ pub enum ValidationType {
     Ref{reference: Option<String>, address: Option<u32>} = 4,
     /// Firmware will validate that the symbol is a pointer and is not null
     #[serde(alias = "POINTER", alias = "pointer")]
-    Pointer = 5,
+    Pointer{
+        #[serde(default = "Default::default")]
+        in_mseg: bool
+    } = 5,
 }
 
 impl Into<u32> for &ValidationType {
