@@ -10,6 +10,9 @@
 #
 ##
 
+# Rebase/202502
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8896321ab7a481b99e5c33ec7b4c1282 | 2025-02-25T18-19-56 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
+
 # Dev/202405
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fcc0084f42574f4331ad258e53381c93 | 2025-01-27T21-27-02 | f54f113b0b84eb2fec245b97aad60545ba7a554b
 # Secure
@@ -17,9 +20,8 @@
 # Non-Secure
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 6967cd9168f4e96b0df5067c87ad9bc3 | 2025-01-30T00-05-25 | 564d4055cdf6801ee0c7264a4510748131d3165e
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 465d5d5aecd11469c7b706462e194f94 | 2024-08-28T16-50-23 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a391d46c2a0b5cf66f61056e2f79ae72 | 2024-10-01T17-01-09 | f2547000cccf6f8d37d730498c8f0b5a91ce8d89
-
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 4db1640daa92830eafef49cff474b792 | 2025-02-25T18-21-25 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 37d9e7a42a5b0d52738ea6b7776b7a6a | 2025-02-25T18-18-46 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmSupervisorCore

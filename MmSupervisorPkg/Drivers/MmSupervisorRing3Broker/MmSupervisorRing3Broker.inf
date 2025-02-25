@@ -10,12 +10,14 @@
 
 # This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
 
+# Rebase/202502
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8896321ab7a481b99e5c33ec7b4c1282 | 2025-02-25T18-22-36 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
 # Dev/202405
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fcc0084f42574f4331ad258e53381c93 | 2025-01-27T21-27-02 | f54f113b0b84eb2fec245b97aad60545ba7a554b
 # Release/202405
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 6967cd9168f4e96b0df5067c87ad9bc3 | 2025-02-18T23-53-24 | ea000218a1be694999a087d8f12cfb3400a82556
 
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a391d46c2a0b5cf66f61056e2f79ae72 | 2024-10-01T17-01-09 | f2547000cccf6f8d37d730498c8f0b5a91ce8d89
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 37d9e7a42a5b0d52738ea6b7776b7a6a | 2025-02-25T18-18-46 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
 
 [Defines]
   INF_VERSION                    = 0x0001001A
