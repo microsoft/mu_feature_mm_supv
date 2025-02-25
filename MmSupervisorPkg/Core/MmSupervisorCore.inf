@@ -219,7 +219,6 @@
   gSmmBaseHobGuid                               ## CONSUMES
   gMpInformation2HobGuid                        ## CONSUMES # Assume the HOB must has been created
   gEfiHobListGuid
-  gMmCoreDataHobGuid
   gMmFvDispatchGuid
   gEfiEventLegacyBootGuid
 
@@ -236,6 +235,7 @@
   gMmSupervisorRequestHandlerGuid               ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
+  gEfiHobMemoryAllocModuleGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
