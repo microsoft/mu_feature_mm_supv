@@ -18,7 +18,7 @@ global  ASM_PFX(gcSmiIdtr)
 global  ASM_PFX(gcSmiGdtr)
 global  ASM_PFX(gcPsd)
 
-    SECTION .data
+    SECTION .rdata
 
 NullSeg: DQ 0                   ; reserved by architecture
 CodeSeg32:
@@ -172,6 +172,8 @@ CODE32_SEL  equ   CodeSeg32 -   NullSeg
 ASM_PFX(gcSmiGdtr):
     DW      GDT_SIZE - 1
     DQ        NullSeg
+
+    SECTION .data
 
 ASM_PFX(gcSmiIdtr):
     DW      0
