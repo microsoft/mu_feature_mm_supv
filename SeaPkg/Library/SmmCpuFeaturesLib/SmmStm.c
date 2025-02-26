@@ -93,6 +93,13 @@ SmiRendezvous (
   IN      UINTN  CpuIndex
   );
 
+EFI_STATUS
+SmmSetMemoryAttributes (
+  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
+  IN  UINT64                Length,
+  IN  UINT64                Attributes
+  );
+
 //
 // This structure serves as a template for all processors.
 //
@@ -277,7 +284,16 @@ DiscoverSmiEntryInFvHobs (
               break;
             }
 
-            // TODO: Mark the region as supervisor read-only
+            Status = SmmSetMemoryAttributes (
+              (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
+              ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
+              EFI_MEMORY_SP | EFI_MEMORY_RO
+              );
+            if (EFI_ERROR (Status)) {
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to set SEA [%g] at 0x%p of %x bytes to be read-only - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
+              break;
+            }
+
             SeaResponderFound = TRUE;
           }
 
@@ -639,8 +655,6 @@ MmEndOfDxeEventNotify (
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
     Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
-
-    // TODO: Mark the region as supervisor read-only, or even read prevention...
 
     LongRsp = (VOID *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
   }
