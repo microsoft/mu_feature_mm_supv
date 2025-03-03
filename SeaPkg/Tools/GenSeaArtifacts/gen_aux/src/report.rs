@@ -61,6 +61,7 @@ impl CoverageReport {
         })
     }
 
+    /// Fills any sections of the image that are not covered by a rule with a segment marked as uncovered.
     fn fill_rule_gaps(segments: Vec<Segment>, end: u32) -> Vec<Segment> {
         let mut ret = Vec::new();
         let mut cur = 0;
@@ -81,6 +82,7 @@ impl CoverageReport {
         ret
     }
 
+    /// Writes the report to a file
     pub fn to_file(&self, path: std::path::PathBuf) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(path)?;
         let buffer = serde_json::to_vec_pretty(&self)?;
