@@ -156,6 +156,11 @@ class GenSeaArtifacts(IUefiHelperPlugin):
                 output_dir / "MmSupervisorCore.aux"
             )
 
+            shutil.copy2(
+                stm_build_dir / "MmSupervisorCore.json",
+                output_dir / "MmSupervisorCore.json"
+            )
+
             # Copy over MmSupervisorCore artifacts
             shutil.copy2(
                 mm_supervisor_build_dir / "MmSupervisorCore.efi",

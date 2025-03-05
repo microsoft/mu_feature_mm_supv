@@ -122,7 +122,7 @@ impl From<&Symbol> for ValidationRule {
 /// Ref - IMAGE_VALIDATION_SELF_REF
 /// Pointer - IMAGE_VALIDATION_ENTRY_HEADER
 ///
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 #[non_exhaustive]
 #[allow(non_camel_case_types)]
 #[repr(u32)]
@@ -161,6 +161,19 @@ impl Into<u32> for &ValidationType {
             ValidationType::MemAttr{..} => 3,
             ValidationType::Ref{..} => 4,
             ValidationType::Pointer{..} => 5,
+        }
+    }
+}
+
+impl Into<String> for &ValidationType {
+    fn into(self) -> String {
+        match self {
+            ValidationType::None{..} => "None".to_string(),
+            ValidationType::NonZero{..} => "NonZero".to_string(),
+            ValidationType::Content{..} => "Content".to_string(),
+            ValidationType::MemAttr{..} => "MemAttr".to_string(),
+            ValidationType::Ref{..} => "Ref".to_string(),
+            ValidationType::Pointer{..} => "Pointer".to_string(),
         }
     }
 }

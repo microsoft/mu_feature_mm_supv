@@ -99,16 +99,16 @@ impl Default for ImageValidationDataHeader {
 /// 
 #[derive(Clone)]
 pub struct ImageValidationEntryHeader {
-    signature: u32,
+    pub signature: u32,
     /// Offset of the value in the original image.
-    offset: u32,
+    pub offset: u32,
     /// Size of the value in bytes.
-    size: u32,
+    pub size: u32,
     /// The type of validation to perform on the symbol. Contains the data
     /// necessary to perform the validation.
-    validation_type: ValidationType,
+    pub validation_type: ValidationType,
     /// Offset of the default value in the aux file.
-    offset_to_default: u32
+    pub offset_to_default: u32
 }
 
 impl Default for ImageValidationEntryHeader {
