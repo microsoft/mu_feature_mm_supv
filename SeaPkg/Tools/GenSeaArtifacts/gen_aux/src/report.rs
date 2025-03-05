@@ -9,6 +9,7 @@
 use serde::Serialize;
 
 use std::io::Write;
+use std::cmp::Ordering;
 
 use crate::{auxgen::ImageValidationEntryHeader, validation::ValidationType};
 
@@ -22,17 +23,18 @@ pub struct CoverageReport {
 }
 
 impl CoverageReport {
-    pub fn from_validation_entries(image: &[u8], entries: &[ImageValidationEntryHeader]) -> anyhow::Result<Self> {
+    pub fn build(image: &[u8], sections: &[pdb::ImageSectionHeader], entries: &[ImageValidationEntryHeader]) -> anyhow::Result<Self> {
         let pe = goblin::pe::PE::parse(image)?;
         let optional_header = pe
             .header
             .optional_header
             .ok_or(anyhow::anyhow!("No optional header found"))?;
         let size_of_image = optional_header.windows_fields.size_of_image;
-        
-        let mut rules: Vec<Segment> = entries.iter().map(|entry| entry.into()).collect();
-        rules.sort_by_key(|rule| rule._start);
-        let rules = Self::fill_rule_gaps(rules, size_of_image);
+
+        let mut segments = SegmentList::new(size_of_image);
+        segments.add_ro_sections(sections);
+        segments.add_entry_headers(entries);
+        let rules = segments.into_inner();
 
         let covered: u32 = rules.iter().filter_map(|rule| {
             if rule.covered {
@@ -61,27 +63,6 @@ impl CoverageReport {
         })
     }
 
-    /// Fills any sections of the image that are not covered by a rule with a segment marked as uncovered.
-    fn fill_rule_gaps(segments: Vec<Segment>, end: u32) -> Vec<Segment> {
-        let mut ret = Vec::new();
-        let mut cur = 0;
-
-        for seg in segments.into_iter() {
-            if cur < seg._start {
-                ret.push(Segment::new(cur, seg._start, false, "".to_string()));
-            }
-
-            cur = seg._end.clone();
-            ret.push(seg);
-        }
-
-        if cur < end {
-            ret.push(Segment::new(cur, end, false, "".to_string()));
-        }
-
-        ret
-    }
-
     /// Writes the report to a file
     pub fn to_file(&self, path: std::path::PathBuf) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(path)?;
@@ -91,7 +72,75 @@ impl CoverageReport {
     }
 }
 
-#[derive(Serialize)]
+/// A wrapper around a list of segments that allows for inserting new segments into the list.
+struct SegmentList {
+    segments: Vec<Segment>,
+}
+
+impl SegmentList {
+    fn new(size: u32) -> Self {
+        SegmentList {
+            segments: vec![Segment::new(0, size, false, "".to_string())],
+        }
+    }
+
+    /// Consumes the list and returns the inner vector of segments.
+    pub fn into_inner(self) -> Vec<Segment> {
+        self.segments
+    }
+
+    /// Inserts a new segment into the list, splitting any existing segments as necessary.
+    fn insert(&mut self, new: Segment) {
+        for i in 0..self.segments.len() {
+            let seg = self.segments[i].clone();
+            match (new._start.cmp(&seg._start), new._end.cmp(&seg._end)) {
+                // The new segment is entirely contained within the old segment
+                (Ordering::Greater, Ordering::Less) => {
+                    let left = Segment::new(seg._start, new._end, seg.covered, seg.reason.clone());
+                    let right = Segment::new(new._end, seg._end, seg.covered, seg.reason.clone());
+                    self.segments[i] = left;
+                    self.segments.insert(i + 1, new);
+                    self.segments.insert(i + 2, right);
+                    return;
+                },
+                // The new and old segments start at the same address, but the new segment ends before the old segment
+                (Ordering::Equal, Ordering::Less) => {
+                    let right = Segment::new(new._end, seg._end, seg.covered, seg.reason.clone());
+                    self.segments[i] = new;
+                    self.segments.insert(i + 1, right);
+                    return;
+                },
+                // The new segment starts before the old segment, but ends at the same address
+                (Ordering::Greater, Ordering::Equal) => {
+                    let left = Segment::new(seg._start, new._start, seg.covered, seg.reason.clone());
+                    self.segments[i] = left;
+                    self.segments.insert(i + 1, new);
+                    return;
+                },
+                _ => continue,
+            }
+        }
+        panic!("oh no");
+    }
+
+    /// Adds a section (as one or more segments) if the section is read-only.
+    pub fn add_ro_sections(&mut self, sections: &[pdb::ImageSectionHeader]) {
+        for section in sections.iter() {
+            if section.characteristics.read() && !section.characteristics.write() && !section.characteristics.execute() {
+                self.insert(Segment::new(section.virtual_address, section.virtual_address + section.virtual_size, true, "ReadOnlySection".to_string()));
+            }
+        }
+    }
+
+    /// Adds a list of image validation entries as covered segments.
+    pub fn add_entry_headers(&mut self, entries: &[ImageValidationEntryHeader]) {
+        for entry in entries.iter() {
+            self.insert(entry.into());
+        }
+    }
+}
+
+#[derive(Serialize, Clone)]
 pub struct Segment  {
     start: String,
     #[serde(skip)]
@@ -101,11 +150,11 @@ pub struct Segment  {
     _end: u32,
     size: String,
     covered: bool,
-    rule: String,
+    reason: String,
 }
 
 impl Segment {
-    pub fn new(start: u32, end: u32, covered: bool, rule: String) -> Self {
+    pub fn new(start: u32, end: u32, covered: bool, reason: String) -> Self {
         Segment {
             start: format!("{:#x}", start),
             _start: start,
@@ -113,7 +162,7 @@ impl Segment {
             _end: end,
             size: format!("{:#x}", end - start),
             covered,
-            rule,
+            reason,
         }
     } 
 }
@@ -128,7 +177,7 @@ impl From<&ImageValidationEntryHeader> for Segment {
             _end: header.offset + header.size,
             size: format!("{:#x}", header.size),
             covered: *validation != ValidationType::None,
-            rule: validation.into(),
+            reason: validation.into(),
         }
     }
 }

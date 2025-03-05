@@ -188,7 +188,7 @@ pub fn main() -> Result<()> {
             }
         }
 
-        let report = CoverageReport::from_validation_entries(&efi, &aux.entries)?;
+        let report = CoverageReport::build(&efi, &pdb.sections()?.unwrap_or_default(), &aux.entries)?;
 
         report.to_file(output.with_extension("json"))?;
         aux.to_file(output)?;
