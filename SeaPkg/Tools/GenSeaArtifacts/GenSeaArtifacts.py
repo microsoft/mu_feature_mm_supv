@@ -23,7 +23,6 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         fp = os.path.abspath(__file__)
         obj.Register("generate_sea_includes", GenSeaArtifacts.generate_sea_includes, fp)
         obj.Register("generate_sea_artifacts", GenSeaArtifacts.generate_sea_artifacts, fp)
-        obj.Register("generate_rim_artifact", GenSeaArtifacts.generate_rim, fp)
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
 
     @staticmethod
@@ -218,39 +217,6 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         if ret != 0:
             raise RuntimeError("gen_manifest failed. Is your Cargo workspace setup correctly?")
         
-        return 0
-
-    @staticmethod
-    def generate_rim(stm_bin: Path, output_path: Path, config: dict):
-        """Generates the RIM file for the STM binary.
-
-        Args:
-            stm_bin: Path to the STM binary.
-            output_path: Path to place the RIM file including filename.
-            config: Configuration for the RIM generation.
-        """
-        if not stm_bin.is_file():
-            raise FileNotFoundError(stm_bin)
-        if "company_name" not in config:
-            raise ValueError("company_name not found in config.")
-        if "company_url" not in config:
-            raise ValueError("company_url not found in config.")
-
-        rim_version = config.get("version", "0.0.1")
-        company_name = config.get("company_name")
-        company_url = config.get("company_url")
-
-        args = "run --bin rim -- generate"
-        args += f' {stm_bin}'
-        args += f' -o {output_path}'
-        args += f' -r {rim_version}'
-        args += f' --company-name \"{company_name}\"'
-        args += f' --company-url \"{company_url}\"'
-
-        ret = RunCmd("cargo", args)
-        if ret != 0:
-            raise RuntimeError("gen_rim failed. Is your Cargo workspace setup correctly?")
-
         return 0
 
 def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path):
