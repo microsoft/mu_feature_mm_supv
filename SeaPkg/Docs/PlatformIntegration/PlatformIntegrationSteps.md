@@ -49,7 +49,7 @@ As part of a DRTM effort, the SEA core is respoinsble for verifying the entire e
 event occurs, the system has already booted into the OS, and the MM supervisor is already loaded and executed. Thus the
 validation routine from SEA needs to inspect the data, code and the environment of the MM supervisor.
 
-![Validation Illustration](validation_illustration.png)
+![Validation Illustration](Images/validation_illustration.png)
 
 __SEA Core Steps__:
 
