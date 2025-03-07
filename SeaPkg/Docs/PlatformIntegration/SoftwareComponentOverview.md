@@ -1,13 +1,14 @@
 # Software Components of the SEA
 
-This section of documentation is focused on the software components of the SEA that are useful during platform integration.
+This section of documentation is focused on the software components of the SEA that are important during platform
+integration.
 
-The SEA provides a software implementation that installs the MM foundation for Intel X64. In order to load SEA and MM Supervisor
-properly, certain software prerequisites (libraries, drivers, hobs, etc.) needs to be met, most of which are included in
-this package.
+The SEA provides a software implementation that installs the MM foundation for the Intel X64 architecture. In order to
+load SEA and MM Supervisor properly, certain software prerequisites (libraries, drivers, hobs, etc.) needs to be met,
+most of which are included in this package.
 
 By including the proper software components, a platform can ensure the SEA feature function as intended and the platform
-can meet Secured Core PC specification requirements. To enable an end-to-end Standalone MM based Secured Core solution,
+can meet Secured-core PC specification requirements. To enable an end-to-end Standalone MM based Secured Core solution,
 custom requirements may exist in adjacent UEFI firmware components.
 
 For more general background about the steps necessary to integrate the MM Supervisor to work with SEA, please review the

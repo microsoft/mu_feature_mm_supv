@@ -6,42 +6,44 @@ to the required code changes to integrate all of the pieces.
 
 ## High-Level Considerations
 
-1. [MM Supervisor Changes](#mm-supervisor-changes) - The supervisor is accountable for loading SEA core into MSEG region
-and protect the resources before SEA is loaded.
+1. [MM Supervisor Changes](#mm-supervisor-changes) - The supervisor is responsible for loading SEA core into MSEG region
+   and protecting MM assets before SEA is loaded.
 
 1. [Executed Supervisor Validation](#executed-supervisor-validation) - The SEA core is responsible for inspecting the MM
-supervisor environment and validating the MM supervisor code and data. This is a critical step in the DRTM process.
+   supervisor environment and validating the MM supervisor code and data. This is a critical step in the D-RTM process.
 
-1. [Platform Data Requirements](#platform-data-requirements) - The MM Supervisor requires a new set of industry standard
-defined data structures in addition to supervisor-specific data structures to be produced by the platform.
+1. [Platform Data Requirements](#platform-data-requirements) - The MM Supervisor requires that a new set of industry
+   standard defined data structures in addition to supervisor-specific data structures be produced by the platform.
 
-1. [SEA Code Integration](#sea-code-integration) - How to best integrate the `SEA core` collateral into a platform firmware.
+1. [SEA Code Integration](#sea-code-integration) - How to best integrate the `SEA core` collateral into a platform
+   firmware.
 
 ## MM Supervisor Changes
 
-Begin by reading the [MM supervisor documentation](../../../MmSupervisorPkg/Docs/MmSupervisor_Feature.md) to gain a basic
-understanding of Standalone MM and MM supervisor.
+Begin by reading the [MM supervisor documentation](../../../MmSupervisorPkg/Docs/MmSupervisor_Feature.md) to gain a
+basic understanding of the Standalone MM operating mode and the MM supervisor feature.
 
-In the SEA approach, the SEA is responsible for validating the entire flow of the MMI, which starts from the MMI entrypoint,
-jumping to the MM supervisor, and ended with return. This will require the MM entrypoint code to be decoupled from the MM
-supervisor, and the new MMI entrypoint code is auditable with respect to the jump point into the MM supervisor.
+SEA is responsible for validating the entire flow of the Memory Management Interrupt (MMI), which begins in the MMI
+entrypoint, continues through execution in the MM Supervisor, and finally ends with the `rsm` instruction to return
+from SMM. This requires the MM entrypoint code to be decoupled from the MM supervisor, and the new MMI entrypoint code
+is auditable with respect to the jump point into the MM supervisor.
 
 Hence, a new [MMI entrypoint](../../MmiEntrySea/MmiEntrySea.inf) is created to allow the MM supervisor to load using MM
-relocation phase. It is also crafted so that the jump point into the MM supervisor is located at the end of the MMI entrypoint
-code. This allows the SEA to validate the entire flow of the MMI.
+relocation phase. It is also crafted so that the jump point into the MM supervisor is located at the end of the MMI
+entrypoint code. This allows the SEA to validate the entire flow of the MMI.
 
 Thus, a new [SmmCpuFeaturesLib](../../Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf)
 is created to provide the necessary CPU features for the MM Supervisor to load the SEA core.
 
-Specifically, the library, linked to the MM supervisor, will locate the resources needed, load the SEA core into MSEG, load
-the MMI entrypoint code blob to MM_BASE for each core, fix up the jump points based on MM supervisor function pointers, and
-finally protected the loaded images.
+Specifically, the library, linked to the MM supervisor, will locate the resources needed, load the SEA core into MSEG,
+load the MMI entrypoint code blob to `MM_BASE` for each core, fix up the jump points based on MM supervisor function
+pointers, and finally protect the loaded images.
 
 ## Executed Supervisor Validation
 
-As part of a DRTM effort, the SEA core is respoinsble for verifying the entire environment of the MM supervisor. As DRTM
-event occurs, the system has already booted into the OS, and the MM supervisor is already loaded and executed. Thus the
-validation routine from SEA needs to inspect the data, code and the environment of the MM supervisor.
+As part of a D-RTM effort, the SEA core is responsible for verifying the entire environment of the MM supervisor. As
+D-RTM event occurs, the system has already booted into the OS, and the MM supervisor is already loaded and executed.
+Thus the validation routine from SEA needs to inspect the data, code and the environment of the MM supervisor.
 
 ![Validation Illustration](Images/validation_illustration.png)
 
@@ -49,7 +51,7 @@ __SEA Core Steps__:
 
 As illustrated above, to accomplish this, the SEA core will perform the following steps:
 
-1. Validate the inputted digest list for the MMI entries and Supervisor core.
+1. Validate the provided digest list for the MMI entries and Supervisor core.
 1. Confirm that the MM Entry code is inside MMRAM.
 1. Validate the AUX file (ensure it is present, inside MMRAM, and has a valid header signature).
 1. Validate the KEY symbols from the AUX file.
@@ -61,62 +63,61 @@ As illustrated above, to accomplish this, the SEA core will perform the followin
 1. Verify that the GDTR is inside MMRAM.
 1. Verify that CR3 points to the same page table from the symbol list in the AUX file.
 1. Verify that CR3 is inside MMRAM.
-1. Verify that the Supervisor stack is inside MMRAM.
+1. Verify that the supervisor stack is inside MMRAM.
 1. Verify that MM Debug Entry and Exit are inside MMRAM.
 1. Verify that IDTR is inside the MM CORE region.
 1. Verify that the firmware policy is inside MMRAM.
-1. Verify the MM Core code through a hash.
+1. Verify the MM Core code hash.
 1. Report the Policy code.
 
-The complex validation and reversion process occurs with the function VerifyAndHashImage for the MM CORE in step
-"Verify the MM Core code through a hash."
+The complex validation and reversion process occurs with the function `VerifyAndHashImage()` for the MM Core in the
+step "Verify the MM Core code hash."
 
-__VerifyAndHashImage Flow__:
+__`VerifyAndHashImage()` Flow__:
 
-The VerifyAndHashImage function follows this flow:
+The `VerifyAndHashImage()` function follows this flow:
 
 1. Verify that the image is in MMRAM.
 1. Copy the image over to MSEG and retrieve the image information.
 1. Create a buffer to copy the image into and then validate the differences found based on the AUX file.
-    - Everything labeled as a Rule is validated based on the type of rule, and then the contents of the original binary
-    are copied over to maintain coherency for the hash validation.
+    - Everything labeled as a "rule" is validated based on the type of rule, and then the contents of the original
+      binary are copied over to maintain coherency for the hash validation.
 1. Revert the loaded image and place it into a newly created buffer.
 1. Hash the reverted image and compare it to the original hash of the supervisor binary.
 1. Reversion Process:
 
 The behavior of the reversion code is somewhat complex and relies on reported image sections. This leads to different
-behavior between the DEBUG and RELEASE builds.
+behavior between the `DEBUG` and `RELEASE` builds.
 
 __Reversion Flow__:
 
 1. Validate section alignment.
 1. Read the PE/COFF header into memory and read the first section, which provides the number of sections.
-1. Loop through each section of the image, copying over the sections if they have a SizeOfRawData > 0.
-1. The behavior differs between the DEBUG and RELEASE builds, as highlighted below.
+   - Loop through each section of the image, copying over the sections if they have a `SizeOfRawData` > 0.
+1. The behavior differs between the `DEBUG` and `RELEASE` builds, as highlighted below.
 1. Load the Codeview information if present.
 1. Ensure the size of the image is correctly aligned.
 
-All these steps are done with the guidance of platform validation rules. For more information on the validation rules, please
-see the [SEA Validation Rules](#sea-validation-rules) section.
+All these steps are done with the guidance of platform validation rules. For more information on the validation rules,
+please see the [SEA Validation Rules](#sea-validation-rules) section.
 
 ## Platform Data Requirements
 
-The platform needs to produce the data structures in this section. The structures are consumed by MM Supervisor code to allow
-the `SmmCpuFeaturesLib` acquire platform-specific details.
+The platform needs to produce the data structures in this section. The structures are consumed by MM Supervisor code to
+allow the `SmmCpuFeaturesLib` to acquire platform-specific details.
 
 ### HOBs Required by `SmmCpuFeaturesLib`
 
 1. `gMsegSmramGuid` - MSEG memory region information.
    - [UefiCpuPkg/Include/Guid/MsegSmram.h](https://github.com/tianocore/edk2/blob/master/UefiCpuPkg/Include/Guid/MsegSmram.h)
-   - Note that [`MsegSmramPei`](../../Drivers/MsegSmramPei/MsegSmramPei.inf)
-   can be used to help produce this HOB.
+   - Note that [`MsegSmramPei`](../../Drivers/MsegSmramPei/MsegSmramPei.inf) can be used to help produce this HOB.
 
 ### SEA Validation Rules
 
 The SEA Validation Rule is a data structure used to guide the SEA core to validate certain data regions of MM supervisor
 core. Platform authors need to provide the validation rules during build time, which will be compiled and baked into the
-SEA core binary. The rules will be used to validate the state of the MM supervisor and revert the content of the MM supervisor
-before SEA attempts to de-relocate the MM supervisor for signature validation.
+SEA core binary. The rules will be used to validate the state of the MM supervisor and revert the content of the MM
+supervisor before SEA attempts to de-relocate the MM supervisor for signature validation.
 
 As defined in this [header file](../../Include/SeaAuxiliary.h), the SEA core will use the following rules to validate the
 MM memory regions:
@@ -138,7 +139,7 @@ A general description of SEA and MM supervisor code integration is depicted belo
 
 ![SEA and MM Supervisor Assert Layout](Images/asset_layout.png)
 
-1. Ensure all submodules for the platform are based on the latest Project Mu version (e.g. "202102")
+1. Ensure all submodules for the platform are based on the latest Project Mu version (e.g. "202502")
 1. Include this repo as a submodule for your platform repos and set the folder path as `Common/MU_MM_SUPV`
 (also add `Common/MU_MM_SUPV` to required repos and module packages in the platform build script):
 <https://windowspartners.visualstudio.com/MsCoreUefi_Thanos/_git/msft_mmsupervisor>
@@ -148,7 +149,7 @@ A general description of SEA and MM supervisor code integration is depicted belo
 
 ### Platform DSC statements
 
-The changes below assumes that the platform has already integrated the MM Supervisor.
+The changes below assume that the platform has already integrated the MM Supervisor.
 
 1. Add the DSC sections below.
 
@@ -171,8 +172,8 @@ The changes below assumes that the platform has already integrated the MM Superv
   SeaPkg/MmiEntrySea/MmiEntrySea.inf
 ```
 
-Note that the supervisor needs to be built and pass through the gen_aux to output the `MmArtifacts.dsc.inc`,
-which is a the binary representation of the validation rules and the hash of the MM supervisor and the MMI entry
+Note that the supervisor needs to be built and passed through the `gen_aux` tool to output the `MmArtifacts.dsc.inc`
+file, which is a the binary representation of the validation rules and the hash of the MM supervisor and the MMI entry
 code. The `MmArtifacts.dsc.inc` file is generated by the `GenSeaArtifacts.py` tool.
 
 These values are then used to build the SEA core for final integration.
@@ -203,7 +204,7 @@ These values are then used to build the SEA core for final integration.
 
 1. Add the FDF sections below.
 
-Note: There might be other silicon specific drivers a platform will need for these sections
+Note: There might be other silicon specific drivers a platform will need for these sections.
 
 ``` bash
 [FV.YOUR_PEI_FV]
