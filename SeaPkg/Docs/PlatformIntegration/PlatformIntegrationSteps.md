@@ -51,49 +51,56 @@ validation routine from SEA needs to inspect the data, code and the environment 
 
 ![Validation Illustration](validation_illustration.png)
 
-As illustrated above, in order to accomplish this, the SEA core will perform the following steps:
+__SEA Core Steps__:
 
-1. Validate inputted digest list for the MMI entries and Supervisor core
-1. Confirm the MM Entry code is inside MMRAM
-1. Validate the AUX file (that it's present, inside MMRAM and that we have the valid header signature)
-1. Validate the KEY symbols from the AUX file
-1. Create the fixup data and copy the MMI entry into it
-1. Revert regions in the fixup MMI entry (zero it)
-1. Validate MMI Entry through hashing
-1. Get current MM CORE information with MM rendezvous
-1. Verify the current image is inside MMRAM
-1. Verify the GDTR is inside MMRAM
-1. Verify CR3 points to the same page table from the symbol list in the AUX file
-1. Verify CR3 is inside MMRAM
-1. Verify Supervisor stack is inside MMRAM
-1. Verify MM Debug Entry and Exit are inside MMRAM
-1. Verify IDTR is inside the MM CORE region
-1. Verify firmware policy is inside MMRAM
-1. Verify the MM Core code through a hash
-1. Report the Policy code 
+As illustrated above, to accomplish this, the SEA core will perform the following steps:
 
-The complicated validation and reversion happens with the function VerifyAndHashImage for the MM CORE in step
-"Verify the MM Core code through a hash".
+1. Validate the inputted digest list for the MMI entries and Supervisor core.
+1. Confirm that the MM Entry code is inside MMRAM.
+1. Validate the AUX file (ensure it is present, inside MMRAM, and has a valid header signature).
+1. Validate the KEY symbols from the AUX file.
+1. Create the fixup data and copy the MMI entry into it.
+1. Revert regions in the fixup MMI entry (zero it).
+1. Validate the MMI Entry through hashing.
+1. Retrieve current MM CORE information with MM rendezvous.
+1. Verify that the current image is inside MMRAM.
+1. Verify that the GDTR is inside MMRAM.
+1. Verify that CR3 points to the same page table from the symbol list in the AUX file.
+1. Verify that CR3 is inside MMRAM.
+1. Verify that the Supervisor stack is inside MMRAM.
+1. Verify that MM Debug Entry and Exit are inside MMRAM.
+1. Verify that IDTR is inside the MM CORE region.
+1. Verify that the firmware policy is inside MMRAM.
+1. Verify the MM Core code through a hash.
+1. Report the Policy code.
 
-The VerifyAndHashImage has the following flow:
+The complex validation and reversion process occurs with the function VerifyAndHashImage for the MM CORE in step
+"Verify the MM Core code through a hash."
 
-1. Verify the image is in MMRAM
-1. Copy the image over to MSEG and grab the image information
-1. Create a buffer to copy the image into and then validate the differences found based on the AUX file
-    - Everything labelled a Rule is validated based on the type of rule and then the contents of the original binary is
-    copied over to maintain coherency for the hash validation
-1. Revert the loaded image and put it into a newly created buffer
-1. Hash the reverted image and compare it to the original hash of the supervisor binary
+__VerifyAndHashImage Flow__:
 
-The behavior of the reversion code is a bit complicated and relies on reported image sections. This leads to different
-behavior between the DEBUG and RELEASE builds. The reversion process is shown below:
+The VerifyAndHashImage function follows this flow:
 
-1. Validate section alignment
-1. Read the PE/COFF header into memory and read the first section which gets us the Number of sections
-1. Loop through each section of the image copying over the sections if they have a SizeOfRawData > 0
-    - The behavior is different here between the DEBUG and RELEASE builds. Below the difference is highlighted
-1. Load the Codeview information if present
-1. Make sure the size of the image is correctly aligned
+1. Verify that the image is in MMRAM.
+1. Copy the image over to MSEG and retrieve the image information.
+1. Create a buffer to copy the image into and then validate the differences found based on the AUX file.
+    - Everything labeled as a Rule is validated based on the type of rule, and then the contents of the original binary
+    are copied over to maintain coherency for the hash validation.
+1. Revert the loaded image and place it into a newly created buffer.
+1. Hash the reverted image and compare it to the original hash of the supervisor binary.
+1. Reversion Process:
+
+The behavior of the reversion code is somewhat complex and relies on reported image sections. This leads to different
+behavior between the DEBUG and RELEASE builds.
+
+__Reversion Flow__:
+
+1. Validate section alignment.
+1. Read the PE/COFF header into memory and read the first section, which provides the number of sections.
+1. Loop through each section of the image, copying over the sections if they have a SizeOfRawData > 0.
+1. The behavior differs between the DEBUG and RELEASE builds, as highlighted below.
+1. Load the Codeview information if present.
+1. Ensure the size of the image is correctly aligned.
 
 All these steps are done with the guidance of platform validation rules. For more information on the validation rules, please
 see the [SEA Validation Rules](#sea-validation-rules) section.
