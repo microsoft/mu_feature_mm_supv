@@ -26,7 +26,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
 
     @staticmethod
-    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path, workspace=False):
+    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path, workspace=None):
         """Generates SEA artifacts.
 
         Generates the following artifacts:
