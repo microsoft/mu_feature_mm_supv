@@ -218,7 +218,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         args += f' --security-version {security_version}'
         args += f' --manifest-version {manifest_version}'
 
-        ret = RunCmd("cargo", args)
+        workingdir = Path(__file__).parent / "gen_manifest"
+
+        ret = RunCmd("cargo", args, workingdir=workingdir)
         if ret != 0:
             raise RuntimeError("gen_manifest failed. Is your Cargo workspace setup correctly?")
         
@@ -247,7 +249,9 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     for scope in scopes: 
         args += f" --scope {scope}"
 
-    ret = RunCmd("cargo", args)
+    workingdir = Path(__file__).parent / "gen_aux"
+
+    ret = RunCmd("cargo", args, workingdir=workingdir)
     if ret != 0:
         raise RuntimeError("gen_aux failed. Is your Cargo workspace setup correctly?")
 
