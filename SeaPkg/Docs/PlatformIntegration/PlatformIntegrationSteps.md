@@ -17,12 +17,6 @@ defined data structures in addition to supervisor-specific data structures to be
 
 1. [SEA Code Integration](#sea-code-integration) - How to best integrate the `SEA core` collateral into a platform firmware.
 
-1. [Platform Security Goals](TODO/SUPERVISOR_SECURITY_OVERVIEW.md) - The MM Supervisor aims to improve security. It is
-important to understand the goals of the supervisor and how that aligns with the platform security goals.
-
-1. [MM Driver Load Process](TODO/DRIVER_LOAD_PROCESS.md) - The platform might need to organize MM modules differently
-for the MM IPL than what was previously used for Traditional MM.
-
 ## MM Supervisor Changes
 
 Begin by reading the [MM supervisor documentation](../../../MmSupervisorPkg/Docs/MmSupervisor_Feature.md) to gain a basic
