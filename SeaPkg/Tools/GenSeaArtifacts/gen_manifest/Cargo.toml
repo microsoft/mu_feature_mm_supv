@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "gen_manifest"
 version = "0.1.0"
