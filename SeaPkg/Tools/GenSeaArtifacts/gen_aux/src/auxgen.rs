@@ -294,12 +294,14 @@ impl AuxBuilder {
         }
     }
 
-    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` and
+    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` or `Label` and
     /// any symbols in the `excluded_symbols` list in the configuration file (that filter is done before calling this function).
     pub fn find_symbols_with_no_rule(symbols: &Vec::<Symbol>, rules: &Vec<ValidationRule>) -> Vec<Symbol> {
+        const IGNORE_SYMBOL_TYPES: [SymbolType;2] = [SymbolType::Procedure, SymbolType::Label];
+
         let mut missing = Vec::new();
         for symbol in symbols {
-            if !rules.iter().any(|rule| rule.symbol == symbol.name || symbol.symbol_type == SymbolType::Procedure) {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name || IGNORE_SYMBOL_TYPES.contains(&symbol.symbol_type)) {
                 missing.push(symbol.clone());
             }
         }
