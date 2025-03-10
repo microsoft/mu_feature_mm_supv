@@ -268,8 +268,6 @@ pub struct Segment  {
     /// The end address of the segment as a u32.
     #[serde(skip)]
     _end: u32,
-    /// A hex string representation of the size of the segment.
-    size: String,
     /// Whether the segment is covered by a validation rule.
     covered: bool,
     /// The reason the segment is covered or not.
@@ -285,7 +283,6 @@ impl Segment {
             _start: start,
             end: format!("{:#x}", end),
             _end: end,
-            size: format!("{:#x}", end - start),
             covered,
             reason,
         }
@@ -302,7 +299,6 @@ impl From<&ImageValidationEntryHeader> for Segment {
             _start: header.offset,
             end: format!("{:#x}", header.offset + header.size),
             _end: header.offset + header.size,
-            size: format!("{:#x}", header.size),
             covered: *validation != ValidationType::None,
             reason: format!("Validation Rule: {}", rule),
         }
