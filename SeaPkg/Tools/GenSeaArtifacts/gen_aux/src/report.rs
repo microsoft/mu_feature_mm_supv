@@ -25,8 +25,11 @@ pub struct CoverageReport {
     covered: String,
     /// The percentage of the total number of bytes that are covered.
     covered_percent: String,
+    /// The total number of bytes that can be considered covered by validation rules.
     coverable_by_rules: String,
+    /// The total number of bytes that are covered by validation rules.
     covered_by_rules: String,
+    /// The percentage of the total number of bytes that are covered by validation rules.
     covered_by_rules_percent: String,
     /// A list of segments of the loaded image and their coverage status.
     segments: Vec<Segment>,
