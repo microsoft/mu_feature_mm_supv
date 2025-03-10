@@ -65,7 +65,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let name = data.name.to_string().to_string();
             let type_index = None;
             let symbol_type = crate::SymbolType::Public;
-            map.entry(name.clone()).or_insert(crate::Symbol {
+            map.insert(name.clone(), crate::Symbol {
                 address,
                 size,
                 name,
@@ -102,7 +102,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let name = data.name.to_string().to_string();
             let type_index = Some(data.type_index);
             let symbol_type = crate::SymbolType::Procedure;
-            map.entry(name.clone()).or_insert( crate::Symbol {
+            map.insert(name.clone(), crate::Symbol {
                 address,
                 size,
                 name,
