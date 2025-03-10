@@ -177,7 +177,11 @@ impl ImageValidationEntryHeader {
         entry.offset = ((symbol.address as i64) + rule.offset.unwrap_or_default()) as u32;
         entry.size = rule.size.unwrap_or(symbol.size);
         entry.validation_type = rule.validation.clone();
-        entry.symbol = symbol.name.clone();
+        if let Some(ref field) = rule.field {
+            entry.symbol = format!("{}.{}", &rule.symbol, field);
+        } else {
+            entry.symbol = rule.symbol.clone();
+        }
         entry
     }
 
