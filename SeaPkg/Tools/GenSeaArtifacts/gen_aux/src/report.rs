@@ -25,6 +25,9 @@ pub struct CoverageReport {
     covered: String,
     /// The percentage of the total number of bytes that are covered.
     covered_percent: String,
+    coverable_by_rules: String,
+    covered_by_rules: String,
+    covered_by_rules_percent: String,
     /// A list of segments of the loaded image and their coverage status.
     segments: Vec<Segment>,
 }
@@ -52,11 +55,17 @@ impl CoverageReport {
 
         let total_covered = covered_rule_size + covered_section;
         let total_coverable = size_of_image - padding_size - header_size;
+        
+        let covered_by_rules = covered_rule_size;
+        let coverable_by_rules = total_coverable - covered_section;
 
         Ok(CoverageReport {
             coverable: format!("{:#x}", total_coverable),
             covered: format!("{:#x}", total_covered),
             covered_percent: format!("{:.2}%", (total_covered as f32 / total_coverable as f32) * 100.0),
+            covered_by_rules: format!("{:#x}", covered_by_rules),
+            coverable_by_rules: format!("{:#x}", coverable_by_rules),
+            covered_by_rules_percent: format!("{:.2}%", (covered_by_rules as f32 / coverable_by_rules as f32) * 100.0),
             segments: segments.into_inner(),
         })
     }
