@@ -99,16 +99,19 @@ impl Default for ImageValidationDataHeader {
 /// 
 #[derive(Clone)]
 pub struct ImageValidationEntryHeader {
-    signature: u32,
+    pub signature: u32,
     /// Offset of the value in the original image.
-    offset: u32,
+    pub offset: u32,
     /// Size of the value in bytes.
-    size: u32,
+    pub size: u32,
     /// The type of validation to perform on the symbol. Contains the data
     /// necessary to perform the validation.
-    validation_type: ValidationType,
+    pub validation_type: ValidationType,
     /// Offset of the default value in the aux file.
-    offset_to_default: u32
+    pub offset_to_default: u32,
+    /// The symbol name that this entry is for. This is not written to the aux
+    /// file, but exists for debugging purposes.
+    pub symbol: String,
 }
 
 impl Default for ImageValidationEntryHeader {
@@ -118,7 +121,8 @@ impl Default for ImageValidationEntryHeader {
             offset: 0,
             size: 0,
             validation_type: ValidationType::default(),
-            offset_to_default: 0
+            offset_to_default: 0,
+            symbol: String::new(),
         }
     }
 }
@@ -173,6 +177,11 @@ impl ImageValidationEntryHeader {
         entry.offset = ((symbol.address as i64) + rule.offset.unwrap_or_default()) as u32;
         entry.size = rule.size.unwrap_or(symbol.size);
         entry.validation_type = rule.validation.clone();
+        if let Some(ref field) = rule.field {
+            entry.symbol = format!("{}.{}", &rule.symbol, field);
+        } else {
+            entry.symbol = rule.symbol.clone();
+        }
         entry
     }
 
