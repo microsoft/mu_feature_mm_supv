@@ -26,7 +26,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
 
     @staticmethod
-    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path):
+    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path, workspace=None):
         """Generates SEA artifacts.
 
         Generates the following artifacts:
@@ -49,7 +49,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             temp_hash_dir = stm_build_dir / "temp_hash.bin"
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir)
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir, workspace=workspace)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -194,7 +194,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_sea_manifest(stm_bin: Path, output_path: Path, config: dict):
+    def generate_sea_manifest(stm_bin: Path, output_path: Path, config: dict, workspace = None):
         """Generates the manifest file for the STM binary.
         
         Args:
@@ -210,7 +210,10 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         manifest_version = config.get("manifest_version", "1")
         algorithms = ",".join(config.get("algorithms", []))
 
-        args = 'run --bin gen_manifest --'
+        manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
+
+        args = f'run --manifest-path {str(manifest_path)}'
+        args += ' --bin gen_manifest --'
         args += f' {stm_bin}'
         args += f' -o {output_path}'
         args += f' -a {algorithms}' * (algorithms != '')
@@ -224,7 +227,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         
         return 0
 
-def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path):
+def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path, workspace = None):
     """Generates the auxiliary file for the MmsupervisorCore.
 
     Args:
@@ -238,8 +241,10 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     """
 
     output_path = output_dir / 'MmSupervisorCore.aux'
+    manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
-    args = "run --bin gen_aux --"
+    args = f"run --manifest-path {str(manifest_path)}"
+    args += " --bin gen_aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
