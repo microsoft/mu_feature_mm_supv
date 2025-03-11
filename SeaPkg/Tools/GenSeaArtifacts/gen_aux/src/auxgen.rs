@@ -314,7 +314,13 @@ impl AuxBuilder {
                 missing.push(symbol.clone());
             }
         }
+
+        // Apply extra static filters for junk symbols
         missing
+            .into_iter()
+            .filter(|symbol| symbol.name != "")
+            .filter(|symbol| symbol.address != 0)
+            .collect()
     }
 
     /// Generates the aux file. By default, only rules specified in the

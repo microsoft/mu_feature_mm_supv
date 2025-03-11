@@ -180,7 +180,7 @@ impl SegmentList {
                 self.size_of_image
             };
 
-            let padding_start = section.virtual_size.min(section.size_of_raw_data) + section.virtual_address;
+            let padding_start = section.virtual_size.max(section.size_of_raw_data) + section.virtual_address;
             let padding_end = next_section_start;
 
             self.insert(Segment::new(padding_start, padding_end, true, "Padding".to_string()))?;
