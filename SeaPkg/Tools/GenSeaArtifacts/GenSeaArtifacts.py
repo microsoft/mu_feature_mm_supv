@@ -30,8 +30,12 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         """Generates SEA artifacts.
 
         Generates the following artifacts:
-        - MmSupervisorCore.aux (As build by gen_aux)
-        - MmSupervisorCore.efi (As Build by edk2 build system)
+        - MmSupervisorCore.aux: A validation rule file for the MM Supervisor Core EFI binary.
+        - inc_file_path: a dsc.inc file containing PCDs
+            - gEfiSeaPkgTokenSpaceGuid.PcdAuxBinFile: N sized PCD containing the auxiliary file for the MM Supervisor Core.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinHash: Hash of the MmiEntrySea binary.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinSize: Size of the MmiEntrySea binary.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash: Hash of the MmSupervisorCore binary.
 
         Args:
             scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
@@ -118,7 +122,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
     @staticmethod
     def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path):
-        """Generates SEA artifacts.
+        """Moves all the necessary SEA related artifacts to the directory specified by output_dir.
 
         Generates the following artifacts:
         - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore and MmiEntrySea file)
