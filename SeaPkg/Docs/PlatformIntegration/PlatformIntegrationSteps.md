@@ -194,7 +194,7 @@ are ordered from the highest level of abstraction to the lowest.
   manually, which includes calling `cargo run gen_aux` (`SeaPkg/Tools/gen_aux/readme.md`) and `py BinToPcd.py`
   (`BaseTools`).
 
-3. The final step is to build the Stm.bin, which consumes the auxiliary file and a few other pieces of information via
+The final step is to build the Stm.bin, which consumes the auxiliary file and a few other pieces of information via
 PCDs as denoted in the `gen_sea_includes(...)` python function and described in [Platform DSC statements](#platform-dsc-statements).
 
 In all scenarios for (2), you will need to review the `gen_aux` tool to see how to properly generate the configuration
