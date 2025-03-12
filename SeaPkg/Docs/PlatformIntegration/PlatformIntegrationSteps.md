@@ -151,7 +151,7 @@ A general description of SEA and MM Supervisor code integration is depicted belo
 ### Build Flow
 
 Building a platform that integrates the SEA core and and MM supervisor is a multi-stage process as the MmSupervisorCore
-must be built before the Stm (and optionally the rest of the platform). This is due to the fact that the Stm consumes
+must be built before the STM (and optionally the rest of the platform). This is due to the fact that the STM consumes
 artifacts (as PCDs) that are generated based off the compiled MM supervisor core. Specifically the Aux File mentioned
 above, which is a parsable binary file holding rules to validate the contents of the MM Supervisor. The flow looks like
 this:
@@ -171,7 +171,7 @@ binaries will be provided to your platform:
 In this scenario, you simply need to add the fdf statements as mentioned in, [Platform FDF Statements](#platform-fdf-statements),
 however you should link against the provided binaries rather than the output directory binaries as mentioned above.
 
-#### Building MmSupervisorCore, MMiEntrySea and Stm manually
+#### Building MmSupervisorCore, MMiEntrySea and STM manually
 
 Should your platform decide to build these three binaries itself, then the following actions must be taken prior to
 running the final platform build. As noted, custom tooling is provided for step (2) which requires rust to be available
@@ -198,7 +198,7 @@ are ordered from the highest level of abstraction to the lowest.
 PCDs as denoted in the `gen_sea_includes(...)` python function and described in [Platform DSC statements](#platform-dsc-statements).
 
 In all scenarios for (2), you will need to review the `gen_aux` tool to see how to properly generate the configuration
-file, for gen_aux, which in turn is used to generate the auxiliary file. The auxiliary file is compiled into the Stm
+file, for gen_aux, which in turn is used to generate the auxiliary file. The auxiliary file is compiled into the STM
 and used to validate the execution of the MmSupervisorCore as explained in [SEA Validation Rules](#sea-code-integration).
 
 #### Platform DSC statements
