@@ -152,7 +152,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             )
             shutil.copy2(
                 stm_build_dir / "MmSupervisorCore.aux",
-                output_dir / "MmSupervisorCore.aux"
+                misc_dir / "MmSupervisorCore.aux"
             )
 
             shutil.copy2(
