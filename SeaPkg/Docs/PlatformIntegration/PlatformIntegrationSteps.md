@@ -148,7 +148,60 @@ A general description of SEA and MM Supervisor code integration is depicted belo
 > Note: A list of the libraries and modules made available by this package is provided in the
   [Software Component Overview](SoftwareComponentOverview.md).
 
-### Platform DSC statements
+### Build Flow
+
+Building a platform that integrates the SEA core and and MM supervisor is a multi-stage process as the MmSupervisorCore
+must be built before the STM (and optionally the rest of the platform). This is due to the fact that the STM consumes
+artifacts (as PCDs) that are generated based off the compiled MM supervisor core. Specifically the Aux File mentioned
+above, which is a parsable binary file holding rules to validate the contents of the MM Supervisor. The flow looks like
+this:
+
+1. Build MmSupervisorCore.efi, MMiEntrySea.bin (EDKII build part 1)
+2. Generate MmSupervisorCore.aux, MmArtifacts.dsc.inc (Custom tooling, provided)
+3. Build Stm.bin (EDKII build part 2)
+4. Build the rest of the platform (EDKII part 3, optionally combined with EDKII build part 2)
+
+Depending on your implementation method (1), (2), and (3) will be handled by an external entity and the following
+binaries will be provided to your platform:
+
+- MmiEntrySea.bin
+- MmSupervisorCore.efi
+- Stm.bin
+
+In this scenario, you simply need to add the fdf statements as mentioned in, [Platform FDF Statements](#platform-fdf-statements),
+however you should link against the provided binaries rather than the output directory binaries as mentioned above.
+
+#### Building MmSupervisorCore, MMiEntrySea and STM manually
+
+Should your platform decide to build these three binaries itself, then the following actions must be taken prior to
+running the final platform build. As noted, custom tooling is provided for step (2) which requires rust to be available
+on your system.
+
+1. The first step is to build the MmSupervisorCore.efi and MMiEntrySea.bin from MmSupervisorPkg and SeaPkg
+respectively. This process is no different then a normal EDKII build.
+
+2. Generating the MmSupervisorCore.aux and MmArtifacts.dsc.inc is a slightly more complicated process. We provide
+multiple levels of abstraction for generating these files depending on your needs, which will be described below, and
+are ordered from the highest level of abstraction to the lowest.
+
+- If your platform uses Stuart to build, then the necessary function is automatically imported and is available
+  available via `self.Helper.gen_sea_includes(...)`. The function documentation can be found at `SeaPkg/Tools/GenSeaArtifacts/GenSeaArtifacts.py`.
+  
+- If your platform does not use stuart, but has a python script, you can still use this function, but you must
+  manually import the module, and use it via `GenSeaArtifacts.gen_sea_includes(...)`.
+  
+- If your platform has completely custom tooling, then you will need to follow the same flow as `gen_sea_includes`
+  manually, which includes calling `cargo run gen_aux` (`SeaPkg/Tools/gen_aux/readme.md`) and `py BinToPcd.py`
+  (`BaseTools`).
+
+The final step is to build the Stm.bin, which consumes the auxiliary file and a few other pieces of information via
+PCDs as denoted in the `gen_sea_includes(...)` python function and described in [Platform DSC statements](#platform-dsc-statements).
+
+In all scenarios for (2), you will need to review the `gen_aux` tool to see how to properly generate the configuration
+file, for gen_aux, which in turn is used to generate the auxiliary file. The auxiliary file is compiled into the STM
+and used to validate the execution of the MmSupervisorCore as explained in [SEA Validation Rules](#sea-code-integration).
+
+#### Platform DSC statements
 
 The changes below assume that the platform has already integrated the MM Supervisor.
 
@@ -201,7 +254,7 @@ These values are then used to build the SEA core for final integration.
   }
 ```
 
-### Platform FDF statements
+#### Platform FDF statements
 
 1. Add the FDF sections below.
 
