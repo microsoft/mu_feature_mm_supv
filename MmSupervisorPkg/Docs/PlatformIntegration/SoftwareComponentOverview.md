@@ -4,12 +4,12 @@ This section of documentation is focused on the software components of the MM Su
 platform integration.
 
 The MM Supervisor provides a software implementation that installs the MM foundation for X64. In order to load MM
-Supervisor properly, certain software prerequisites (libraries, drivers, hobs, etc.) needs to be met, most of which are
+Supervisor properly, certain software prerequisites (libraries, drivers, hobs, etc.) need to be met, most of which are
 included in this package.
 
 By including the proper software components, a platform can ensure the MM Supervisor features function as intended and
-the platform can meet Secured Core PC specification requirements. To enable an end-to-end Standalone MM based Secured
-Core solution, custom requirements may exist in adjacent UEFI firmware components.
+that the platform can meet Secured-core PC specification requirements. To enable an end-to-end Standalone MM based
+Secured-core solution, custom requirements may exist in adjacent UEFI firmware components.
 
 For more general background about the steps necessary to integrate the MM Supervisor, please review the
 [Platform Integration Steps](PlatformIntegrationSteps.md).
