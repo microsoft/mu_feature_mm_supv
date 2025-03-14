@@ -16,10 +16,22 @@ refactored from TianoCore common modules and public portion of AMD SMM superviso
 operating Standalone MM modules in a secure manner. Other peripheral libraries are also included to accomodate user
 module operations.
 
-Detailed Feature Information
-============================
+Detailed Information
+====================
 
-Far more details about using this repo can be found in: `MM Supervisor Design <MmSupervisorPkg/Docs/MmSupervisor_Feature.md>`_.
+It is suggested to start with `Microsoft MM Supervisor and SMM Enhanced Attestation (SEA) Overview <Docs/Overview.md>`_
+
+Other key documents:
+
+* `Traditional and Standalone MM Overview <Docs/TraditionalAndStandaloneMm.md>`_
+* `MM Supervisor Design <Docs/MmSupervisorDesign.md>`_
+* `MM Supervisor Developer Considerations <Docs/MmSupervisorDeveloperConsiderations.md>`_
+
+* MM Supervisor Platform Integration
+
+   * `MM Supervisor Software Component Overview <MmSupervisorPkg/Docs/PlatformIntegration/SoftwareComponentOverview.md>`_
+   * `MM Supervisor Platform Integration Steps <MmSupervisorPkg/Docs/PlatformIntegration/PlatformIntegrationSteps.md>`_
+   * `Using a Deny-by-Default MM Supervisor Policy <MmSupervisorPkg/Docs/PlatformIntegration/SwitchingToDenyByDefault.md>`_
 
 Repository Philosophy
 =====================
