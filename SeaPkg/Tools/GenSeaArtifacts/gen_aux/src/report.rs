@@ -31,6 +31,7 @@ pub struct CoverageReport {
     covered_by_rules: String,
     /// The percentage of the total number of bytes that are covered by validation rules.
     covered_by_rules_percent: String,
+    /// A list of sections in the loaded image and their coverage status.
     sections: Vec<Section>,
     /// A list of segments of the loaded image and their coverage status.
     segments: Vec<Segment>,
@@ -87,28 +88,33 @@ impl CoverageReport {
     }
 }
 
+/// A wrapper around a list of sections that allows for inserting new sections into the list.
 struct SectionList {
     size_of_image: u32,
     sections: Vec<Section>,
 }
 
 impl SectionList {
-    fn new(size: u32) -> Self {
+    /// Create an empty section list with the given image size.
+    pub fn new(size: u32) -> Self {
         SectionList {
             size_of_image: size,
             sections: Vec::new(),
         }
     }
 
+    /// Consumes the list and returns the inner vector of sections.
     pub fn into_inner(self) -> Vec<Section> {
         self.sections
     }
 
+    /// Adds a new section to the list with the given name, start address, and end address.
     fn add_section(&mut self, name: String, start: u32, end: u32) {
         self.sections.push(Section::new(name, format!("{:#x}", start), format!("{:#x}", end)));
     }
 
-    fn add_sections_from_image(&mut self, image: &[u8]) -> Result<()> {
+    /// Adds sections to the report based off the PE image.
+    pub fn add_sections_from_image(&mut self, image: &[u8]) -> Result<()> {
         let pe = goblin::pe::PE::parse(image)?;
         let sections = pe.sections;
 
