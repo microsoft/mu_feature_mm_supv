@@ -38,6 +38,7 @@
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/StmApi.h>
 #include <Register/Intel/Cpuid.h>
+#include <x64/Vmx.h>
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
@@ -728,9 +729,10 @@ GetMsegBaseAndSize (
 {
   EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  CPUID_VERSION_INFO_EBX             VersionInfoEbx;
+  CPUID_CACHE_PARAMS_EAX             CacheParamsEax;
   STM_HEADER                         *StmHeader;
   UINTN                              NumberOfCpus;
+  UINT32                             MaxStandardCpuIdIndex;
 
   //
   // Find the MSEG Base address
@@ -749,14 +751,21 @@ GetMsegBaseAndSize (
     goto Done;
   }
 
-  *MsegBase = (EFI_PHYSICAL_ADDRESS)SmmMonitorCtl.Bits.MsegBase;
+  *MsegBase = (EFI_PHYSICAL_ADDRESS)SmmMonitorCtl.Bits.MsegBase << 12;
 
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
-  AsmCpuid (CPUID_VERSION_INFO, NULL, &VersionInfoEbx.Uint32, NULL, NULL);
-  NumberOfCpus = VersionInfoEbx.Bits.MaximumAddressableIdsForLogicalProcessors;
+  StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
+
+  AsmCpuid (CPUID_SIGNATURE, &MaxStandardCpuIdIndex, NULL, NULL, NULL);
+  if (MaxStandardCpuIdIndex >= CPUID_CACHE_PARAMS) {
+    AsmCpuidEx (CPUID_CACHE_PARAMS, 0, &CacheParamsEax.Uint32, NULL, NULL, NULL);
+
+    if (CacheParamsEax.Uint32 != 0) {
+      NumberOfCpus = CacheParamsEax.Bits.MaximumAddressableIdsForLogicalProcessors + 1;
+    }
+  }
 
   *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
                StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
@@ -874,7 +883,7 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
         Status                      = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr, MsegBase, MsegSize);
-        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_POINTER *)ImageValidationEntryHdr + 1);
         break;
       default:
         Status = EFI_INVALID_PARAMETER;
