@@ -234,7 +234,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def validate_rule_coverage(percent: int, aux_path: Path):
+    def validate_rule_coverage(percent: int, aux_path: Path) -> bool:
         """Validates the rule coverage of the auxiliary file.
 
         Args:
