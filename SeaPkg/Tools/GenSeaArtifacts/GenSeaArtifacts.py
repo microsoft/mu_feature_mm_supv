@@ -8,6 +8,7 @@
 import os
 import hashlib
 import logging
+import json
 from pathlib import Path
 import shutil
 
@@ -24,6 +25,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         obj.Register("generate_sea_includes", GenSeaArtifacts.generate_sea_includes, fp)
         obj.Register("generate_sea_artifacts", GenSeaArtifacts.generate_sea_artifacts, fp)
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
+        obj.Register("validate_rule_coverage", GenSeaArtifacts.validate_rule_coverage, fp)
 
     @staticmethod
     def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path, workspace=None):
@@ -230,6 +232,57 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             raise RuntimeError("gen_manifest failed. Is your Cargo workspace setup correctly?")
         
         return 0
+
+    @staticmethod
+    def validate_rule_coverage(percent: int, aux_path: Path):
+        """Validates the rule coverage of the auxiliary file.
+
+        Args:
+            percent: The minimum percentage of the file that must be covered.
+            aux_path: Path to the auxiliary file.
+        
+        Raises:
+            FileNotFoundError: The auxiliary file does not exist.
+            json.JSONDecodeError: The auxiliary file is not a valid JSON file.
+
+        Returns:
+            true if the rule coverage is above the threshold, false otherwise.
+        """
+        if not aux_path.is_file():
+            raise FileNotFoundError(aux_path)
+
+        with open(aux_path, 'r') as f:
+            data = json.load(f)
+
+        # Start with a simple check. Should technically be correct.
+        covered_percent = float(data.get('covered_percent', '0%').strip('%'))
+        if covered_percent < percent:
+            logging.error(f"Auxiliary file rule coverage is below the allowed threshold of {percent}%: {covered_percent}%")
+
+        # Lets double check the coverage by actually calculating via sections.
+        if 'segments' not in data:
+            logging.error("Auxiliary file does not contain any segments, broken format?")
+            return False
+
+        covered = 0
+        total = 0
+        for segment in data['segments']:
+            if segment.get('reason', '') in ['Padding', 'PE Header']:
+                continue
+
+            size = int(segment['end'], 16) - int(segment['start'], 16)
+            if segment.get('covered', False):
+                covered += size
+            else:
+                logging.debug(f"Segment {segment} is not covered.")
+            total += size
+
+        actual_percent = round((float(covered) / float(total)) * 100, 2)
+        if actual_percent < percent:
+            logging.error(f"Auxiliary file rule coverage is below the allowed threshold of {percent}%: {actual_percent}%")
+            return False
+
+        return True
 
 def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path, workspace = None):
     """Generates the auxiliary file for the MmsupervisorCore.
