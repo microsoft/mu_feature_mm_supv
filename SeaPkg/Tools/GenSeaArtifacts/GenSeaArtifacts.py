@@ -242,7 +242,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             aux_path: Path to the auxiliary file.
         
         Raises:
-            FileNotFoundError: The auxiliary file does not exist.
+            FileNotFoundError: The auxiliary file path does not exist or is not a file.
             json.JSONDecodeError: The auxiliary file is not a valid JSON file.
 
         Returns:
