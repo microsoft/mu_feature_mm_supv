@@ -234,12 +234,12 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def validate_rule_coverage(percent: int, aux_path: Path) -> bool:
+    def validate_rule_coverage(percent: float, aux_path: Path) -> bool:
         """Validates the rule coverage of the auxiliary file.
 
         Args:
-            percent: The minimum percentage of the file that must be covered.
-            aux_path: Path to the auxiliary file.
+            percent (float): The minimum percentage of the file that must be covered.
+            aux_path (Path): Path to the auxiliary file.
         
         Raises:
             FileNotFoundError: The auxiliary file path does not exist or is not a file.
@@ -258,6 +258,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         covered_percent = float(data.get('covered_percent', '0%').strip('%'))
         if covered_percent < percent:
             logging.error(f"Auxiliary file rule coverage is below the allowed threshold of {percent}%: {covered_percent}%")
+            return False
 
         # Lets double check the coverage by actually calculating via sections.
         if 'segments' not in data:
