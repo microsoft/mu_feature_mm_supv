@@ -12,7 +12,7 @@ use serde::Serialize;
 use std::io::Write;
 use std::cmp::Ordering;
 
-use crate::{auxgen::{AuxFile, ImageValidationEntryHeader}, validation::ValidationType};
+use crate::auxgen::{AuxFile, ImageValidationEntryHeader};
 
 /// A struct representing the coverage report for the firmware image.
 /// 
@@ -31,6 +31,8 @@ pub struct CoverageReport {
     covered_by_rules: String,
     /// The percentage of the total number of bytes that are covered by validation rules.
     covered_by_rules_percent: String,
+    /// A list of sections in the loaded image and their coverage status.
+    sections: Vec<Section>,
     /// A list of segments of the loaded image and their coverage status.
     segments: Vec<Segment>,
 }
@@ -46,6 +48,9 @@ impl CoverageReport {
                 .ok_or(anyhow::anyhow!("No optional header found"))?;
             optional_header.windows_fields.size_of_image
         };
+
+        let mut sections = SectionList::new(size_of_image);
+        sections.add_sections_from_image(image)?;
 
         let mut segments = SegmentList::new(size_of_image);
         segments.add_segments_from_image(image)?;
@@ -70,6 +75,7 @@ impl CoverageReport {
             coverable_by_rules: format!("{:#x}", coverable_by_rules),
             covered_by_rules_percent: format!("{:.2}%", (covered_by_rules as f32 / coverable_by_rules as f32) * 100.0),
             segments: segments.into_inner(),
+            sections: sections.into_inner(),
         })
     }
 
@@ -78,6 +84,58 @@ impl CoverageReport {
         let mut file = std::fs::File::create(path)?;
         let buffer = serde_json::to_vec_pretty(&self)?;
         file.write_all(&buffer)?;
+        Ok(())
+    }
+}
+
+/// A wrapper around a list of sections that allows for inserting new sections into the list.
+struct SectionList {
+    size_of_image: u32,
+    sections: Vec<Section>,
+}
+
+impl SectionList {
+    /// Create an empty section list with the given image size.
+    pub fn new(size: u32) -> Self {
+        SectionList {
+            size_of_image: size,
+            sections: Vec::new(),
+        }
+    }
+
+    /// Consumes the list and returns the inner vector of sections.
+    pub fn into_inner(self) -> Vec<Section> {
+        self.sections
+    }
+
+    /// Adds a new section to the list with the given name, start address, and end address.
+    fn add_section(&mut self, name: String, start: u32, end: u32) {
+        self.sections.push(Section::new(name, format!("{:#x}", start), format!("{:#x}", end)));
+    }
+
+    /// Adds sections to the report based off the PE image.
+    pub fn add_sections_from_image(&mut self, image: &[u8]) -> Result<()> {
+        let pe = goblin::pe::PE::parse(image)?;
+        let sections = pe.sections;
+
+        assert!(!sections.is_empty(), "No sections found in PE image.");
+        self.add_section("PE Header".to_string(), 0, sections[0].virtual_address);
+
+        for i in 0..sections.len() {
+            let section = &sections[i];
+            let next_section_start = if i + 1 < sections.len() {
+                sections[i + 1].virtual_address
+            } else {
+                self.size_of_image
+            };
+
+            self.add_section(
+                section.name().map(|name| name.to_string()).unwrap_or_else(|_| format!("{:?}", section.name)),
+                section.virtual_address,
+                next_section_start,
+            );
+        }
+
         Ok(())
     }
 }
@@ -256,6 +314,28 @@ impl SegmentList {
     }
 }
 
+/// A PDB section in the image.
+#[derive(Serialize, Clone, Debug)]
+struct Section {
+    /// The name of the section.
+    name: String,
+    /// The start address of the section.
+    start: String,
+    /// The end address of the section.
+    end: String,
+}
+
+impl Section {
+    /// Creates a new section with the given name, start address, and end address.
+    pub fn new(name: String, start: String, end: String) -> Self {
+        Section {
+            name,
+            start,
+            end,
+        }
+    }
+}
+
 /// A segment of the image with metadata about its coverage status.
 #[derive(Serialize, Clone, Debug)]
 pub struct Segment  {
@@ -302,7 +382,7 @@ impl From<&ImageValidationEntryHeader> for Segment {
             _start: header.offset,
             end: format!("{:#x}", header.offset + header.size),
             _end: header.offset + header.size,
-            covered: *validation != ValidationType::None,
+            covered: true,
             reason: format!("Validation Rule: {}", rule),
         }
     }

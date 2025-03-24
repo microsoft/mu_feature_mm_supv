@@ -1,16 +1,16 @@
 # SMM Enhanced Attestation (SEA) Platform Integration
 
-The SEA source code is intended to be used as-is by platforms. In order to integrate the SEA core and MM supervisor into
+The SEA source code is intended to be used as-is by platforms. In order to integrate the SEA core and MM Supervisor into
 a platform firmware it is important to consider higher-level integration challenges specific to the platform in addition
 to the required code changes to integrate all of the pieces.
 
 ## High-Level Considerations
 
-1. [MM Supervisor Changes](#mm-supervisor-changes) - The supervisor is responsible for loading SEA core into MSEG region
-   and protecting MM assets before SEA is loaded.
+1. [MM Supervisor Changes](#mm-supervisor-changes) - Source code in the MM Supervisor repo is responsible for
+   loading SEA core into the MSEG region. The MM Supervisor is responsible for protecting MM assets before SEA is loaded.
 
 1. [Executed Supervisor Validation](#executed-supervisor-validation) - The SEA core is responsible for inspecting the MM
-   supervisor environment and validating the MM supervisor code and data. This is a critical step in the D-RTM process.
+   Supervisor environment and validating the MM Supervisor code and data.
 
 1. [Platform Data Requirements](#platform-data-requirements) - The MM Supervisor requires that a new set of industry
    standard defined data structures in addition to supervisor-specific data structures be produced by the platform.
@@ -20,30 +20,31 @@ to the required code changes to integrate all of the pieces.
 
 ## MM Supervisor Changes
 
-Begin by reading the [MM supervisor documentation](../../../MmSupervisorPkg/Docs/MmSupervisor_Feature.md) to gain a
-basic understanding of the Standalone MM operating mode and the MM supervisor feature.
+Begin by reading the [MM Supervisor documentation](../../../MmSupervisorPkg/Docs/MmSupervisorDesign.md) and the
+[SEA Overview](Overview.md) to gain a basic understanding of the Standalone MM operating mode and the MM Supervisor
+feature.
 
 SEA is responsible for validating the entire flow of the Memory Management Interrupt (MMI), which begins in the MMI
 entrypoint, continues through execution in the MM Supervisor, and finally ends with the `rsm` instruction to return
-from SMM. This requires the MM entrypoint code to be decoupled from the MM supervisor, and the new MMI entrypoint code
-is auditable with respect to the jump point into the MM supervisor.
+from SMM. This requires the MM entrypoint code to be decoupled from the MM Supervisor, and the new MMI entrypoint code
+is auditable with respect to the jump point into the MM Supervisor.
 
-Hence, a new [MMI entrypoint](../../MmiEntrySea/MmiEntrySea.inf) is created to allow the MM supervisor to load using MM
-relocation phase. It is also crafted so that the jump point into the MM supervisor is located at the end of the MMI
+Hence, a new [MMI entrypoint](../../MmiEntrySea/MmiEntrySea.inf) is created to allow the MM Supervisor to load using MM
+relocation phase. It is also crafted so that the jump point into the MM Supervisor is located at the end of the MMI
 entrypoint code. This allows the SEA to validate the entire flow of the MMI.
 
 Thus, a new [SmmCpuFeaturesLib](../../Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf)
 is created to provide the necessary CPU features for the MM Supervisor to load the SEA core.
 
-Specifically, the library, linked to the MM supervisor, will locate the resources needed, load the SEA core into MSEG,
-load the MMI entrypoint code blob to `MM_BASE` for each core, fix up the jump points based on MM supervisor function
+Specifically, the library, linked to the MM Supervisor, will locate the resources needed, load the SEA core into MSEG,
+load the MMI entrypoint code blob to `MM_BASE` for each core, fix up the jump points based on MM Supervisor function
 pointers, and finally protect the loaded images.
 
 ## Executed Supervisor Validation
 
-As part of a D-RTM effort, the SEA core is responsible for verifying the entire environment of the MM supervisor. As
-D-RTM event occurs, the system has already booted into the OS, and the MM supervisor is already loaded and executed.
-Thus the validation routine from SEA needs to inspect the data, code and the environment of the MM supervisor.
+The SEA core is responsible for verifying the entire environment of the MM Supervisor. When the D-RTM event occurs, the
+system has already booted into the OS, and the MM Supervisor is already loaded and executed. Thus the validation routine
+from SEA needs to inspect the data, code and the environment of the MM Supervisor.
 
 ![Validation Illustration](Images/validation_illustration.png)
 
@@ -99,7 +100,7 @@ __Reversion Flow__:
 1. Ensure the size of the image is correctly aligned.
 
 All these steps are done with the guidance of platform validation rules. For more information on the validation rules,
-please see the [SEA Validation Rules](#sea-validation-rules) section.
+refer to the [SEA Validation Rules](#sea-validation-rules) section.
 
 ## Platform Data Requirements
 
@@ -114,10 +115,10 @@ allow the `SmmCpuFeaturesLib` to acquire platform-specific details.
 
 ### SEA Validation Rules
 
-The SEA Validation Rule is a data structure used to guide the SEA core to validate certain data regions of MM supervisor
-core. Platform authors need to provide the validation rules during build time, which will be compiled and baked into the
-SEA core binary. The rules will be used to validate the state of the MM supervisor and revert the content of the MM
-supervisor before SEA attempts to de-relocate the MM supervisor for signature validation.
+The "SEA Validation Rules" are a data structure used to guide the SEA core to validate certain data regions of MM
+Supervisor core. The validation rules are fixed for a given SEA binary build and will be compiled into SEA core binary.
+The rules are used during boot to validate the state of the MM Supervisor and revert the content of the MM supervisor
+before SEA attempts to de-relocate the MM Supervisor for signature validation.
 
 As defined in this [header file](../../Include/SeaAuxiliary.h), the SEA core will use the following rules to validate the
 MM memory regions:
@@ -127,7 +128,7 @@ MM memory regions:
 1. `IMAGE_VALIDATION_ENTRY_TYPE_CONTENT`: The content inside this region matches exactly the content inside the rule.
 1. `IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR`: The memory attribute of the region matches the rule.
 1. `IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF`: The region is self-referenced, SEA core will validate the region to be pointing
-to another point inside the MM supervisor.
+to another point inside the MM Supervisor.
 1. `IMAGE_VALIDATION_ENTRY_TYPE_POINTER`: The entry is a pointer to and the pointer needs to be not null, pointing to non
 MSEG, or pointing to outside of TSEG, depending on the rule.
 
@@ -135,7 +136,7 @@ The syntax of the rules is as described in this [documentation](../../Tools/GenS
 
 ## SEA Code Integration
 
-A general description of SEA and MM supervisor code integration is depicted below:
+A general description of SEA and MM Supervisor code integration is depicted below:
 
 ![SEA and MM Supervisor Assert Layout](Images/asset_layout.png)
 
@@ -147,7 +148,60 @@ A general description of SEA and MM supervisor code integration is depicted belo
 > Note: A list of the libraries and modules made available by this package is provided in the
   [Software Component Overview](SoftwareComponentOverview.md).
 
-### Platform DSC statements
+### Build Flow
+
+Building a platform that integrates the SEA core and and MM supervisor is a multi-stage process as the MmSupervisorCore
+must be built before the STM (and optionally the rest of the platform). This is due to the fact that the STM consumes
+artifacts (as PCDs) that are generated based off the compiled MM supervisor core. Specifically the Aux File mentioned
+above, which is a parsable binary file holding rules to validate the contents of the MM Supervisor. The flow looks like
+this:
+
+1. Build MmSupervisorCore.efi, MMiEntrySea.bin (EDKII build part 1)
+2. Generate MmSupervisorCore.aux, MmArtifacts.dsc.inc (Custom tooling, provided)
+3. Build Stm.bin (EDKII build part 2)
+4. Build the rest of the platform (EDKII part 3, optionally combined with EDKII build part 2)
+
+Depending on your implementation method (1), (2), and (3) will be handled by an external entity and the following
+binaries will be provided to your platform:
+
+- MmiEntrySea.bin
+- MmSupervisorCore.efi
+- Stm.bin
+
+In this scenario, you simply need to add the fdf statements as mentioned in, [Platform FDF Statements](#platform-fdf-statements),
+however you should link against the provided binaries rather than the output directory binaries as mentioned above.
+
+#### Building MmSupervisorCore, MMiEntrySea and STM manually
+
+Should your platform decide to build these three binaries itself, then the following actions must be taken prior to
+running the final platform build. As noted, custom tooling is provided for step (2) which requires rust to be available
+on your system.
+
+1. The first step is to build the MmSupervisorCore.efi and MMiEntrySea.bin from MmSupervisorPkg and SeaPkg
+respectively. This process is no different then a normal EDKII build.
+
+2. Generating the MmSupervisorCore.aux and MmArtifacts.dsc.inc is a slightly more complicated process. We provide
+multiple levels of abstraction for generating these files depending on your needs, which will be described below, and
+are ordered from the highest level of abstraction to the lowest.
+
+- If your platform uses Stuart to build, then the necessary function is automatically imported and is available
+  available via `self.Helper.gen_sea_includes(...)`. The function documentation can be found at `SeaPkg/Tools/GenSeaArtifacts/GenSeaArtifacts.py`.
+  
+- If your platform does not use stuart, but has a python script, you can still use this function, but you must
+  manually import the module, and use it via `GenSeaArtifacts.gen_sea_includes(...)`.
+  
+- If your platform has completely custom tooling, then you will need to follow the same flow as `gen_sea_includes`
+  manually, which includes calling `cargo run gen_aux` (`SeaPkg/Tools/gen_aux/readme.md`) and `py BinToPcd.py`
+  (`BaseTools`).
+
+The final step is to build the Stm.bin, which consumes the auxiliary file and a few other pieces of information via
+PCDs as denoted in the `gen_sea_includes(...)` python function and described in [Platform DSC statements](#platform-dsc-statements).
+
+In all scenarios for (2), you will need to review the `gen_aux` tool to see how to properly generate the configuration
+file, for gen_aux, which in turn is used to generate the auxiliary file. The auxiliary file is compiled into the STM
+and used to validate the execution of the MmSupervisorCore as explained in [SEA Validation Rules](#sea-code-integration).
+
+#### Platform DSC statements
 
 The changes below assume that the platform has already integrated the MM Supervisor.
 
@@ -173,7 +227,7 @@ The changes below assume that the platform has already integrated the MM Supervi
 ```
 
 Note that the supervisor needs to be built and passed through the `gen_aux` tool to output the `MmArtifacts.dsc.inc`
-file, which is a the binary representation of the validation rules and the hash of the MM supervisor and the MMI entry
+file, which is a the binary representation of the validation rules and the hash of the MM Supervisor and the MMI entry
 code. The `MmArtifacts.dsc.inc` file is generated by the `GenSeaArtifacts.py` tool.
 
 These values are then used to build the SEA core for final integration.
@@ -200,7 +254,7 @@ These values are then used to build the SEA core for final integration.
   }
 ```
 
-### Platform FDF statements
+#### Platform FDF statements
 
 1. Add the FDF sections below.
 
