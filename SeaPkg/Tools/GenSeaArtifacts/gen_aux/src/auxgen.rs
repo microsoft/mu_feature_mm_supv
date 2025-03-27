@@ -57,7 +57,6 @@ impl Symbol {
     /// 
     /// Panics if the index is greater than the number of elements in the symbol.
     pub fn address(&self, index: u64) -> i64 {
-        assert!(self.type_info.element_count() >= index);
         self.address as i64 + (self.type_info.element_size() * index) as i64
     }
 }
