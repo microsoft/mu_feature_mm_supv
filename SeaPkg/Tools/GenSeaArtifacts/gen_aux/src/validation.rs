@@ -25,6 +25,14 @@ pub struct ValidationRule {
     /// symbol, if the symbol is a class, that the validation should be
     /// performed on.
     pub field: Option<String>,
+    /// If the symbol is a list, this is the index to apply the validation to.
+    /// If not specified, the validation is applied to the entire list.
+    pub index: Option<u64>,
+    /// If the symbol is a list, then the last element is a sentinel value, thus
+    /// a validation rule of "content" of all zeros is applied instead of the
+    /// specified rule.
+    #[serde(default)]
+    pub sentinel: bool,
     /// The type of validation to be performed on the symbol.
     pub validation: ValidationType,
     /// An optional field that can be used to specify an offset from the symbol
@@ -47,6 +55,8 @@ impl ValidationRule {
         ValidationRule {
             symbol,
             field: None,
+            index: None,
+            sentinel: false,
             validation: ValidationType::None,
             offset: None,
             size: None,
@@ -97,6 +107,8 @@ impl From<&Symbol> for ValidationRule {
         ValidationRule {
             symbol: symbol.name.clone(),
             field: None,
+            index: None,
+            sentinel: false,
             validation: ValidationType::Content{ content: 0xDEADBEEFu32.to_le_bytes().to_vec() },
             offset: None,
             size: Some(2),
