@@ -197,7 +197,7 @@ impl ImageValidationEntryHeader {
             }
         }
 
-        for i in 0..symbol.type_info.element_count() {
+        for i in 0..element_count {
             // Skip the entry if the config specifies a specific index to apply the rule to
             if rule.index.unwrap_or(i) != i {
                 continue;
