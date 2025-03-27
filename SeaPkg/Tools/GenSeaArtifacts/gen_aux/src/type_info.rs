@@ -5,8 +5,6 @@ use pdb::{TypeData, TypeIndex, TypeInformation};
 
 use crate::{util::{find_type, get_size_from_primitive}, POINTER_LENGTH};
 
-
-
 #[derive(Default, Clone)]
 /// A struct that represents the type information of a symbol.
 pub struct TypeInfo {
