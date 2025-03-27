@@ -186,13 +186,26 @@ impl ImageValidationEntryHeader {
     /// list as a whole.
     fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> Vec<Self> {
         let mut ret = Vec::new();
-        let symbol_is_list = symbol.type_info.element_count() > 1;
+        let element_count = symbol.type_info.element_count();
+        let symbol_is_list = element_count > 1;
 
         for i in 0..symbol.type_info.element_count() {
+            // Skip the entry if the config specifies a specific index to apply the rule to
+            if rule.index.unwrap_or(i) != i {
+                continue;
+            }
+
             let mut entry = ImageValidationEntryHeader::default();
             entry.offset = (symbol.address(i) + rule.offset.unwrap_or_default()) as u32;
             entry.size = rule.size.unwrap_or(symbol.type_info.element_size() as u32);
-            entry.validation_type = rule.validation.clone();
+            
+            // If the last value in the list is a sentinel, then the data should be all zeros to signify
+            // the end of the list.
+            if rule.sentinel && i == element_count - 1 {
+                entry.validation_type = ValidationType::Content { content: vec![0; entry.size as usize] };
+            } else {
+                entry.validation_type = rule.validation.clone();
+            }
 
             // Set the symbol name for debugging purposes and the final json report.
             entry.symbol = symbol.name.clone();
