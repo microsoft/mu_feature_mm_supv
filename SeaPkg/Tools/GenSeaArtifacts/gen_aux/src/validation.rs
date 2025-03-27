@@ -58,7 +58,7 @@ impl ValidationRule {
     pub fn resolve(&mut self, symbol: &Symbol, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
         
         // Resolve the field to an offset and size if it exists
-        if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_index) {
+        if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_info.type_id()) {
             let (field_offset, field_size) = crate::util::find_field_offset_and_size(info, &index, attribute, &symbol.name).unwrap();
             self.offset = Some(field_offset as i64);
             if self.size.is_none() {
