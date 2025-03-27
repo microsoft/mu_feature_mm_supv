@@ -184,10 +184,18 @@ impl ImageValidationEntryHeader {
     /// Multiple headers are generated if the top level symbol is a list of an underlying type.
     /// In this scenario, the same rule is applied to each element in the list rather than the
     /// list as a whole.
-    fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> Vec<Self> {
+    fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> anyhow::Result<Vec<Self>> {
         let mut ret = Vec::new();
         let element_count = symbol.type_info.element_count();
         let symbol_is_list = element_count > 1;
+
+        if let Some(index) = rule.index {
+            if index >= element_count {
+                return Err(
+                    anyhow::anyhow!("Invalid Rule: [{:?}] index[{}] is larger than list size[{}]", rule, index, element_count
+                ));
+            }
+        }
 
         for i in 0..symbol.type_info.element_count() {
             // Skip the entry if the config specifies a specific index to apply the rule to
@@ -217,7 +225,7 @@ impl ImageValidationEntryHeader {
             }
             ret.push(entry);
         }
-        ret
+        Ok(ret)
     }
 
     /// Returns the size of ImageValidationEntryHeader in bytes. While the C
@@ -427,7 +435,7 @@ impl AuxBuilder {
                 ))?;
             rule.resolve(symbol, &symbols, info)?;
             
-            for mut entry in ImageValidationEntryHeader::from_rule(rule, &symbol) {
+            for mut entry in ImageValidationEntryHeader::from_rule(rule, &symbol)? {
                 entry.offset_to_default = offset_in_default;
                 
                 offset_in_default += entry.size;
