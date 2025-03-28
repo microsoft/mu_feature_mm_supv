@@ -188,7 +188,8 @@ pub fn main() -> Result<()> {
             }
         }
 
-        let report = CoverageReport::build(&efi, &aux)?;
+        let symbols: Vec<Symbol> = parsed_symbols.values().cloned().collect();
+        let report = CoverageReport::build(&efi, &aux, &symbols)?;
 
         report.to_file(output.with_extension("json"))?;
         aux.to_file(output)?;
