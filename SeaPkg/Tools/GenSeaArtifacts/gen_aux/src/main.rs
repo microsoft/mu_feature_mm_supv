@@ -17,6 +17,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 pub mod report;
+pub mod type_info;
 
 use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};

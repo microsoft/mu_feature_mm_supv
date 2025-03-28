@@ -8,9 +8,9 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
 use std::{fmt, io::Write, mem::size_of};
-use pdb::{TypeIndex, TypeInformation};
+use pdb::TypeInformation;
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{ConfigFile, KeySymbol, ValidationRule, ValidationType};
+use crate::{type_info::TypeInfo, ConfigFile, KeySymbol, ValidationRule, ValidationType};
 
 /// The type of symbol in the PDB file.
 #[derive(Default, Clone, PartialEq)]
@@ -30,17 +30,15 @@ pub struct Symbol {
     pub name: String,
     /// The address of the symbol in the loaded image.
     pub address: u32,
-    /// The size of the symbol
-    pub size: u32,
-    // The type index of the symbol
-    pub type_index: Option<TypeIndex>,
+    /// Information about this symbol's type
+    pub type_info: TypeInfo,
     // The type of the symbol
     pub symbol_type: SymbolType,
 }
 
 impl std::fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Symbol {{ address: 0x{:08X}, size: 0x{:08X}, name: {}, type_index: {:?} }}", self.address, self.size, self.name, self.type_index)
+        write!(f, "Symbol {{ address: 0x{:08X}, name: {}, type_info: {:?} }}", self.address, self.name, self.type_info)
     }
 }
 
@@ -51,6 +49,11 @@ impl Symbol {
             .iter()
             .filter(|s| s.characteristics.read() && !s.characteristics.write() && !s.characteristics.execute())
             .any(|s| self.address >= s.virtual_address && self.address < s.virtual_address + s.virtual_size)
+    }
+
+    /// Returns the address of the symbol at the given index.
+    pub fn address(&self, index: u64) -> i64 {
+        self.address as i64 + (self.type_info.element_size() * index) as i64
     }
 }
 
@@ -171,18 +174,53 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
 }
 
 impl ImageValidationEntryHeader {
-    /// Generates an ImageValidationEntryHeader from a ValidationRule and a Symbol.
-    fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> Self {
-        let mut entry = ImageValidationEntryHeader::default();
-        entry.offset = ((symbol.address as i64) + rule.offset.unwrap_or_default()) as u32;
-        entry.size = rule.size.unwrap_or(symbol.size);
-        entry.validation_type = rule.validation.clone();
-        if let Some(ref field) = rule.field {
-            entry.symbol = format!("{}.{}", &rule.symbol, field);
-        } else {
-            entry.symbol = rule.symbol.clone();
+    /// Generates one or more ImageValidationEntryHeaders from a ValidationRule and a Symbol.
+    ///
+    /// Multiple headers are generated if the top level symbol is an array of an underlying type.
+    /// In this scenario, the same rule is applied to each element in the array rather than the
+    /// array as a whole.
+    fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> anyhow::Result<Vec<Self>> {
+        let mut ret = Vec::new();
+        let element_count = symbol.type_info.element_count();
+        let symbol_is_arr = element_count > 1;
+
+        if let Some(index) = rule.index {
+            if index >= element_count {
+                return Err(
+                    anyhow::anyhow!("Invalid Rule: [{:?}] index[{}] is larger than array size[{}]", rule, index, element_count
+                ));
+            }
         }
-        entry
+
+        for i in 0..element_count {
+            // Skip the entry if the config specifies a specific index to apply the rule to
+            if rule.index.unwrap_or(i) != i {
+                continue;
+            }
+
+            let mut entry = ImageValidationEntryHeader::default();
+            entry.offset = (symbol.address(i) + rule.offset.unwrap_or_default()) as u32;
+            entry.size = rule.size.unwrap_or(symbol.type_info.element_size() as u32);
+            
+            // If the last value in the array is a sentinel, then the data should be all zeros to signify
+            // the end of the array.
+            if rule.sentinel && i == element_count - 1 {
+                entry.validation_type = ValidationType::Content { content: vec![0; entry.size as usize] };
+            } else {
+                entry.validation_type = rule.validation.clone();
+            }
+
+            // Set the symbol name for debugging purposes and the final json report.
+            entry.symbol = symbol.name.clone();
+            if symbol_is_arr {
+                entry.symbol += &format!("[{}]", i);
+            }
+            if let Some(ref field) = rule.field {
+                entry.symbol += &format!(".{}", field);
+            }
+            ret.push(entry);
+        }
+        Ok(ret)
     }
 
     /// Returns the size of ImageValidationEntryHeader in bytes. While the C
@@ -392,17 +430,18 @@ impl AuxBuilder {
                 ))?;
             rule.resolve(symbol, &symbols, info)?;
             
-            let mut entry = ImageValidationEntryHeader::from_rule(rule, &symbol);
-            entry.offset_to_default = offset_in_default;
-            
-            offset_in_default += entry.size;
-            
-            aux.header.size += entry.size + entry.header_size();
-            aux.raw_data.extend_from_slice(
-                &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
-            );
-            aux.entries.push(entry);
-            aux.header.entry_count += 1;
+            for mut entry in ImageValidationEntryHeader::from_rule(rule, &symbol)? {
+                entry.offset_to_default = offset_in_default;
+                
+                offset_in_default += entry.size;
+                
+                aux.header.size += entry.size + entry.header_size();
+                aux.raw_data.extend_from_slice(
+                    &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
+                );
+                aux.entries.push(entry);
+                aux.header.entry_count += 1;
+            }
         }
 
         // Now that all entries have been added, we can calculate the offset to
