@@ -81,7 +81,7 @@ impl CoverageReport {
     }
 
     /// Writes the report to a file
-    pub fn to_file(&self, path: std::path::PathBuf) -> anyhow::Result<()> { 
+    pub fn to_file(&self, path: std::path::PathBuf) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(path)?;
         let buffer = serde_json::to_vec_pretty(&self)?;
         file.write_all(&buffer)?;
