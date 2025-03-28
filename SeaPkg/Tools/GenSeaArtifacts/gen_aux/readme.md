@@ -66,7 +66,7 @@ validation.type = 'Required[String]'
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
 - `index`: If the symbol is a array, only apply the rule to the specified index.
-- `sentinel`: If the symbol is a array, apply content rule to only the final rule such that it's content must be all zeros
+- `sentinel`: If the symbol is a array, apply content rule to only the final rule such that its content must be all zeros
 - `offset`: Updates the address to `symbol.address + offset`. Offset can be negative. Providing an offset requires that the
 `size` is also provided, as the size can no longer be automatically calculated
 - `size`: Overrides the size calculated by `symbol` or `rule`.
