@@ -180,18 +180,18 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
 impl ImageValidationEntryHeader {
     /// Generates one or more ImageValidationEntryHeaders from a ValidationRule and a Symbol.
     ///
-    /// Multiple headers are generated if the top level symbol is a list of an underlying type.
-    /// In this scenario, the same rule is applied to each element in the list rather than the
-    /// list as a whole.
+    /// Multiple headers are generated if the top level symbol is an array of an underlying type.
+    /// In this scenario, the same rule is applied to each element in the array rather than the
+    /// array as a whole.
     fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> anyhow::Result<Vec<Self>> {
         let mut ret = Vec::new();
         let element_count = symbol.type_info.element_count();
-        let symbol_is_list = element_count > 1;
+        let symbol_is_arr = element_count > 1;
 
         if let Some(index) = rule.index {
             if index >= element_count {
                 return Err(
-                    anyhow::anyhow!("Invalid Rule: [{:?}] index[{}] is larger than list size[{}]", rule, index, element_count
+                    anyhow::anyhow!("Invalid Rule: [{:?}] index[{}] is larger than array size[{}]", rule, index, element_count
                 ));
             }
         }
@@ -206,8 +206,8 @@ impl ImageValidationEntryHeader {
             entry.offset = (symbol.address(i) + rule.offset.unwrap_or_default()) as u32;
             entry.size = rule.size.unwrap_or(symbol.type_info.element_size() as u32);
             
-            // If the last value in the list is a sentinel, then the data should be all zeros to signify
-            // the end of the list.
+            // If the last value in the array is a sentinel, then the data should be all zeros to signify
+            // the end of the array.
             if rule.sentinel && i == element_count - 1 {
                 entry.validation_type = ValidationType::Content { content: vec![0; entry.size as usize] };
             } else {
@@ -216,7 +216,7 @@ impl ImageValidationEntryHeader {
 
             // Set the symbol name for debugging purposes and the final json report.
             entry.symbol = symbol.name.clone();
-            if symbol_is_list {
+            if symbol_is_arr {
                 entry.symbol += &format!("[{}]", i);
             }
             if let Some(ref field) = rule.field {

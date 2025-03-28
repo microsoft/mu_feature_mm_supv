@@ -47,7 +47,7 @@ offset = 'Optional[u32]'
 ### rule
 
 The rule command (`[[rule]]`) is a configuration option to tell the tool to generate an entry header for the specific symbol.
-If the specific symbol is list, then a entry header will be generated for each entry in the list. The rule comes with the
+If the specific symbol is an array, then a entry header will be generated for each entry in the array. The rule comes with the
 following standard options:
 
 ``` toml
@@ -65,8 +65,8 @@ validation.type = 'Required[String]'
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
-- `index`: If the symbol is a list, only apply the rule to the specified index.
-- `sentinel`: If the symbol is a list, apply content rule to only the final rule such that it's content must be all zeros
+- `index`: If the symbol is a array, only apply the rule to the specified index.
+- `sentinel`: If the symbol is a array, apply content rule to only the final rule such that it's content must be all zeros
 - `offset`: Updates the address to `symbol.address + offset`. Offset can be negative. Providing an offset requires that the
 `size` is also provided, as the size can no longer be automatically calculated
 - `size`: Overrides the size calculated by `symbol` or `rule`.

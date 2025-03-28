@@ -33,7 +33,7 @@ impl TypeInfo {
         }
     }
 
-    /// Creates a new TypeInfo that is a list of the given size and type id.
+    /// Creates a new TypeInfo that is a array of the given size and type id.
     pub fn many(size: u64, count: u64, type_id: Option<TypeIndex>) -> Self {
         Self {
             element_size: size,
@@ -60,11 +60,6 @@ impl TypeInfo {
     /// Returns the type id of the underlying type.
     pub fn type_id(&self) -> Option<TypeIndex> {
         self.element_type
-    }
-
-    /// Returns if the type is a list of the underlying type
-    pub fn is_list(&self) -> bool {
-        self.count > 1
     }
 
     /// Creates a new TypeInfo from the given type index.
