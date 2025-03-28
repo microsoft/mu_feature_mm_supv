@@ -52,10 +52,6 @@ impl Symbol {
     }
 
     /// Returns the address of the symbol at the given index.
-    /// 
-    /// ## Panic
-    /// 
-    /// Panics if the index is greater than the number of elements in the symbol.
     pub fn address(&self, index: u64) -> i64 {
         self.address as i64 + (self.type_info.element_size() * index) as i64
     }
