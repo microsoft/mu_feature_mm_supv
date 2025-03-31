@@ -46,9 +46,9 @@ offset = 'Optional[u32]'
 
 ### rule
 
-The rule command (`[[rule]]`) is a configuration option to tell the tool to generate an entry header for the specific symbol.
-If the specific symbol is an array, then a entry header will be generated for each entry in the array. The rule comes with the
-following standard options:
+The rule command (`[[rule]]`) is a configuration option to tell the tool to generate an entry header for the specific
+symbol. If the specific symbol is an array, then a entry header will be generated for each entry in the array. The rule
+comes with the following standard options:
 
 ``` toml
 [[rule]]
