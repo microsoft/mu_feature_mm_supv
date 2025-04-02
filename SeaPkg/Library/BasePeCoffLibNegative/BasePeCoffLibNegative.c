@@ -729,10 +729,8 @@ GetMsegBaseAndSize (
 {
   EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  CPUID_CACHE_PARAMS_EAX             CacheParamsEax;
   STM_HEADER                         *StmHeader;
   UINTN                              NumberOfCpus;
-  UINT32                             MaxStandardCpuIdIndex;
 
   //
   // Find the MSEG Base address
@@ -756,16 +754,8 @@ GetMsegBaseAndSize (
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader = (STM_HEADER *)(UINTN)((UINT32)AsmReadMsr64 (IA32_SMM_MONITOR_CTL_MSR_INDEX) & 0xFFFFF000);
-
-  AsmCpuid (CPUID_SIGNATURE, &MaxStandardCpuIdIndex, NULL, NULL, NULL);
-  if (MaxStandardCpuIdIndex >= CPUID_CACHE_PARAMS) {
-    AsmCpuidEx (CPUID_CACHE_PARAMS, 0, &CacheParamsEax.Uint32, NULL, NULL, NULL);
-
-    if (CacheParamsEax.Uint32 != 0) {
-      NumberOfCpus = CacheParamsEax.Bits.MaximumAddressableIdsForLogicalProcessors + 1;
-    }
-  }
+  StmHeader    = (STM_HEADER *)(UINTN)*MsegBase;
+  NumberOfCpus = StmHeader->CpuInfoHdr.NumberOfCpus;
 
   *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
                StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
