@@ -837,7 +837,7 @@ PeCoffImageDiffValidation (
   MsegMemAttr.TargetMemoryAttributeMustHave    = SEA_MSEG_ATTRIBUTE;
   MsegMemAttr.TargetMemoryAttributeMustNotHave = 0;
   MsegMemAttr.TargetMemorySize = MsegSize;
-  Status = PeCoffImageValidationMemAttr (MsegBase, ImageValidationEntryHdr, PageTableBase);
+  Status = PeCoffImageValidationMemAttr ((VOID *)MsegBase, ImageValidationEntryHdr, PageTableBase);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to validate MSEG memory attributes - %r\n", __func__, Status));
     return Status;
