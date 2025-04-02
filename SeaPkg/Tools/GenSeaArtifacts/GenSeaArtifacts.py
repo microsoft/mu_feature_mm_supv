@@ -8,6 +8,7 @@
 import os
 import hashlib
 import logging
+import json
 from pathlib import Path
 import shutil
 
@@ -23,16 +24,20 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         fp = os.path.abspath(__file__)
         obj.Register("generate_sea_includes", GenSeaArtifacts.generate_sea_includes, fp)
         obj.Register("generate_sea_artifacts", GenSeaArtifacts.generate_sea_artifacts, fp)
-        obj.Register("generate_rim_artifact", GenSeaArtifacts.generate_rim, fp)
         obj.Register("generate_manifest_artifact", GenSeaArtifacts.generate_sea_manifest, fp)
+        obj.Register("validate_rule_coverage", GenSeaArtifacts.validate_rule_coverage, fp)
 
     @staticmethod
-    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path):
+    def generate_sea_includes(scopes: list[str], aux_config_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, inc_file_path: Path, workspace=None):
         """Generates SEA artifacts.
 
         Generates the following artifacts:
-        - MmSupervisorCore.aux (As build by gen_aux)
-        - MmSupervisorCore.efi (As Build by edk2 build system)
+        - MmSupervisorCore.aux: A validation rule file for the MM Supervisor Core EFI binary.
+        - inc_file_path: a dsc.inc file containing PCDs
+            - gEfiSeaPkgTokenSpaceGuid.PcdAuxBinFile: N sized PCD containing the auxiliary file for the MM Supervisor Core.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinHash: Hash of the MmiEntrySea binary.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinSize: Size of the MmiEntrySea binary.
+            - gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash: Hash of the MmSupervisorCore binary.
 
         Args:
             scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
@@ -50,7 +55,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             temp_hash_dir = stm_build_dir / "temp_hash.bin"
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir)
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir, workspace=workspace)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -119,7 +124,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
     @staticmethod
     def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path):
-        """Generates SEA artifacts.
+        """Moves all the necessary SEA related artifacts to the directory specified by output_dir.
 
         Generates the following artifacts:
         - Stm.bin (With the patched <HASH_ALGORITHM> hash of the MmSupervisorCore and MmiEntrySea file)
@@ -153,7 +158,12 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             )
             shutil.copy2(
                 stm_build_dir / "MmSupervisorCore.aux",
-                output_dir / "MmSupervisorCore.aux"
+                misc_dir / "MmSupervisorCore.aux"
+            )
+
+            shutil.copy2(
+                stm_build_dir / "MmSupervisorCore.json",
+                misc_dir / "MmSupervisorCore.json"
             )
 
             # Copy over MmSupervisorCore artifacts
@@ -190,7 +200,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_sea_manifest(stm_bin: Path, output_path: Path, config: dict):
+    def generate_sea_manifest(stm_bin: Path, output_path: Path, config: dict, workspace = None):
         """Generates the manifest file for the STM binary.
         
         Args:
@@ -206,7 +216,10 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         manifest_version = config.get("manifest_version", "1")
         algorithms = ",".join(config.get("algorithms", []))
 
-        args = 'run --bin gen_manifest --'
+        manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
+
+        args = f'run --manifest-path {str(manifest_path)}'
+        args += ' --bin gen_manifest --'
         args += f' {stm_bin}'
         args += f' -o {output_path}'
         args += f' -a {algorithms}' * (algorithms != '')
@@ -221,39 +234,58 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_rim(stm_bin: Path, output_path: Path, config: dict):
-        """Generates the RIM file for the STM binary.
+    def validate_rule_coverage(percent: float, aux_path: Path) -> bool:
+        """Validates the rule coverage of the auxiliary file.
 
         Args:
-            stm_bin: Path to the STM binary.
-            output_path: Path to place the RIM file including filename.
-            config: Configuration for the RIM generation.
+            percent (float): The minimum percentage of the file that must be covered.
+            aux_path (Path): Path to the auxiliary file.
+        
+        Raises:
+            FileNotFoundError: The auxiliary file path does not exist or is not a file.
+            json.JSONDecodeError: The auxiliary file is not a valid JSON file.
+
+        Returns:
+            true if the rule coverage is above the threshold, false otherwise.
         """
-        if not stm_bin.is_file():
-            raise FileNotFoundError(stm_bin)
-        if "company_name" not in config:
-            raise ValueError("company_name not found in config.")
-        if "company_url" not in config:
-            raise ValueError("company_url not found in config.")
+        if not aux_path.is_file():
+            raise FileNotFoundError(aux_path)
 
-        rim_version = config.get("version", "0.0.1")
-        company_name = config.get("company_name")
-        company_url = config.get("company_url")
+        with open(aux_path, 'r') as f:
+            data = json.load(f)
 
-        args = "run --bin rim -- generate"
-        args += f' {stm_bin}'
-        args += f' -o {output_path}'
-        args += f' -r {rim_version}'
-        args += f' --company-name \"{company_name}\"'
-        args += f' --company-url \"{company_url}\"'
+        # Start with a simple check. Should technically be correct.
+        covered_percent = float(data.get('covered_percent', '0%').strip('%'))
+        if covered_percent < percent:
+            logging.error(f"Auxiliary file rule coverage is below the allowed threshold of {percent}%: {covered_percent}%")
+            return False
 
-        ret = RunCmd("cargo", args)
-        if ret != 0:
-            raise RuntimeError("gen_rim failed. Is your Cargo workspace setup correctly?")
+        # Lets double check the coverage by actually calculating via sections.
+        if 'segments' not in data:
+            logging.error("Auxiliary file does not contain any segments, broken format?")
+            return False
 
-        return 0
+        covered = 0
+        total = 0
+        for segment in data['segments']:
+            if segment.get('reason', '') in ['Padding', 'PE Header']:
+                continue
 
-def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path):
+            size = int(segment['end'], 16) - int(segment['start'], 16)
+            if segment.get('covered', False):
+                covered += size
+            else:
+                logging.debug(f"Segment {segment} is not covered.")
+            total += size
+
+        actual_percent = round((float(covered) / float(total)) * 100, 2)
+        if actual_percent < percent:
+            logging.error(f"Auxiliary file rule coverage is below the allowed threshold of {percent}%: {actual_percent}%")
+            return False
+
+        return True
+
+def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path, workspace = None):
     """Generates the auxiliary file for the MmsupervisorCore.
 
     Args:
@@ -267,8 +299,10 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     """
 
     output_path = output_dir / 'MmSupervisorCore.aux'
+    manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
-    args = "run --bin gen_aux --"
+    args = f"run --manifest-path {str(manifest_path)}"
+    args += " --bin gen_aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"

@@ -79,7 +79,7 @@ acquire platform-specific details.
 
 1. `gMpInformationHobGuid` - Basic MP information.
    - [StandaloneMmPkg/Include/Guid/MpInformation.h](https://github.com/tianocore/edk2/blob/master/StandaloneMmPkg/Include/Guid/MpInformation.h)
-   - Note that [`PeiStandaloneMmHobProductionLib`](https://github.com/microsoft/mu_basecore/blob/release/202102/StandaloneMmPkg/Library/PeiStandaloneMmHobProductionLib/PeiStandaloneMmHobProductionLib.inf)
+   - Note that [`PeiStandaloneMmHobProductionLib`](https://github.com/microsoft/mu_basecore/blob/HEAD/StandaloneMmPkg/Library/PeiStandaloneMmHobProductionLib/PeiStandaloneMmHobProductionLib.inf)
    can be used to help produce this HOB.
 1. `gEfiMmPeiMmramMemoryReserveGuid`/`gEfiSmmSmramMemoryGuid` - Describes MMRAM regions present, which must be updated
    through the `SmmRelocationLib` if using MU releases after 202405.

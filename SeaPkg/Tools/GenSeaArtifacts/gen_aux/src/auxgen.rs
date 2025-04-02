@@ -99,16 +99,19 @@ impl Default for ImageValidationDataHeader {
 /// 
 #[derive(Clone)]
 pub struct ImageValidationEntryHeader {
-    signature: u32,
+    pub signature: u32,
     /// Offset of the value in the original image.
-    offset: u32,
+    pub offset: u32,
     /// Size of the value in bytes.
-    size: u32,
+    pub size: u32,
     /// The type of validation to perform on the symbol. Contains the data
     /// necessary to perform the validation.
-    validation_type: ValidationType,
+    pub validation_type: ValidationType,
     /// Offset of the default value in the aux file.
-    offset_to_default: u32
+    pub offset_to_default: u32,
+    /// The symbol name that this entry is for. This is not written to the aux
+    /// file, but exists for debugging purposes.
+    pub symbol: String,
 }
 
 impl Default for ImageValidationEntryHeader {
@@ -118,7 +121,8 @@ impl Default for ImageValidationEntryHeader {
             offset: 0,
             size: 0,
             validation_type: ValidationType::default(),
-            offset_to_default: 0
+            offset_to_default: 0,
+            symbol: String::new(),
         }
     }
 }
@@ -173,6 +177,11 @@ impl ImageValidationEntryHeader {
         entry.offset = ((symbol.address as i64) + rule.offset.unwrap_or_default()) as u32;
         entry.size = rule.size.unwrap_or(symbol.size);
         entry.validation_type = rule.validation.clone();
+        if let Some(ref field) = rule.field {
+            entry.symbol = format!("{}.{}", &rule.symbol, field);
+        } else {
+            entry.symbol = rule.symbol.clone();
+        }
         entry
     }
 
@@ -294,16 +303,24 @@ impl AuxBuilder {
         }
     }
 
-    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` and
+    /// Finds symbols that do not have a rule in the configuration file. Ignores symbols of type `Procedure` or `Label` and
     /// any symbols in the `excluded_symbols` list in the configuration file (that filter is done before calling this function).
     pub fn find_symbols_with_no_rule(symbols: &Vec::<Symbol>, rules: &Vec<ValidationRule>) -> Vec<Symbol> {
+        const IGNORE_SYMBOL_TYPES: [SymbolType;2] = [SymbolType::Procedure, SymbolType::Label];
+
         let mut missing = Vec::new();
         for symbol in symbols {
-            if !rules.iter().any(|rule| rule.symbol == symbol.name || symbol.symbol_type == SymbolType::Procedure) {
+            if !rules.iter().any(|rule| rule.symbol == symbol.name || IGNORE_SYMBOL_TYPES.contains(&symbol.symbol_type)) {
                 missing.push(symbol.clone());
             }
         }
+
+        // Apply extra static filters for junk symbols
         missing
+            .into_iter()
+            .filter(|symbol| symbol.name != "")
+            .filter(|symbol| symbol.address != 0)
+            .collect()
     }
 
     /// Generates the aux file. By default, only rules specified in the

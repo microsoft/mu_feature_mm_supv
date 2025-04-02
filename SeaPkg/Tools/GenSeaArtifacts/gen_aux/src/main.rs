@@ -16,9 +16,11 @@ use scroll::Pread;
 pub mod auxgen;
 pub mod util;
 pub mod validation;
+pub mod report;
 
 use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
+use report::CoverageReport;
 
 pub const POINTER_LENGTH: u64 = 8;
 
@@ -185,7 +187,10 @@ pub fn main() -> Result<()> {
                 println!("  {:?}", entry);
             }
         }
-    
+
+        let report = CoverageReport::build(&efi, &aux)?;
+
+        report.to_file(output.with_extension("json"))?;
         aux.to_file(output)?;
     }
 
