@@ -38,7 +38,6 @@
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/StmApi.h>
 #include <Register/Intel/Cpuid.h>
-#include <x64/Vmx.h>
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
