@@ -287,7 +287,7 @@ DiscoverSmiEntryInFvHobs (
             Status = SmmSetMemoryAttributes (
               (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
               ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
-              EFI_MEMORY_SP | EFI_MEMORY_RO
+              SEA_MSEG_ATTRIBUTE
               );
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to set SEA [%g] at 0x%p of %x bytes to be read-only - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));

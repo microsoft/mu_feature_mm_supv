@@ -26,6 +26,7 @@
 #include <Uefi.h>
 #include <Base.h>
 #include <SeaAuxiliary.h>
+#include <SeaResponder.h>
 #include <Library/BaseLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -833,7 +834,7 @@ PeCoffImageDiffValidation (
   MsegMemAttr.Header.ValidationType        = IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR;
   MsegMemAttr.Header.Offset                = 0;
   MsegMemAttr.Header.Size                  = sizeof (EFI_PHYSICAL_ADDRESS);
-  MsegMemAttr.TargetMemoryAttributeMustHave    = EFI_MEMORY_RO | EFI_MEMORY_SP;
+  MsegMemAttr.TargetMemoryAttributeMustHave    = SEA_MSEG_ATTRIBUTE;
   MsegMemAttr.TargetMemoryAttributeMustNotHave = 0;
   MsegMemAttr.TargetMemorySize = MsegSize;
   Status = PeCoffImageValidationMemAttr (MsegBase, ImageValidationEntryHdr, PageTableBase);
