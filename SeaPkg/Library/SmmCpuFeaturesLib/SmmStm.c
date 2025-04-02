@@ -635,6 +635,9 @@ MmEndOfDxeEventNotify (
   StmHeader = (STM_HEADER *)(UINTN)MsegBase;
   LongRsp   = (VOID *)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
 
+  StmHeader->CpuInfoHdr.NumberOfCpus = gMmst->NumberOfCpus;
+  StmHeader->CpuInfoHdr.Signature = STM_CPU_INFORMATION_HEADER_SIGNATURE;
+
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
     Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
     DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
