@@ -830,14 +830,14 @@ PeCoffImageDiffValidation (
   //
   // First verify that MSEG is marked as supervisor read-only
   //
-  MsegMemAttr.Header.EntrySignature        = IMAGE_VALIDATION_ENTRY_SIGNATURE;
-  MsegMemAttr.Header.ValidationType        = IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR;
-  MsegMemAttr.Header.Offset                = 0;
-  MsegMemAttr.Header.Size                  = sizeof (EFI_PHYSICAL_ADDRESS);
+  MsegMemAttr.Header.EntrySignature            = IMAGE_VALIDATION_ENTRY_SIGNATURE;
+  MsegMemAttr.Header.ValidationType            = IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR;
+  MsegMemAttr.Header.Offset                    = 0;
+  MsegMemAttr.Header.Size                      = sizeof (EFI_PHYSICAL_ADDRESS);
   MsegMemAttr.TargetMemoryAttributeMustHave    = SEA_MSEG_ATTRIBUTE;
   MsegMemAttr.TargetMemoryAttributeMustNotHave = 0;
-  MsegMemAttr.TargetMemorySize = MsegSize;
-  Status = PeCoffImageValidationMemAttr ((VOID *)MsegBase, ImageValidationEntryHdr, PageTableBase);
+  MsegMemAttr.TargetMemorySize                 = MsegSize;
+  Status                                       = PeCoffImageValidationMemAttr ((VOID *)MsegBase, &(MsegMemAttr.Header), PageTableBase);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to validate MSEG memory attributes - %r\n", __func__, Status));
     return Status;
