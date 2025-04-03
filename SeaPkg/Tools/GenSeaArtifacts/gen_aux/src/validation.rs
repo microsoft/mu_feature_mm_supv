@@ -41,7 +41,10 @@ pub struct ValidationRule {
     /// rule is only applied if it's scope matches any of the scopes passed to
     /// the tool on the command line. If the rule has no scope, it is always
     /// applied.
-    pub scope: Option<String>
+    pub scope: Option<String>,
+    /// Symbol information that the rule is associated with.
+    #[serde(skip, default)]
+    pub symbol_info: Option<Symbol>,
 }
 
 impl ValidationRule {
@@ -54,13 +57,24 @@ impl ValidationRule {
             validation: ValidationType::None,
             offset: None,
             size: None,
-            scope: None
+            scope: None,
+            symbol_info: None,
         }
     }
 
     /// Resolve any symbols in the rule to their actual addresses
-    pub fn resolve(&mut self, symbol: &Symbol, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
-        
+    pub fn resolve(&mut self, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
+        let symbol = symbols
+            .iter()
+            .find(|&entry| &entry.name == &self.symbol)
+            .ok_or(
+                anyhow::anyhow!(
+                    "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
+                    self.symbol
+            ))?;
+
+        self.symbol_info = Some(symbol.clone());
+
         // Resolve the field to an offset and size if it exists
         if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_info.type_id()) {
             let (field_offset, field_size) = crate::util::find_field_offset_and_size(info, &index, attribute, &symbol.name).unwrap();
@@ -106,6 +120,7 @@ impl From<&Symbol> for ValidationRule {
             offset: None,
             size: Some(2),
             scope: None,
+            symbol_info: None,
         }
     }
 }

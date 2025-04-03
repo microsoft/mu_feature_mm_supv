@@ -10,10 +10,10 @@
 use std::{fmt, io::Write, mem::size_of};
 use pdb::{SectionCharacteristics, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
-use crate::{type_info::TypeInfo, ConfigFile, KeySymbol, ValidationRule, ValidationType};
+use crate::{report::CoverageReport, type_info::TypeInfo, ConfigFile, KeySymbol, ValidationRule, ValidationType};
 
 /// The type of symbol in the PDB file.
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub enum SymbolType {
     #[default]
     None,
@@ -179,8 +179,11 @@ impl ImageValidationEntryHeader {
     /// Multiple headers are generated if the top level symbol is an array of an underlying type.
     /// In this scenario, the same rule is applied to each element in the array rather than the
     /// array as a whole.
-    fn from_rule(rule: &ValidationRule, symbol: &Symbol) -> anyhow::Result<Vec<Self>> {
+    fn from_rule(rule: &ValidationRule) -> anyhow::Result<Vec<Self>> {
         let mut ret = Vec::new();
+        let Some(symbol) = rule.symbol_info.as_ref() else {
+            return Err(anyhow::anyhow!("Invalid Rule: [{:?}] symbol_info is None", rule));
+        };
         let element_count = symbol.type_info.element_count();
         let symbol_is_arr = element_count > 1;
 
@@ -374,37 +377,42 @@ impl AuxBuilder {
             .collect()
     }
 
-    /// Generates the aux file. By default, only rules specified in the
-    /// config file have entries in the aux file. If `autogen=true` is
-    /// specified in the configuration file, a rule (with no validation) will
-    /// be generated, so that all symbols are reverted to their original value.
-    pub fn generate(self, info: &TypeInformation, scopes: Vec<String>) -> anyhow::Result<AuxFile> {
-        // Filter out rules that are not in scope
-        let (mut rules, filtered): (Vec<_>, Vec<_>) = self.rules
-            .into_iter()
+    /// Returns the validation entry headers for the given configuration.
+    pub fn get_validation_entry_headers(&self, scopes: Vec<String>, type_info: &TypeInformation) -> anyhow::Result<Vec<ImageValidationEntryHeader>> {
+        let mut headers = Vec::new();
+
+        for rule in &self.get_rules(scopes, type_info)? {
+            let entry_headers = ImageValidationEntryHeader::from_rule(rule)?;
+            headers.extend(entry_headers);
+        }
+
+        Ok(headers)
+    }
+
+    /// Returns the rules that apply to the given configuration.
+    /// 
+    /// ## Errors
+    /// 
+    /// Returns an error if `exit_on_missing_rules` is enabled and there are symbols that do not have rules.
+    fn get_rules(&self, scopes: Vec<String>, type_info: &TypeInformation) -> anyhow::Result<Vec<ValidationRule>> {
+        let symbols = self.get_symbols()?;
+
+        let (mut rules, filtered): (Vec<_>, Vec<_>) = self
+            .rules
+            .iter()
+            .cloned()
             .partition(|rule| rule.is_in_scope(&scopes));
         
         for rule in filtered {
             println!("Rule: {:?} Skipped... Does not apply to scopes: {:?}", rule, scopes);
         }
 
-        // Filter out symbols that are excluded
-        let (symbols, filtered) = self.symbols
-            .into_iter()
-            .partition(|symbol| !self.excluded_symbols.contains(&symbol.name));
-        
-        for symbol in filtered {
-            println!("Symbol: {:?} Skipped... Excluded via `excluded_symbols` in config file", symbol);
-        }
-
-        // Add missing rules if auto_generate is enabled
         if self.auto_generate {
             Self::add_missing_rules(&symbols, &mut rules);
         }
 
-        // Ensure that all symbols have rules if exit_on_missing_rules is enabled
         if self.exit_on_missing_rules {
-            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&symbols, &rules);
+            let symbols_with_no_rule = Self::find_symbols_with_no_rule(&self.get_symbols()?, &rules);
             if !symbols_with_no_rule.is_empty() {
                 println!("ERROR: Rules missing for the following symbols in the configuration file.");
                 for symbol in symbols_with_no_rule {
@@ -414,13 +422,83 @@ impl AuxBuilder {
                 return Err(anyhow::anyhow!(e))
             }
         }
-        
+
+        for rule in &mut rules {
+            rule.resolve(&symbols, type_info)?;
+        }
+        Ok(rules)
+    }
+
+    /// Returns the symbols that are not excluded by the given configuration.
+    fn get_symbols(&self) -> anyhow::Result<Vec<Symbol>> {
+        let (symbols, filtered): (Vec<_>, Vec<_>) = self
+            .symbols
+            .iter()
+            .cloned()
+            .partition(|symbol| !self.excluded_symbols.contains(&symbol.name));
+
+        for symbol in filtered {
+            println!("Symbol: {:?} Skipped... Excluded via `excluded_symbols` in config file", symbol);
+        }
+
+        Ok(symbols)
+    }
+
+    /// Resolves and returns the key symbols that are not excluded by the given configuration.
+    fn get_key_symbols(&self) -> anyhow::Result<Vec<KeySymbol>> {
+        let symbols = self.get_symbols()?;
+        let mut key_symbols = self.key_symbols.clone();
+
+        for symbol in &mut key_symbols {
+            symbol.resolve(&symbols)?;
+        }
+        Ok(key_symbols)
+    }
+
+    /// Auto generates additional Content rules for padding that is present in the image.
+    fn auto_generate_rules(&self, report: CoverageReport) -> anyhow::Result<Vec<ImageValidationEntryHeader>> {
+        let mut entry_headers = Vec::new();
+
+        let rules: Vec<ValidationRule> = report.segments()
+            .iter()
+            .filter(|segment| !segment.covered() && segment.symbol().is_empty())
+            .map(|segment| {
+                let mut rule = ValidationRule::new(String::from(""));
+                let size = segment.end() - segment.start();
+                rule.validation = ValidationType::Content { content: vec![0; size as usize] };
+
+                let name = if segment.reason() == "Padding" {
+                    String::from("Section Padding")
+                } else {
+                    String::from("Symbol Padding")
+                };
+
+                rule.symbol_info = Some(Symbol {
+                    name,
+                    address: segment.start() as u32,
+                    type_info: TypeInfo::one(size as u64, None),
+                    symbol_type: SymbolType::None,
+                });
+                rule
+            })
+            .collect();
+
+        for rule in rules {
+            entry_headers.extend(
+                ImageValidationEntryHeader::from_rule(&rule)?
+            );
+        }
+
+        Ok(entry_headers)
+    }
+
+    // Generates the aux file from the given entry headers and key symbols.
+    fn _generate(&self, entry_headers: Vec<ImageValidationEntryHeader>, key_symbols: Vec<KeySymbol>) -> anyhow::Result<AuxFile> {
         let mut aux = AuxFile::default();
         aux.header.offset_to_first_entry = size_of::<ImageValidationDataHeader>() as u32;
         
-        for mut symbol in self.key_symbols {
-            symbol.resolve(&symbols)?;
-            aux.key_symbols.push(symbol);
+        for key_symbol in key_symbols {
+            aux.key_symbols.push(key_symbol);
             aux.header.key_symbol_count += 1;
             aux.header.size += 8;
             aux.header.offset_to_first_entry += 8;
@@ -432,29 +510,17 @@ impl AuxBuilder {
 
         let mut offset_in_default = 0;
 
-        for rule in rules.iter_mut() {
-            let symbol = symbols
-                .iter()
-                .find(|&entry| &entry.name == &rule.symbol)
-                .ok_or(
-                    anyhow::anyhow!(
-                        "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
-                        rule.symbol
-                ))?;
-            rule.resolve(symbol, &symbols, info)?;
+        for mut entry in entry_headers {
+            entry.offset_to_default = offset_in_default;
             
-            for mut entry in ImageValidationEntryHeader::from_rule(rule, &symbol)? {
-                entry.offset_to_default = offset_in_default;
-                
-                offset_in_default += entry.size;
-                
-                aux.header.size += entry.size + entry.header_size();
-                aux.raw_data.extend_from_slice(
-                    &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
-                );
-                aux.entries.push(entry);
-                aux.header.entry_count += 1;
-            }
+            offset_in_default += entry.size;
+            
+            aux.header.size += entry.size + entry.header_size();
+            aux.raw_data.extend_from_slice(
+                &self.loaded_image[(entry.offset as usize)..(entry.offset + entry.size) as usize]
+            );
+            aux.entries.push(entry);
+            aux.header.entry_count += 1;
         }
 
         // Now that all entries have been added, we can calculate the offset to
@@ -467,6 +533,35 @@ impl AuxBuilder {
         for entry_header in &mut aux.entries {
             entry_header.offset_to_default += offset_to_default_start;
         }
+
+        Ok(aux)
+    }
+
+    /// Generates the aux final file.
+    /// 
+    /// By default, only rules specified in the config file have entries in the aux file. If `autogen=true` is
+    /// specified in the configuration file, a rule (with no validation) will be generated, so that all symbols are
+    /// reverted to their original value.
+    /// 
+    /// This command ultimately builds the aux file twice. The first time is is used to see if there are any additional
+    /// rules that need to be automatically generated. This is typically to auto generate rules for padding that is
+    /// present in the image.
+    pub fn generate(self, type_info: &TypeInformation, scopes: Vec<String>) -> anyhow::Result<AuxFile> {
+        let mut entry_headers = self.get_validation_entry_headers(scopes, type_info)?;
+        let key_symbols = self.get_key_symbols()?;
+
+        let aux = self._generate(entry_headers.clone(), key_symbols.clone())?;
+
+        let report = CoverageReport::build(
+            &self.loaded_image,
+            &aux,
+            &self.get_symbols()?
+        )?;
+
+        entry_headers.extend(self.auto_generate_rules(report)?);
+
+        let aux = self._generate(entry_headers, key_symbols)?;
+        
         aux.verify(self.loaded_image)?;
         Ok(aux)
     }
