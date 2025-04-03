@@ -636,7 +636,7 @@ MmEndOfDxeEventNotify (
   LongRsp   = (VOID *)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
 
   // Copy CPU information to the CPU_INFORMATION_HEADER
-  StmHeader->CpuInfoHdr.NumberOfCpus = gMmst->NumberOfCpus;
+  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)gMmst->NumberOfCpus;
   StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
 
   for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
