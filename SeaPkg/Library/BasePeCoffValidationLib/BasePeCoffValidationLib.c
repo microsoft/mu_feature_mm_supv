@@ -422,6 +422,7 @@ PeCoffImageValidationPointer (
   EFI_STATUS                Status;
   IMAGE_VALIDATION_POINTER  *PointerHdr;
   BOOLEAN                   InMseg;
+  EFI_PHYSICAL_ADDRESS      AddrInTarget;
 
   if ((TargetImage == NULL) || (Hdr == NULL)) {
     DEBUG ((
@@ -460,7 +461,9 @@ PeCoffImageValidationPointer (
     goto Done;
   }
 
-  InMseg = ((UINTN)((UINT8 *)TargetImage + Hdr->Offset) >= MsegBase) && ((UINTN)((UINT8 *)TargetImage + Hdr->Offset) < MsegBase + MsegSize);
+  AddrInTarget = 0;
+  CopyMem (&AddrInTarget, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size);
+  InMseg = ((UINTN)AddrInTarget >= MsegBase - MsegSize) && ((UINTN)((UINT8 *)TargetImage + Hdr->Offset) < MsegBase);
   if ((BOOLEAN)PointerHdr->InMseg != InMseg) {
     DEBUG ((
       DEBUG_ERROR,

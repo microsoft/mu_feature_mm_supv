@@ -728,7 +728,6 @@ GetMsegBaseAndSize (
 {
   EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  CPUID_VERSION_INFO_EBX             VersionInfoEbx;
   STM_HEADER                         *StmHeader;
   UINTN                              NumberOfCpus;
 
@@ -749,14 +748,13 @@ GetMsegBaseAndSize (
     goto Done;
   }
 
-  *MsegBase = (EFI_PHYSICAL_ADDRESS)SmmMonitorCtl.Bits.MsegBase;
+  *MsegBase = (EFI_PHYSICAL_ADDRESS)SmmMonitorCtl.Bits.MsegBase << 12;
 
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
-  AsmCpuid (CPUID_VERSION_INFO, NULL, &VersionInfoEbx.Uint32, NULL, NULL);
-  NumberOfCpus = VersionInfoEbx.Bits.MaximumAddressableIdsForLogicalProcessors;
+  StmHeader    = (STM_HEADER *)(UINTN)*MsegBase;
+  NumberOfCpus = StmHeader->CpuInfoHdr.NumberOfCpus;
 
   *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
                StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
@@ -874,7 +872,7 @@ PeCoffImageDiffValidation (
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
         Status                      = PeCoffImageValidationPointer (TargetImage, ImageValidationEntryHdr, MsegBase, MsegSize);
-        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_POINTER *)ImageValidationEntryHdr + 1);
         break;
       default:
         Status = EFI_INVALID_PARAMETER;
