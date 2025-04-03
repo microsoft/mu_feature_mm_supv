@@ -456,7 +456,7 @@ impl AuxBuilder {
     }
 
     /// Auto generates additional Content rules for padding that is present in the image.
-    fn auto_generate_rules(&self, report: CoverageReport) -> anyhow::Result<Vec<ImageValidationEntryHeader>> {
+    fn auto_generate_entry_headers(&self, report: CoverageReport) -> anyhow::Result<Vec<ImageValidationEntryHeader>> {
         let mut entry_headers = Vec::new();
 
         let rules: Vec<ValidationRule> = report.segments()
@@ -558,7 +558,7 @@ impl AuxBuilder {
             &self.get_symbols()?
         )?;
 
-        entry_headers.extend(self.auto_generate_rules(report)?);
+        entry_headers.extend(self.auto_generate_entry_headers(report)?);
 
         let aux = self._generate(entry_headers, key_symbols)?;
         
