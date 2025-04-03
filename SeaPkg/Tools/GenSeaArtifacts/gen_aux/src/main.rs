@@ -56,7 +56,7 @@ pub struct Args {
 
 /// A struct that represents an signature/address pair to be added to the
 /// auxiliary file header.
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
     pub symbol: Option<String>,
