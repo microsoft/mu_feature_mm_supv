@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use pdb::{FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex, TypeInformation};
 use anyhow::{anyhow, Result};
 
-use crate::POINTER_LENGTH;
+use crate::{type_info::TypeInfo, POINTER_LENGTH};
 
 /// Returns a type using the type index. If the type is a class with size 0, it will
 /// check for a shadow class with the real information, returning that instead.
@@ -61,23 +61,20 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
     match symbol.parse() {
         Ok(pdb::SymbolData::Public(data)) if data.function => {
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
-            let size = POINTER_LENGTH as u32;
+            let type_info = TypeInfo::one(POINTER_LENGTH, None);
             let name = data.name.to_string().to_string();
-            let type_index = None;
             let symbol_type = crate::SymbolType::Public;
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
-                size,
                 name,
-                type_index,
+                type_info,
                 symbol_type,
             });
         }
         Ok(pdb::SymbolData::Data(data)) => {
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
-            let size = get_size_from_index(&info, data.type_index)? as u32;
+            let type_info = TypeInfo::from_type_index(&info, data.type_index)?;
             let name = data.name.to_string().to_string();
-            let type_index = Some(data.type_index);
             let symbol_type = crate::SymbolType::Data;
             
             // A data symbol should always take precedence over an existing
@@ -90,37 +87,32 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
 
             map.insert(name.clone(), crate::Symbol {
                 address,
-                size,
                 name,
-                type_index,
+                type_info,
                 symbol_type,
             });
         }
         Ok(pdb::SymbolData::Procedure(data)) => {
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
-            let size = POINTER_LENGTH as u32;
+            let type_info = TypeInfo::one(POINTER_LENGTH, Some(data.type_index));
             let name = data.name.to_string().to_string();
-            let type_index = Some(data.type_index);
             let symbol_type = crate::SymbolType::Procedure;
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
-                size,
                 name,
-                type_index,
+                type_info,
                 symbol_type,
             });
         }
         Ok(pdb::SymbolData::Label(data)) => {
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
-            let size = POINTER_LENGTH as u32;
+            let type_info = TypeInfo::one(POINTER_LENGTH, None);
             let name = data.name.to_string().to_string();
-            let type_index = None;
             let symbol_type = crate::SymbolType::Label;
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
-                size,
                 name,
-                type_index,
+                type_info,
                 symbol_type,
             });
         }
@@ -181,116 +173,6 @@ pub fn get_size_from_primitive(primitive: pdb::PrimitiveKind) -> u64 {
     }
 }
 
-/// Returns the size of a type via it's type index in the type information stream
-pub fn get_size_from_index(info: &TypeInformation, index: TypeIndex) -> Result<u64> {
-    Ok(get_size_from_type(info, find_type(info, index)?.parse()?)?)
-}
-
-/// Returns the size of a data type in bytes.
-pub fn get_size_from_type(info: &TypeInformation, data: TypeData) -> Result<u64> {
-    let x = match data {
-        TypeData::Primitive(prim) => {
-            if prim.indirection.is_some() {
-                POINTER_LENGTH
-            } else {
-                get_size_from_primitive(prim.kind)
-            }
-        }
-        TypeData::Class(class) => {
-            class.size
-        }
-        TypeData::Member(_) => {
-            println!("ERROR: Member type unexpected in global data.");
-            0
-        }
-        TypeData::MemberFunction(_) => {
-            println!("ERROR: Member function unexpected in global data.");
-            0
-        }
-        TypeData::OverloadedMethod(_) => {
-            println!("ERROR: Overloaded method unexpected in C.");
-            0
-        }
-        TypeData::Method(_) => {
-            println!("ERROR: Method unexpected in C.");
-            0
-        }
-        TypeData::StaticMember(_) => {
-            println!("ERROR: Static method unexpected in C.");
-            0
-        }
-        TypeData::Nested(_) => {
-            println!("ERROR: Nested unexpected in global data.");
-            0
-        }
-        TypeData::BaseClass(_) => {
-            println!("ERROR: BaseClass unexpected in C.");
-            0
-        }
-        TypeData::VirtualBaseClass(_) => {
-            println!("ERROR: VirtualBaseClass unexpected in C.");
-            0
-        }
-        TypeData::VirtualFunctionTablePointer(_) => {
-            POINTER_LENGTH
-        }
-        TypeData::Procedure(_) => {
-            println!("ERROR: Procedure unexpected in C.");
-            0
-        }
-        TypeData::Pointer(_) => {
-            POINTER_LENGTH
-        }
-        TypeData::Modifier(modifier) => {
-            get_size_from_index(info, modifier.underlying_type)?
-        }
-        pdb::TypeData::Enumeration(enm) => {
-            get_size_from_index(info, enm.underlying_type)?
-        }
-        TypeData::Enumerate(_) => {
-            println!("ERROR: Unknown Type Enumerate"); // TODO: Figure out what this is if needed.
-            0
-        }
-        TypeData::Array(arr) => {
-            arr.dimensions[0] as u64
-        }
-        pdb::TypeData::Union(union) => {
-            union.size
-        }
-        pdb::TypeData::Bitfield(bf) => {
-            let r#type = get_size_from_index(info, bf.underlying_type)?;
-            let size = r#type * bf.length as u64;
-            size
-        }
-        TypeData::FieldList(fl) => {
-            let mut size = 0;
-            for r#type in fl.fields {
-                size += get_size_from_type(info, r#type)?;
-            }
-            if let Some(cont) = fl.continuation {
-                size += get_size_from_index(info, cont)?;
-            }
-            size
-        }
-        TypeData::ArgumentList(al) => {
-            let mut size = 0;
-            for item in al.arguments {
-                size += get_size_from_index(info, item)?;
-            }
-            size
-        }
-        TypeData::MethodList(_) => {
-            println!("ERROR: MethodList unexpected in C.");
-            0
-        }
-        _ => {
-            println!("ERROR: Unknown Type");
-            0
-        }
-    };
-    Ok(x)
-}
-
 /// Returns the offset and size of a field in a class.
 pub fn find_field_offset_and_size(info: &TypeInformation, id: &TypeIndex, attribute: &str, symbol: &str) -> Result<(u64, u64)> {
     let mut parts = attribute.splitn(2, '.');
@@ -304,7 +186,7 @@ pub fn find_field_offset_and_size(info: &TypeInformation, id: &TypeIndex, attrib
                         match field {
                             TypeData::Member(member) => {
                                 if member.name.to_string().to_string() == attribute {
-                                    let size = get_size_from_index(&info, member.field_type)?;
+                                    let size = TypeInfo::from_type_index(&info, member.field_type)?.total_size();
                                     if !remaining.is_empty() {
                                         let (offset, size) = find_field_offset_and_size(info, &member.field_type, remaining, symbol)?;
                                         return Ok((member.offset + offset, size))

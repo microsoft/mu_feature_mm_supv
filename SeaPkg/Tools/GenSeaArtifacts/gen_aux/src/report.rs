@@ -12,7 +12,7 @@ use serde::Serialize;
 use std::io::Write;
 use std::cmp::Ordering;
 
-use crate::auxgen::{AuxFile, ImageValidationEntryHeader};
+use crate::auxgen::{AuxFile, ImageValidationEntryHeader, Symbol};
 
 /// A struct representing the coverage report for the firmware image.
 /// 
@@ -39,7 +39,7 @@ pub struct CoverageReport {
 
 impl CoverageReport {
     /// Generates a coverage report from the given image and auxiliary file.
-    pub fn build(image: &[u8], aux_file: &AuxFile) -> anyhow::Result<Self> {
+    pub fn build(image: &[u8], aux_file: &AuxFile, symbols: &[Symbol]) -> anyhow::Result<Self> {
         let size_of_image = {
             let pe = goblin::pe::PE::parse(image)?;
             let optional_header = pe
@@ -55,6 +55,7 @@ impl CoverageReport {
         let mut segments = SegmentList::new(size_of_image);
         segments.add_segments_from_image(image)?;
         segments.add_segments_from_aux_entries(&aux_file.entries)?;
+        segments.update_missing_symbol_names(symbols)?;
 
         let padding_size = segments.get_size_by_reason("Padding");
         let header_size = segments.get_size_by_reason("PE Header");
@@ -311,6 +312,52 @@ impl SegmentList {
             println!("  {:?}", seg);
         }
         Err(anyhow!("Failed to insert segment."))
+    }
+
+    /// Attempts to update segments that are uncovered and have no symbol name.
+    /// 
+    /// We must loop through each byte of each uncovered segment for three reasons:
+    /// 1. A segment may contain multiple symbols
+    /// 2. If a rule only covers part of a symbol (using a field), we need to ensure all other
+    ///    parts of the same symbol that are not covered have their names correctly set.
+    /// 3. There may be padding between symbols for alignment purposes
+    pub fn update_missing_symbol_names(&mut self, symbols: &[Symbol]) -> Result<()> {
+        let mut to_insert = Vec::new();
+        for segment in &self.segments {
+            if !segment.symbol.is_empty() || segment.covered {
+                continue;
+            }
+
+            let mut cur = segment._start;
+            while cur < segment._end {
+                let symbol = symbols.iter().find(|&entry| {
+                    let start = entry.address;
+                    let end = start + entry.type_info.total_size() as u32;
+                    (start..end).contains(&cur)
+                });
+
+                if let Some(symbol) = symbol {
+                    let end = std::cmp::min(cur + symbol.type_info.total_size() as u32, segment._end);
+                    let mut segment = Segment::new(
+                        cur,
+                        end,
+                        false,
+                        segment.reason.clone()
+                    );
+                    segment.symbol = symbol.name.clone();
+                    to_insert.push(segment);
+                    cur += end;
+                } else {
+                    cur += 1;
+                }
+            }
+        }
+
+        for segment in to_insert.into_iter() {
+            self.insert(segment)?;
+        }
+
+        Ok(())
     }
 }
 

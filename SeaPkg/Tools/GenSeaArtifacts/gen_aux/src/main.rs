@@ -17,6 +17,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 pub mod report;
+pub mod type_info;
 
 use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
@@ -188,7 +189,8 @@ pub fn main() -> Result<()> {
             }
         }
 
-        let report = CoverageReport::build(&efi, &aux)?;
+        let symbols: Vec<Symbol> = parsed_symbols.values().cloned().collect();
+        let report = CoverageReport::build(&efi, &aux, &symbols)?;
 
         report.to_file(output.with_extension("json"))?;
         aux.to_file(output)?;
