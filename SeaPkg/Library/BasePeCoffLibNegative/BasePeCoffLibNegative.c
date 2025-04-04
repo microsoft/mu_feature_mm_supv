@@ -26,6 +26,7 @@
 #include <Uefi.h>
 #include <Base.h>
 #include <SeaAuxiliary.h>
+#include <SeaResponder.h>
 #include <Library/BaseLib.h>
 #include <Library/PeCoffLib.h>
 #include <Library/BaseMemoryLib.h>
@@ -798,6 +799,7 @@ PeCoffImageDiffValidation (
   EFI_STATUS                     Status;
   EFI_PHYSICAL_ADDRESS           MsegBase;
   UINTN                          MsegSize;
+  IMAGE_VALIDATION_MEM_ATTR      MsegMemAttr;
 
   if ((TargetImage == NULL) || (ImageValidationHdr == NULL)) {
     DEBUG ((DEBUG_ERROR, "%a: Invalid input pointers 0x%p and 0x%p\n", __func__, TargetImage, ImageValidationHdr));
@@ -820,6 +822,22 @@ PeCoffImageDiffValidation (
   Status = GetMsegBaseAndSize (&MsegBase, &MsegSize);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to get MSEG base and size\n", __func__));
+    return Status;
+  }
+
+  //
+  // First verify that MSEG is marked as supervisor read-only
+  //
+  MsegMemAttr.Header.EntrySignature            = IMAGE_VALIDATION_ENTRY_SIGNATURE;
+  MsegMemAttr.Header.ValidationType            = IMAGE_VALIDATION_ENTRY_TYPE_MEM_ATTR;
+  MsegMemAttr.Header.Offset                    = 0;
+  MsegMemAttr.Header.Size                      = sizeof (EFI_PHYSICAL_ADDRESS);
+  MsegMemAttr.TargetMemoryAttributeMustHave    = SEA_MSEG_ATTRIBUTE;
+  MsegMemAttr.TargetMemoryAttributeMustNotHave = 0;
+  MsegMemAttr.TargetMemorySize                 = MsegSize;
+  Status                                       = PeCoffImageValidationMemAttr ((VOID *)MsegBase, &(MsegMemAttr.Header), PageTableBase);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a: Failed to validate MSEG memory attributes - %r\n", __func__, Status));
     return Status;
   }
 
