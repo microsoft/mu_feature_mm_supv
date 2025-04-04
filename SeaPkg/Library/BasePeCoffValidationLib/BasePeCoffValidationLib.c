@@ -499,7 +499,7 @@ Done:
 **/
 EFI_STATUS
 EFIAPI
-PeCoffImageValidationNonZero (
+PeCoffImageValidationZero (
   IN CONST VOID                           *TargetImage,
   IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   )
