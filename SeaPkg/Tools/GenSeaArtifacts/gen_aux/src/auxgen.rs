@@ -168,6 +168,7 @@ impl <'a> ctx::TryIntoCtx<Endian> for &ImageValidationEntryHeader {
             ValidationType::Pointer{in_mseg} => {
                 this.gwrite(*in_mseg as u32, &mut offset)?;
             },
+            ValidationType::Zero => {},
         }
         Ok(offset)
     }
@@ -237,6 +238,7 @@ impl ImageValidationEntryHeader {
             ValidationType::MemAttr {..} => 24,
             ValidationType::Ref{..} => 4,
             ValidationType::Pointer{..} => 4,
+            ValidationType::Zero => 0,
         }
     }
 }

@@ -134,4 +134,23 @@ PeCoffImageValidationPointer (
   IN UINTN                                MsegSize
   );
 
+/**
+  Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
+  is a zero buffer.
+
+  @param[in] TargetImage  The pointer to the target image buffer.
+  @param[in] Hdr          The header of the validation entry.
+
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_COMPROMISED_DATA    The provided header has an invalid signature
+  @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image is all zero.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffImageValidationNonZero (
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  );
+
 #endif // PECOFF_VALIDATION_LIB_H_

@@ -484,3 +484,55 @@ PeCoffImageValidationPointer (
 Done:
   return Status;
 }
+
+/**
+  Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
+  is a zero buffer.
+
+  @param[in] TargetImage  The pointer to the target image buffer.
+  @param[in] Hdr          The header of the validation entry.
+
+  @retval EFI_SUCCESS             The target image passes the validation.
+  @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
+  @retval EFI_COMPROMISED_DATA    The provided header has an invalid signature
+  @retval EFI_SECURITY_VIOLATION  The specified buffer in the target image is all zero.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffImageValidationNonZero (
+  IN CONST VOID                           *TargetImage,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  )
+{
+  EFI_STATUS  Status;
+
+  if ((TargetImage == NULL) || (Hdr == NULL)) {
+    DEBUG ((DEBUG_ERROR, "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p\n", __func__, TargetImage, Hdr));
+    Status = EFI_INVALID_PARAMETER;
+    goto Done;
+  }
+
+  if ((Hdr->EntrySignature != IMAGE_VALIDATION_ENTRY_SIGNATURE) || (Hdr->ValidationType != IMAGE_VALIDATION_ENTRY_TYPE_ZERO)) {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a: Invalid entry signature 0x%x or type 0x%x at 0x%p\n",
+      __func__,
+      Hdr->EntrySignature,
+      Hdr->ValidationType,
+      Hdr
+      ));
+    Status = EFI_COMPROMISED_DATA;
+    goto Done;
+  }
+
+  if (!IsZeroBuffer ((UINT8 *)TargetImage + Hdr->Offset, Hdr->Size)) {
+    DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x is not all 0s\n", __func__, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size));
+    Status = EFI_SECURITY_VIOLATION;
+    goto Done;
+  }
+
+  Status = EFI_SUCCESS;
+
+Done:
+  return Status;
+}

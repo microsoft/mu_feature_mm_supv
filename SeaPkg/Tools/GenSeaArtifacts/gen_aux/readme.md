@@ -138,6 +138,17 @@ validation.type = "pointer"
 validation.in_mseg = true # Default: false
 ```
 
+#### Validation Type: Zero
+
+The Zero validation type tells the system to verify that the value of the symbol is zero / null. This rule has no
+additional configuration options.
+
+
+``` toml
+[[rule]]
+validation.type = "zero"
+```
+
 ### config
 
 The below configuration options reside in a top level `[config]` section of the configuration file.

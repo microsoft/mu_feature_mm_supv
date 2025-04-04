@@ -877,6 +877,10 @@ PeCoffImageDiffValidation (
         Status                      = PeCoffImageValidationPointer (OriginalImageBaseAddress, ImageValidationEntryHdr, MsegBase, MsegSize);
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_POINTER *)ImageValidationEntryHdr + 1);
         break;
+      case IMAGE_VALIDATION_ENTRY_TYPE_ZERO:
+        Status                      = PeCoffImageValidationZero (OriginalImageBaseAddress, ImageValidationEntryHdr);
+        NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)(ImageValidationEntryHdr + 1);
+        break;
       default:
         Status = EFI_INVALID_PARAMETER;
         // Does not support unknown validation type
