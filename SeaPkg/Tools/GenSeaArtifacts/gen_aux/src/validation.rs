@@ -190,7 +190,7 @@ impl Into<String> for &ValidationType {
             ValidationType::MemAttr{..} => "MemAttr".to_string(),
             ValidationType::Ref{..} => "Ref".to_string(),
             ValidationType::Pointer{..} => "Pointer".to_string(),
-            ValidationType::Zero{..} => "Zeros".to_string(),
+            ValidationType::Zero{..} => "Zero".to_string(),
         }
     }
 }
