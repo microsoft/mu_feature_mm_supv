@@ -23,7 +23,7 @@
   MODULE_TYPE                    = PEIM
   VERSION_STRING                 = 1.0
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 62b661dc3105162b2715d9185fe8cd84 | 2024-07-29T18-46-54 | 5bfab09d1f243366d256ed254ded0413d9b1440d
+#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 5f60bd756d3416f0452bbcdda2cbbaeb | 2025-02-25T18-06-46 | 81e778fe4164c0d1bd06614ba6acf28799457f4f
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -48,6 +48,7 @@
   DebugAgentLib
   PeCoffLib
   CacheMaintenanceLib
+  StackCheckLib
 
 [Depex]
   FALSE
