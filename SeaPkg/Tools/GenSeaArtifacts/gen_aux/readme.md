@@ -143,7 +143,6 @@ validation.in_mseg = true # Default: false
 The Zero validation type tells the system to verify that the value of the symbol is zero / null. This rule has no
 additional configuration options.
 
-
 ``` toml
 [[rule]]
 validation.type = "zero"
