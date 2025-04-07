@@ -115,7 +115,6 @@ InitPaging (
   CpuFlushTlb ();
   DEBUG ((DEBUG_INFO, "Patch page table done!\n"));
 
-
   PERF_FUNCTION_END ();
 }
 

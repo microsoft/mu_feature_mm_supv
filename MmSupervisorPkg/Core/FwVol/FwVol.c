@@ -111,6 +111,7 @@ Returns:
       TotalSize = TotalSize + FileSize;
     }
   } while (!EFI_ERROR (Status));
+
   // If by the time we get here this FV is outside of MMRAM, copy it MMRAM
   // It will be marked as CPL3 RO XP before entering MMI
   Status = MmAllocatePages (
@@ -124,6 +125,7 @@ Returns:
     DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
     goto Done;
   }
+
   FileHeader  = NULL;
   BufferIndex = 0;
   do {
@@ -137,6 +139,7 @@ Returns:
         FreePages (InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
         goto Done;
       }
+
       InnerFileHeader = (EFI_FFS_FILE_HEADER *)((UINT8 *)InnerFvHeader + BufferIndex);
       BufferIndex     = BufferIndex + FileSize;
       Status          = FfsFindSectionData (EFI_SECTION_PE32, InnerFileHeader, &Pe32Data, &Pe32DataSize);

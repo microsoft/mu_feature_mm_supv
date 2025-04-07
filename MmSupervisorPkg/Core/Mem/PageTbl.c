@@ -848,7 +848,6 @@ SmiDefaultPFHandler (
   //
   PageAttribute |= IA32_PG_NX;
 
-
   for (Index = 0; Index < NumOfPages; Index++) {
     PageTable  = PageTableTop;
     UpperEntry = NULL;

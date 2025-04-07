@@ -1219,7 +1219,7 @@ SetAllGuardPages (
   INTN     Level;
   UINTN    Index;
   BOOLEAN  OnGuarding;
-  UINTN   LevelShift;
+  UINTN    LevelShift;
 
   LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 

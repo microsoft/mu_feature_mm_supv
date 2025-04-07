@@ -249,7 +249,7 @@ extern UINTN                 mSmmStackArrayEnd;
 extern UINTN                 mSmmStackSize;
 extern UINTN                 mSmmCpl3StackArrayBase;
 #if FeaturePcdGet (PcdMmSupervisorTestEnable)
-extern UINTN                 mSmmCpl3StackArrayEnd;
+extern UINTN  mSmmCpl3StackArrayEnd;
 #endif
 extern SMM_CPU_SEMAPHORES    mSmmCpuSemaphores;
 extern UINTN                 mSemaphoreSize;

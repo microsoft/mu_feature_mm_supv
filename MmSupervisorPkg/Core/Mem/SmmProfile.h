@@ -47,5 +47,4 @@ GetCpuIndex (
 //
 extern BOOLEAN  mXdSupported;
 
-
 #endif // _SMM_PROFILE_H_

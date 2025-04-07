@@ -1086,9 +1086,9 @@ SetupSmiEntryExit (
   }
 
   mSmmCpl3StackArrayBase = (UINTN)Cpl3Stacks;
-  #if FeaturePcdGet (PcdMmSupervisorTestEnable)
-  mSmmCpl3StackArrayEnd  = mSmmCpl3StackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * mSmmStackSize - 1;
-  #endif
+ #if FeaturePcdGet (PcdMmSupervisorTestEnable)
+  mSmmCpl3StackArrayEnd = mSmmCpl3StackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * mSmmStackSize - 1;
+ #endif
 
   //
   // Initialize IDT
