@@ -55,8 +55,8 @@ comes with the following standard options:
 scope = 'Optional[String]'
 symbol = 'Required[String]'
 field = 'Optional[String]'
-index = 'Optional[Int]'
-sentinel = 'Optional[Boolean]'
+array.index = 'Optional[Int]'
+array.sentinel = 'Optional[Boolean]'
 offset = 'Optional[Int]'
 size = 'Optional[Int]'
 validation.type = 'Required[String]'
@@ -65,8 +65,8 @@ validation.type = 'Required[String]'
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
-- `index`: If the symbol is a array, only apply the rule to the specified index.
-- `sentinel`: If the symbol is a array, apply content rule to only the final rule such that its content must be all zeros
+- `array.index`: If the symbol is a array, only apply the rule to the specified index.
+- `array.sentinel`: If the symbol is a array, apply content rule to only the final rule such that its content must be all zeros
 - `offset`: Updates the address to `symbol.address + offset`. Offset can be negative. Providing an offset requires that the
 `size` is also provided, as the size can no longer be automatically calculated
 - `size`: Overrides the size calculated by `symbol` or `rule`.

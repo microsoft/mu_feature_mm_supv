@@ -184,17 +184,21 @@ impl ImageValidationEntryHeader {
         let element_count = symbol.type_info.element_count();
         let symbol_is_arr = element_count > 1;
 
-        if let Some(index) = rule.index {
+        if !symbol_is_arr && (rule.array.sentinel || rule.array.index.is_some()) {
+            return Err(anyhow::anyhow!("Invalid Rule Configuration: Symbol {} is not an array, but the rule specifies configuration for an array.", symbol.name));
+        }
+
+        if let Some(index) = rule.array.index {
             if index >= element_count {
                 return Err(
-                    anyhow::anyhow!("Invalid Rule: [{:?}] index[{}] is larger than array size[{}]", rule, index, element_count
+                    anyhow::anyhow!("Invalid Rule Configuration: [{:?}] index[{}] is larger than array size[{}]", rule, index, element_count
                 ));
             }
         }
 
         for i in 0..element_count {
             // Skip the entry if the config specifies a specific index to apply the rule to
-            if rule.index.unwrap_or(i) != i {
+            if rule.array.index.unwrap_or(i) != i {
                 continue;
             }
 
@@ -204,7 +208,7 @@ impl ImageValidationEntryHeader {
             
             // If the last value in the array is a sentinel, then the data should be all zeros to signify
             // the end of the array.
-            if rule.sentinel && i == element_count - 1 {
+            if rule.array.sentinel && i == element_count - 1 {
                 entry.validation_type = ValidationType::Content { content: vec![0; entry.size as usize] };
             } else {
                 entry.validation_type = rule.validation.clone();
