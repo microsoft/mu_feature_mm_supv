@@ -266,9 +266,7 @@ FindGuardedMemoryMap (
   UINTN   Index;
   UINTN   Size;
   UINTN   BitsToUnitEnd;
-  UINTN   LevelShift;
-
-  LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
+  UINTN   LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   //
   // Adjust current map table depth according to the address to access
@@ -1219,9 +1217,7 @@ SetAllGuardPages (
   INTN     Level;
   UINTN    Index;
   BOOLEAN  OnGuarding;
-  UINTN    LevelShift;
-
-  LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
+  UINTN    LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
@@ -1370,9 +1366,7 @@ DumpGuardedMemoryBitmap (
   CHAR8   String[GUARDED_HEAP_MAP_ENTRY_BITS + 1];
   CHAR8   *Ruler1;
   CHAR8   *Ruler2;
-  UINTN   LevelShift;
-
-  LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
+  UINTN   LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
