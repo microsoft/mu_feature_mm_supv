@@ -188,6 +188,10 @@ impl ImageValidationEntryHeader {
             return Err(anyhow::anyhow!("Invalid Rule Configuration: Symbol {} is not an array, but the rule specifies configuration for an array.", symbol.name));
         }
 
+        if !rule.array.sentinel && rule.array.index.is_some() {
+            return Err(anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array configuration `sentinel` and `index` cannot be combined.", symbol.name));
+        }
+
         if let Some(index) = rule.array.index {
             if index >= element_count {
                 return Err(
