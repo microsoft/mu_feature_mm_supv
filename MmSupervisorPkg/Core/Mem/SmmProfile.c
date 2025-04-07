@@ -25,11 +25,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 BOOLEAN  mXdSupported = TRUE;
 
 //
-// The flag indicates if execute-disable is enabled on processor.
-//
-BOOLEAN  mXdEnabled = FALSE;
-
-//
 // The flag indicates if BTS is supported by processor.
 //
 BOOLEAN  mBtsSupported = TRUE;
@@ -119,10 +114,7 @@ InitPaging (
   //
   CpuFlushTlb ();
   DEBUG ((DEBUG_INFO, "Patch page table done!\n"));
-  //
-  // Set execute-disable flag
-  //
-  mXdEnabled = TRUE;
+
 
   PERF_FUNCTION_END ();
 }

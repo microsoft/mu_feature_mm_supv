@@ -224,7 +224,9 @@ StackDumpHandler (
   CommBuffer->SupvStackBaseAddr = mSmmStackArrayBase;
   CommBuffer->SupvStackSize     = mSmmStackArrayEnd - mSmmStackArrayBase + 1;
   CommBuffer->UserStackBaseAddr = mSmmCpl3StackArrayBase;
+  #if FeaturePcdGet (PcdMmSupervisorTestEnable)
   CommBuffer->UserStackSize     = mSmmCpl3StackArrayEnd - mSmmCpl3StackArrayBase + 1;
+  #endif
 }
 
 /**

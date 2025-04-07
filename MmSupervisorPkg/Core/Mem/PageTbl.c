@@ -844,11 +844,10 @@ SmiDefaultPFHandler (
   }
 
   //
-  // If execute-disable is enabled, set NX bit
+  // Execute-disable is enabled, set NX bit
   //
-  if (mXdEnabled) {
-    PageAttribute |= IA32_PG_NX;
-  }
+  PageAttribute |= IA32_PG_NX;
+
 
   for (Index = 0; Index < NumOfPages; Index++) {
     PageTable  = PageTableTop;
