@@ -115,6 +115,7 @@ impl From<&Symbol> for ValidationRule {
 pub struct ArrayConfig {
     /// Specifies that the last index in the array is a sentinel value, thus creating a different
     /// validation rule for the last index, Content of all zeros.
+    #[serde(default)]
     pub sentinel: bool,
     /// The index to apply the validation to. If this is not set, the validation
     /// is applied to the entire array.
