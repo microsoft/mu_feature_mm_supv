@@ -42,7 +42,9 @@ UINTN  mSmmStackArrayEnd;
 UINTN  mSmmStackSize;
 
 UINTN  mSmmCpl3StackArrayBase;
+#if FeaturePcdGet (PcdMmSupervisorTestEnable)
 UINTN  mSmmCpl3StackArrayEnd;
+#endif
 
 UINTN    mSmmShadowStackSize;
 BOOLEAN  mCetSupported = TRUE;
@@ -1084,7 +1086,9 @@ SetupSmiEntryExit (
   }
 
   mSmmCpl3StackArrayBase = (UINTN)Cpl3Stacks;
-  mSmmCpl3StackArrayEnd  = mSmmCpl3StackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * mSmmStackSize - 1;
+ #if FeaturePcdGet (PcdMmSupervisorTestEnable)
+  mSmmCpl3StackArrayEnd = mSmmCpl3StackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * mSmmStackSize - 1;
+ #endif
 
   //
   // Initialize IDT

@@ -46,9 +46,5 @@ GetCpuIndex (
 // The flag indicates if execute-disable is supported by processor.
 //
 extern BOOLEAN  mXdSupported;
-//
-// The flag indicates if execute-disable is enabled on processor.
-//
-extern BOOLEAN  mXdEnabled;
 
 #endif // _SMM_PROFILE_H_
