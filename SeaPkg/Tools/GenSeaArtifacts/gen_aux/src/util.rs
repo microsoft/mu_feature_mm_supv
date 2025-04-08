@@ -6,9 +6,9 @@
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
-use pdb::{FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex, TypeInformation};
+use pdb::{FallibleIterator, Item, PrimitiveKind, SectionCharacteristics, TypeData, TypeIndex, TypeInformation};
 use anyhow::{anyhow, Result};
 
 use crate::{type_info::TypeInfo, POINTER_LENGTH};
@@ -56,19 +56,30 @@ pub fn find_type<'a>(info: &'a TypeInformation, index: TypeIndex)->Result<Item<'
     Err(anyhow!("Symbol {} was found, but size was 0", class_name))
 }
 
+fn section_characteristics(address: u32, sections: &[(Range<u32>, SectionCharacteristics)]) -> SectionCharacteristics {
+    for (range, section_characteristics) in sections {
+        if range.contains(&address) {
+            return *section_characteristics;
+        }
+    }
+    SectionCharacteristics::default()
+}
+
 /// Parses and adds the symbol to `map` if it is a symbol we care about.
-pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<'_>, address_map: &pdb::AddressMap, info: &TypeInformation) -> Result<()> {
+pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<'_>, address_map: &pdb::AddressMap, info: &TypeInformation, sections: &[(Range<u32>, SectionCharacteristics)] ) -> Result<()> {
     match symbol.parse() {
         Ok(pdb::SymbolData::Public(data)) if data.function => {
             let address = data.offset.to_rva(&address_map).unwrap_or_default().0;
             let type_info = TypeInfo::one(POINTER_LENGTH, None);
             let name = data.name.to_string().to_string();
             let symbol_type = crate::SymbolType::Public;
+            let section_characteristics = section_characteristics(address, sections);
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 name,
                 type_info,
                 symbol_type,
+                section_characteristics,
             });
         }
         Ok(pdb::SymbolData::Data(data)) => {
@@ -76,7 +87,8 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let type_info = TypeInfo::from_type_index(&info, data.type_index)?;
             let name = data.name.to_string().to_string();
             let symbol_type = crate::SymbolType::Data;
-            
+            let section_characteristics = section_characteristics(address, sections);
+
             // A data symbol should always take precedence over an existing
             // symbol on a collision (typically label). If there is a collision
             // and both are data symbols, take the custom type (one whose type
@@ -90,6 +102,7 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
                 name,
                 type_info,
                 symbol_type,
+                section_characteristics,
             });
         }
         Ok(pdb::SymbolData::Procedure(data)) => {
@@ -97,11 +110,13 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let type_info = TypeInfo::one(POINTER_LENGTH, Some(data.type_index));
             let name = data.name.to_string().to_string();
             let symbol_type = crate::SymbolType::Procedure;
+            let section_characteristics = section_characteristics(address, sections);
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 name,
                 type_info,
                 symbol_type,
+                section_characteristics,
             });
         }
         Ok(pdb::SymbolData::Label(data)) => {
@@ -109,11 +124,13 @@ pub fn add_symbol(map: &mut HashMap<String, crate::Symbol>, symbol: pdb::Symbol<
             let type_info = TypeInfo::one(POINTER_LENGTH, None);
             let name = data.name.to_string().to_string();
             let symbol_type = crate::SymbolType::Label;
+            let section_characteristics = section_characteristics(address, sections);
             map.entry(name.clone()).or_insert(crate::Symbol {
                 address,
                 name,
                 type_info,
                 symbol_type,
+                section_characteristics,
             });
         }
         _ => {}
