@@ -8,7 +8,7 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //! 
 use std::{fmt, io::Write, mem::size_of};
-use pdb::TypeInformation;
+use pdb::{SectionCharacteristics, TypeInformation};
 use scroll::{self, ctx, Endian, Pread, Pwrite, LE};
 use crate::{type_info::TypeInfo, ConfigFile, KeySymbol, ValidationRule, ValidationType};
 
@@ -34,6 +34,8 @@ pub struct Symbol {
     pub type_info: TypeInfo,
     // The type of the symbol
     pub symbol_type: SymbolType,
+    // The characteristics of the section that the symbol is in.
+    pub section_characteristics: SectionCharacteristics,
 }
 
 impl std::fmt::Debug for Symbol {
@@ -44,11 +46,9 @@ impl std::fmt::Debug for Symbol {
 
 impl Symbol {
     /// Returns true if the symbol is in a section that is read-only (READ, !WRITE, !EXECUTE)
-    pub fn in_readonly_section(&self, sections: &[pdb::ImageSectionHeader]) -> bool {
-        sections
-            .iter()
-            .filter(|s| s.characteristics.read() && !s.characteristics.write() && !s.characteristics.execute())
-            .any(|s| self.address >= s.virtual_address && self.address < s.virtual_address + s.virtual_size)
+    pub fn in_read_write_section(&self) -> bool {
+        let characteristics = self.section_characteristics;
+        characteristics.read() && characteristics.write()
     }
 
     /// Returns the address of the symbol at the given index.
@@ -356,7 +356,12 @@ impl AuxBuilder {
 
         let mut missing = Vec::new();
         for symbol in symbols {
-            if !rules.iter().any(|rule| rule.symbol == symbol.name || IGNORE_SYMBOL_TYPES.contains(&symbol.symbol_type)) {
+            
+            if !rules.iter().any(|rule| {
+                rule.symbol == symbol.name
+                    || IGNORE_SYMBOL_TYPES.contains(&symbol.symbol_type)
+                    || !symbol.in_read_write_section()
+                }) {
                 missing.push(symbol.clone());
             }
         }
