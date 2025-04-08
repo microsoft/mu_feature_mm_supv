@@ -25,14 +25,9 @@ pub struct ValidationRule {
     /// symbol, if the symbol is a class, that the validation should be
     /// performed on.
     pub field: Option<String>,
-    /// If the symbol is an array, this is the index to apply the validation to.
-    /// If not specified, the validation is applied to the entire array.
-    pub index: Option<u64>,
-    /// If the symbol is an array, then the last element is a sentinel value, thus
-    /// a validation rule of "content" of all zeros is applied instead of the
-    /// specified rule.
+    /// Configuration applied to the symbol if it is an array.
     #[serde(default)]
-    pub sentinel: bool,
+    pub array: ArrayConfig,
     /// The type of validation to be performed on the symbol.
     pub validation: ValidationType,
     /// An optional field that can be used to specify an offset from the symbol
@@ -55,8 +50,7 @@ impl ValidationRule {
         ValidationRule {
             symbol,
             field: None,
-            index: None,
-            sentinel: false,
+            array: ArrayConfig::default(),
             validation: ValidationType::None,
             offset: None,
             size: None,
@@ -107,14 +101,24 @@ impl From<&Symbol> for ValidationRule {
         ValidationRule {
             symbol: symbol.name.clone(),
             field: None,
-            index: None,
-            sentinel: false,
+            array: ArrayConfig::default(),
             validation: ValidationType::Content{ content: 0xDEADBEEFu32.to_le_bytes().to_vec() },
             offset: None,
             size: Some(2),
             scope: None,
         }
     }
+}
+
+/// A struct representing the configuration for a symbol that is an array.
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+pub struct ArrayConfig {
+    /// Specifies that the last index in the array is a sentinel value, thus creating a different
+    /// validation rule for the last index, Content of all zeros.
+    pub sentinel: bool,
+    /// The index to apply the validation to. If this is not set, the validation
+    /// is applied to the entire array.
+    pub index: Option<u64>,
 }
 
 /// An enum representing the type of validation to be performed on the symbol
