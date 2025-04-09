@@ -240,7 +240,7 @@
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
   #Image version will be used as MmSupervisor security patch level(SPL) value
-  # Override the VS2022 RELEASE DLINK_FLAGS so the .data and .rdata sections are not merged
+  #Override the VS2022 RELEASE DLINK_FLAGS so the .data and .rdata sections are not merged
   RELEASE_VS2022_X64_DLINK_FLAGS == /NOLOGO /NODEFAULTLIB /IGNORE:4001 /IGNORE:4281 /IGNORE:4254 /OPT:REF /OPT:ICF=10 /MAP /ALIGN:32 /SECTION:.xdata,D /SECTION:.pdata,D /Machine:X64 /LTCG /DLL /ENTRY:$(IMAGE_ENTRY_POINT) /SAFESEH:NO /BASE:0 /DRIVER /ALIGN:4096 /DLL
   MSFT:RELEASE_*_*_DLINK_FLAGS  = /DLL /SUBSYSTEM:CONSOLE,$(RELEASE_DRIVER_VERSION) /VERSION:$(MAJOR_PATCH_LEVEL).$(MINOR_PATCH_LEVEL) /MERGE:.bss=.none
   MSFT:DEBUG_*_*_DLINK_FLAGS    = /DLL /SUBSYSTEM:CONSOLE,$(DEBUG_DRIVER_VERSION) /VERSION:$(MAJOR_PATCH_LEVEL).$(MINOR_PATCH_LEVEL)
