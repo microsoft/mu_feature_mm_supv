@@ -57,6 +57,7 @@ pub struct Args {
 /// A struct that represents an signature/address pair to be added to the
 /// auxiliary file header.
 #[derive(Serialize, Deserialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
     pub symbol: Option<String>,
@@ -97,6 +98,7 @@ impl std::fmt::Debug for KeySymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// An option that if true, will generate a validation entry of 
     /// verification type NONE for every symbol without a rule in the config
@@ -114,6 +116,7 @@ pub struct Config {
 
 /// Configuration options available in the config file.
 #[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigFile {
     #[serde(alias = "config", default = "Config::default")]
     pub config: Config,
