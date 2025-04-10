@@ -478,6 +478,7 @@ impl AuxBuilder {
                     address: segment.start() as u32,
                     type_info: TypeInfo::one(size as u64, None),
                     symbol_type: SymbolType::None,
+                    section_characteristics: SectionCharacteristics::default(),
                 });
                 rule
             })
