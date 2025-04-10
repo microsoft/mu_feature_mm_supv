@@ -8,6 +8,7 @@
 //!
 use anyhow::{anyhow, Result};
 use serde::Serialize;
+use goblin::pe::section_table::{IMAGE_SCN_MEM_WRITE, IMAGE_SCN_MEM_READ};
 
 use std::io::Write;
 use std::cmp::Ordering;
@@ -78,6 +79,11 @@ impl CoverageReport {
             segments: segments.into_inner(),
             sections: sections.into_inner(),
         })
+    }
+
+    /// Returns a list of the segments in the report.
+    pub fn segments(&self) -> &[Segment] {
+        &self.segments
     }
 
     /// Writes the report to a file
@@ -241,8 +247,8 @@ impl SegmentList {
 
             let padding_start = section.virtual_size.max(section.size_of_raw_data) + section.virtual_address;
             let padding_end = next_section_start;
-
-            self.insert(Segment::new(padding_start, padding_end, true, "Padding".to_string()))?;
+            let covered = (section.characteristics & (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE)) != (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE);
+            self.insert(Segment::new(padding_start, padding_end, covered, "Padding".to_string()))?;
         }
         Ok(())
     }
@@ -408,7 +414,7 @@ impl Segment {
     /// Creates a new segment with the given start and end addresses, coverage status, and reason.
     pub fn new(start: u32, end: u32, covered: bool, reason: String) -> Self {
         Segment {
-            symbol: "".to_string(),
+            symbol: "".to_string(), 
             start: format!("{:#x}", start),
             _start: start,
             end: format!("{:#x}", end),
@@ -416,7 +422,32 @@ impl Segment {
             covered,
             reason,
         }
-    } 
+    }
+
+    /// Returns the symbol name associated with this segment.
+    pub fn symbol(&self) -> String {
+        self.symbol.clone()
+    }
+
+    /// Returns the start address of this segment.
+    pub fn start(&self) -> u32 {
+        self._start
+    }
+
+    /// Returns the end address of this segment.
+    pub fn end(&self) -> u32 {
+        self._end
+    }
+
+    /// Returns if this segment is covered.
+    pub fn covered(&self) -> bool {
+        self.covered
+    }
+
+    /// Returns the reason this segment is covered or not.
+    pub fn reason(&self) -> String {
+        self.reason.clone()
+    }
 }
 
 impl From<&ImageValidationEntryHeader> for Segment {
