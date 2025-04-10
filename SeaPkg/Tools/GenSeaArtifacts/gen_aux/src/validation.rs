@@ -18,6 +18,7 @@ use crate::Symbol;
 /// used to run the appropriate validation on the symbol in the firmware, and
 /// also revert the symbol to it's original value.
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct ValidationRule {
     /// The symbol that the rule is associated with.
     pub symbol: String,
