@@ -183,6 +183,9 @@ pub enum ValidationType {
         #[serde(default = "Default::default")]
         in_mseg: bool
     } = 5,
+    /// Firmware will validate that the symbol is all zeros.
+    #[serde(alias = "ZERO", alias = "zero")]
+    Zero = 6,
 }
 
 impl Into<u32> for &ValidationType {
@@ -194,6 +197,7 @@ impl Into<u32> for &ValidationType {
             ValidationType::MemAttr{..} => 3,
             ValidationType::Ref{..} => 4,
             ValidationType::Pointer{..} => 5,
+            ValidationType::Zero{..} => 6,
         }
     }
 }
@@ -207,6 +211,7 @@ impl Into<String> for &ValidationType {
             ValidationType::MemAttr{..} => "MemAttr".to_string(),
             ValidationType::Ref{..} => "Ref".to_string(),
             ValidationType::Pointer{..} => "Pointer".to_string(),
+            ValidationType::Zero{..} => "Zero".to_string(),
         }
     }
 }
