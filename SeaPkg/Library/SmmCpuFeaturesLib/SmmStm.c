@@ -865,7 +865,7 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
     SEA_MSEG_ATTRIBUTE
     );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "[%a]   Failed to set SEA [%g] at 0x%p of %x bytes to be read-only - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
+    DEBUG ((DEBUG_ERROR, "[%a]   Failed to set MSEG region at 0x%p of %x bytes to be read-only - %r.\n", __func__, mMsegBase, mMsegSize, Status));
   }
 
   mLockLoadMonitor = TRUE;
