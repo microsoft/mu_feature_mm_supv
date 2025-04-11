@@ -18,6 +18,7 @@ use crate::Symbol;
 /// used to run the appropriate validation on the symbol in the firmware, and
 /// also revert the symbol to it's original value.
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct ValidationRule {
     /// The symbol that the rule is associated with.
     pub symbol: String,
@@ -25,6 +26,9 @@ pub struct ValidationRule {
     /// symbol, if the symbol is a class, that the validation should be
     /// performed on.
     pub field: Option<String>,
+    /// Configuration applied to the symbol if it is an array.
+    #[serde(default)]
+    pub array: ArrayConfig,
     /// The type of validation to be performed on the symbol.
     pub validation: ValidationType,
     /// An optional field that can be used to specify an offset from the symbol
@@ -38,7 +42,10 @@ pub struct ValidationRule {
     /// rule is only applied if it's scope matches any of the scopes passed to
     /// the tool on the command line. If the rule has no scope, it is always
     /// applied.
-    pub scope: Option<String>
+    pub scope: Option<String>,
+    /// Symbol information that the rule is associated with.
+    #[serde(skip, default)]
+    pub symbol_info: Option<Symbol>,
 }
 
 impl ValidationRule {
@@ -47,18 +54,30 @@ impl ValidationRule {
         ValidationRule {
             symbol,
             field: None,
+            array: ArrayConfig::default(),
             validation: ValidationType::None,
             offset: None,
             size: None,
-            scope: None
+            scope: None,
+            symbol_info: None,
         }
     }
 
     /// Resolve any symbols in the rule to their actual addresses
-    pub fn resolve(&mut self, symbol: &Symbol, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
-        
+    pub fn resolve(&mut self, symbols: &Vec<Symbol>, info: &TypeInformation) -> anyhow::Result<()> {
+        let symbol = symbols
+            .iter()
+            .find(|&entry| &entry.name == &self.symbol)
+            .ok_or(
+                anyhow::anyhow!(
+                    "The symbol [{}] does not exist in the PDB, but a rule is present in the configuration file.",
+                    self.symbol
+            ))?;
+
+        self.symbol_info = Some(symbol.clone());
+
         // Resolve the field to an offset and size if it exists
-        if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_index) {
+        if let (Some(attribute), Some(index)) = (&self.field, &symbol.type_info.type_id()) {
             let (field_offset, field_size) = crate::util::find_field_offset_and_size(info, &index, attribute, &symbol.name).unwrap();
             self.offset = Some(field_offset as i64);
             if self.size.is_none() {
@@ -97,12 +116,26 @@ impl From<&Symbol> for ValidationRule {
         ValidationRule {
             symbol: symbol.name.clone(),
             field: None,
+            array: ArrayConfig::default(),
             validation: ValidationType::Content{ content: 0xDEADBEEFu32.to_le_bytes().to_vec() },
             offset: None,
             size: Some(2),
             scope: None,
+            symbol_info: None,
         }
     }
+}
+
+/// A struct representing the configuration for a symbol that is an array.
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+pub struct ArrayConfig {
+    /// Specifies that the last index in the array is a sentinel value, thus creating a different
+    /// validation rule for the last index, Content of all zeros.
+    #[serde(default)]
+    pub sentinel: bool,
+    /// The index to apply the validation to. If this is not set, the validation
+    /// is applied to the entire array.
+    pub index: Option<u64>,
 }
 
 /// An enum representing the type of validation to be performed on the symbol

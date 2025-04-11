@@ -17,6 +17,7 @@ pub mod auxgen;
 pub mod util;
 pub mod validation;
 pub mod report;
+pub mod type_info;
 
 use auxgen::{Symbol, SymbolType, AuxBuilder};
 use validation::{ValidationRule, ValidationType};
@@ -55,7 +56,8 @@ pub struct Args {
 
 /// A struct that represents an signature/address pair to be added to the
 /// auxiliary file header.
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct KeySymbol {
     /// The symbol name to calculate the offset of.
     pub symbol: Option<String>,
@@ -96,6 +98,7 @@ impl std::fmt::Debug for KeySymbol {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// An option that if true, will generate a validation entry of 
     /// verification type NONE for every symbol without a rule in the config
@@ -113,6 +116,7 @@ pub struct Config {
 
 /// Configuration options available in the config file.
 #[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigFile {
     #[serde(alias = "config", default = "Config::default")]
     pub config: Config,
@@ -135,6 +139,11 @@ pub fn main() -> Result<()> {
     let address_map = pdb.address_map()?;
     let type_information = pdb.type_information()?;
     let debug_information = pdb.debug_information()?;
+    let sections = pdb.sections()?.unwrap_or_default();
+    let sections = sections.iter().map(|section| {
+        let range = section.virtual_address..section.virtual_address + section.virtual_size;
+        (range, section.characteristics)
+    }).collect::<Vec<_>>();
 
     let mut raw_symbol_iter = symbol_table.iter();
     let mut parsed_symbols: HashMap<String, Symbol> = HashMap::new();
@@ -145,19 +154,18 @@ pub fn main() -> Result<()> {
         let module_info = pdb.module_info(&module)?.unwrap();
         let mut symbols = module_info.symbols()?;
         while let Some(symbol) = symbols.next()? {
-            util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
+            util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information, &*sections)?;
         }
     }
 
     // Add symbols from the global scope
     while let Some(symbol) = raw_symbol_iter.next()? {
-        util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information)?;
+        util::add_symbol(&mut parsed_symbols, symbol, &address_map, &type_information, &*sections)?;
     }
     if args.generate_config {
-        let sections = pdb.sections()?.unwrap_or_default();
         let rules: Vec<ValidationRule> = parsed_symbols
             .values()
-            .filter(|symbol| symbol.in_readonly_section(&sections))
+            .filter(|symbol| symbol.in_read_write_section())
             .map(|symbol| symbol.into())
             .collect();
 
@@ -188,7 +196,8 @@ pub fn main() -> Result<()> {
             }
         }
 
-        let report = CoverageReport::build(&efi, &aux)?;
+        let symbols: Vec<Symbol> = parsed_symbols.values().cloned().collect();
+        let report = CoverageReport::build(&efi, &aux, &symbols)?;
 
         report.to_file(output.with_extension("json"))?;
         aux.to_file(output)?;

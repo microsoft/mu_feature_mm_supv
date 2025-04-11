@@ -24,19 +24,6 @@ typedef struct {
 } FFS_DRIVER_CACHE_LIST;
 
 //
-// List of file types supported by dispatcher
-//
-EFI_FV_FILETYPE  mMmFileTypes[] = {
-  // Traditional modules are restricted to load under MU's standalone MM environment
-  // EFI_FV_FILETYPE_MM,
-  EFI_FV_FILETYPE_MM_STANDALONE,
-  //
-  // Note: DXE core will process the FV image file, so skip it in MM core
-  // EFI_FV_FILETYPE_FIRMWARE_VOLUME_IMAGE
-  //
-};
-
-//
 // List of firmware volume headers whose containing firmware volumes have been
 // parsed and added to the mFwDriverList.
 //
@@ -90,7 +77,6 @@ Returns:
   UINTN                       Pe32DataSize;
   VOID                        *Depex;
   UINTN                       DepexSize;
-  UINTN                       Index;
   EFI_FIRMWARE_VOLUME_HEADER  *InnerFvHeader;
   KNOWN_FWVOL                 *KnownFwVol;
   UINTN                       TotalSize;
@@ -113,60 +99,58 @@ Returns:
     return EFI_SUCCESS;
   }
 
-  for (Index = 0; Index < sizeof (mMmFileTypes) / sizeof (mMmFileTypes[0]); Index++) {
-    DEBUG ((DEBUG_INFO, "Check MmFileTypes - 0x%x\n", mMmFileTypes[Index]));
-    FileType   = mMmFileTypes[Index];
-    FileHeader = NULL;
-    TotalSize  = 0;
-    do {
-      Status = FfsFindNextFile (FileType, FwVolHeader, &FileHeader);
-      if (!EFI_ERROR (Status)) {
-        FileSize = 0;
-        CopyMem (&FileSize, FileHeader->Size, sizeof (FileHeader->Size));
-        TotalSize = TotalSize + FileSize;
-      }
-    } while (!EFI_ERROR (Status));
-
-    // If by the time we get here this FV is outside of MMRAM, copy it MMRAM
-    // It will be marked as CPL3 RO XP before entering MMI
-    Status = MmAllocatePages (
-               AllocateAnyPages,
-               EfiRuntimeServicesCode,
-               EFI_SIZE_TO_PAGES (TotalSize),
-               (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
-               );
-    DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __FUNCTION__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
-      goto Done;
+  DEBUG ((DEBUG_INFO, "Check MmFileTypes - 0x%x\n", EFI_FV_FILETYPE_MM_STANDALONE));
+  FileType   = EFI_FV_FILETYPE_MM_STANDALONE;
+  FileHeader = NULL;
+  TotalSize  = 0;
+  do {
+    Status = FfsFindNextFile (FileType, FwVolHeader, &FileHeader);
+    if (!EFI_ERROR (Status)) {
+      FileSize = 0;
+      CopyMem (&FileSize, FileHeader->Size, sizeof (FileHeader->Size));
+      TotalSize = TotalSize + FileSize;
     }
+  } while (!EFI_ERROR (Status));
 
-    FileHeader  = NULL;
-    BufferIndex = 0;
-    do {
-      Status = FfsFindNextFile (FileType, FwVolHeader, &FileHeader);
-      if (!EFI_ERROR (Status)) {
-        FileSize = 0;
-        CopyMem (&FileSize, FileHeader->Size, sizeof (FileHeader->Size));
-        Status = MmCopyMemToMmram ((UINT8 *)InnerFvHeader + BufferIndex, FileHeader, FileSize);
-        if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "Copying FFS from FV failed - %r!\n", Status));
-          FreePages (InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
-          goto Done;
-        }
-
-        InnerFileHeader = (EFI_FFS_FILE_HEADER *)((UINT8 *)InnerFvHeader + BufferIndex);
-        BufferIndex     = BufferIndex + FileSize;
-        Status          = FfsFindSectionData (EFI_SECTION_PE32, InnerFileHeader, &Pe32Data, &Pe32DataSize);
-        DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
-        DepexStatus = FfsFindSectionData (EFI_SECTION_MM_DEPEX, InnerFileHeader, &Depex, &DepexSize);
-        if (!EFI_ERROR (DepexStatus)) {
-          // Set the FV header to be NULL here since the original header will not be available anyway.
-          MmAddToDriverList (NULL, Pe32Data, Pe32DataSize, Depex, DepexSize, &InnerFileHeader->Name);
-        }
-      }
-    } while (!EFI_ERROR (Status));
+  // If by the time we get here this FV is outside of MMRAM, copy it MMRAM
+  // It will be marked as CPL3 RO XP before entering MMI
+  Status = MmAllocatePages (
+             AllocateAnyPages,
+             EfiRuntimeServicesCode,
+             EFI_SIZE_TO_PAGES (TotalSize),
+             (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
+             );
+  DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __FUNCTION__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
+    goto Done;
   }
+
+  FileHeader  = NULL;
+  BufferIndex = 0;
+  do {
+    Status = FfsFindNextFile (FileType, FwVolHeader, &FileHeader);
+    if (!EFI_ERROR (Status)) {
+      FileSize = 0;
+      CopyMem (&FileSize, FileHeader->Size, sizeof (FileHeader->Size));
+      Status = MmCopyMemToMmram ((UINT8 *)InnerFvHeader + BufferIndex, FileHeader, FileSize);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "Copying FFS from FV failed - %r!\n", Status));
+        FreePages (InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
+        goto Done;
+      }
+
+      InnerFileHeader = (EFI_FFS_FILE_HEADER *)((UINT8 *)InnerFvHeader + BufferIndex);
+      BufferIndex     = BufferIndex + FileSize;
+      Status          = FfsFindSectionData (EFI_SECTION_PE32, InnerFileHeader, &Pe32Data, &Pe32DataSize);
+      DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
+      DepexStatus = FfsFindSectionData (EFI_SECTION_MM_DEPEX, InnerFileHeader, &Depex, &DepexSize);
+      if (!EFI_ERROR (DepexStatus)) {
+        // Set the FV header to be NULL here since the original header will not be available anyway.
+        MmAddToDriverList (NULL, Pe32Data, Pe32DataSize, Depex, DepexSize, &InnerFileHeader->Name);
+      }
+    }
+  } while (!EFI_ERROR (Status));
 
   // Group all temporarily allocated buffer into a linked list, they will be frees at ready to lock event
   CurrentCacheNode = AllocateZeroPool (sizeof (FFS_DRIVER_CACHE_LIST));

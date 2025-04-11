@@ -8,11 +8,12 @@
 //!
 use anyhow::{anyhow, Result};
 use serde::Serialize;
+use goblin::pe::section_table::{IMAGE_SCN_MEM_WRITE, IMAGE_SCN_MEM_READ};
 
 use std::io::Write;
 use std::cmp::Ordering;
 
-use crate::auxgen::{AuxFile, ImageValidationEntryHeader};
+use crate::auxgen::{AuxFile, ImageValidationEntryHeader, Symbol};
 
 /// A struct representing the coverage report for the firmware image.
 /// 
@@ -39,7 +40,7 @@ pub struct CoverageReport {
 
 impl CoverageReport {
     /// Generates a coverage report from the given image and auxiliary file.
-    pub fn build(image: &[u8], aux_file: &AuxFile) -> anyhow::Result<Self> {
+    pub fn build(image: &[u8], aux_file: &AuxFile, symbols: &[Symbol]) -> anyhow::Result<Self> {
         let size_of_image = {
             let pe = goblin::pe::PE::parse(image)?;
             let optional_header = pe
@@ -55,6 +56,7 @@ impl CoverageReport {
         let mut segments = SegmentList::new(size_of_image);
         segments.add_segments_from_image(image)?;
         segments.add_segments_from_aux_entries(&aux_file.entries)?;
+        segments.update_missing_symbol_names(symbols)?;
 
         let padding_size = segments.get_size_by_reason("Padding");
         let header_size = segments.get_size_by_reason("PE Header");
@@ -77,6 +79,11 @@ impl CoverageReport {
             segments: segments.into_inner(),
             sections: sections.into_inner(),
         })
+    }
+
+    /// Returns a list of the segments in the report.
+    pub fn segments(&self) -> &[Segment] {
+        &self.segments
     }
 
     /// Writes the report to a file
@@ -240,8 +247,8 @@ impl SegmentList {
 
             let padding_start = section.virtual_size.max(section.size_of_raw_data) + section.virtual_address;
             let padding_end = next_section_start;
-
-            self.insert(Segment::new(padding_start, padding_end, true, "Padding".to_string()))?;
+            let covered = (section.characteristics & (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE)) != (IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE);
+            self.insert(Segment::new(padding_start, padding_end, covered, "Padding".to_string()))?;
         }
         Ok(())
     }
@@ -312,6 +319,52 @@ impl SegmentList {
         }
         Err(anyhow!("Failed to insert segment."))
     }
+
+    /// Attempts to update segments that are uncovered and have no symbol name.
+    /// 
+    /// We must loop through each byte of each uncovered segment for three reasons:
+    /// 1. A segment may contain multiple symbols
+    /// 2. If a rule only covers part of a symbol (using a field), we need to ensure all other
+    ///    parts of the same symbol that are not covered have their names correctly set.
+    /// 3. There may be padding between symbols for alignment purposes
+    pub fn update_missing_symbol_names(&mut self, symbols: &[Symbol]) -> Result<()> {
+        let mut to_insert = Vec::new();
+        for segment in &self.segments {
+            if !segment.symbol.is_empty() || segment.covered {
+                continue;
+            }
+
+            let mut cur = segment._start;
+            while cur < segment._end {
+                let symbol = symbols.iter().find(|&entry| {
+                    let start = entry.address;
+                    let end = start + entry.type_info.total_size() as u32;
+                    (start..end).contains(&cur)
+                });
+
+                if let Some(symbol) = symbol {
+                    let end = std::cmp::min(cur + symbol.type_info.total_size() as u32, segment._end);
+                    let mut segment = Segment::new(
+                        cur,
+                        end,
+                        false,
+                        segment.reason.clone()
+                    );
+                    segment.symbol = symbol.name.clone();
+                    to_insert.push(segment);
+                    cur += end;
+                } else {
+                    cur += 1;
+                }
+            }
+        }
+
+        for segment in to_insert.into_iter() {
+            self.insert(segment)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// A PDB section in the image.
@@ -361,7 +414,7 @@ impl Segment {
     /// Creates a new segment with the given start and end addresses, coverage status, and reason.
     pub fn new(start: u32, end: u32, covered: bool, reason: String) -> Self {
         Segment {
-            symbol: "".to_string(),
+            symbol: "".to_string(), 
             start: format!("{:#x}", start),
             _start: start,
             end: format!("{:#x}", end),
@@ -369,7 +422,32 @@ impl Segment {
             covered,
             reason,
         }
-    } 
+    }
+
+    /// Returns the symbol name associated with this segment.
+    pub fn symbol(&self) -> String {
+        self.symbol.clone()
+    }
+
+    /// Returns the start address of this segment.
+    pub fn start(&self) -> u32 {
+        self._start
+    }
+
+    /// Returns the end address of this segment.
+    pub fn end(&self) -> u32 {
+        self._end
+    }
+
+    /// Returns if this segment is covered.
+    pub fn covered(&self) -> bool {
+        self.covered
+    }
+
+    /// Returns the reason this segment is covered or not.
+    pub fn reason(&self) -> String {
+        self.reason.clone()
+    }
 }
 
 impl From<&ImageValidationEntryHeader> for Segment {
