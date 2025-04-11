@@ -21,10 +21,18 @@
 #include <Uefi.h>
 #include <Base.h>
 #include <SeaAuxiliary.h>
+#include <IndustryStandard/PeImage.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PeCoffValidationLib.h>
 #include <Library/SafeIntLib.h>
+
+#define CODE_SECTION_MUST_HAVE_ATTRIBUTES     (EFI_MEMORY_RO | EFI_MEMORY_SP)
+#define CODE_SECTION_MUST_NOT_ATTRIBUTES      (EFI_MEMORY_XP | EFI_MEMORY_RP)
+#define RW_DATA_SECTION_MUST_HAVE_ATTRIBUTES  (EFI_MEMORY_SP | EFI_MEMORY_XP)
+#define RW_DATA_SECTION_MUST_NOT_ATTRIBUTES   (EFI_MEMORY_RO | EFI_MEMORY_RP)
+#define R_DATA_SECTION_MUST_HAVE_ATTRIBUTES   (EFI_MEMORY_RO | EFI_MEMORY_SP | EFI_MEMORY_XP)
+#define R_DATA_SECTION_MUST_NOT_ATTRIBUTES    (EFI_MEMORY_RP)
 
 EFI_STATUS
 EFIAPI
@@ -88,6 +96,202 @@ InspectTargetRangeAttribute (
   }
 
 Done:
+  return Status;
+}
+
+/**
+  Inspect the PE/COFF image to check if it is valid.
+
+  @param ImageBase      The base address of the image.
+  @param ImageSize      The size of the image.
+  @param PageTableBase  The base address of the page table.
+
+  @return EFI_STATUS    The status of the inspection.
+                        EFI_SUCCESS if the image is valid.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffInspectImageMemory (
+  IN EFI_PHYSICAL_ADDRESS  ImageBase,
+  IN UINT64                ImageSize,
+  IN UINT64                PageTableBase
+  )
+{
+  UINTN                                Index;
+  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr;
+  UINT32                               SectionAlignment;
+  EFI_IMAGE_SECTION_HEADER             *Section;
+  EFI_STATUS                           Status;
+  UINT64                               SectionStart;
+  UINT64                               SectionEnd;
+  UINT64                               PageTableAttributes;
+  EFI_IMAGE_DOS_HEADER                 *DosHdr;
+  UINT32                               PeCoffHeaderOffset;
+
+  DosHdr             = (EFI_IMAGE_DOS_HEADER *)(UINTN)ImageBase;
+  PeCoffHeaderOffset = 0;
+  if (DosHdr->e_magic == EFI_IMAGE_DOS_SIGNATURE) {
+    PeCoffHeaderOffset = DosHdr->e_lfanew;
+  }
+
+  if (PeCoffHeaderOffset >= ImageSize) {
+    DEBUG ((DEBUG_ERROR, "%a PeCoffHeaderOffset invalid - 0x%x\n", __func__, PeCoffHeaderOffset));
+    Status = EFI_COMPROMISED_DATA;
+    goto Exit;
+  }
+
+  Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)(UINTN)(ImageBase + PeCoffHeaderOffset);
+
+  // Get SectionAlignment
+  if (Hdr.Pe32->OptionalHeader.Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+    SectionAlignment = Hdr.Pe32->OptionalHeader.SectionAlignment;
+  } else {
+    SectionAlignment = Hdr.Pe32Plus->OptionalHeader.SectionAlignment;
+  }
+
+  if (SectionAlignment & (RUNTIME_PAGE_ALLOCATION_GRANULARITY - 1)) {
+    DEBUG ((DEBUG_ERROR, "%a SectionAlignment invalid - 0x%x\n", __func__, SectionAlignment));
+    Status = EFI_COMPROMISED_DATA;
+    goto Exit;
+  }
+
+  Section = (EFI_IMAGE_SECTION_HEADER *)(
+                                         (UINT8 *)(UINTN)ImageBase +
+                                         PeCoffHeaderOffset +
+                                         sizeof (UINT32) +
+                                         sizeof (EFI_IMAGE_FILE_HEADER) +
+                                         Hdr.Pe32->FileHeader.SizeOfOptionalHeader
+                                         );
+
+  for (Index = 0; Index < Hdr.Pe32->FileHeader.NumberOfSections; Index++) {
+    SectionStart = (UINT64)ImageBase + Section[Index].VirtualAddress;
+    SectionEnd   = SectionStart + ALIGN_VALUE (Section[Index].SizeOfRawData, SectionAlignment);
+
+    if ((SectionStart < ImageBase) || (SectionEnd > ImageBase + ImageSize) || (SectionEnd < SectionStart)) {
+      DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx is invalid\n", __func__, SectionStart, SectionEnd));
+      Status = EFI_COMPROMISED_DATA;
+      goto Exit;
+    }
+
+    DEBUG_CODE_BEGIN ();
+    DEBUG ((DEBUG_INFO, "  Section - '%c%c%c%c%c%c%c%c'\n", Section[Index].Name[0], Section[Index].Name[1], Section[Index].Name[2], Section[Index].Name[3], Section[Index].Name[4], Section[Index].Name[5], Section[Index].Name[6], Section[Index].Name[7]));
+    DEBUG ((DEBUG_INFO, "  Characteristics      - 0x%08x\n", Section[Index].Characteristics));
+    DEBUG ((DEBUG_INFO, "  VirtualSize          - 0x%08x\n", Section[Index].Misc.VirtualSize));
+    DEBUG ((DEBUG_INFO, "  SizeOfRawData        - 0x%08x\n", Section[Index].SizeOfRawData));
+    DEBUG ((DEBUG_INFO, "  PointerToRawData     - 0x%08x\n", Section[Index].PointerToRawData));
+    DEBUG ((DEBUG_INFO, "  VirtualAddress       - 0x%08x\n", Section[Index].VirtualAddress));
+    DEBUG ((DEBUG_INFO, "  PointerToRelocations - 0x%08x\n", Section[Index].PointerToRelocations));
+    DEBUG ((DEBUG_INFO, "  PointerToLinenumbers - 0x%08x\n", Section[Index].PointerToLinenumbers));
+    DEBUG ((DEBUG_INFO, "  NumberOfRelocations  - 0x%08x\n", Section[Index].NumberOfRelocations));
+    DEBUG ((DEBUG_INFO, "  NumberOfLinenumbers  - 0x%08x\n", Section[Index].NumberOfLinenumbers));
+    DEBUG_CODE_END ();
+
+    // Check each section
+    if (Section[Index].Characteristics & EFI_IMAGE_SCN_CNT_CODE) {
+      // Code section, it should not contain data
+      if ((Section[Index].Characteristics &
+           (EFI_IMAGE_SCN_CNT_INITIALIZED_DATA | EFI_IMAGE_SCN_CNT_UNINITIALIZED_DATA)) != 0)
+      {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx contains code and data\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Check if the section is executable
+      if ((Section[Index].Characteristics & EFI_IMAGE_SCN_MEM_EXECUTE) == 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx is not executable\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Check if the section is writable
+      if ((Section[Index].Characteristics & EFI_IMAGE_SCN_MEM_WRITE) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx is writable\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Check the section memory attribute
+      Status = GetMemoryAttributes (PageTableBase, SectionStart, SectionEnd - SectionStart, &PageTableAttributes);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a GetMemoryAttributes failed - %r\n", __func__, Status));
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & CODE_SECTION_MUST_NOT_ATTRIBUTES) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & CODE_SECTION_MUST_HAVE_ATTRIBUTES) != CODE_SECTION_MUST_HAVE_ATTRIBUTES) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+    } else if ((Section[Index].Characteristics & EFI_IMAGE_SCN_MEM_WRITE) == 0) {
+      // Read-only data section, it should not contain executable memory
+      if ((Section[Index].Characteristics & EFI_IMAGE_SCN_MEM_EXECUTE) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx contains data and code\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Read-only data section, should not have uninitialized data
+      if ((Section[Index].Characteristics & EFI_IMAGE_SCN_CNT_UNINITIALIZED_DATA) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx contains uninitialized data\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Check the section memory attribute
+      Status = GetMemoryAttributes (PageTableBase, SectionStart, SectionEnd - SectionStart, &PageTableAttributes);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a GetMemoryAttributes failed - %r\n", __func__, Status));
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & R_DATA_SECTION_MUST_NOT_ATTRIBUTES) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & R_DATA_SECTION_MUST_HAVE_ATTRIBUTES) != R_DATA_SECTION_MUST_HAVE_ATTRIBUTES) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+    } else {
+      // RW data section, should not have executable memory
+      if ((Section[Index].Characteristics & EFI_IMAGE_SCN_MEM_EXECUTE) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx contains data and code\n", __func__, SectionStart, SectionEnd));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      // Check the section memory attribute
+      Status = GetMemoryAttributes (PageTableBase, SectionStart, SectionEnd - SectionStart, &PageTableAttributes);
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a GetMemoryAttributes failed - %r\n", __func__, Status));
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & RW_DATA_SECTION_MUST_NOT_ATTRIBUTES) != 0) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+
+      if ((PageTableAttributes & RW_DATA_SECTION_MUST_HAVE_ATTRIBUTES) != RW_DATA_SECTION_MUST_HAVE_ATTRIBUTES) {
+        DEBUG ((DEBUG_ERROR, "%a Section 0x%llx-0x%llx has invalid attributes - 0x%llx\n", __func__, SectionStart, SectionEnd, PageTableAttributes));
+        Status = EFI_COMPROMISED_DATA;
+        goto Exit;
+      }
+    }
+  }
+
+Exit:
   return Status;
 }
 

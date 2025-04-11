@@ -134,4 +134,22 @@ PeCoffImageValidationPointer (
   IN UINTN                                MsegSize
   );
 
+/**
+  Inspect the PE/COFF image to check if it is valid.
+
+  @param ImageBase      The base address of the image.
+  @param ImageSize      The size of the image.
+  @param PageTableBase  The base address of the page table.
+
+  @return EFI_STATUS    The status of the inspection.
+                        EFI_SUCCESS if the image is valid.
+**/
+EFI_STATUS
+EFIAPI
+PeCoffInspectImageMemory (
+  IN EFI_PHYSICAL_ADDRESS  ImageBase,
+  IN UINT64                ImageSize,
+  IN UINT64                PageTableBase
+  );
+
 #endif // PECOFF_VALIDATION_LIB_H_

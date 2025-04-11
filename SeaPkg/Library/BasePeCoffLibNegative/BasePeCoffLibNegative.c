@@ -711,7 +711,6 @@ GetAlignedVmcsSize (
 }
 
 /**
-  Gets the MSEG base from the MSR and calculates the MSEG size.
 
   @param[out] MsegBase  The MSEG base address.
   @param[out] MsegSize  The MSEG size.
