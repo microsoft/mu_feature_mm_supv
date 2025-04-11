@@ -135,6 +135,12 @@ VerifyAndHashImage (
                    EFI_SIZE_TO_PAGES (ImageSize + EFI_PAGE_SIZE - 1)
                    );
 
+  Status = PeCoffInspectImageMemory (ImageBase, ImageSize, PageTableBase);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a: PeCoffInspectImageMemory failed - %r\n", __func__, Status));
+    goto Exit;
+  }
+
   //
   // Get information about the image being loaded
   //
