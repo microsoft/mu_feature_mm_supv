@@ -825,7 +825,6 @@ GetStmResource (
   return mStmResourcesPtr;
 }
 
-
 /**
   This function is hook point called after the gEfiSmmReadyToLockProtocolGuid
   notification is completely processed.
@@ -860,10 +859,10 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
 
   // Mark the MSEG as read-only
   Status = SmmSetMemoryAttributes (
-    (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
-    ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
-    SEA_MSEG_ATTRIBUTE
-    );
+             (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
+             ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
+             SEA_MSEG_ATTRIBUTE
+             );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "[%a]   Failed to set MSEG region at 0x%p of %x bytes to be read-only - %r.\n", __func__, mMsegBase, mMsegSize, Status));
   }
