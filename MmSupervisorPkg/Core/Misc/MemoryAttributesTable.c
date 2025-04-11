@@ -353,6 +353,85 @@ Finish:
 }
 
 /**
+  This function sets the memory attributes of the read-only data sections of a
+  Pe/Coff image to RO.
+
+  @param[in]  DriverEntry           Driver information
+  @param[in]  IsSupervisorImage     Indicator of whether the DriverEntry represents a supervisor image.
+
+  @retval   EFI_SUCCESS             Image attribute was set up successfully.
+  @retval   EFI_INVALID_PARAMETER   DriverEntry is NULL pointer.
+**/
+EFI_STATUS
+EFIAPI
+ProtectReadonlyData (
+  IN CONST EFI_MM_DRIVER_ENTRY  *DriverEntry,
+  IN BOOLEAN                    IsSupervisorImage
+  )
+{
+  UINTN                                Index;
+  EFI_IMAGE_DOS_HEADER                 *DosHdr;
+  UINT32                               PeCoffHeaderOffset;
+  EFI_IMAGE_OPTIONAL_HEADER_PTR_UNION  Hdr;
+  UINT32                               SectionAlignment;
+  EFI_IMAGE_SECTION_HEADER             *Section;
+  UINT64                               SectionStart;
+  UINT64                               SectionEnd;
+  EFI_PHYSICAL_ADDRESS                 ImageBase;
+
+  if (DriverEntry == NULL) {
+    ASSERT (DriverEntry != NULL);
+    return EFI_INVALID_PARAMETER;
+  }
+
+  ImageBase          = DriverEntry->ImageBuffer;
+  DosHdr             = (EFI_IMAGE_DOS_HEADER *)ImageBase;
+  PeCoffHeaderOffset = 0;
+  if (DosHdr->e_magic == EFI_IMAGE_DOS_SIGNATURE) {
+    PeCoffHeaderOffset = DosHdr->e_lfanew;
+  }
+
+  Hdr.Pe32 = (EFI_IMAGE_NT_HEADERS32 *)((UINTN)ImageBase + PeCoffHeaderOffset);
+  if (Hdr.Pe32->OptionalHeader.Magic == EFI_IMAGE_NT_OPTIONAL_HDR32_MAGIC) {
+    SectionAlignment = Hdr.Pe32->OptionalHeader.SectionAlignment;
+  } else {
+    SectionAlignment = Hdr.Pe32Plus->OptionalHeader.SectionAlignment;
+  }
+
+  Section = (EFI_IMAGE_SECTION_HEADER *)(
+                                         (UINT8 *)ImageBase +
+                                         PeCoffHeaderOffset +
+                                         sizeof (UINT32) +
+                                         sizeof (EFI_IMAGE_FILE_HEADER) +
+                                         Hdr.Pe32->FileHeader.SizeOfOptionalHeader
+                                         );
+
+  for (Index = 0; Index < Hdr.Pe32->FileHeader.NumberOfSections; Index++) {
+    SectionStart = (UINT64)ImageBase + Section[Index].VirtualAddress;
+    SectionEnd   = SectionStart + ALIGN_VALUE (Section[Index].SizeOfRawData, SectionAlignment);
+
+    if ((Section[Index].Characteristics & (EFI_IMAGE_SCN_MEM_WRITE | EFI_IMAGE_SCN_CNT_CODE)) == 0) {
+      // Not writable, so set it to RO
+      // Note that we don't need to set it to XP, as the image is already marked as XP.
+      DEBUG ((
+        DEBUG_INFO,
+        "%a Marking 0x%11p - 0x%11p to RO\n",
+        __func__,
+        SectionStart,
+        SectionEnd
+        ));
+      SmmSetMemoryAttributes (
+        SectionStart,
+        SectionEnd - SectionStart,
+        EFI_MEMORY_RO | (IsSupervisorImage ? EFI_MEMORY_SP : 0)
+        );
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
   This function allows supervisor to mark the target image page attributes after loading.
 
   @param[in]  DriverEntry           Driver information
@@ -473,7 +552,13 @@ SmmSetImagePageAttributes (
       );
   }
 
-  return EFI_SUCCESS;
+  Status = ProtectReadonlyData (DriverEntry, IsSupervisorImage);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  return Status;
 }
 
 /**
