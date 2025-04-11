@@ -284,16 +284,6 @@ DiscoverSmiEntryInFvHobs (
               break;
             }
 
-            Status = SmmSetMemoryAttributes (
-                       (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
-                       ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
-                       SEA_MSEG_ATTRIBUTE
-                       );
-            if (EFI_ERROR (Status)) {
-              DEBUG ((DEBUG_ERROR, "[%a]   Failed to set SEA [%g] at 0x%p of %x bytes to be read-only - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
-              break;
-            }
-
             SeaResponderFound = TRUE;
           }
 
@@ -612,63 +602,6 @@ SmmCpuFeaturesInstallSmiHandler (
 }
 
 /**
-  SMM End Of Dxe event notification handler.
-
-  STM support need patch AcpiRsdp in TXT_PROCESSOR_SMM_DESCRIPTOR.
-
-  @param[in] Protocol   Points to the protocol's unique identifier.
-  @param[in] Interface  Points to the interface instance.
-  @param[in] Handle     The handle on which the interface was installed.
-
-  @retval EFI_SUCCESS   Notification handler runs successfully.
-**/
-EFI_STATUS
-EFIAPI
-MmEndOfDxeEventNotify (
-  IN CONST EFI_GUID  *Protocol,
-  IN VOID            *Interface,
-  IN EFI_HANDLE      Handle
-  )
-{
-  UINTN                              Index = 0;
-  TXT_PROCESSOR_SMM_DESCRIPTOR       *Psd;
-  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  UINT32                             MsegBase;
-  STM_HEADER                         *StmHeader;
-  VOID                               *LongRsp;
-
-  DEBUG ((DEBUG_INFO, "MmEndOfDxeEventNotify\n"));
-
-  //
-  // Get MSEG base address from MSR_IA32_SMM_MONITOR_CTL
-  //
-  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
-  MsegBase             = SmmMonitorCtl.Bits.MsegBase << 12;
-
-  //
-  // STM Header is at the beginning of the STM Image, we use the value from MSR
-  //
-  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
-  LongRsp   = (VOID *)(UINTN)(MsegBase + StmHeader->HwStmHdr.EspOffset);
-
-  // Copy CPU information to the CPU_INFORMATION_HEADER
-  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)gMmst->NumberOfCpus;
-  StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
-
-  for (Index = 0; Index < gMmst->NumberOfCpus; Index++) {
-    Psd = (TXT_PROCESSOR_SMM_DESCRIPTOR *)((UINTN)gMmst->CpuSaveState[Index] - SMRAM_SAVE_STATE_MAP_OFFSET + TXT_SMM_PSD_OFFSET);
-    DEBUG ((DEBUG_INFO, "Index=%d  Psd=%p  Rsdp=%p\n", Index, Psd, NULL));
-    Psd->AcpiRsdp = (UINT64)(UINTN)NULL;
-
-    LongRsp = (VOID *)((UINTN)LongRsp + StmHeader->SwStmHdr.PerProcDynamicMemorySize);
-  }
-
-  mLockLoadMonitor = TRUE;
-
-  return EFI_SUCCESS;
-}
-
-/**
   This function initializes the STM configuration table.
 **/
 VOID
@@ -676,19 +609,7 @@ StmSmmConfigurationTableInit (
   VOID
   )
 {
-  EFI_STATUS  Status;
-  VOID        *Registration;
-
-  //
-  //
-  // Register SMM End of DXE Event
-  //
-  Status = gMmst->MmRegisterProtocolNotify (
-                    &gEfiMmEndOfDxeProtocolGuid,
-                    MmEndOfDxeEventNotify,
-                    &Registration
-                    );
-  ASSERT_EFI_ERROR (Status);
+  return;
 }
 
 /**
@@ -902,4 +823,50 @@ GetStmResource (
   )
 {
   return mStmResourcesPtr;
+}
+
+
+/**
+  This function is hook point called after the gEfiSmmReadyToLockProtocolGuid
+  notification is completely processed.
+**/
+VOID
+EFIAPI
+SmmCpuFeaturesCompleteSmmReadyToLock (
+  VOID
+  )
+{
+  EFI_STATUS                         Status;
+  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
+  UINT32                             MsegBase;
+  STM_HEADER                         *StmHeader;
+
+  DEBUG ((DEBUG_INFO, "%a - Enters...\n", __func__));
+
+  //
+  // Get MSEG base address from MSR_IA32_SMM_MONITOR_CTL
+  //
+  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
+  MsegBase             = SmmMonitorCtl.Bits.MsegBase << 12;
+
+  //
+  // STM Header is at the beginning of the STM Image, we use the value from MSR
+  //
+  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
+
+  // Copy CPU information to the CPU_INFORMATION_HEADER
+  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)gMmst->NumberOfCpus;
+  StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
+
+  // Mark the MSEG as read-only
+  Status = SmmSetMemoryAttributes (
+    (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
+    ALIGN_VALUE (mMsegSize, EFI_PAGE_SIZE),
+    SEA_MSEG_ATTRIBUTE
+    );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "[%a]   Failed to set SEA [%g] at 0x%p of %x bytes to be read-only - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
+  }
+
+  mLockLoadMonitor = TRUE;
 }

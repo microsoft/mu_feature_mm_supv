@@ -46,15 +46,3 @@ SmmCpuFeaturesRendezvousExit (
   )
 {
 }
-
-/**
-  This function is hook point called after the gEfiSmmReadyToLockProtocolGuid
-  notification is completely processed.
-**/
-VOID
-EFIAPI
-SmmCpuFeaturesCompleteSmmReadyToLock (
-  VOID
-  )
-{
-}
