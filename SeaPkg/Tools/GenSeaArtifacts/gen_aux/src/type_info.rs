@@ -135,7 +135,8 @@ impl TypeInfo {
             TypeData::Array(arr) => {
                 let total_size = arr.dimensions[0] as u64;
                 let element = TypeInfo::from_type_index(info, arr.element_type)?;
-                TypeInfo::many(element.element_size(), total_size / element.element_size(), element.type_id())            }
+                TypeInfo::many(element.element_size(), total_size / element.element_size(), element.type_id())
+            }
             pdb::TypeData::Union(union) => {
                 TypeInfo::one(union.size, Some(index))
             }
