@@ -6,14 +6,12 @@
 import glob
 import os
 import logging
-import sys
 from edk2toolext.environment import shell_environment
 from edk2toolext.invocables.edk2_ci_build import CiBuildSettingsManager
 from edk2toolext.invocables.edk2_update import UpdateSettingsManager
 from edk2toolext.invocables.edk2_ci_setup import CiSetupSettingsManager
 from edk2toolext.invocables.edk2_setup import SetupSettingsManager, RequiredSubmodule
 from edk2toollib.utility_functions import GetHostInfo
-from pathlib import Path
 
 from edk2toolext import codeql as codeql_helpers
 
@@ -189,17 +187,17 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, CiSetupSettingsMan
             {
                 "Path": "MU_BASECORE",
                 "Url": "https://github.com/microsoft/mu_basecore.git",
-                "Branch": "dev/202405"
+                "Branch": "release/202502"
             },
             {
                 "Path": "Common/MU_PLUS",
                 "Url": "https://github.com/microsoft/mu_plus.git",
-                "Branch": "dev/202405"
+                "Branch": "release/202502"
             },
             {
                 "Path": "Common/MU_TIANO_PLUS",
                 "Url": "https://github.com/microsoft/mu_tiano_plus.git",
-                "Branch": "dev/202405"
+                "Branch": "release/202502"
             }
         ]
 
