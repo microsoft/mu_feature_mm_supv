@@ -133,9 +133,13 @@ impl TypeInfo {
                 TypeInfo::one(0, Some(index))
             }
             TypeData::Array(arr) => {
+                // The recursive nature of `TypeInfo::from_type_index` flattens n-dimensional arrays into a single
+                // dimension. This is because for each dimension, `element.total_size()` is the size of the current
+                // dimension. By using `element.element_size()` instead, we bubble up the size of the true element
+                // type, which is ultimately divided by the total size of the symbol.
                 let total_size = arr.dimensions[0] as u64;
                 let element = TypeInfo::from_type_index(info, arr.element_type)?;
-                TypeInfo::many(element.total_size(), total_size / element.total_size(), element.type_id())
+                TypeInfo::many(element.element_size(), total_size / element.element_size(), element.type_id())
             }
             pdb::TypeData::Union(union) => {
                 TypeInfo::one(union.size, Some(index))
