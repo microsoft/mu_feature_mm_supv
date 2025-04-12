@@ -730,7 +730,6 @@ GetMsegBaseAndSize (
   EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   STM_HEADER                         *StmHeader;
-  UINTN                              NumberOfCpus;
 
   //
   // Find the MSEG Base address
@@ -754,12 +753,9 @@ GetMsegBaseAndSize (
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader    = (STM_HEADER *)(UINTN)*MsegBase;
-  NumberOfCpus = StmHeader->CpuInfoHdr.NumberOfCpus;
+  StmHeader = (STM_HEADER *)(UINTN)*MsegBase;
 
-  *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
-               StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
-               (StmHeader->SwStmHdr.PerProcDynamicMemorySize + GetAlignedVmcsSize () * 2) * NumberOfCpus);
+  *MsegSize = StmHeader->CpuInfoHdr.MsegSize;
 
   Status = EFI_SUCCESS;
 
