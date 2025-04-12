@@ -42,6 +42,7 @@
 [Packages]
   MdePkg/MdePkg.dec
   StandaloneMmPkg/StandaloneMmPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
 
 [LibraryClasses]
   BaseMemoryLib

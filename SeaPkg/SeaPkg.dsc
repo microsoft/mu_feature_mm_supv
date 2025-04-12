@@ -19,6 +19,8 @@
   BUILD_TARGETS                  = DEBUG|RELEASE
   SKUID_IDENTIFIER               = DEFAULT
 
+!include MdePkg/MdeLibs.dsc.inc
+
 [LibraryClasses.common]
   BaseLib|MdePkg/Library/BaseLib/BaseLib.inf
   IoLib|MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -81,11 +83,7 @@
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
 
 [Components]
-  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {
-    <LibraryClasses>
-      NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
-  }
-
+  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf
   SeaPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
   SeaPkg/Library/StmLib/StmLib.inf
   SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
