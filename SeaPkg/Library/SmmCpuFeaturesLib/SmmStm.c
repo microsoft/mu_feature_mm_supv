@@ -690,7 +690,7 @@ StmCheckStmImage (
   //
   MinMsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
                  StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
-                 (StmHeader->SwStmHdr.PerProcDynamicMemorySize + GetVmcsSize () * 2) * gMmst->NumberOfCpus);
+                 (StmHeader->SwStmHdr.PerProcDynamicMemorySize + GetVmcsSize () * 2) *  mMpInformationHobData->NumberOfProcessors);
   if (MinMsegSize < StmImageSize) {
     MinMsegSize = StmImageSize;
   }
@@ -708,7 +708,7 @@ StmCheckStmImage (
   DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.AdditionalDynamicMemorySize = %08x\n", StmHeader->SwStmHdr.AdditionalDynamicMemorySize));
   DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.PerProcDynamicMemorySize    = %08x\n", StmHeader->SwStmHdr.PerProcDynamicMemorySize));
   DEBUG ((DEBUG_ERROR, "  VMCS Size                                       = %08x\n", GetVmcsSize ()));
-  DEBUG ((DEBUG_ERROR, "  Max CPUs                                        = %08x\n", gMmst->NumberOfCpus));
+  DEBUG ((DEBUG_ERROR, "  Max CPUs                                        = %08x\n", mMpInformationHobData->NumberOfProcessors));
   DEBUG ((DEBUG_ERROR, "  StmHeader->HwStmHdr.Cr3Offset                   = %08x\n", StmHeader->HwStmHdr.Cr3Offset));
 
   //
@@ -720,7 +720,7 @@ StmCheckStmImage (
     DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.AdditionalDynamicMemorySize = %08x\n", StmHeader->SwStmHdr.AdditionalDynamicMemorySize));
     DEBUG ((DEBUG_ERROR, "  StmHeader->SwStmHdr.PerProcDynamicMemorySize    = %08x\n", StmHeader->SwStmHdr.PerProcDynamicMemorySize));
     DEBUG ((DEBUG_ERROR, "  VMCS Size                                       = %08x\n", GetVmcsSize ()));
-    DEBUG ((DEBUG_ERROR, "  Max CPUs                                        = %08x\n", gMmst->NumberOfCpus));
+    DEBUG ((DEBUG_ERROR, "  Max CPUs                                        = %08x\n", mMpInformationHobData->NumberOfProcessors));
     DEBUG ((DEBUG_ERROR, "  StmHeader->HwStmHdr.Cr3Offset                   = %08x\n", StmHeader->HwStmHdr.Cr3Offset));
     return FALSE;
   }
@@ -835,26 +835,19 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
   VOID
   )
 {
-  EFI_STATUS                         Status;
-  MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
-  UINT32                             MsegBase;
-  STM_HEADER                         *StmHeader;
+  EFI_STATUS  Status;
+  STM_HEADER  *StmHeader;
 
   DEBUG ((DEBUG_INFO, "%a - Enters...\n", __func__));
 
   //
-  // Get MSEG base address from MSR_IA32_SMM_MONITOR_CTL
-  //
-  SmmMonitorCtl.Uint64 = AsmReadMsr64 (MSR_IA32_SMM_MONITOR_CTL);
-  MsegBase             = SmmMonitorCtl.Bits.MsegBase << 12;
-
-  //
   // STM Header is at the beginning of the STM Image, we use the value from MSR
   //
-  StmHeader = (STM_HEADER *)(UINTN)MsegBase;
+  StmHeader = (STM_HEADER *)(UINTN)mMsegBase;
 
   // Copy CPU information to the CPU_INFORMATION_HEADER
-  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)gMmst->NumberOfCpus;
+  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)mMpInformationHobData->NumberOfProcessors;
+  StmHeader->CpuInfoHdr.MsegSize     = (UINT32)mMsegSize;
   StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
 
   // Mark the MSEG as read-only
