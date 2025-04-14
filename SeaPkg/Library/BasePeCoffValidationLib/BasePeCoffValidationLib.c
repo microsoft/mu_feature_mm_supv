@@ -463,7 +463,7 @@ PeCoffImageValidationPointer (
 
   AddrInTarget = 0;
   CopyMem (&AddrInTarget, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size);
-  InMseg = ((UINTN)AddrInTarget >= MsegBase - MsegSize) && ((UINTN)AddrInTarget < MsegBase);
+  InMseg = ((UINTN)AddrInTarget >= MsegBase) && ((UINTN)AddrInTarget < MsegBase + MsegSize);
   if ((BOOLEAN)PointerHdr->InMseg != InMseg) {
     DEBUG ((
       DEBUG_ERROR,
