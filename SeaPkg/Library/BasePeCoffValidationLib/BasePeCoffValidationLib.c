@@ -315,7 +315,7 @@ Done:
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
   matches the content in the original image buffer as specified by TargetOffset in the validation entry.
 
-  @param[in] TargetImage               The pointer to the target image buffer.
+  @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
   @param[in] Hdr                       The header of the validation entry.
 
   @retval EFI_SUCCESS             The target image passes the validation.
