@@ -41,9 +41,11 @@ GLOBAL_REMOVE_IF_UNREFERENCED UINT64  mGuardedMemoryMap = 0;
 GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mMapLevel = 1;
 
 //
-// Mask for each level of map table
+// Shift and mask for each level of map table
 //
-GLOBAL_REMOVE_IF_UNREFERENCED UINTN  mLevelMask[GUARDED_HEAP_MAP_TABLE_DEPTH]
+GLOBAL_REMOVE_IF_UNREFERENCED CONST UINTN  mLevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH]
+  = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
+GLOBAL_REMOVE_IF_UNREFERENCED CONST UINTN  mLevelMask[GUARDED_HEAP_MAP_TABLE_DEPTH]
   = GUARDED_HEAP_MAP_TABLE_DEPTH_MASKS;
 
 //
@@ -266,7 +268,6 @@ FindGuardedMemoryMap (
   UINTN   Index;
   UINTN   Size;
   UINTN   BitsToUnitEnd;
-  UINTN   LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   //
   // Adjust current map table depth according to the address to access
@@ -275,7 +276,7 @@ FindGuardedMemoryMap (
          mMapLevel < GUARDED_HEAP_MAP_TABLE_DEPTH &&
          RShiftU64 (
            Address,
-           LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH - mMapLevel - 1]
+           mLevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH - mMapLevel - 1]
            ) != 0)
   {
     if (mGuardedMemoryMap != 0) {
@@ -312,7 +313,7 @@ FindGuardedMemoryMap (
       *GuardMap = MapMemory;
     }
 
-    Index    = (UINTN)RShiftU64 (Address, LevelShift[Level]);
+    Index    = (UINTN)RShiftU64 (Address, mLevelShift[Level]);
     Index   &= mLevelMask[Level];
     GuardMap = (UINT64 *)(UINTN)((*GuardMap) + Index * sizeof (UINT64));
   }
@@ -1217,7 +1218,6 @@ SetAllGuardPages (
   INTN     Level;
   UINTN    Index;
   BOOLEAN  OnGuarding;
-  UINTN    LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
@@ -1227,7 +1227,7 @@ SetAllGuardPages (
   }
 
   CopyMem (Entries, mLevelMask, sizeof (Entries));
-  CopyMem (Shifts, LevelShift, sizeof (Shifts));
+  CopyMem (Shifts, mLevelShift, sizeof (Shifts));
 
   SetMem (Tables, sizeof (Tables), 0);
   SetMem (Addresses, sizeof (Addresses), 0);
@@ -1366,7 +1366,6 @@ DumpGuardedMemoryBitmap (
   CHAR8   String[GUARDED_HEAP_MAP_ENTRY_BITS + 1];
   CHAR8   *Ruler1;
   CHAR8   *Ruler2;
-  UINTN   LevelShift[GUARDED_HEAP_MAP_TABLE_DEPTH] = GUARDED_HEAP_MAP_TABLE_DEPTH_SHIFTS;
 
   if ((mGuardedMemoryMap == 0) ||
       (mMapLevel == 0) ||
@@ -1388,7 +1387,7 @@ DumpGuardedMemoryBitmap (
   DEBUG ((HEAP_GUARD_DEBUG_LEVEL, "                  %a\r\n", Ruler2));
 
   CopyMem (Entries, mLevelMask, sizeof (Entries));
-  CopyMem (Shifts, LevelShift, sizeof (Shifts));
+  CopyMem (Shifts, mLevelShift, sizeof (Shifts));
 
   SetMem (Indices, sizeof (Indices), 0);
   SetMem (Tables, sizeof (Tables), 0);
