@@ -104,7 +104,7 @@ EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
   IN CONST VOID                           *OriginalImageBaseAddress,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   );
 
 /**
