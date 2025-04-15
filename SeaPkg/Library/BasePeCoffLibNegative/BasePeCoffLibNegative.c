@@ -884,7 +884,7 @@ PeCoffImageDiffValidation (
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_MEM_ATTR *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
-        Status                      = PeCoffImageValidationSelfRef (TargetImage, ImageValidationEntryHdr, OriginalImageBaseAddress);
+        Status                      = PeCoffImageValidationSelfRef (OriginalImageBaseAddress, ImageValidationEntryHdr);
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_SELF_REF *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
