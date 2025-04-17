@@ -73,7 +73,10 @@ fn parse_manifest_version(version: &str) -> Result<(u16, u16)> {
         .map_err(|err| anyhow!("Failed to parse minor version: [{}], Err: {}", version, err))?;
 
     if iter.next().is_some() {
-        return Err(anyhow!("Manifest version does not support patch level: [{}]", version));
+        return Err(anyhow!(
+            "Manifest version does not support patch level: [{}]",
+            version
+        ));
     }
 
     Ok((major, minor))
@@ -82,7 +85,8 @@ fn parse_manifest_version(version: &str) -> Result<(u16, u16)> {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let (manifest_version_major, manifest_version_minor) = parse_manifest_version(&args.manifest_version)?;
+    let (manifest_version_major, manifest_version_minor) =
+        parse_manifest_version(&args.manifest_version)?;
 
     if args.format {
         match manifest_version_major {
@@ -95,7 +99,6 @@ fn main() -> Result<()> {
     if !args.file.exists() {
         return Err(anyhow!("File [{}] does not exist.", &args.file.display()));
     }
-    
 
     let manifest = match manifest_version_major {
         1 => Manifest::V1(manifest_v1::SeaManifestV1::build(
