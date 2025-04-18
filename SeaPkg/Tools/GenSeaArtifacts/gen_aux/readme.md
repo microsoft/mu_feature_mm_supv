@@ -59,7 +59,7 @@ comes with the following standard options:
 scope = 'Optional[String]'
 symbol = 'Required[String]'
 field = 'Optional[String]'
-array.index = 'Optional[Int]'|'Optional[Int;2]'
+array.index = 'Optional[Int]'|'Optional[Array[Int;2]]'
 array.sentinel = 'Optional[Boolean]'
 validation.type = 'Required[String]'
 ```
