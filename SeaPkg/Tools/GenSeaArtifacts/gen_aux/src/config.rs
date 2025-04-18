@@ -10,10 +10,11 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::ops::RangeInclusive;
 
-use serde::{Deserialize, Serialize};
+use r_efi::efi::Guid;
+use serde::Deserialize;
 
 /// The configuration file for generating an auxiliary file.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigFile {
     /// The overall configuration for the auxiliary file.
@@ -35,13 +36,6 @@ impl ConfigFile {
         Ok(config)
     }
 
-    /// Writes the config file to the given file path.
-    pub fn to_file(&self, file_path: impl AsRef<std::path::Path>) -> anyhow::Result<()> {
-        let contents = toml::to_string(self)?;
-        std::fs::write(file_path, contents)?;
-        Ok(())
-    }
-
     /// Removes rules that do not match the given scopes.
     ///
     /// Rules without a scope are always applied.
@@ -58,7 +52,7 @@ impl ConfigFile {
 }
 
 /// Configuration options available in the config file.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     /// Aux File generation will abort if any symbols are found that do not have a corresponding rule in the config.
@@ -69,7 +63,7 @@ pub struct Config {
 /// A struct representing a key symbol to be added to the auxiliary file header.
 ///
 /// Maps to the [KeySymbol](crate::file::KeySymbol) in the auxiliary file.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Key {
     /// The signature that tells the firmware what to do with the address.
@@ -81,7 +75,7 @@ pub struct Key {
 /// A struct representing a rule that should be applied to a symbol in the auxiliary file.
 ///
 /// Maps to the [ImageValidationEntryHeader](crate::file::ImageValidationEntryHeader) in the auxiliary file.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Rule {
     /// The symbol that the rule is associated with.
@@ -97,7 +91,7 @@ pub struct Rule {
 }
 
 /// Configuration for a symbol that is an array of an underlying type.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Array {
     /// The last index of the array is a sentinel value, thus creating a different validation rule for the last index.
@@ -183,7 +177,7 @@ where
 /// The type of validation to generate for the symbol.
 ///
 /// Maps to the [ValidationType](crate::file::ValidationType) in the auxiliary file.
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum Validation {
     /// There is no validation for this symbol.
@@ -212,4 +206,45 @@ pub enum Validation {
         #[serde(default)]
         in_mseg: bool,
     },
+    /// The symbol is validated against a GUID as a Content rule.
+    #[serde(rename = "guid")]
+    Guid { 
+        #[serde(deserialize_with = "deserialize_guid")]
+        guid: Guid
+    },
+}
+
+/// A custom deserializer for a [Guid].
+fn deserialize_guid<'de, D>(
+    deserializer: D,
+) -> core::result::Result<Guid, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use core::fmt;
+    use serde::de::{Error, SeqAccess, Visitor};
+
+    struct RangeVisitor;
+
+    impl<'de> Visitor<'de> for RangeVisitor {
+        type Value = Guid;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("A sequence of [u32, u16, u16 [u8; 8]]")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> core::result::Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let f1: u32 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 0 to be u32"))?;
+            let f2: u16 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 1 to be u16"))?;
+            let f3: u16 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 2 to be u16"))?;
+            let f4: [u8; 8] = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 3 to be [u8; 8]"))?;
+            
+            Ok(Guid::from_fields(f1, f2, f3, f4[0], f4[1], &[f4[2], f4[3], f4[4], f4[5], f4[6], f4[7]]))
+        }
+    }
+
+    deserializer.deserialize_any(RangeVisitor)
 }
