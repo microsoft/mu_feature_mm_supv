@@ -170,7 +170,6 @@ impl KeySymbol {
 /// - validation_type = 0x2: IMAGE_VALIDATION_CONTENT
 /// - validation_type = 0x3: IMAGE_VALIDATION_MEM_ATTR
 /// - validation_type = 0x4: IMAGE_VALIDATION_SELF_REF
-#[derive(Pwrite)]
 pub struct ImageValidationEntryHeader {
     pub signature: u32,
     /// Offset of the value in the original image.
@@ -182,6 +181,25 @@ pub struct ImageValidationEntryHeader {
     pub validation_type: ValidationType,
     /// Offset of the default value in the aux file.
     pub offset_to_default: u32,
+}
+
+impl ImageValidationEntryHeader {
+    /// Returns the size of ImageValidationEntryHeader in bytes. While the C
+    /// struct IMAGE_VALIDATION_ENTRY_HEADER is 20 bytes, The actual header in
+    /// the aux file can be larger as may be casted to a different type
+    /// depending on the validation_type field. That is to say, if the
+    /// validation_type is ValidationType::Content, the header header written
+    /// to the aux file will  actually be IMAGE_VALIDATION_CONTENT.
+    fn header_size(&self) -> u32 {
+        20 + match &self.validation_type {
+            ValidationType::None => 0,
+            ValidationType::NonZero => 0,
+            ValidationType::Content { content } => content.len() as u32,
+            ValidationType::MemAttr { .. } => 24,
+            ValidationType::Ref { .. } => 4,
+            ValidationType::Pointer { .. } => 4,
+        }
+    }
 }
 
 impl Debug for ImageValidationEntryHeader {
@@ -203,22 +221,18 @@ impl Default for ImageValidationEntryHeader {
     }
 }
 
-impl ImageValidationEntryHeader {
-    /// Returns the size of ImageValidationEntryHeader in bytes. While the C
-    /// struct IMAGE_VALIDATION_ENTRY_HEADER is 20 bytes, The actual header in
-    /// the aux file can be larger as may be casted to a different type
-    /// depending on the validation_type field. That is to say, if the
-    /// validation_type is ValidationType::Content, the header header written
-    /// to the aux file will  actually be IMAGE_VALIDATION_CONTENT.
-    fn header_size(&self) -> u32 {
-        20 + match &self.validation_type {
-            ValidationType::None => 0,
-            ValidationType::NonZero => 0,
-            ValidationType::Content { content } => content.len() as u32,
-            ValidationType::MemAttr { .. } => 24,
-            ValidationType::Ref { .. } => 4,
-            ValidationType::Pointer { .. } => 4,
-        }
+impl TryIntoCtx<Endian> for &ImageValidationEntryHeader {
+    type Error = scroll::Error;
+    fn try_into_ctx(self, this: &mut [u8], ctx: Endian) -> Result<usize, Self::Error> {
+        let mut offset = 0;
+        this.gwrite_with(self.signature, &mut offset, ctx)?;
+        this.gwrite_with(self.offset, &mut offset, ctx)?;
+        this.gwrite_with(self.size, &mut offset, ctx)?;
+        this.gwrite_with(self.validation_type.idx(), &mut offset, ctx)?;
+        this.gwrite_with(self.offset_to_default, &mut offset, ctx)?;
+        this.gwrite_with(&self.validation_type, &mut offset, ctx)?;
+
+        Ok(offset)
     }
 }
 
@@ -291,8 +305,6 @@ impl TryIntoCtx<Endian> for &ValidationType {
     type Error = scroll::Error;
     fn try_into_ctx(self, this: &mut [u8], ctx: Endian) -> Result<usize, Self::Error> {
         let mut offset = 0;
-
-        this.gwrite_with(self.idx(), &mut offset, ctx)?;
 
         match self {
             ValidationType::None { .. } => {}
