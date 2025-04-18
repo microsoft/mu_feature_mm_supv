@@ -55,7 +55,9 @@ impl AuxFile {
             self.header.offset_to_first_key_symbol = size_of::<ImageValidationDataHeader>() as u32;
         }
 
-        let mut offset_to_default = 0;
+        let mut offset_to_default = size_of::<ImageValidationDataHeader>() as u32
+            + self.key_symbols.len() as u32 * 8
+            + self.entries.iter().fold(0, |acc, entry| acc + entry.header_size());
 
         for entry in self.entries.iter_mut() {
             entry.offset_to_default = offset_to_default;
@@ -135,7 +137,7 @@ impl Default for ImageValidationDataHeader {
             signature: 0x444C4156,
             size: 28,
             entry_count: 0,
-            offset_to_first_entry: 0,
+            offset_to_first_entry: size_of::<Self>() as u32,
             offset_to_first_default: 0,
             key_symbol_count: 0,
             offset_to_first_key_symbol: 0,

@@ -355,6 +355,22 @@ impl PdbMetadata<'_> {
             .ok_or(anyhow::anyhow!("Failed to get headers"))?;
         dst.copy_from_slice(src);
 
+        // Copy the sections.
+        for section in pe.sections {
+            let mut size = section.virtual_size;
+            if size == 0 || size > section.size_of_raw_data {
+                size = section.size_of_raw_data;
+            }
+
+            let dst = loaded_image
+                .get_mut((section.virtual_address as usize)..(section.virtual_address.wrapping_add(size) as usize))
+                .ok_or(anyhow::anyhow!("Failed to get section"))?;
+            let src = image
+                .get((section.pointer_to_raw_data as usize)..(section.pointer_to_raw_data.wrapping_add(size) as usize))
+                .ok_or(anyhow::anyhow!("Failed to get section"))?;
+            dst.copy_from_slice(src);
+        }
+
         Ok(loaded_image)
     }
 
