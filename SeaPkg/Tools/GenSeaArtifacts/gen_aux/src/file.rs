@@ -1,5 +1,5 @@
 //! A module containing the definitions for the auxiliary file.
-//! 
+//!
 //! ## License
 //!
 //! Copyright (c) Microsoft Corporation.

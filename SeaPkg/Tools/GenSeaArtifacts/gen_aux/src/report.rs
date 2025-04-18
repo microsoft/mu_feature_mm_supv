@@ -475,7 +475,9 @@ impl Segment {
         let validation = &entry.validation_type;
         let rule = validation.to_string();
         Segment {
-            symbol: metadata.name_from_address(&entry.offset).unwrap_or("Symbol Padding".to_string()),
+            symbol: metadata
+                .name_from_address(&entry.offset)
+                .unwrap_or("Symbol Padding".to_string()),
             start: format!("{:#x}", entry.offset),
             _start: entry.offset,
             end: format!("{:#x}", entry.offset + entry.size),

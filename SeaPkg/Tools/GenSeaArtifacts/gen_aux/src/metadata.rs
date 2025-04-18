@@ -2,7 +2,7 @@
 //!
 //! The [PdbMetadata] struct is the core functionality coming from this module and is responsible for parsing the PDB
 //! file and converting the Configuration file into the auxiliary file using the metadata from the parsed PDB file.
-//! 
+//!
 //! ## License
 //!
 //! Copyright (c) Microsoft Corporation.
@@ -308,9 +308,13 @@ impl PdbMetadata<'_> {
                 if let Some(symbol) =
                     Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
                 {
-                    if let Some(section) = self.sections
+                    if let Some(section) = self
+                        .sections
                         .iter_mut()
-                        .find(|section| section.range.contains(&symbol.address)) { section.symbols.push(symbol); }
+                        .find(|section| section.range.contains(&symbol.address))
+                    {
+                        section.symbols.push(symbol);
+                    }
                 }
             }
         }
@@ -318,9 +322,13 @@ impl PdbMetadata<'_> {
         while let Some(symbol) = symbols.next()? {
             if let Some(symbol) = Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
             {
-                if let Some(section) = self.sections
+                if let Some(section) = self
+                    .sections
                     .iter_mut()
-                    .find(|section| section.range.contains(&symbol.address)) { section.symbols.push(symbol); }
+                    .find(|section| section.range.contains(&symbol.address))
+                {
+                    section.symbols.push(symbol);
+                }
             }
         }
 
@@ -362,7 +370,9 @@ impl PdbMetadata<'_> {
                 let entry = file::ImageValidationEntryHeader {
                     offset: segment.start(),
                     size: segment.end() - segment.start(),
-                    validation_type: file::ValidationType::Content { content: content.clone() },
+                    validation_type: file::ValidationType::Content {
+                        content: content.clone(),
+                    },
                     ..Default::default()
                 };
                 (entry, content)
@@ -527,9 +537,8 @@ impl Symbol {
                         for field in fields.fields {
                             if let TypeData::Member(member) = field {
                                 if member.name.to_string() == attribute {
-                                    let size =
-                                        TypeInfo::from_type_index(info, member.field_type)?
-                                            .total_size();
+                                    let size = TypeInfo::from_type_index(info, member.field_type)?
+                                        .total_size();
                                     if !remaining.is_empty() {
                                         let (offset, size) = Self::find_field_offset_and_size(
                                             info,

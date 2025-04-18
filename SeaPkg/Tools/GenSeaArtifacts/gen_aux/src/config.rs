@@ -1,8 +1,8 @@
 //! A module containing the definitions for the configuration file used to generate the auxiliary file.
-//! 
+//!
 //! Each entry in the configuration file is mapped back to a structure in the [AuxFile](crate::file::AuxFile) via the
 //! [PdbMetadata](crate::metadata::PdbMetadata) object.
-//! 
+//!
 //! ## License
 //!
 //! Copyright (c) Microsoft Corporation.
@@ -42,7 +42,7 @@ impl ConfigFile {
     }
 
     /// Removes rules that do not match the given scopes.
-    /// 
+    ///
     /// Rules without a scope are always applied.
     pub fn filter_by_scopes(&mut self, scopes: &[String]) -> anyhow::Result<()> {
         self.rules.retain(|rule| {
@@ -66,7 +66,7 @@ pub struct Config {
 }
 
 /// A struct representing a key symbol to be added to the auxiliary file header.
-/// 
+///
 /// Maps to the [KeySymbol](crate::file::KeySymbol) in the auxiliary file.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -78,7 +78,7 @@ pub struct Key {
 }
 
 /// A struct representing a rule that should be applied to a symbol in the auxiliary file.
-/// 
+///
 /// Maps to the [ImageValidationEntryHeader](crate::file::ImageValidationEntryHeader) in the auxiliary file.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -101,7 +101,7 @@ pub struct Array {
     #[serde(default)]
     pub sentinel: bool,
     /// The index (or range of indexes) to apply the specified [Validation] to.
-    /// 
+    ///
     /// If `None`, the validation is applied to all indexes of the array.
     #[serde(default, deserialize_with = "deserialize_range")]
     pub index: Option<RangeInclusive<usize>>,
@@ -178,8 +178,8 @@ where
 }
 
 /// The type of validation to generate for the symbol.
-/// 
-/// Maps to the [ValidationType](crate::file::ValidationType) in the auxiliary file. 
+///
+/// Maps to the [ValidationType](crate::file::ValidationType) in the auxiliary file.
 #[derive(Default, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Validation {
