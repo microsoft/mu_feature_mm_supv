@@ -4,18 +4,22 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "aux_file"
+name = "auxfile"
 path = "src/lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
-name = "gen_aux"
-path = "src/main.rs"
+name = "create-aux"
+path = "src/bin/create_aux.rs"
 
 [[bin]]
-name = "gen_aux2"
-path = "src/main2.rs"
+name = "create-config"
+path = "src/bin/create_config.rs"
+
+[[bin]]
+name = "test-aux"
+path = "src/bin/test_aux.rs"
 
 [dependencies]
 anyhow = "1.0.80"

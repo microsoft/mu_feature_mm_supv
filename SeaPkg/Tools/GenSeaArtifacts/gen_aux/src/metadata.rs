@@ -1,15 +1,26 @@
 //! A module containing the metadata from the PDB file used to convert the configuration file into the auxiliary file.
-//! 
+//!
 //! The [PdbMetadata] struct is the core functionality coming from this module and is responsible for parsing the PDB
 //! file and converting the Configuration file into the auxiliary file using the metadata from the parsed PDB file.
-
+//! 
+//! ## License
+//!
+//! Copyright (c) Microsoft Corporation.
+//!
+//! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::{collections::HashMap, fmt::Formatter, fs::File, ops::Range, path::PathBuf};
 
 use anyhow::{anyhow, Result};
-use pdb::{AddressMap, DataSymbol, FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex, TypeInformation, PDB};
+use pdb::{
+    AddressMap, DataSymbol, FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex,
+    TypeInformation, PDB,
+};
+
+use crate::{config, file, report};
 
 const POINTER_LENGTH: u64 = 8;
 
+/// A struct containing all metadata from the PDB necessary to generate the auxiliary file.
 pub struct PdbMetadata<'a> {
     pdb: PDB<'a, File>,
     sections: Vec<Section>,
@@ -19,6 +30,7 @@ pub struct PdbMetadata<'a> {
 }
 
 impl PdbMetadata<'_> {
+    /// Creates a new instance of the PdbMetadata struct by parsing the PDB file and loading the image.
     pub fn new(pdb_path: PathBuf, efi_path: PathBuf) -> Result<Self> {
         let file = File::open(pdb_path)?;
         let mut pdb = PDB::open(file)?;
@@ -36,52 +48,71 @@ impl PdbMetadata<'_> {
             loaded_image,
         };
 
-        metadata.fill_sections()?;        
+        metadata.fill_sections()?;
 
         Ok(metadata)
     }
 
     /// Create a new ImageValidationEntryHeader from the given rule.
-    pub fn build_entries(&mut self, rule: &crate::config::Rule) -> Result<Vec<(crate::aux_file::ImageValidationEntryHeader, Vec<u8>)>> {
+    pub fn build_entries(
+        &mut self,
+        rule: &config::Rule,
+    ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
         let symbol = self.find_symbol(&rule.symbol).clone();
         self.validate_rule(&symbol, rule)?;
 
         let mut ret = Vec::new();
-        
+
         let type_information = &mut self.pdb.type_information()?;
         let element_count = symbol.type_info.element_count();
 
         for i in 0..element_count {
-            if rule.array.as_ref().map(|arr| arr.index).flatten().unwrap_or(i) != i {
+            if !rule
+                .array
+                .as_ref()
+                .and_then(|arr| arr.index.clone())
+                .unwrap_or(i..=i)
+                .contains(&i)
+            {
                 continue;
             }
 
             let mut offset = 0;
             let mut size = symbol.type_info.element_size();
 
-            if let Some(os) = rule.offset {
-                offset += os;
-            }
-
             if let Some(field) = &rule.field {
-                let (field_offset, total_size) = Symbol::find_field_offset_and_size(&type_information, &symbol.type_info.type_id().unwrap(), field, symbol.name())?;
+                let (field_offset, total_size) = Symbol::find_field_offset_and_size(
+                    type_information,
+                    &symbol.type_info.type_id().unwrap(),
+                    field,
+                    symbol.name(),
+                )?;
                 offset += field_offset;
                 size = total_size;
             }
 
-            let validation_type = if rule.array.as_ref().map_or(false, |a| a.sentinel && i == element_count - 1) {
-                crate::aux_file::ValidationType::Content { content: vec![0; size as usize] }
+            let validation_type = if rule
+                .array
+                .as_ref()
+                .map_or(false, |a| a.sentinel && i == element_count - 1)
+            {
+                file::ValidationType::Content {
+                    content: vec![0; size as usize],
+                }
             } else {
                 self.build_validation_type(&rule.validation)?
             };
 
-            let mut entry = crate::aux_file::ImageValidationEntryHeader::default();
-            entry.offset = symbol.address(i) + offset;
-            entry.size = size as u32;
-            entry.validation_type = validation_type;
+            let entry = file::ImageValidationEntryHeader {
+                offset: symbol.address(i) + offset,
+                size,
+                validation_type,
+                ..Default::default()
+            };
 
-            let default =  self.loaded_image[entry.offset as usize..(entry.offset + entry.size) as usize].to_vec();
-            
+            let default = self.loaded_image
+                [entry.offset as usize..(entry.offset + entry.size) as usize]
+                .to_vec();
 
             let mut name = rule.symbol.clone();
             if element_count > 1 {
@@ -99,35 +130,38 @@ impl PdbMetadata<'_> {
     }
 
     /// Creates a new KeySymbol from the given key.
-    pub fn build_key_symbol(&mut self, key: &crate::config::Key) -> Result<crate::aux_file::KeySymbol> {
+    pub fn build_key_symbol(&mut self, key: &config::Key) -> Result<file::KeySymbol> {
         let symbol = self.find_symbol(&key.symbol).clone();
-        Ok(crate::aux_file::KeySymbol::new(
-            key.signature,
-            symbol.address,
-        ))
+        Ok(file::KeySymbol::new(key.signature, symbol.address))
     }
 
-    /// Generates zero content rules for padding that should always be all zeros.
+    /// Creates new zero content rules for padding that should always be all zeros.
     /// This padding includes:
     /// 1. Padding between sections
     /// 2. Padding between symbols
     /// 3. Padding between fields of a class
-    pub fn build_padding_entries(&mut self, report: &crate::report2::CoverageReport) -> Result<Vec<(crate::aux_file::ImageValidationEntryHeader, Vec<u8>)>> {
+    pub fn create_padding_entries(
+        &mut self,
+        report: &report::Coverage,
+    ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
         let mut ret = Vec::new();
         ret.extend(self.build_symbol_padding_entries(report)?);
         ret.extend(self.build_field_padding_entries(report)?);
-        
+
         Ok(ret)
     }
 
+    /// Returns the unloaded image bytes.
     pub fn unloaded_image(&self) -> &[u8] {
         &self.unloaded_image
     }
 
+    /// Returns the loaded image bytes.
     pub fn image_size(&self) -> usize {
         self.loaded_image.len()
     }
 
+    /// Provides the general symbol information for the symbol containing the given address.
     pub fn symbol_from_address(&self, address: &u32) -> Option<&Symbol> {
         self.sections
             .iter()
@@ -137,6 +171,7 @@ impl PdbMetadata<'_> {
             })
     }
 
+    /// Gives the specific symbol instance for the given address including it's index and field.
     pub fn name_from_address(&self, address: &u32) -> Option<String> {
         self.addr_to_name.get(address).cloned()
     }
@@ -157,8 +192,11 @@ impl PdbMetadata<'_> {
             return None;
         };
 
-
-        let names = data.fields.iter().map(|field| field.name().unwrap_or_default().to_string().to_string()).collect::<Vec<_>>();
+        let names = data
+            .fields
+            .iter()
+            .map(|field| field.name().unwrap_or_default().to_string().to_string())
+            .collect::<Vec<_>>();
 
         Some(names)
     }
@@ -167,11 +205,10 @@ impl PdbMetadata<'_> {
         let element_count = symbol.type_info.element_count();
 
         if element_count == 1 && rule.array.is_some() {
-            return Err(anyhow!("Symbol {} is not an array, but array configuration was provided.", symbol.name()));
-        }
-
-        if rule.offset.is_some() && rule.field.is_some() {
-            return Err(anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Field and offset cannot be combined.", symbol.name));
+            return Err(anyhow!(
+                "Symbol {} is not an array, but array configuration was provided.",
+                symbol.name()
+            ));
         }
 
         if let Some(array) = &rule.array {
@@ -181,10 +218,11 @@ impl PdbMetadata<'_> {
                 );
             }
 
-            if let Some(index) = array.index {
-                if index >= element_count {
+            if let Some(index) = &array.index {
+                if index.end() >= &element_count {
+                    println!("{}", element_count);
                     return Err(
-                        anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array index {} is out of bounds.", symbol.name, index)
+                        anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array index {:#?} is out of bounds.", symbol.name, index)
                     );
                 }
             }
@@ -193,15 +231,30 @@ impl PdbMetadata<'_> {
         Ok(())
     }
 
-    fn build_validation_type(&self, validation: &crate::config::Validation) -> Result<crate::aux_file::ValidationType> {
-        use crate::config::Validation;
-        use crate::aux_file::ValidationType;
+    fn build_validation_type(
+        &self,
+        validation: &crate::config::Validation,
+    ) -> Result<file::ValidationType> {
+        use config::Validation;
+        use file::ValidationType;
         match validation {
             Validation::None => Ok(ValidationType::None),
             Validation::NonZero => Ok(ValidationType::NonZero),
-            Validation::Content { content } => Ok(ValidationType::Content { content: content.clone() }),
-            Validation::MemAttr { memory_size, must_have, must_not_have } => Ok(ValidationType::MemAttr { memory_size: *memory_size, must_have: *must_have, must_not_have: *must_not_have }),
-            Validation::Ref { reference } => Ok(ValidationType::Ref { address: self.find_symbol(reference).address }),
+            Validation::Content { content } => Ok(ValidationType::Content {
+                content: content.clone(),
+            }),
+            Validation::MemAttr {
+                memory_size,
+                must_have,
+                must_not_have,
+            } => Ok(ValidationType::MemAttr {
+                memory_size: *memory_size,
+                must_have: *must_have,
+                must_not_have: *must_not_have,
+            }),
+            Validation::Ref { reference } => Ok(ValidationType::Ref {
+                address: self.find_symbol(reference).address,
+            }),
             Validation::Pointer { in_mseg } => Ok(ValidationType::Pointer { in_mseg: *in_mseg }),
         }
     }
@@ -221,21 +274,24 @@ impl PdbMetadata<'_> {
     /// Returns the sections in the PDB file in the custom format.
     fn get_sections(pdb: &mut PDB<'_, File>) -> Result<Vec<Section>> {
         let sections = pdb.sections()?.unwrap_or_default();
-        let sections = sections.iter().map(|section| {
-            let range = section.virtual_address..section.virtual_address + section.virtual_size;
+        let sections = sections
+            .iter()
+            .map(|section| {
+                let range = section.virtual_address..section.virtual_address + section.virtual_size;
 
-            Section {
-                name: section.name().to_string(),
-                range,
-                symbols: vec![],
-            }
-        }).collect::<Vec<_>>();
+                Section {
+                    name: section.name().to_string(),
+                    range,
+                    symbols: vec![],
+                }
+            })
+            .collect::<Vec<_>>();
 
         Ok(sections)
     }
 
     /// Fills the sections with the symbols from the PDB file.
-    fn fill_sections(&mut self,) -> Result<()> {
+    fn fill_sections(&mut self) -> Result<()> {
         let address_map = self.pdb.address_map()?;
         let type_information = self.pdb.type_information()?;
 
@@ -244,34 +300,27 @@ impl PdbMetadata<'_> {
 
         let debug_information = self.pdb.debug_information()?;
         let mut modules = debug_information.modules()?;
-        
+
         while let Some(module) = modules.next()? {
             let module_info = self.pdb.module_info(&module)?.unwrap();
             let mut symbols = module_info.symbols()?;
             while let Some(symbol) = symbols.next()? {
-                if let Some(symbol) = Symbol::from_pdb_symbol(symbol, &address_map, &type_information)? {
-                    self.sections
+                if let Some(symbol) =
+                    Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
+                {
+                    if let Some(section) = self.sections
                         .iter_mut()
-                        .find(|section| {
-                            section.range.contains(&symbol.address)
-                        })
-                        .map(|section| {
-                            section.symbols.push(symbol);
-                        });
+                        .find(|section| section.range.contains(&symbol.address)) { section.symbols.push(symbol); }
                 }
             }
         }
 
         while let Some(symbol) = symbols.next()? {
-            if let Some(symbol) = Symbol::from_pdb_symbol(symbol, &address_map, &type_information)? {
-                self.sections
+            if let Some(symbol) = Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
+            {
+                if let Some(section) = self.sections
                     .iter_mut()
-                    .find(|section| {
-                        section.range.contains(&symbol.address)
-                    })
-                    .map(|section| {
-                        section.symbols.push(symbol);
-                    });
+                    .find(|section| section.range.contains(&symbol.address)) { section.symbols.push(symbol); }
             }
         }
 
@@ -284,7 +333,7 @@ impl PdbMetadata<'_> {
             .header
             .optional_header
             .ok_or(anyhow::anyhow!("No optional header found"))?;
-        
+
         let size_of_image = optional_header.windows_fields.size_of_image;
         let size_of_headers = optional_header.windows_fields.size_of_headers as usize;
 
@@ -301,22 +350,31 @@ impl PdbMetadata<'_> {
         Ok(loaded_image)
     }
 
-    fn build_symbol_padding_entries(&mut self, report: &crate::report2::CoverageReport) -> Result<Vec<(crate::aux_file::ImageValidationEntryHeader, Vec<u8>)>> {
-        Ok(report.segments(|s| !s.covered() && s.symbol().is_empty())
+    fn build_symbol_padding_entries(
+        &mut self,
+        report: &report::Coverage,
+    ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
+        Ok(report
+            .segments(|s| !s.covered() && s.symbol().is_empty())
             .iter()
             .map(|segment| {
-                let mut entry = crate::aux_file::ImageValidationEntryHeader::default();
-                entry.offset = segment.start();
-                entry.size = segment.end() - segment.start();
-                let content = vec![0; entry.size as usize];
-                entry.validation_type = crate::aux_file::ValidationType::Content { content: content.clone() };
+                let content = vec![0; (segment.end() - segment.start()) as usize];
+                let entry = file::ImageValidationEntryHeader {
+                    offset: segment.start(),
+                    size: segment.end() - segment.start(),
+                    validation_type: file::ValidationType::Content { content: content.clone() },
+                    ..Default::default()
+                };
                 (entry, content)
             })
-            .collect()
-        )
+            .collect())
     }
 
-    fn build_field_padding_entries(&mut self, report: &crate::report2::CoverageReport) -> Result<Vec<(crate::aux_file::ImageValidationEntryHeader, Vec<u8>)>> {
+    fn build_field_padding_entries(
+        &mut self,
+        report: &report::Coverage,
+    ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
+        let mut ret = Vec::new();
         let symbols = report.segments(|s| !s.covered() && !s.symbol().is_empty());
 
         // For each symbol that is not covered, if that symbol is a class and all fields are covered, then the missing
@@ -324,13 +382,31 @@ impl PdbMetadata<'_> {
         for uncovered in symbols {
             if let Some(fields) = self.symbol_fields(uncovered.symbol()) {
                 let covered = fields.iter().all(|field| {
-                    !report.segments(|s| s.symbol().starts_with(uncovered.symbol()) && s.symbol().ends_with(field)).is_empty()
+                    !report
+                        .segments(|s| {
+                            s.symbol().starts_with(uncovered.symbol())
+                                && s.symbol().ends_with(field)
+                        })
+                        .is_empty()
                 });
-                println!("Symbol {} is Covered?: {}", uncovered.symbol(), covered);
+
+                if covered {
+                    ret.push((
+                        file::ImageValidationEntryHeader {
+                            offset: uncovered.start(),
+                            size: uncovered.end() - uncovered.start(),
+                            validation_type: file::ValidationType::Content {
+                                content: vec![0; (uncovered.end() - uncovered.start()) as usize],
+                            },
+                            ..Default::default()
+                        },
+                        vec![0; (uncovered.end() - uncovered.start()) as usize],
+                    ));
+                }
             }
         }
 
-        Ok(Vec::new())
+        Ok(ret)
     }
 }
 
@@ -356,22 +432,22 @@ impl Symbol {
         self.address + (self.type_info.element_size() * index as u32)
     }
 
-    fn from_pdb_symbol(symbol: pdb::Symbol<'_>, address_map: &AddressMap<'_>, type_information: &TypeInformation<'_>) -> Result<Option<Self>> {
+    fn from_pdb_symbol(
+        symbol: pdb::Symbol<'_>,
+        address_map: &AddressMap<'_>,
+        type_information: &TypeInformation<'_>,
+    ) -> Result<Option<Self>> {
         // let address_map = pdb.address_map()?;
         // let type_information = pdb.type_information()?;
         Ok(match symbol.parse() {
             Ok(pdb::SymbolData::Public(data)) if data.function => {
                 Some(Self::from_public(data, address_map))
-            },
+            }
             Ok(pdb::SymbolData::Data(data)) => {
                 Some(Self::from_data(data, address_map, type_information)?)
-            },
-            Ok(pdb::SymbolData::Procedure(data)) => {
-                Some(Self::from_procedure(data, address_map))
-            },
-            Ok(pdb::SymbolData::Label(data)) => {
-                Some(Self::from_label(data, address_map))
-            },
+            }
+            Ok(pdb::SymbolData::Procedure(data)) => Some(Self::from_procedure(data, address_map)),
+            Ok(pdb::SymbolData::Label(data)) => Some(Self::from_label(data, address_map)),
             _ => None,
         })
     }
@@ -381,7 +457,7 @@ impl Symbol {
     }
 
     fn from_public(symbol: pdb::PublicSymbol<'_>, address_map: &AddressMap<'_>) -> Self {
-        let address = symbol.offset.to_rva(&address_map).unwrap_or_default().0;
+        let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
         let type_info = TypeInfo::one(POINTER_LENGTH as u32, None);
         let name = symbol.name.to_string().to_string();
 
@@ -392,9 +468,13 @@ impl Symbol {
         }
     }
 
-    fn from_data(symbol: DataSymbol<'_>, address_map: &AddressMap<'_>, type_info: &TypeInformation) -> Result<Self> {
-        let address = symbol.offset.to_rva(&address_map).unwrap_or_default().0;
-        let type_info = TypeInfo::from_type_index(&type_info, symbol.type_index)?;
+    fn from_data(
+        symbol: DataSymbol<'_>,
+        address_map: &AddressMap<'_>,
+        type_info: &TypeInformation,
+    ) -> Result<Self> {
+        let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
+        let type_info = TypeInfo::from_type_index(type_info, symbol.type_index)?;
         let name = symbol.name.to_string().to_string();
 
         Ok(Symbol {
@@ -405,7 +485,7 @@ impl Symbol {
     }
 
     fn from_procedure(symbol: pdb::ProcedureSymbol<'_>, address_map: &AddressMap<'_>) -> Self {
-        let address = symbol.offset.to_rva(&address_map).unwrap_or_default().0;
+        let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
         let type_info = TypeInfo::one(POINTER_LENGTH as u32, Some(symbol.type_index));
         let name = symbol.name.to_string().to_string();
 
@@ -417,7 +497,7 @@ impl Symbol {
     }
 
     fn from_label(symbol: pdb::LabelSymbol<'_>, address_map: &AddressMap<'_>) -> Self {
-        let address = symbol.offset.to_rva(&address_map).unwrap_or_default().0;
+        let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
         let type_info = TypeInfo::one(POINTER_LENGTH as u32, None);
         let name = symbol.name.to_string().to_string();
 
@@ -429,37 +509,61 @@ impl Symbol {
     }
 
     /// Returns the offset and size of a field in a class.
-    fn find_field_offset_and_size(info: &TypeInformation, id: &TypeIndex, attribute: &str, symbol: &str) -> Result<(u32, u32)> {
+    fn find_field_offset_and_size(
+        info: &TypeInformation,
+        id: &TypeIndex,
+        attribute: &str,
+        symbol: &str,
+    ) -> Result<(u32, u32)> {
         let mut parts = attribute.splitn(2, '.');
         let attribute = parts.next().unwrap_or("");
         let remaining = parts.next().unwrap_or("");
         match TypeInfo::find_type(info, *id)?.parse()? {
             TypeData::Class(class) => {
                 if let Some(fields) = class.fields {
-                    if let pdb::TypeData::FieldList(fields) = TypeInfo::find_type(info, fields)?.parse()? {
+                    if let pdb::TypeData::FieldList(fields) =
+                        TypeInfo::find_type(info, fields)?.parse()?
+                    {
                         for field in fields.fields {
-                            match field {
-                                TypeData::Member(member) => {
-                                    if member.name.to_string().to_string() == attribute {
-                                        let size = TypeInfo::from_type_index(&info, member.field_type)?.total_size();
-                                        if !remaining.is_empty() {
-                                            let (offset, size) = Self::find_field_offset_and_size(info, &member.field_type, remaining, symbol)?;
-                                            return Ok((member.offset as u32 + offset, size))
-                                        }
-                                        return Ok((member.offset as u32, size))
+                            if let TypeData::Member(member) = field {
+                                if member.name.to_string() == attribute {
+                                    let size =
+                                        TypeInfo::from_type_index(info, member.field_type)?
+                                            .total_size();
+                                    if !remaining.is_empty() {
+                                        let (offset, size) = Self::find_field_offset_and_size(
+                                            info,
+                                            &member.field_type,
+                                            remaining,
+                                            symbol,
+                                        )?;
+                                        return Ok((member.offset as u32 + offset, size));
                                     }
+                                    return Ok((member.offset as u32, size));
                                 }
-                                _ => {} // TODO: Handle recursion if the field is another class.
                             }
                         }
-                        return Err(anyhow::anyhow!("Attribute [{}] not found for symbol [{}]", attribute, symbol));
+                        return Err(anyhow::anyhow!(
+                            "Attribute [{}] not found for symbol [{}]",
+                            attribute,
+                            symbol
+                        ));
                     }
-                    return Err(anyhow::anyhow!("UNEXPECTED: Symbol [{}] fields are not a field list.", symbol));
+                    return Err(anyhow::anyhow!(
+                        "UNEXPECTED: Symbol [{}] fields are not a field list.",
+                        symbol
+                    ));
                 }
 
-                Err(anyhow::anyhow!("Symbol [{}] is a class, but has no fields.", symbol))
+                Err(anyhow::anyhow!(
+                    "Symbol [{}] is a class, but has no fields.",
+                    symbol
+                ))
             }
-            _ => Err(anyhow::anyhow!("Symbol [{}] is not a class. Cannot get class fields.", symbol))
+            _ => Err(anyhow::anyhow!(
+                "Symbol [{}] is not a class. Cannot get class fields.",
+                symbol
+            )),
         }
     }
 }
@@ -475,9 +579,17 @@ pub struct TypeInfo {
 impl std::fmt::Debug for TypeInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(r#type) = self.element_type {
-            write!(f, "{{ element_type: {:?}, element_size: {:08X}, count: {} }}", r#type, self.element_size, self.count)
+            write!(
+                f,
+                "{{ element_type: {:?}, element_size: {:08X}, count: {} }}",
+                r#type, self.element_size, self.count
+            )
         } else {
-            write!(f, "{{ element_size: {:08X}, count: {} }}", self.element_size, self.count)
+            write!(
+                f,
+                "{{ element_size: {:08X}, count: {} }}",
+                self.element_size, self.count
+            )
         }
     }
 }
@@ -527,7 +639,11 @@ impl TypeInfo {
     }
 
     /// Creates a new TypeInfo from the given type data.
-    pub fn from_type_data(info: &TypeInformation, data: TypeData, index: TypeIndex) -> Result<Self> {
+    pub fn from_type_data(
+        info: &TypeInformation,
+        data: TypeData,
+        index: TypeIndex,
+    ) -> Result<Self> {
         Ok(match data {
             TypeData::Primitive(prim) => {
                 if prim.indirection.is_some() {
@@ -536,9 +652,7 @@ impl TypeInfo {
                     TypeInfo::one(Self::get_size_from_primitive(prim.kind), Some(index))
                 }
             }
-            TypeData::Class(class) => {
-                TypeInfo::one(class.size as u32, Some(index))
-            }
+            TypeData::Class(class) => TypeInfo::one(class.size as u32, Some(index)),
             TypeData::Member(_) => {
                 log::error!("Member type unexpected in global data.");
                 TypeInfo::one(0, Some(index))
@@ -578,9 +692,7 @@ impl TypeInfo {
                 log::error!("Procedure unexpected in C.");
                 TypeInfo::one(0, Some(index))
             }
-            TypeData::Pointer(_) => {
-                TypeInfo::one(POINTER_LENGTH as u32, Some(index))
-            }
+            TypeData::Pointer(_) => TypeInfo::one(POINTER_LENGTH as u32, Some(index)),
             TypeData::Modifier(modifier) => {
                 TypeInfo::from_type_index(info, modifier.underlying_type)?
             }
@@ -598,11 +710,13 @@ impl TypeInfo {
                 // type, which is ultimately divided by the total size of the symbol.
                 let total_size = arr.dimensions[0] as usize;
                 let element = TypeInfo::from_type_index(info, arr.element_type)?;
-                TypeInfo::many(element.element_size(), total_size / element.element_size() as usize, element.type_id())
+                TypeInfo::many(
+                    element.element_size(),
+                    total_size / element.element_size() as usize,
+                    element.type_id(),
+                )
             }
-            pdb::TypeData::Union(union) => {
-                TypeInfo::one(union.size as u32, Some(index))
-            }
+            pdb::TypeData::Union(union) => TypeInfo::one(union.size as u32, Some(index)),
             pdb::TypeData::Bitfield(bf) => {
                 let type_info = TypeInfo::from_type_index(info, bf.underlying_type)?;
                 let size = type_info.total_size() * bf.length as u32;
@@ -642,7 +756,7 @@ impl TypeInfo {
         let mut iter = info.iter();
         let mut finder = info.finder();
 
-        while let Some(_) = iter.next()? {
+        while (iter.next()?).is_some() {
             finder.update(&iter)
         }
 
@@ -653,9 +767,13 @@ impl TypeInfo {
         // if the class size is not zero.
         let class_name;
         if let TypeData::Class(d) = item {
-            if d.size != 0 { return Ok(data) }
+            if d.size != 0 {
+                return Ok(data);
+            }
             class_name = d.name.to_string().to_string();
-        } else { return Ok(data)}
+        } else {
+            return Ok(data);
+        }
 
         // The type was a class and size 0, so it should have a shadow class
         // with the real information.
@@ -666,7 +784,7 @@ impl TypeInfo {
                 if name.to_string() == class_name {
                     if let TypeData::Class(data) = item {
                         if data.size != 0 {
-                            return Ok(true)
+                            return Ok(true);
                         }
                     }
                 }
@@ -674,7 +792,7 @@ impl TypeInfo {
             Ok(false)
         });
         if let Ok(Some(item)) = item {
-            return Ok(item)
+            return Ok(item);
         }
         Err(anyhow!("Symbol {} was found, but size was 0", class_name))
     }
@@ -726,7 +844,7 @@ impl TypeInfo {
             _ => {
                 println!("ERROR: Unhandled Primitive: {:?}", primitive);
                 0
-            },
+            }
         }
     }
 }
