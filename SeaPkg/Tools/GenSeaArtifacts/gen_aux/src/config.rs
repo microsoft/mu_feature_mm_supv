@@ -12,6 +12,7 @@ use std::ops::RangeInclusive;
 
 use serde::{Deserialize, Serialize};
 
+/// The configuration file for generating an auxiliary file.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigFile {
@@ -95,7 +96,9 @@ pub struct Rule {
     pub validation: Validation,
 }
 
+/// Configuration for a symbol that is an array of an underlying type.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Array {
     /// The last index of the array is a sentinel value, thus creating a different validation rule for the last index.
     #[serde(default)]

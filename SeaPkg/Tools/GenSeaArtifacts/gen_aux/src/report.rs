@@ -1,4 +1,5 @@
-//! A module for generating a report showing the the coverage of the validation rules.///!
+//! A module for generating a report showing the the coverage of the validation rules.
+//!
 //! ## License
 //!
 //! Copyright (c) Microsoft Corporation.

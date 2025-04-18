@@ -226,9 +226,7 @@ impl ImageValidationEntryHeader {
 ///
 /// This enum also contains the data required to perform the validation and is
 /// written to the auxiliary file in the validation entry section. See the
-/// TryIntoCtx impl for
-/// [ImageValidationEntryHeader](crate::file::ImageValidationEntryHeader) for
-/// more information.
+/// TryIntoCtx impl for [ImageValidationEntryHeader] for more information.
 ///
 /// ## Validation Type headers
 ///
