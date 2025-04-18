@@ -291,18 +291,18 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     Args:
         aux_config_path: Path to the aux gen config file.
         mm_supervisor_build_dir: Path to the MM Supervisor build output.
-        scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
+        scopes: A list of scopes to activate for rule filtering. See create-aux --help for more information.
         output_dir: Path to place the artifacts.
 
     Raises:
-        RuntimeError: if gen_aux fails
+        RuntimeError: if create-aux fails
     """
 
     output_path = output_dir / 'MmSupervisorCore.aux'
     manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
     args = f"run --manifest-path {str(manifest_path)}"
-    args += " --bin gen_aux --"
+    args += " --bin create-aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
