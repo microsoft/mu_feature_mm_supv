@@ -5,5 +5,4 @@ resolver = "2"
 members = [
     "gen_aux",
     "gen_manifest",
-    "aux_validation",
 ]

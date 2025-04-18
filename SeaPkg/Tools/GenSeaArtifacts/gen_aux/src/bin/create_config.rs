@@ -26,7 +26,7 @@ fn main() -> Result<()> {
     
     // Writing the config file with serde prints it ugly, so we do it manually
     let mut buffer = String::new();
-    buffer.push_str(&format!("[config]\nno_missing_rules = true\n\n"));
+    buffer.push_str("[config]\nno_missing_rules = true\n\n");
     for segment in report.segments(|s| !s.covered() && !s.symbol().is_empty()).iter() {
         buffer.push_str(&format!("[[rule]]\nsymbol = \"{}\"\nvalidation.type = \"none\"\n\n", segment.symbol()))
     }
