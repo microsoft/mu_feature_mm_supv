@@ -62,6 +62,7 @@ field = 'Optional[String]'
 array.index = 'Optional[Int]'|'Optional[Array[Int;2]]'
 array.sentinel = 'Optional[Boolean]'
 validation.type = 'Required[String]'
+reviewed-by = 'Optional[Array[String]]'
 ```
 
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
@@ -71,6 +72,8 @@ validation.type = 'Required[String]'
 - `array.sentinel`: Apply content rule to only the final rule such that its content must be all zeros.
 - `validation.type`: The type of validation to perform on this symbol. Different values may also require additional configuration
 settings in the `[[rule]]`.
+- `reviewed-by`: A list of reviewers using git sign-off format of `First Last <email>`. This value is passed through to
+the final report.
 
 #### Validation Type: None
 
