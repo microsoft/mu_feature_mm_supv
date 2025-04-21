@@ -94,6 +94,31 @@ pub struct Rule {
     pub array: Option<Array>,
     /// The type of validation to be performed on the symbol.
     pub validation: Validation,
+    /// People associated with reviewing this rule.
+    #[serde(default, rename = "reviewed-by", deserialize_with = "deserialize_reviewers")]
+    pub reviewers: Vec<String>,
+}
+
+fn deserialize_reviewers<'de, D>(
+    deserializer: D,
+) -> core::result::Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::{Deserialize, Error};
+
+    let reviewers: Vec<String> = Vec::deserialize(deserializer)?;
+    let re = regex::Regex::new(r"^[A-Z][a-z]+(?: [A-Z][a-z]+)* <[^<>@]+@[^<>@]+\.[^<>@]+>$").unwrap();
+
+    for reviewer in &reviewers {
+        if !re.is_match(reviewer) {
+            return Err(
+                D::Error::custom("Invalid reviewer format. Expected `[F]irst [L]ast <email>`.",
+            ));
+        }
+    }
+
+    Ok(reviewers)
 }
 
 /// Configuration for a symbol that is an array of an underlying type.
