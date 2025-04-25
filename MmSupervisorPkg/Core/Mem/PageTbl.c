@@ -931,7 +931,6 @@ SmiPFHandler (
   PFAddress = AsmReadCr2 ();
 
   if (mCpuSmmRestrictedMemoryAccess && (PFAddress >= LShiftU64 (1, (mPhysicalAddressBits - 1)))) {
-    DumpCpuContext (InterruptType, SystemContext);
     DEBUG ((DEBUG_ERROR, "Do not support address 0x%lx by processor!\n", PFAddress));
     // MSCHANGE - Allow system to reset instead of halt in test mode.
     goto HaltOrReboot;
@@ -946,7 +945,6 @@ SmiPFHandler (
   if ((PFAddress >= mCpuHotPlugData.SmrrBase) &&
       (PFAddress < (mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize)))
   {
-    DumpCpuContext (InterruptType, SystemContext);
     CpuIndex                    = GetCpuIndex ();
     GuardPageAddress            = (mSmmStackArrayBase + EFI_PAGE_SIZE + CpuIndex * (mSmmStackSize + mSmmShadowStackSize));
     ShadowStackGuardPageAddress = (mSmmStackArrayBase + mSmmStackSize + EFI_PAGE_SIZE + CpuIndex * (mSmmStackSize + mSmmShadowStackSize));
@@ -993,7 +991,6 @@ SmiPFHandler (
       (PFAddress >= mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize))
   {
     if ((SystemContext.SystemContextX64->ExceptionData & IA32_PF_EC_ID) != 0) {
-      DumpCpuContext (InterruptType, SystemContext);
       DEBUG ((DEBUG_ERROR, "Code executed on IP(0x%lx) out of SMM range after SMM is locked!\n", PFAddress));
       DEBUG_CODE (
         DumpModuleInfoByIp (*(UINTN *)(UINTN)SystemContext.SystemContextX64->Rsp);
@@ -1012,7 +1009,6 @@ SmiPFHandler (
     //     (PFAddress < EFI_PAGE_SIZE)) {
     if (PFAddress < EFI_PAGE_SIZE) {
       // MU_CHANGE END
-      DumpCpuContext (InterruptType, SystemContext);
       DEBUG ((DEBUG_ERROR, "!!! NULL pointer access !!!\n"));
       DEBUG_CODE (
         DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
@@ -1025,7 +1021,6 @@ SmiPFHandler (
     }
 
     if (mCpuSmmRestrictedMemoryAccess && IsSmmCommBufferForbiddenAddress (PFAddress)) {
-      DumpCpuContext (InterruptType, SystemContext);
       DEBUG ((DEBUG_ERROR, "Access SMM communication forbidden address (0x%lx)!\n", PFAddress));
       DEBUG_CODE (
         DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
@@ -1038,7 +1033,6 @@ SmiPFHandler (
 
     // This is an accessible area, but check and see if the supervisor bit caused the issue
     if ((SystemContext.SystemContextX64->ExceptionData & IA32_PF_EC_US) != 0) {
-      DumpCpuContext (InterruptType, SystemContext);
       DEBUG ((DEBUG_ERROR, "Access SMM communication supervisor address (0x%lx)!\n", PFAddress));
       DEBUG_CODE (
         DumpModuleInfoByIp ((UINTN)SystemContext.SystemContextX64->Rip);
