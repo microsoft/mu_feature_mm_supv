@@ -519,9 +519,8 @@ Done:
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
   matches the content in the original image buffer as specified by TargetOffset in the validation entry.
 
-  @param[in] TargetImage               The pointer to the target image buffer.
-  @param[in] Hdr                       The header of the validation entry.
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
+  @param[in] Hdr                       The header of the validation entry.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -532,9 +531,8 @@ Done:
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
-  IN CONST VOID                           *TargetImage,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
-  IN CONST VOID                           *OriginalImageBaseAddress
+  IN CONST VOID                           *OriginalImageBaseAddress,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   )
 {
   IMAGE_VALIDATION_SELF_REF  *SelfRefHdr;
@@ -542,14 +540,13 @@ PeCoffImageValidationSelfRef (
   EFI_PHYSICAL_ADDRESS       AddrInTarget;
   EFI_PHYSICAL_ADDRESS       AddrInOrigin;
 
-  if ((TargetImage == NULL) || (Hdr == NULL) || (OriginalImageBaseAddress == NULL)) {
+  if ((Hdr == NULL) || (OriginalImageBaseAddress == NULL)) {
     DEBUG ((
       DEBUG_ERROR,
-      "%a: At least one invalid input parameter: TargetImage 0x%p, Hdr 0x%p, OriginalImageBaseAddress 0x%p\n",
+      "%a: At least one invalid input parameter: OriginalImageBaseAddress 0x%p, Hdr 0x%p\n",
       __func__,
-      TargetImage,
-      Hdr,
-      OriginalImageBaseAddress
+      OriginalImageBaseAddress,
+      Hdr
       ));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
@@ -576,7 +573,7 @@ PeCoffImageValidationSelfRef (
   }
 
   AddrInTarget = 0;
-  CopyMem (&AddrInTarget, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size);
+  CopyMem (&AddrInTarget, (UINT8 *)OriginalImageBaseAddress + Hdr->Offset, Hdr->Size);
   AddrInOrigin = (EFI_PHYSICAL_ADDRESS)(UINTN)((UINT8 *)OriginalImageBaseAddress + SelfRefHdr->TargetOffset);
 
   if (AddrInTarget != AddrInOrigin) {
@@ -667,7 +664,7 @@ PeCoffImageValidationPointer (
 
   AddrInTarget = 0;
   CopyMem (&AddrInTarget, (UINT8 *)TargetImage + Hdr->Offset, Hdr->Size);
-  InMseg = ((UINTN)AddrInTarget >= MsegBase - MsegSize) && ((UINTN)AddrInTarget < MsegBase);
+  InMseg = ((UINTN)AddrInTarget >= MsegBase) && ((UINTN)AddrInTarget < MsegBase + MsegSize);
   if ((BOOLEAN)PointerHdr->InMseg != InMseg) {
     DEBUG ((
       DEBUG_ERROR,

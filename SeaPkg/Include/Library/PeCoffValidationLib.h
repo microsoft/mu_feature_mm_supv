@@ -91,9 +91,8 @@ PeCoffImageValidationMemAttr (
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
   matches the content in the original image buffer as specified by TargetOffset in the validation entry.
 
-  @param[in] TargetImage               The pointer to the target image buffer.
-  @param[in] Hdr                       The header of the validation entry.
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
+  @param[in] Hdr                       The header of the validation entry.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -104,9 +103,8 @@ PeCoffImageValidationMemAttr (
 EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
-  IN CONST VOID                           *TargetImage,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
-  IN CONST VOID                           *OriginalImageBaseAddress
+  IN CONST VOID                           *OriginalImageBaseAddress,
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
   );
 
 /**
