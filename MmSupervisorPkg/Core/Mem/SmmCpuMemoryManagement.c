@@ -948,8 +948,8 @@ GenSmmPageTable (
     // Mark the 4KB guard page between known good stack and smm stack as non-present
     //
     for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
-      GuardPage = mSmmStackArrayBase + EFI_PAGE_SIZE + Index * (mSmmStackSize + mSmmShadowStackSize);
-      Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, SIZE_4KB, EFI_MEMORY_RP, TRUE, NULL);
+      GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
+      Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
       ASSERT (Status == RETURN_SUCCESS);
     }
   }
