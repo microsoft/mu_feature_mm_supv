@@ -1012,12 +1012,12 @@ SetupSmiEntryExit (
     // +--------------------------------------------------+-----+--------------------------------------------------+
     // | Known Good Stack | Guard Page |     SMM Stack    | ... | Known Good Stack | Guard Page |     SMM Stack    |
     // +--------------------------------------------------+-----+--------------------------------------------------+
-    // |        4K        |    4K       PcdCpuSmmStackSize|     |        4K        |    4K       PcdCpuSmmStackSize|
+    // |ExceptionStackSize|    4K       PcdCpuSmmStackSize|     |ExceptionStackSize|    4K       PcdCpuSmmStackSize|
     // |<---------------- mSmmStackSize ----------------->|     |<---------------- mSmmStackSize ----------------->|
     // |                                                  |     |                                                  |
     // |<------------------ Processor 0 ----------------->|     |<------------------ Processor n ----------------->|
     //
-    mSmmStackSize += EFI_PAGES_TO_SIZE (2);
+    mSmmStackSize += (PcdGet32 (PcdMmSupervisorExceptionStackSize) + EFI_PAGES_TO_SIZE (1));
   }
 
   mSmmShadowStackSize = 0;
@@ -1034,12 +1034,12 @@ SetupSmiEntryExit (
       // +--------------------------------------------------+---------------------------------------------------------------+
       // | Known Good Stack | Guard Page |    SMM Stack     | Known Good Shadow Stack | Guard Page |    SMM Shadow Stack    |
       // +--------------------------------------------------+---------------------------------------------------------------+
-      // |         4K       |    4K      |PcdCpuSmmStackSize|            4K           |    4K      |PcdCpuSmmShadowStackSize|
+      // |ExceptionStackSize|    4K      |PcdCpuSmmStackSize|    ExceptionStackSize   |    4K      |PcdCpuSmmShadowStackSize|
       // |<---------------- mSmmStackSize ----------------->|<--------------------- mSmmShadowStackSize ------------------->|
       // |                                                                                                                  |
       // |<-------------------------------------------- Processor N ------------------------------------------------------->|
       //
-      mSmmShadowStackSize += EFI_PAGES_TO_SIZE (2);
+      mSmmShadowStackSize += (PcdGet32 (PcdMmSupervisorExceptionStackSize) + EFI_PAGES_TO_SIZE (1));
     } else {
       //
       // SMM Stack Guard Disabled (Known Good Stack is still required for potential stack switch.)
@@ -1051,13 +1051,13 @@ SetupSmiEntryExit (
       // +-------------------------------------+--------------------------------------------------+
       // | Known Good Stack |    SMM Stack     | Known Good Shadow Stack |    SMM Shadow Stack    |
       // +-------------------------------------+--------------------------------------------------+
-      // |        4K        |PcdCpuSmmStackSize|          4K             |PcdCpuSmmShadowStackSize|
+      // |ExceptionStackSize|PcdCpuSmmStackSize|    ExceptionStackSize   |PcdCpuSmmShadowStackSize|
       // |<---------- mSmmStackSize ---------->|<--------------- mSmmShadowStackSize ------------>|
       // |                                                                                        |
       // |<-------------------------------- Processor N ----------------------------------------->|
       //
-      mSmmShadowStackSize += EFI_PAGES_TO_SIZE (1);
-      mSmmStackSize       += EFI_PAGES_TO_SIZE (1);
+      mSmmShadowStackSize += PcdGet32 (PcdMmSupervisorExceptionStackSize);
+      mSmmStackSize       += PcdGet32 (PcdMmSupervisorExceptionStackSize);
     }
   }
 
@@ -1116,7 +1116,7 @@ SetupSmiEntryExit (
         ConvertMemoryPageAttributes (
           Cr3,
           mPagingMode,
-          (EFI_PHYSICAL_ADDRESS)(UINTN)Stacks + mSmmStackSize + EFI_PAGES_TO_SIZE (1) + (mSmmStackSize + mSmmShadowStackSize) * Index,
+          (EFI_PHYSICAL_ADDRESS)(UINTN)Stacks + mSmmStackSize + PcdGet32 (PcdMmSupervisorExceptionStackSize) + (mSmmStackSize + mSmmShadowStackSize) * Index,
           EFI_PAGES_TO_SIZE (1),
           EFI_MEMORY_RP,
           TRUE,
