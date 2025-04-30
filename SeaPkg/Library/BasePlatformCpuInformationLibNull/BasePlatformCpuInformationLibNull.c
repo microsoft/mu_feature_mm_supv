@@ -10,14 +10,15 @@
 #include <Library/PlatformCpuInformationLib.h>
 
 /**
-  Publish the SEA Manifest so it can be located by an operating system.
+  Return the Platform CPU core count.  This is the NULL implementation which will
+  always return 0.
 
   @retval The number of CPU cores on the system
 
 **/
 UINTN
 EFIAPI
-GetPlatormCoreCount (
+GetPlatformCoreCount (
   VOID
   )
 {

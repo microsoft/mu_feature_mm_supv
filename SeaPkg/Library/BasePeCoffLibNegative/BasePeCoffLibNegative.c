@@ -755,7 +755,7 @@ GetMsegBaseAndSize (
   // Calculate the Minimum MSEG size
   //
   StmHeader = (STM_HEADER *)(UINTN)*MsegBase;
-  NumberOfCpus = GetPlatformCoreCount();
+  NumberOfCpus = GetPlatformCoreCount ();
 
   *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
                StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
