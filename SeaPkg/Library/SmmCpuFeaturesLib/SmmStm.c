@@ -845,11 +845,6 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
   //
   StmHeader = (STM_HEADER *)(UINTN)mMsegBase;
 
-  // Copy CPU information to the CPU_INFORMATION_HEADER
-  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)mMpInformationHobData->NumberOfProcessors;
-  StmHeader->CpuInfoHdr.MsegSize     = (UINT32)mMsegSize;
-  StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
-
   // Mark the MSEG as read-only
   Status = SmmSetMemoryAttributes (
              (EFI_PHYSICAL_ADDRESS)(UINTN)mMsegBase,
