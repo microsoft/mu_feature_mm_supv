@@ -35,6 +35,7 @@
   UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
+  SeaCpuInformationLib|SeaPkg/Library/BaseSeaCpuInformationLibNull/BaseSeaCpuInformationLibNull.inf
 
 [LibraryClasses.common.PEIM]
   PeimEntryPoint|MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
@@ -89,6 +90,7 @@
   SeaPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
   SeaPkg/Library/StmLib/StmLib.inf
   SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
+  SeaPkg/Library/BaseSeaCpuInformationLibNull/BaseSeaCpuInformationLibNull.inf
   SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
   SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
   SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf

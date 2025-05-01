@@ -165,7 +165,8 @@
             "xrstor",
             "xsave",
             "xsetbv",
-            "xstate"
+            "xstate",
+            "Emption"
         ]
     }
 }
