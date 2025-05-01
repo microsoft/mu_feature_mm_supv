@@ -836,14 +836,8 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
   )
 {
   EFI_STATUS  Status;
-  STM_HEADER  *StmHeader;
 
   DEBUG ((DEBUG_INFO, "%a - Enters...\n", __func__));
-
-  //
-  // STM Header is at the beginning of the STM Image, we use the value from MSR
-  //
-  StmHeader = (STM_HEADER *)(UINTN)mMsegBase;
 
   // Mark the MSEG as read-only
   Status = SmmSetMemoryAttributes (
