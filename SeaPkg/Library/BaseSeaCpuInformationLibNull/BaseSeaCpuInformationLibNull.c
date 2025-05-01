@@ -7,13 +7,13 @@
 */
 
 #include <Uefi.h>
-#include <Library/PlatformCpuInformationLib.h>
+#include <Library/SeaCpuInformationLib.h>
 
 /**
   Return the Platform CPU core count.  This is the NULL implementation which will
   always return 0.
 
-  @retval The number of CPU cores on the system
+  @return The number of CPU cores on the system
 
 **/
 UINTN

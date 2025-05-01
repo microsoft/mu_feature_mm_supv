@@ -6,8 +6,8 @@
 
 **/
 
-#ifndef PLATFORM_CPU_INFORMATION_LIB_
-#define PLATFORM_CPU_INFORMATION_LIB_
+#ifndef SEA_CPU_INFORMATION_LIB_
+#define SEA_CPU_INFORMATION_LIB_
 
 /**
   Return the Platform CPU core count.

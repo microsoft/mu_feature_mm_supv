@@ -31,10 +31,11 @@
   HashLibRaw|Include/Library/HashLibRaw.h
   PeCoffLibNegative|Include/Library/PeCoffLibNegative.h
   PeCoffValidationLib|Include/Library/PeCoffValidationLib.h
-  PlatformCpuInformationLib|Include/Library/PlatformCpuInformationLib.h
+  SeaCpuInformationLib|Include/Library/SeaCpuInformationLib.h
   SeaManifestPublicationLib|Include/Library/SeaManifestPublicationLib.h
   StmLib|Include/Library/StmLib.h
   StmPlatformLib|Include/Library/StmPlatformLib.h
+  
 
 [Guids]
   gEfiSeaPkgTokenSpaceGuid                       = { 0x44b8dcf5, 0x7368, 0x449c, { 0xa0, 0x2e, 0xff, 0x5c, 0xd8, 0xde, 0x2c, 0x61 } }

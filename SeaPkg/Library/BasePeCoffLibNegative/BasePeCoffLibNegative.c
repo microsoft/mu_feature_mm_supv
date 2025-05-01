@@ -39,7 +39,7 @@
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/StmApi.h>
 #include <Register/Intel/Cpuid.h>
-#include <Library/PlatformCpuInformationLib.h>
+#include <Library/SeaCpuInformationLib.h>
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
@@ -754,7 +754,7 @@ GetMsegBaseAndSize (
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader = (STM_HEADER *)(UINTN)*MsegBase;
+  StmHeader    = (STM_HEADER *)(UINTN)*MsegBase;
   NumberOfCpus = GetPlatformCoreCount ();
 
   *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
