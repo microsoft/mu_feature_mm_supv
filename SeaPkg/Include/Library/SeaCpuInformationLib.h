@@ -1,7 +1,7 @@
 /** @file
   SEA CPU Information library header file
 
-  Copyright (c) Microsoft Corporation.
+  Copyright (c) Microsoft Corporation. All rights reserved.
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
