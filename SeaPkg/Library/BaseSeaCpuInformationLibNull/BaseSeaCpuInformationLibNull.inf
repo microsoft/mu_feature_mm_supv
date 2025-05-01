@@ -1,5 +1,5 @@
 ##
-# BaseSeaCpuInformationLib CPU Information Library
+# Null instance of SEA CPU Information Library
 #
 # This is a NULL instance that returns 0 for all functions.
 #
