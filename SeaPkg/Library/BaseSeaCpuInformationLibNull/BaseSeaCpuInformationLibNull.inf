@@ -1,5 +1,5 @@
 ##
-# BaseSeaManifestPublicationLibNull CPU Information Library
+# BaseSeaCpuInformationLib CPU Information Library
 #
 # This is a NULL instance that returns 0 for all functions.
 #
