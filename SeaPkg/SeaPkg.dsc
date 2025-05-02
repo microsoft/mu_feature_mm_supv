@@ -36,6 +36,7 @@
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
   SeaCpuInformationLib|SeaPkg/Library/BaseSeaCpuInformationLibNull/BaseSeaCpuInformationLibNull.inf
+  StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
 
 [LibraryClasses.common.PEIM]
   PeimEntryPoint|MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
@@ -82,10 +83,7 @@
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
 
 [Components]
-  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {
-    <LibraryClasses>
-      NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
-  }
+  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf
 
   SeaPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
   SeaPkg/Library/StmLib/StmLib.inf
