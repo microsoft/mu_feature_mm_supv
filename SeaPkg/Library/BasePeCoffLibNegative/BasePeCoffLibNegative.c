@@ -37,8 +37,9 @@
 #include <Library/PeCoffLibNegative.h>
 #include <IndustryStandard/PeImage.h>
 #include <Register/Intel/ArchitecturalMsr.h>
-#include <Register/Intel/StmApi.h>
 #include <Register/Intel/Cpuid.h>
+#include <Register/Intel/Msr/HaswellEMsr.h>
+#include <Register/Intel/StmApi.h>
 
 /**
   Retrieves the PE or TE Header from a PE/COFF or TE image.
@@ -711,6 +712,24 @@ GetAlignedVmcsSize (
 }
 
 /**
+  Returns the CPU core count.
+
+  @return The number of enabled CPU cores in the system.
+
+**/
+UINTN
+EFIAPI
+GetActiveCoreCount (
+  VOID
+  )
+{
+  MSR_HASWELL_E_CORE_THREAD_COUNT_REGISTER  MsrCoreThreadCount;
+
+  MsrCoreThreadCount.Uint64 = AsmReadMsr64 (MSR_HASWELL_E_CORE_THREAD_COUNT);
+  return (UINTN)MsrCoreThreadCount.Bits.Core_Count;
+}
+
+/**
 
   @param[out] MsegBase  The MSEG base address.
   @param[out] MsegSize  The MSEG size.
@@ -729,6 +748,7 @@ GetMsegBaseAndSize (
   EFI_STATUS                         Status;
   MSR_IA32_SMM_MONITOR_CTL_REGISTER  SmmMonitorCtl;
   STM_HEADER                         *StmHeader;
+  UINTN                              NumberOfCpus;
 
   //
   // Find the MSEG Base address
@@ -752,9 +772,12 @@ GetMsegBaseAndSize (
   //
   // Calculate the Minimum MSEG size
   //
-  StmHeader = (STM_HEADER *)(UINTN)*MsegBase;
+  StmHeader    = (STM_HEADER *)(UINTN)*MsegBase;
+  NumberOfCpus = GetActiveCoreCount ();
 
-  *MsegSize = StmHeader->CpuInfoHdr.MsegSize;
+  *MsegSize = (EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
+               StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
+               (StmHeader->SwStmHdr.PerProcDynamicMemorySize + GetAlignedVmcsSize () * 2) * NumberOfCpus);
 
   Status = EFI_SUCCESS;
 
