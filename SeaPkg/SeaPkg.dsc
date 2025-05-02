@@ -82,7 +82,10 @@
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
 
 [Components]
-  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf
+  SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf {
+    <LibraryClasses>
+      NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
+  }
 
   SeaPkg/Library/MpSafeDebugLibSerialPort/MpSafeDebugLibSerialPort.inf
   SeaPkg/Library/StmLib/StmLib.inf

@@ -20,8 +20,6 @@
 #
 #
 ##
-# Rebase/202502
-#Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | de93f94f42cb93daaa86ec56086e3fce | 2025-02-25T18-23-45 | 09fee2dcc4706175f008bd76903a86dfa853a8ea
 # Non-Secure
 #Track : 00000002 | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf | 768803561c4b0314d6304a05c8050905 | 2024-10-24T21-28-00 | bf73b8a3c074d0280e664de6bf8c3d1091c3072c
 # Secure

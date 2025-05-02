@@ -28,7 +28,6 @@
 [Packages]
   MdePkg/MdePkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
-  UefiCpuPkg/UefiCpuPkg.dec
 
 [LibraryClasses]
   HobLib

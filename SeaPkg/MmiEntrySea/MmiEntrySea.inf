@@ -10,8 +10,7 @@
 #
 ##
 
-# Track release/202405 
-#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 4db1640daa92830eafef49cff474b792 | 2025-04-12T04-32-07 | 6a19361b3a5c70a4779011d1dd35490e3b87dcc4
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 465d5d5aecd11469c7b706462e194f94 | 2025-01-09T02-40-10 | 71f48e31c574486441223fac28466cecd6ca6c79
 
 [Defines]
   INF_VERSION                    = 0x0001001A

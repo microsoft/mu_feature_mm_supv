@@ -36,4 +36,3 @@
 [LibraryClasses]
   BaseLib
   DebugLib
-  StackCheckLib
