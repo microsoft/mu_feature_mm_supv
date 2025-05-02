@@ -836,8 +836,19 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
   )
 {
   EFI_STATUS  Status;
+  STM_HEADER  *StmHeader;
 
   DEBUG ((DEBUG_INFO, "%a - Enters...\n", __func__));
+
+  //
+  // STM Header is at the beginning of the STM Image, we use the value from MSR
+  //
+  StmHeader = (STM_HEADER *)(UINTN)mMsegBase;
+
+  // Copy CPU information to the CPU_INFORMATION_HEADER
+  StmHeader->CpuInfoHdr.NumberOfCpus = (UINT32)mMpInformationHobData->NumberOfProcessors;
+  StmHeader->CpuInfoHdr.MsegSize     = (UINT32)mMsegSize;
+  StmHeader->CpuInfoHdr.Signature    = STM_CPU_INFORMATION_HEADER_SIGNATURE;
 
   // Mark the MSEG as read-only
   Status = SmmSetMemoryAttributes (

@@ -51,5 +51,4 @@
   PeCoffExtraActionLib
   PeCoffValidationLib
   BaseMemoryLib
-  SeaCpuInformationLib
 

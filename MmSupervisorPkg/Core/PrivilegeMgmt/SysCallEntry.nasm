@@ -54,7 +54,7 @@ extern ASM_PFX(SyscallDispatcher)
 global ASM_PFX(SyscallCenter)
 ASM_PFX(SyscallCenter):
 ; Calling convention: CallIndex in RAX, Arg1 in RDX, Arg2 in R8, Arg3 in R9 from SysCallLib
-; Architectural definition: CallerAddr in RCX, rFLAGs in R11 from x64 syscall instruction
+; Architectural definiton: CallerAddr in RCX, rFLAGs in R11 from x64 syscall instruction
 ; push CallIndex stored at top of stack
 
     swapgs  ; get kernel pointer, save user GSbase
