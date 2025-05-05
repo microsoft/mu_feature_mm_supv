@@ -32,8 +32,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/SeaTestCommRegion.h>
 #include <Guid/PiSmmCommunicationRegionTable.h>
 
+#define GET_MEMORY_MAP_RETRIES  4
+
 VOID   *mPiSmmCommonCommBufferAddress = NULL;
 UINTN  mPiSmmCommonCommBufferSize;
+
+STATIC EFI_EVENT  mExitBootServicesEvent       = NULL;
+EFI_HANDLE        gTestImageHandle = NULL;
 
 /**
   This helper function actually sends the requested communication
@@ -47,7 +52,8 @@ UINTN  mPiSmmCommonCommBufferSize;
 STATIC
 EFI_STATUS
 DxeToSmmCommunicate (
-  VOID
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
   )
 {
   EFI_STATUS                            Status            = EFI_SUCCESS;
@@ -294,8 +300,74 @@ ResponderValidationTestAppEntry (
     return EFI_ABORTED;
   }
 
-  DxeToSmmCommunicate ();
+  //
+  // Get the EFI memory map.
+  //
+  UINTN                  Retry  = 0;
+  EFI_MEMORY_DESCRIPTOR  *EfiMemoryMap = NULL;
+  UINTN                  EfiMemoryMapSize;
+  EFI_STATUS             Status;
+  UINTN                  EfiMapKey;
+  UINTN                  EfiDescriptorSize;
+  UINT32                 EfiDescriptorVersion;
 
+  // Install EBS callback handler
+  Status = gBS->CreateEventEx (
+        EVT_NOTIFY_SIGNAL,
+        (TPL_APPLICATION + 1),
+        DxeToSmmCommunicate,
+        gImageHandle,
+        &gEfiEventExitBootServicesGuid,
+        &mExitBootServicesEvent
+        );
+
+  do {
+    if (EfiMemoryMap != NULL) {
+      FreePool (EfiMemoryMap);
+    }
+
+    EfiMemoryMapSize = 0;
+    EfiMemoryMap     = NULL;
+    Status           = gBS->GetMemoryMap (
+                              &EfiMemoryMapSize,
+                              EfiMemoryMap,
+                              &EfiMapKey,
+                              &EfiDescriptorSize,
+                              &EfiDescriptorVersion
+                              );
+    if ((Status != EFI_BUFFER_TOO_SMALL) || !EfiMemoryMapSize) {
+      DEBUG ((DEBUG_ERROR, "GetMemoryMap Error %r\n", Status));
+      return EFI_BAD_BUFFER_SIZE;
+    }
+
+    EfiMemoryMapSize += EfiMemoryMapSize + 64 * EfiDescriptorSize;
+    EfiMemoryMap      = AllocateZeroPool (EfiMemoryMapSize);
+    ASSERT (EfiMemoryMap != NULL);
+
+    Status = gBS->GetMemoryMap (
+                    &EfiMemoryMapSize,
+                    EfiMemoryMap,
+                    &EfiMapKey,
+                    &EfiDescriptorSize,
+                    &EfiDescriptorVersion
+                    );
+    ASSERT_EFI_ERROR (Status);
+
+    //
+    // Create exit boot services event
+    //
+    DEBUG ((DEBUG_INFO, "Calling ExitBootServices - Retry = %d\n", Retry));
+    Status = gBS->ExitBootServices (
+                    gTestImageHandle,
+                    EfiMapKey
+                    );
+  } while (EFI_ERROR (Status) && Retry++ < GET_MEMORY_MAP_RETRIES);
+
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "ERROR - Exit Boot Services returned %r\n", Status));
+  }
+
+  // Should not be here!!!
   DEBUG ((DEBUG_INFO, "%a the app's done!\n", __func__));
 
   return EFI_SUCCESS;
