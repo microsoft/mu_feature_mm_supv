@@ -15,10 +15,23 @@ struct Args {
     /// Path to the output auxiliary file.
     #[arg(short, long)]
     output: Option<PathBuf>,
+    /// Verbosity level. Can be used multiple times for increased verbosity.
+    /// 0 = error, 1 = info, 2 = debug, 3 = trace.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    let level = match args.verbose {
+        0 => log::Level::Error,
+        1 => log::Level::Info,
+        2 => log::Level::Debug,
+        _ => log::Level::Trace,
+    };
+
+    simple_logger::init_with_level(level)?;
 
     let mut metadata = PdbMetadata::new(args.pdb, args.efi.clone()).unwrap();
     let report = Coverage::build(&AuxFile::default(), &mut metadata)?;

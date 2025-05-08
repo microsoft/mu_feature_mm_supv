@@ -10,6 +10,7 @@ use anyhow::{anyhow, Result};
 use serde::Serialize;
 
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::io::Write;
 
 use crate::file::{AuxFile, ImageValidationEntryHeader};
@@ -421,7 +422,7 @@ impl Section {
 }
 
 /// A segment of the image with metadata about its coverage status.
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone)]
 pub struct Segment {
     /// The symbol from the PDB file that this segment is associated with.
     symbol: String,
@@ -486,5 +487,16 @@ impl Segment {
             covered: true,
             reason: format!("Validation Rule: {}", rule),
         }
+    }
+}
+
+impl Debug for Segment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Segment")
+            .field("symbol", &self.symbol)
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("covered", &self.covered)
+            .finish()
     }
 }

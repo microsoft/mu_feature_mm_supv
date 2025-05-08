@@ -19,15 +19,28 @@ struct Args {
     /// Path to the config file to read (or write to if generating a config).
     #[arg(short, long)]
     config: PathBuf,
-    #[arg(short, long = "scope")]
     /// A list of scopes to include in the auxiliary file. Rules without scopes
     /// are always applied. Rules with scopes are only applied if the scope is
     /// also provided via this argument.
+    #[arg(short, long = "scope")]
     scopes: Vec<String>,
+    /// Verbosity level. Can be used multiple times for increased verbosity.
+    /// 0 = error, 1 = info, 2 = debug, 3 = trace.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    let level = match args.verbose {
+        0 => log::Level::Error,
+        1 => log::Level::Info,
+        2 => log::Level::Debug,
+        _ => log::Level::Trace,
+    };
+
+    simple_logger::init_with_level(level)?;
 
     let mut metadata = PdbMetadata::new(args.pdb, args.efi.clone())?;
 
