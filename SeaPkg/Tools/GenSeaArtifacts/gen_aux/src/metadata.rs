@@ -201,7 +201,37 @@ impl PdbMetadata<'_> {
         Some(names)
     }
 
-    fn validate_rule(&self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
+    fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
+        // If the rule is a content rule, make sure that the content size matches the symbol size.
+        if let config::Validation::Content { content } = &rule.validation {
+            let size = match &rule.field {
+                Some(field) => {
+                    let (_, size) = Symbol::find_field_offset_and_size(
+                        &self.pdb.type_information()?,
+                        &symbol.type_info.type_id().unwrap(),
+                        field,
+                        symbol.name(),
+                    )?;
+                    size
+                }
+                None => symbol.type_info.element_size(),
+            };
+
+            if content.len() != size as usize {
+                let name = if let Some(field) = &rule.field {
+                    format!("{}.{}", symbol.name(), field)
+                } else {
+                    symbol.name().to_string()
+                };
+                return Err(anyhow::anyhow!(
+                    "Invalid Rule Configuration: Symbol {}: Content size {} does not match symbol size {}.",
+                    name,
+                    content.len(),
+                    size
+                ));
+            }
+        }
+
         let element_count = symbol.type_info.element_count();
 
         if element_count == 1 && rule.array.is_some() {
@@ -363,10 +393,16 @@ impl PdbMetadata<'_> {
             }
 
             let dst = loaded_image
-                .get_mut((section.virtual_address as usize)..(section.virtual_address.wrapping_add(size) as usize))
+                .get_mut(
+                    (section.virtual_address as usize)
+                        ..(section.virtual_address.wrapping_add(size) as usize),
+                )
                 .ok_or(anyhow::anyhow!("Failed to get section"))?;
             let src = image
-                .get((section.pointer_to_raw_data as usize)..(section.pointer_to_raw_data.wrapping_add(size) as usize))
+                .get(
+                    (section.pointer_to_raw_data as usize)
+                        ..(section.pointer_to_raw_data.wrapping_add(size) as usize),
+                )
                 .ok_or(anyhow::anyhow!("Failed to get section"))?;
             dst.copy_from_slice(src);
         }
