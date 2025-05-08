@@ -201,6 +201,16 @@ impl PdbMetadata<'_> {
         Some(names)
     }
 
+    /// If the symbol is an array, returns the index of the element at the given address.
+    fn symbol_idx(&mut self, symbol: &str, address: u32) -> Option<usize> {
+        let symbol = self.find_symbol(symbol);
+        if symbol.type_info.element_count() == 1 {
+            return None;
+        }
+        let offset = address - symbol.address;
+        Some((offset / symbol.type_info.element_size()) as usize)
+    }
+
     fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
         // If the rule is a content rule, make sure that the content size matches the symbol size.
         if let config::Validation::Content { content } = &rule.validation {
@@ -443,13 +453,16 @@ impl PdbMetadata<'_> {
         // segment must be padding between fields, so we can add an entry for it.
         for uncovered in symbols {
             if let Some(fields) = self.symbol_fields(uncovered.symbol()) {
+                // We must also consider that the symbol is an array where the elements are the underlying class. In
+                // This case, we need to check all fields for the specific index are covered before we can properly add
+                // any padding.
+                let idx = self.symbol_idx(uncovered.symbol(), uncovered.start());
                 let covered = fields.iter().all(|field| {
-                    !report
-                        .segments(|s| {
-                            s.symbol().starts_with(uncovered.symbol())
-                                && s.symbol().ends_with(field)
-                        })
-                        .is_empty()
+                    let expected = match idx {
+                        Some(idx) => format!("{}[{}].{}", uncovered.symbol(), idx, field),
+                        None => format!("{}.{}", uncovered.symbol(), field),
+                    };
+                    !report.segments(|s| s.symbol() == expected).is_empty()
                 });
 
                 if covered {
