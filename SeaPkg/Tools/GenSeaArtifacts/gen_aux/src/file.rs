@@ -57,7 +57,10 @@ impl AuxFile {
 
         let mut offset_to_default = size_of::<ImageValidationDataHeader>() as u32
             + self.key_symbols.len() as u32 * 8
-            + self.entries.iter().fold(0, |acc, entry| acc + entry.header_size());
+            + self
+                .entries
+                .iter()
+                .fold(0, |acc, entry| acc + entry.header_size());
 
         for entry in self.entries.iter_mut() {
             entry.offset_to_default = offset_to_default;
