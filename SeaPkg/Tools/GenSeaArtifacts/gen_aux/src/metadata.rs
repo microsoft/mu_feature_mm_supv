@@ -296,6 +296,9 @@ impl PdbMetadata<'_> {
                 address: self.find_symbol(reference).address,
             }),
             Validation::Pointer { in_mseg } => Ok(ValidationType::Pointer { in_mseg: *in_mseg }),
+            Validation::Guid { guid } => Ok(ValidationType::Content {
+                content: guid.as_bytes().to_vec(),
+            }),
         }
     }
 
