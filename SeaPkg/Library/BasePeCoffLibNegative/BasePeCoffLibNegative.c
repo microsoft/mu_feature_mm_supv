@@ -926,6 +926,8 @@ PeCoffImageDiffValidation (
     }
 
     if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "Validation Error! Dumping MmSupervisor Image\n"));
+      DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
       break;
     }
 
