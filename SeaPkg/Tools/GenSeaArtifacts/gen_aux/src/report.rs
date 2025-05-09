@@ -441,7 +441,7 @@ pub struct Segment {
     /// The reason the segment is covered or not.
     reason: String,
     /// The people associated with reviewing this segment.
-    /// 
+    ///
     /// This field is only used when the segment is covered by a validation rule.
     reviewers: Vec<String>,
 }
@@ -491,7 +491,9 @@ impl Segment {
             _end: entry.offset + entry.size,
             covered: true,
             reason: format!("Validation Rule: {}", rule),
-            reviewers: metadata.reviewers_from_address(&entry.offset).unwrap_or_default(),
+            reviewers: metadata
+                .reviewers_from_address(&entry.offset)
+                .unwrap_or_default(),
         }
     }
 }

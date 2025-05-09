@@ -121,7 +121,8 @@ impl PdbMetadata<'_> {
             if let Some(field) = &rule.field {
                 name += format!(".{}", field).as_str();
             }
-            self.addr_map.insert(entry.offset, (name, rule.reviewers.clone()));
+            self.addr_map
+                .insert(entry.offset, (name, rule.reviewers.clone()));
 
             ret.push((entry, default));
         }
