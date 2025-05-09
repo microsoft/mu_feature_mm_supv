@@ -208,16 +208,14 @@ pub enum Validation {
     },
     /// The symbol is validated against a GUID as a Content rule.
     #[serde(rename = "guid")]
-    Guid { 
+    Guid {
         #[serde(deserialize_with = "deserialize_guid")]
-        guid: Guid
+        guid: Guid,
     },
 }
 
 /// A custom deserializer for a [Guid].
-fn deserialize_guid<'de, D>(
-    deserializer: D,
-) -> core::result::Result<Guid, D::Error>
+fn deserialize_guid<'de, D>(deserializer: D) -> core::result::Result<Guid, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -237,12 +235,27 @@ where
         where
             A: SeqAccess<'de>,
         {
-            let f1: u32 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 0 to be u32"))?;
-            let f2: u16 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 1 to be u16"))?;
-            let f3: u16 = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 2 to be u16"))?;
-            let f4: [u8; 8] = seq.next_element()?.ok_or_else(|| A::Error::custom("Expected index 3 to be [u8; 8]"))?;
-            
-            Ok(Guid::from_fields(f1, f2, f3, f4[0], f4[1], &[f4[2], f4[3], f4[4], f4[5], f4[6], f4[7]]))
+            let f1: u32 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 0 to be u32"))?;
+            let f2: u16 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 1 to be u16"))?;
+            let f3: u16 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 2 to be u16"))?;
+            let f4: [u8; 8] = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 3 to be [u8; 8]"))?;
+
+            Ok(Guid::from_fields(
+                f1,
+                f2,
+                f3,
+                f4[0],
+                f4[1],
+                &[f4[2], f4[3], f4[4], f4[5], f4[6], f4[7]],
+            ))
         }
     }
 
