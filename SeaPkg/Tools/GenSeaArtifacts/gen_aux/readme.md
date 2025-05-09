@@ -3,6 +3,10 @@
 This tool generates the binary file used to verify the state of a module after execution and revert it to it's original
 state. Any rule specified in the configuration file will be 1. Reverted and 2. Verified (depending on the verification type).
 
+`create-aux` -> Consumes a configuration file to generate an auxiliary file.
+`create-config` -> Creates a new config with 100% coverage, but all rules are `none`.
+`test-aux` -> Tests if the aux file validation rules pass against a dumped efi image.
+
 ## Auxiliary File Format
 
 ```text
@@ -55,21 +59,16 @@ comes with the following standard options:
 scope = 'Optional[String]'
 symbol = 'Required[String]'
 field = 'Optional[String]'
-array.index = 'Optional[Int]'
+array.index = 'Optional[Int]'|'Optional[Array[Int;2]]'
 array.sentinel = 'Optional[Boolean]'
-offset = 'Optional[Int]'
-size = 'Optional[Int]'
 validation.type = 'Required[String]'
 ```
 
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
-- `array.index`: Only apply the rule to the specified index of the array.
+- `array.index`: Only apply the rule to the specified index of the array, or inclusive range
 - `array.sentinel`: Apply content rule to only the final rule such that its content must be all zeros.
-- `offset`: Updates the address to `symbol.address + offset`. Offset can be negative. Providing an offset requires that the
-`size` is also provided, as the size can no longer be automatically calculated
-- `size`: Overrides the size calculated by `symbol` or `rule`.
 - `validation.type`: The type of validation to perform on this symbol. Different values may also require additional configuration
 settings in the `[[rule]]`.
 
@@ -144,27 +143,13 @@ The below configuration options reside in a top level `[config]` section of the 
 
 ``` toml
 [config]
-autogen = false
 no_missing_rules = true
-excluded_symbols = ["K"]
 ```
-
-#### autogen
-
-`autogen = true/false` config option tells the tool if it should generate validation rules of type `None` for any symbol
-that does not currently have a rule created. Use `excluded_symbols` to prevent rules to be generated from certain
-symbols.
 
 #### no_missing_rules
 
 `no_missing_rules = true/false` config option tells the tool to stop processing if there is a symbol that does not
-currently have a rule created. Cannot be used with `autogen`. Use `excluded_symbols` to prevent the process from
-stopping if a rule is missing for that particular symbol.
-
-#### excluded_symbols
-
-`excluded_symbols = Optional[List[String]]` config option to always filter out these symbols from the aux file.
-Additionally ensures these symbols are ignored for the `no_missing_rules` and `autogen` flags
+currently have a rule created.
 
 ## Adding a new rule
 
