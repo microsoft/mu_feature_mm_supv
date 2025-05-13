@@ -2,7 +2,7 @@ use anyhow::Result;
 use auxfile::prelude::*;
 use clap::Parser;
 
-use std::{io::Write, path::PathBuf};
+use std::{fs::File, io::Write, path::PathBuf};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -33,7 +33,7 @@ fn main() -> Result<()> {
 
     simple_logger::init_with_level(level)?;
 
-    let mut metadata = PdbMetadata::new(args.pdb, args.efi.clone()).unwrap();
+    let mut metadata = PdbMetadata::<File>::new(args.pdb, args.efi.clone()).unwrap();
     let report = Coverage::build(&AuxFile::default(), &mut metadata)?;
 
     // Writing the config file with serde prints it ugly, so we do it manually
