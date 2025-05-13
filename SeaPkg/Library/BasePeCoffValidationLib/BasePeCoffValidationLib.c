@@ -414,7 +414,20 @@ PeCoffImageValidationContent (
   }
 
   if (CompareMem ((UINT8 *)TargetImage + Hdr->Offset, ContentHdr->TargetContent, Hdr->Size) != 0) {
-    DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x does not match input content at 0x%p\n", __func__, ContentHdr, Hdr->Size, ContentHdr->TargetContent));
+    DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p: Content mismatch in image at address 0x%p\n", __func__, ContentHdr, ContentHdr->TargetContent));
+
+    DEBUG ((DEBUG_ERROR, "%a: Expected content: ", __func__));
+    for (UINTN Index = 0; Index < Hdr->Size; Index++) {
+      DEBUG ((DEBUG_ERROR, "%02x ", ContentHdr->TargetContent[Index]));
+    }
+    DEBUG ((DEBUG_ERROR, "\n"));
+
+    DEBUG ((DEBUG_ERROR, "%a: Actual content: ", __func__));
+    for (UINTN Index = 0; Index < Hdr->Size; Index++) {
+      DEBUG ((DEBUG_ERROR, "%02x ", ((UINT8 *)TargetImage + Hdr->Offset)[Index]));
+    }
+    DEBUG ((DEBUG_ERROR, "\n"));
+
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
