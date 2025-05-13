@@ -521,6 +521,8 @@ Done:
 
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
   @param[in] Hdr                       The header of the validation entry.
+  @param[in] OriginalImageLoadAddress  The load address of the original image buffer. Should be the same as
+                                       the pointer value of OriginalImageBaseAddress for runtime validation.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -532,7 +534,8 @@ EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
   IN CONST VOID                           *OriginalImageBaseAddress,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN EFI_PHYSICAL_ADDRESS                 OriginalImageLoadAddress
   )
 {
   IMAGE_VALIDATION_SELF_REF  *SelfRefHdr;
@@ -574,17 +577,16 @@ PeCoffImageValidationSelfRef (
 
   AddrInTarget = 0;
   CopyMem (&AddrInTarget, (UINT8 *)OriginalImageBaseAddress + Hdr->Offset, Hdr->Size);
-  AddrInOrigin = (EFI_PHYSICAL_ADDRESS)(UINTN)((UINT8 *)OriginalImageBaseAddress + SelfRefHdr->TargetOffset);
+
+  // Compare the addresses RVAs rather than the actual addresses, to support runtime and host-based validation.
+  AddrInOrigin = (EFI_PHYSICAL_ADDRESS)SelfRefHdr->TargetOffset;
+  AddrInTarget = AddrInTarget - OriginalImageLoadAddress;
 
   if (AddrInTarget != AddrInOrigin) {
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a: Current entry at 0x%p regarding 0x%x should self reference 0x%x\n",
-      __func__,
-      Hdr,
-      AddrInTarget,
-      AddrInOrigin
-      ));
+    DEBUG ((DEBUG_ERROR, "%a: Current entry 0x%p: Pointer mismatch:\n", __func__, Hdr));
+    DEBUG ((DEBUG_ERROR, "%a: Expected pointer RVA: 0x%p\n", __func__, AddrInOrigin));
+    DEBUG ((DEBUG_ERROR, "%a: Actual pointer RVA: 0x%p\n", __func__, AddrInTarget));
+
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }

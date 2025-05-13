@@ -93,6 +93,8 @@ PeCoffImageValidationMemAttr (
 
   @param[in] OriginalImageBaseAddress  The pointer to the original image buffer.
   @param[in] Hdr                       The header of the validation entry.
+  @param[in] OriginalImageLoadAddress  The load address of the original image buffer. Should be the same as
+                                       the pointer value of OriginalImageBaseAddress for runtime validation.
 
   @retval EFI_SUCCESS             The target image passes the validation.
   @retval EFI_INVALID_PARAMETER   One of the input parameters is a null pointer.
@@ -104,7 +106,8 @@ EFI_STATUS
 EFIAPI
 PeCoffImageValidationSelfRef (
   IN CONST VOID                           *OriginalImageBaseAddress,
-  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr
+  IN CONST IMAGE_VALIDATION_ENTRY_HEADER  *Hdr,
+  IN EFI_PHYSICAL_ADDRESS                 OriginalImageLoadAddress
   );
 
 /**
