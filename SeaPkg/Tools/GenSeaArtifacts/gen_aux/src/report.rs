@@ -7,6 +7,7 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //!
 use anyhow::{anyhow, Result};
+use pdb::Source;
 use serde::Serialize;
 
 use std::cmp::Ordering;
@@ -41,7 +42,10 @@ pub struct Coverage {
 
 impl Coverage {
     /// Generates a coverage report from the given image and auxiliary file.
-    pub fn build(aux_file: &AuxFile, metadata: &mut PdbMetadata) -> anyhow::Result<Self> {
+    pub fn build<'a, S: Source<'a> + 'a>(
+        aux_file: &AuxFile,
+        metadata: &mut PdbMetadata<'a, S>,
+    ) -> anyhow::Result<Self> {
         let size_of_image = metadata.image_size() as u32;
 
         let mut sections = SectionList::new(size_of_image);
@@ -307,10 +311,10 @@ impl SegmentList {
     }
 
     /// Adds a list of image validation entries as covered segments.
-    pub fn add_segments_from_aux_entries(
+    pub fn add_segments_from_aux_entries<'a, S: Source<'a> + 'a>(
         &mut self,
         entries: &[ImageValidationEntryHeader],
-        metadata: &mut PdbMetadata,
+        metadata: &mut PdbMetadata<'a, S>,
     ) -> Result<()> {
         for entry in entries.iter() {
             self.insert(Segment::from_entry(entry, metadata))?;
@@ -374,7 +378,10 @@ impl SegmentList {
     /// 2. If a rule only covers part of a symbol (using a field), we need to ensure all other
     ///    parts of the same symbol that are not covered have their names correctly set.
     /// 3. There may be padding between symbols for alignment purposes
-    pub fn update_missing_symbol_names(&mut self, metadata: &mut PdbMetadata) -> Result<()> {
+    pub fn update_missing_symbol_names<'a, S: Source<'a> + 'a>(
+        &mut self,
+        metadata: &mut PdbMetadata<'a, S>,
+    ) -> Result<()> {
         let mut to_insert = Vec::new();
         for segment in &self.segments {
             if !segment.symbol.is_empty() || segment.covered {
@@ -473,7 +480,10 @@ impl Segment {
         self.covered
     }
 
-    pub fn from_entry(entry: &ImageValidationEntryHeader, metadata: &PdbMetadata) -> Self {
+    pub fn from_entry<'a, S: Source<'a> + 'a>(
+        entry: &ImageValidationEntryHeader,
+        metadata: &PdbMetadata<'a, S>,
+    ) -> Self {
         let validation = &entry.validation_type;
         let rule = validation.to_string();
         Segment {

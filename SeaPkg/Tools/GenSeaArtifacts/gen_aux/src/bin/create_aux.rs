@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 
 use anyhow::Result;
 use clap::Parser;
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
     simple_logger::init_with_level(level)?;
 
-    let mut metadata = PdbMetadata::new(args.pdb, args.efi.clone())?;
+    let mut metadata = PdbMetadata::<File>::new(args.pdb, args.efi.clone())?;
 
     let mut config: ConfigFile = ConfigFile::from_file(args.config)?;
     config.filter_by_scopes(&args.scopes)?;
