@@ -85,11 +85,15 @@ impl AuxFile {
     /// Writes the aux file to the given file path.
     pub fn to_file(&self, file_path: impl AsRef<std::path::Path>) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(file_path)?;
-        let mut buffer = vec![0; self.header.size as usize];
-        buffer.gwrite_with(self, &mut 0, scroll::LE)?;
-        file.write_all(&buffer)?;
+        file.write_all(&self.to_bytes()?)?;
 
         Ok(())
+    }
+
+    pub fn to_bytes(&self) -> anyhow::Result<Vec<u8>> {
+        let mut buffer = vec![0; self.header.size as usize];
+        buffer.gwrite_with(self, &mut 0, scroll::LE)?;
+        Ok(buffer)
     }
 }
 
@@ -195,7 +199,7 @@ impl ImageValidationEntryHeader {
     /// depending on the validation_type field. That is to say, if the
     /// validation_type is ValidationType::Content, the header header written
     /// to the aux file will  actually be IMAGE_VALIDATION_CONTENT.
-    fn header_size(&self) -> u32 {
+    pub fn header_size(&self) -> u32 {
         20 + match &self.validation_type {
             ValidationType::None => 0,
             ValidationType::NonZero => 0,

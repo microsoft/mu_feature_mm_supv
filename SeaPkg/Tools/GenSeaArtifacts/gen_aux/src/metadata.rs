@@ -8,11 +8,11 @@
 //! Copyright (c) Microsoft Corporation.
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
-use std::{collections::HashMap, fmt::Formatter, fs::File, ops::Range, path::PathBuf};
+use std::{collections::HashMap, fmt::Formatter, fs::File, io::Cursor, ops::Range, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use pdb::{
-    AddressMap, DataSymbol, FallibleIterator, Item, PrimitiveKind, TypeData, TypeIndex,
+    AddressMap, DataSymbol, FallibleIterator, Item, PrimitiveKind, Source, TypeData, TypeIndex,
     TypeInformation, PDB,
 };
 
@@ -21,16 +21,15 @@ use crate::{config, file, report};
 const POINTER_LENGTH: u64 = 8;
 
 /// A struct containing all metadata from the PDB necessary to generate the auxiliary file.
-pub struct PdbMetadata<'a> {
-    pdb: PDB<'a, File>,
+pub struct PdbMetadata<'a, S: Source<'a>> {
+    pdb: PDB<'a, S>,
     sections: Vec<Section>,
     addr_to_name: HashMap<u32, String>,
     unloaded_image: Vec<u8>,
     loaded_image: Vec<u8>,
 }
 
-impl PdbMetadata<'_> {
-    /// Creates a new instance of the PdbMetadata struct by parsing the PDB file and loading the image.
+impl<'a> PdbMetadata<'a, File> {
     pub fn new(pdb_path: PathBuf, efi_path: PathBuf) -> Result<Self> {
         let file = File::open(pdb_path)?;
         let mut pdb = PDB::open(file)?;
@@ -52,6 +51,42 @@ impl PdbMetadata<'_> {
 
         Ok(metadata)
     }
+}
+
+impl<'a> PdbMetadata<'a, Cursor<&'a [u8]>> {
+    pub fn new(pdb: &'a [u8], efi: &[u8]) -> Result<Self> {
+        let file = Cursor::new(pdb);
+        let mut pdb = PDB::open(file)?;
+
+        let sections = Self::get_sections(&mut pdb)?;
+        let unloaded_image = efi.to_vec();
+        let loaded_image = Self::load_image(&unloaded_image)?;
+        let addr_to_name = HashMap::new();
+
+        let mut metadata = PdbMetadata {
+            pdb,
+            sections,
+            addr_to_name,
+            unloaded_image,
+            loaded_image,
+        };
+
+        metadata.fill_sections()?;
+
+        Ok(metadata)
+    }
+}
+
+impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
+    /// Creates a new instance of the PdbMetadata struct by parsing the PDB file and loading the image.
+
+    // pub fn new_from_bytes(pdb: &[u8], efi: &[u8]) -> Result<PdbMetadata<'a, Cursor<&'a [u8]>>> {
+    //     let file = Cursor::new(pdb);
+    //     let mut pdb = PDB::open(file)?;
+
+    //     let sections = Self::get_sections(&mut pdb)?;
+
+    // }
 
     /// Create a new ImageValidationEntryHeader from the given rule.
     pub fn build_entries(
@@ -312,7 +347,7 @@ impl PdbMetadata<'_> {
     }
 
     /// Returns the sections in the PDB file in the custom format.
-    fn get_sections(pdb: &mut PDB<'_, File>) -> Result<Vec<Section>> {
+    fn get_sections(pdb: &mut PDB<'a, S>) -> Result<Vec<Section>> {
         let sections = pdb.sections()?.unwrap_or_default();
         let sections = sections
             .iter()
