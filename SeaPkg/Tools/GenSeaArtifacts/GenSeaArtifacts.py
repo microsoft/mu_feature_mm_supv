@@ -123,7 +123,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path):
+    def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path, workspace = None):
         """Moves all the necessary SEA related artifacts to the directory specified by output_dir.
 
         Generates the following artifacts:
@@ -134,6 +134,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             mm_supervisor_build_dir: Path to the MM Supervisor build output.
             sea_build_dir: Path to the Sea Package build output.
             output_dir: Path to place the artifacts.
+            workspace: Path to the workspace. If not provided, the current directory is used.
         """
         try:
             stm_build_dir = sea_build_dir / "Core" / "Stm" / "DEBUG"
@@ -146,6 +147,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
             misc_dir = output_dir / "Misc"
             misc_dir.mkdir(exist_ok=True)
+
+            # Generate the test-aux binary, place it in misc_dir
+            generate_test_aux_binary(misc_dir, mm_supervisor_build_dir, sea_build_dir, workspace=workspace)
 
             # Copy over STM artifacts
             shutil.copy2(
@@ -364,3 +368,28 @@ def generate_stm_binary(stm_dll: Path, output_dir: Path):
     ret = RunCmd(cmd, args)
     if ret != 0:
         raise RuntimeError("GenStm failed. Review command output.")
+
+def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, workspace = None):
+    """Generates the test-aux binary.
+
+    Args:
+        output_path (Path): Path to place the test-aux binary
+        workspace (Path): Path to the workspace. If not provided, the current directory is used.
+    """
+
+    manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
+
+    os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(sea_build_dir / "Library" / "BasePeCoffValidationLib" / "BasePeCoffValidationLib" / "OUTPUT")
+    os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.pdb")
+    os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+
+    args = 'build --release'
+    args += ' --bin test-aux'
+    args += f' --manifest-path {str(manifest_path)}'
+
+    ret = RunCmd("cargo", args)
+    if ret != 0:
+        raise RuntimeError("Failed to compile test-aux. Is your Cargo workspace setup correctly?")
+
+    bin_path = manifest_path.parent / "target" / "release" / "test-aux.exe"
+    bin_path.rename(output_path / "test-aux.exe")
