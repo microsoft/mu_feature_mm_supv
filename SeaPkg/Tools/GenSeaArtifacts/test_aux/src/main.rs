@@ -1,5 +1,5 @@
 //! A binary for building and testing an auxiliary file against a dumped MM Supervisor core.
-//! 
+//!
 //! ## License
 //!
 //! Copyright (c) Microsoft Corporation.
@@ -47,7 +47,12 @@ extern "C" {
         hdr: *const c_void,
         address: u64,
     ) -> Status;
-    // fn PeCoffImageValidationPointer(target_image: *const c_void, hdr: *const c_void, mseg_base: u64, mseg_size: u64) -> Status;
+    fn PeCoffImageValidationPointer(
+        target_image: *const c_void,
+        hdr: *const c_void,
+        mseg_base: u64,
+        mseg_size: u64,
+    ) -> Status;
 }
 
 /// A Command line tool to test a auxiliary file against a dumped MM Supervisor core.
@@ -64,12 +69,18 @@ struct Args {
 /// A structure representing all configuration data dumped from the run log.
 #[derive(Deserialize)]
 struct CmdConfig {
+    /// The MSEG base address
+    #[serde(rename = "MsegBase")]
+    pub mseg_base: String,
+    /// The MSEG size
+    #[serde(rename = "MsegSize")]
+    pub mseg_size: String,
     /// The LoadAddress of the MmSupervisorCore.efi
-    #[serde(rename = "LoadAddress")]
-    pub load_address: String,
+    #[serde(rename = "MmSupervisorBase")]
+    pub mm_supv_address: String,
     /// The dump of the post-execution MM Supervisor core
-    #[serde(rename = "MmSupervisorCore")]
-    pub core_dump: String,
+    #[serde(rename = "MmSupervisor")]
+    pub mm_supv_core: String,
 }
 
 impl CmdConfig {
@@ -142,10 +153,14 @@ fn main() -> Result<()> {
 
 /// The metadata necessary to properly execute all validation tests.
 struct TestSuite {
+    /// The address that MSEG starts at
+    mseg_base: u64,
+    /// The size of the MSEG
+    mseg_size: u64,
     /// The address the MmSupervisorCore.efi was loaded at at runtime.
-    load_address: u64,
+    mm_supv_address: u64,
     /// The byte dump of the post-execution MM Supervisor core
-    core_dump: Vec<u8>,
+    mm_supv_core: Vec<u8>,
     /// The byte dump of the generated auxiliary file
     aux: Vec<u8>,
 }
@@ -154,12 +169,16 @@ impl TestSuite {
     /// Creates a new instance of TestSuite from the provided configuration file and auxiliary file.
     pub fn new(config: &PathBuf, aux: Vec<u8>) -> Result<Self> {
         let config = CmdConfig::from_file(config)?;
-        let load_address = Self::process_load_address(&config.load_address)?;
-        let core_dump = Self::process_core_dump(&config.core_dump)?;
+        let mm_supv_address = Self::from_hex_str(&config.mm_supv_address)?;
+        let mm_supv_core = Self::process_mm_supv_core(&config.mm_supv_core)?;
+        let mseg_base = Self::from_hex_str(&config.mseg_base)?;
+        let mseg_size = Self::from_hex_str(&config.mseg_size)?;
 
         Ok(Self {
-            load_address,
-            core_dump,
+            mseg_base,
+            mseg_size,
+            mm_supv_address,
+            mm_supv_core,
             aux,
         })
     }
@@ -192,15 +211,15 @@ impl TestSuite {
     }
 
     /// Processes a string representation of a hexadecimal number
-    fn process_load_address(load_address: &str) -> Result<u64> {
-        let load_address = load_address.to_lowercase();
-        let load_address = load_address.strip_prefix("0x").unwrap_or(&load_address);
-        u64::from_str_radix(load_address, 16)
-            .map_err(|_| anyhow!("Invalid load address format: {}", load_address))
+    fn from_hex_str(value: &str) -> Result<u64> {
+        let value = value.to_lowercase();
+        let value = value.strip_prefix("0x").unwrap_or(&value);
+        u64::from_str_radix(value, 16)
+            .map_err(|_| anyhow!("Invalid load address format: {}", value))
     }
 
     /// Processes the core dump and extracts the bytes from it.
-    fn process_core_dump(dump: &str) -> Result<Vec<u8>> {
+    fn process_mm_supv_core(dump: &str) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
         for line in dump.lines() {
             bytes.extend(Self::extract_bytes(line)?);
@@ -258,8 +277,10 @@ impl TestSuite {
 
         let aux = self.aux.as_ptr() as *const c_void;
         let hdr = unsafe { aux.add(index) };
-        let target_image = self.core_dump.as_ptr() as *const c_void;
-        let load_address = self.load_address;
+        let target_image = self.mm_supv_core.as_ptr() as *const c_void;
+        let mm_supv_address = self.mm_supv_address;
+        let mseg_base = self.mseg_base;
+        let mseg_size = self.mseg_size;
 
         set_debug_print(verbose);
 
@@ -270,9 +291,12 @@ impl TestSuite {
                 PeCoffImageValidationContent(target_image, hdr, aux)
             },
             ValidationType::Ref { .. } => unsafe {
-                PeCoffImageValidationSelfRef(target_image, hdr, load_address)
+                PeCoffImageValidationSelfRef(target_image, hdr, mm_supv_address)
             },
-            _ => Status::SUCCESS, // Skip PeCoffImageValidationMemAttr and PeCoffImageValidationPointer for now
+            ValidationType::Pointer { .. } => unsafe {
+                PeCoffImageValidationPointer(target_image, hdr, mseg_base, mseg_size)
+            },
+            _ => Status::SUCCESS, // Skip PeCoffImageValidationMemAttr for now
         })
     }
 }
@@ -312,8 +336,8 @@ pub fn build_aux(
 fn display_test_information(aux_path: &Path, test_suite: &TestSuite) {
     println!("Test Information:");
     println!(
-        "  MmSupervisorCore Load Address: 0x{:0X}",
-        test_suite.load_address
+        "  MmSupervisor Load Address: 0x{:0X}",
+        test_suite.mm_supv_address
     );
     println!("  Aux Config: {}", aux_path.display());
     println!(
