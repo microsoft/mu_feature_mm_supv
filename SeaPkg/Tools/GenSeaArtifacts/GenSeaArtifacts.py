@@ -384,6 +384,7 @@ def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, s
     os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(sea_build_dir / "Library" / "BasePeCoffValidationLib" / "BasePeCoffValidationLib" / "OUTPUT")
     os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.pdb")
     os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+    os.environ['RUSTC_BOOTSTRAP'] = str("1")
 
     args = 'build --release'
     args += ' --bin test-aux'
