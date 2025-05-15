@@ -928,7 +928,11 @@ PeCoffImageDiffValidation (
     }
 
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "Validation Error! Dumping MmSupervisor Image\n"));
+      DEBUG ((DEBUG_ERROR, "Validation Error! Dumping Info...\n"));
+      DEBUG ((DEBUG_ERROR, "  MsegBase = \"0x%p\"\n", MsegBase));
+      DEBUG ((DEBUG_ERROR, "  MsegSize = \"0x%x\"\n", MsegSize));
+      DEBUG ((DEBUG_ERROR, "  MmSupervisorBase = \"0x%x\"\n", OriginalImageLoadAddress));
+      DEBUG ((DEBUG_ERROR, "  MmSupervisor:\n"));
       DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
       break;
     }
