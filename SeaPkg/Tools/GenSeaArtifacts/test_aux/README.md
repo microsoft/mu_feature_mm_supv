@@ -22,21 +22,21 @@ simple interface with the following two arguments:
 As mentioned above, the `-c`, `--config` argument is to pass in a configuration file that contains the information from
 a run log of the given mm supervisor core.
 
-### LoadAddress
+### MmSupervisorBase
 
 LoadAddress is the first configuration that is needed, which is a string hex representation of the address the mm
 supervisor core was loaded to during the build.
 
-`LoadAddress = "0x&BDC0000"`
+`MmSupervisorBase = "0x&BDC0000"`
 
-### MmSupervisorCore
+### MmSupervisor
 
 MmSupervisorCore is a string dump of the entire post-execution MmSupervisorCore image. This is found in the build log
 as a `DUMP_HEX` dump. This can be passed directly into the configuration file. The tool takes care of cleaning up the
 data.
 
 ``` toml
-MmSupervisorCore = '''
+MmSupervisor = '''
 13:52:40.030 :     00000000: 4D 5A 00 00 00 00 00 00-00 00 00 00 00 00 00 00  *MZ..............*
 13:52:40.030 :     00000010: 00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  *................*
 '''
