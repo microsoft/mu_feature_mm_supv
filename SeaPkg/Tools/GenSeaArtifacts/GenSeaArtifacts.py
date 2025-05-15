@@ -17,6 +17,7 @@ from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
 
 HASH_ALGORITHM = "sha256"
+AUX_CONFIG_NAME = "AuxConfig.toml"
 
 
 class GenSeaArtifacts(IUefiHelperPlugin):
@@ -56,6 +57,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir, workspace=workspace)
+            
+            # Copy the aux configuration file to the same directory as the aux file.
+            shutil.copy2(aux_config_path, stm_build_dir / AUX_CONFIG_NAME)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -168,6 +172,11 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             shutil.copy2(
                 stm_build_dir / "MmSupervisorCore.json",
                 misc_dir / "MmSupervisorCore.json"
+            )
+
+            shutil.copy2(
+                stm_build_dir / AUX_CONFIG_NAME,
+                misc_dir / AUX_CONFIG_NAME
             )
 
             # Copy over MmSupervisorCore artifacts
@@ -384,6 +393,7 @@ def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, s
     os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(sea_build_dir / "Library" / "BasePeCoffValidationLib" / "BasePeCoffValidationLib" / "OUTPUT")
     os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.pdb")
     os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+    os.environ['RUSTC_BOOTSTRAP'] = str("1")
 
     args = 'build --release'
     args += ' --bin test-aux'
