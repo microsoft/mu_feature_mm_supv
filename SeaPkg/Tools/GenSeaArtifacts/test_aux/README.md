@@ -2,7 +2,7 @@
 
 This tool is used to quickly update and validate an auxiliary file by running it's validation tests locally.
 
-Each compilation of the test-aux binary is associated with a single given compilation of the MmSupervisorCore and the
+Each compilation of the test-aux binary is associated with a single given compilation of the MmSupervisor and the
 PeCoffValidationLib. This is done by reading the following environment variables during build:
 
 `TEST_AUX_PECOFF_VALIDATION_LIB_DIR`: The directory containing the PeCoffValidationLib to link against
@@ -22,21 +22,28 @@ simple interface with the following two arguments:
 As mentioned above, the `-c`, `--config` argument is to pass in a configuration file that contains the information from
 a run log of the given mm supervisor core.
 
-### LoadAddress
+### MSEG Base / MSEG Size
 
-LoadAddress is the first configuration that is needed, which is a string hex representation of the address the mm
-supervisor core was loaded to during the build.
+A string hex representation of the base address and size of the MSEG reason during the run.
 
-`LoadAddress = "0x&BDC0000"`
+`MsegBase = "0x7BE00000"`
 
-### MmSupervisorCore
+`MsegSize = "0x1B6000"`
 
-MmSupervisorCore is a string dump of the entire post-execution MmSupervisorCore image. This is found in the build log
+### MmSupervisorBase
+
+A string hex representation of the address the mm supervisor core was loaded to during the run.
+
+`MmSupervisorBase = "0x7BDC0000"`
+
+### MmSupervisor
+
+MmSupervisor is a string dump of the entire post-execution MmSupervisor image. This is found in the build log
 as a `DUMP_HEX` dump. This can be passed directly into the configuration file. The tool takes care of cleaning up the
 data.
 
 ``` toml
-MmSupervisorCore = '''
+MmSupervisor = '''
 13:52:40.030 :     00000000: 4D 5A 00 00 00 00 00 00-00 00 00 00 00 00 00 00  *MZ..............*
 13:52:40.030 :     00000010: 00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  *................*
 '''
