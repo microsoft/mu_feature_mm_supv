@@ -1,7 +1,7 @@
 /** @file
   MM Core Main Entry Point
 
-  Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2025, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -942,8 +942,6 @@ MmSupervisorMain (
   UINT64                          StartTicker;
   UINT64                          EndTicker;
 
-  ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
-
   DEBUG ((DEBUG_INFO, "MmMain - 0x%x\n", HobStart));
 
   //
@@ -1048,10 +1046,11 @@ MmSupervisorMain (
   gMmCorePrivate->MmEntryPoint = (EFI_PHYSICAL_ADDRESS)(UINTN)MmEntryPoint;
 
   //
-  // No need to initialize memory service.
-  // It is done in constructor of StandaloneMmCoreMemoryAllocationLib(),
-  // so that the library linked with StandaloneMmCore can use AllocatePool() in constructor.
+  // Initialize memory service using free MMRAM
   //
+  DEBUG ((DEBUG_INFO, "MmInitializeMemoryServices\n"));
+  MmInitializeMemoryServices (MmramRangeCount, MmramRanges);
+  mMemoryAllocationMmst = &gMmCoreMmst;
 
   DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
   //
@@ -1066,6 +1065,8 @@ MmSupervisorMain (
   CopyMem (mMmHobStart, HobStart, mMmHobSize);
   Status = MmInstallConfigurationTable (&gMmCoreMmst, &gEfiHobListGuid, mMmHobStart, mMmHobSize);
   ASSERT_EFI_ERROR (Status);
+
+  ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
 
   //
   // Register notification for EFI_MM_CONFIGURATION_PROTOCOL registration and

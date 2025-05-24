@@ -252,6 +252,7 @@ extern UINTN                             mMmHobSize;
 extern VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
+extern EFI_MM_SYSTEM_TABLE               *mMemoryAllocationMmst;
 
 /**
   Called to initialize the memory service.
