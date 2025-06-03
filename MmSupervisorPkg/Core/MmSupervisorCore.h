@@ -235,7 +235,7 @@ typedef struct {
 //
 // MM Core Global Variables
 //
-extern MM_CORE_PRIVATE_DATA              *gMmCorePrivate;
+extern MM_CORE_PRIVATE_DATA              gMmCorePrivate;
 extern MM_CORE_PRIVATE_DATA              *gMmCoreMailbox;
 extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
