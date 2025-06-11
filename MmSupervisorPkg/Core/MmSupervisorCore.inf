@@ -203,6 +203,8 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask       ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorPrintPortsMaxSize       ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize      ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMigrateTemporaryRamFirmwareVolumes   ## CONSUMES
+
 
 [FixedPcd.X64]
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmRestrictedMemoryAccess        ## CONSUMES
