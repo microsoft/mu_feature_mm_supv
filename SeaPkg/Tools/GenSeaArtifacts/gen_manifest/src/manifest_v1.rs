@@ -129,9 +129,9 @@ impl SeaManifestV1 {
     ) -> Result<Self> {
         let (major, minor, patch, pre_release) = Self::parse_semantic_version(&sea_version)?;
 
-        if pre_release {
-            security_version = 0;
-        }
+        //if pre_release {
+        //    security_version = 0;
+        //}
 
         let algorithm_count = algorithms.len() as u8;
         let (algorithm_info, digest_data) = Self::generate_algorithm_info(&file, algorithms)?;
