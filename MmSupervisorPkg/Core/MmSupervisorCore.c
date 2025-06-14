@@ -21,6 +21,7 @@
 
 #include <Guid/MmCommonRegion.h>
 #include <Library/SecurePolicyLib.h>
+#include <Library/HobPrintLib.h>
 
 EFI_STATUS
 MmCoreFfsFindMmDriver (
@@ -711,23 +712,41 @@ DiscoverStandaloneMmDriversInFvHobs (
   EFI_PEI_HOB_POINTERS            Hob;
   EFI_STATUS                      Status;
 
+  UINT16  HobType;
+
   Hob.Raw = GetHobList ();
   if (Hob.Raw == NULL) {
     return EFI_NOT_FOUND;
   }
 
-  do {
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
-    if (Hob.Raw != NULL) {
-      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
+  // If PcdMigrateTemporaryRamFirmwareVolumes is set, the
+  // migration of temporary RAM firmware volumes can end up
+  // unmapping the fvs, so use Fv2 hobs.
+  if (FixedPcdGetBool (PcdMigrateTemporaryRamFirmwareVolumes)) {
+    HobType = EFI_HOB_TYPE_FV2;
+  } else {
+    HobType = EFI_HOB_TYPE_FV;
+  }
 
-      DEBUG ((
-        DEBUG_INFO,
-        "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __FUNCTION__,
-        (UINTN)FwVolHeader,
-        FwVolHeader->FvLength
-        ));
+  do {
+    Hob.Raw = GetNextHob (HobType, Hob.Raw);
+    if (Hob.Raw != NULL) {
+      DEBUG ((DEBUG_INFO, "%a: FV address - 0x%x\n", __func__, Hob.FirmwareVolume->BaseAddress));
+      DEBUG ((DEBUG_INFO, "%a: FV size    - 0x%x\n", __func__, Hob.FirmwareVolume->Length));
+
+      if (Hob.FirmwareVolume->Length == 0x00) {
+        DEBUG ((
+          DEBUG_INFO,
+          "%a: Skip invalid FV- 0x%x/0x%x\n",
+          __func__,
+          Hob.FirmwareVolume->BaseAddress,
+          Hob.FirmwareVolume->Length
+          ));
+        Hob.Raw = GetNextHob (HobType, GET_NEXT_HOB (Hob));
+        continue;
+      }
+
+      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
 
       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
       if (ExtHeaderOffset != 0) {
@@ -776,7 +795,7 @@ DiscoverStandaloneMmDriversInFvHobs (
         ASSERT_EFI_ERROR (Status);
       }
 
-      Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
+      Hob.Raw = GetNextHob (HobType, GET_NEXT_HOB (Hob));
     }
   } while (Hob.Raw != NULL);
 
