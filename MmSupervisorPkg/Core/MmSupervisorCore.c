@@ -1,7 +1,7 @@
 /** @file
   MM Core Main Entry Point
 
-  Copyright (c) 2009 - 2023, Intel Corporation. All rights reserved.<BR>
+  Copyright (c) 2009 - 2025, Intel Corporation. All rights reserved.<BR>
   Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
@@ -40,7 +40,7 @@ EFI_HANDLE  mMmCpuHandle = NULL;
 //
 // Physical pointer to private structure shared between MM IPL and the MM Core
 //
-MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
+MM_CORE_PRIVATE_DATA  gMmCorePrivate;
 MM_CORE_PRIVATE_DATA  *gMmCoreMailbox = NULL;
 
 //
@@ -260,11 +260,11 @@ PrepareCommonBuffers (
 
   // Here we disclose some fundamental information to ring 3 world, such as MmRanges
   ZeroMem (SupervisorToUserDataBuffer, sizeof (MM_SUPV_USER_COMMON_BUFFER));
-  SupervisorToUserDataBuffer->gMmCorePrivateDummy.MmramRangeCount = gMmCorePrivate->MmramRangeCount;
+  SupervisorToUserDataBuffer->gMmCorePrivateDummy.MmramRangeCount = gMmCorePrivate.MmramRangeCount;
   Status                                                          = MmAllocatePages (
                                                                       AllocateAnyPages,
                                                                       EfiRuntimeServicesData,
-                                                                      EFI_SIZE_TO_PAGES (gMmCorePrivate->MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR)),
+                                                                      EFI_SIZE_TO_PAGES (gMmCorePrivate.MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR)),
                                                                       &(SupervisorToUserDataBuffer->gMmCorePrivateDummy.MmramRanges)
                                                                       );
   ASSERT_EFI_ERROR (Status);
@@ -275,8 +275,8 @@ PrepareCommonBuffers (
 
   CopyMem (
     (VOID *)SupervisorToUserDataBuffer->gMmCorePrivateDummy.MmramRanges,
-    (VOID *)gMmCorePrivate->MmramRanges,
-    gMmCorePrivate->MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR)
+    (VOID *)gMmCorePrivate.MmramRanges,
+    gMmCorePrivate.MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR)
     );
   HobData = GetNextGuidHob (&gMmCoreDataHobGuid, mMmHobStart);
   if (HobData != NULL) {
@@ -443,17 +443,17 @@ MmEntryPoint (
   //
   if (gMmCoreMailbox != NULL) {
     gMmCoreMailbox->InMm = TRUE;
-    CopyMem (gMmCorePrivate, gMmCoreMailbox, sizeof (MM_CORE_PRIVATE_DATA));
+    CopyMem (&gMmCorePrivate, gMmCoreMailbox, sizeof (MM_CORE_PRIVATE_DATA));
   }
 
-  gMmCorePrivate->InMm = TRUE;
+  gMmCorePrivate.InMm = TRUE;
 
   //
   // Check to see if this is a Synchronous MMI sent through the MM Communication
   // Protocol or an Asynchronous MMI
   //
-  CommunicationBuffer = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCorePrivate->CommunicationBuffer;
-  BufferSize          = gMmCorePrivate->BufferSize;
+  CommunicationBuffer = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCorePrivate.CommunicationBuffer;
+  BufferSize          = gMmCorePrivate.BufferSize;
   if ((VOID *)CommunicationBuffer != NULL) {
     //
     // Synchronous MMI for MM Core or request from Communicate protocol
@@ -470,8 +470,8 @@ MmEntryPoint (
 
       Status = SafeUint64Sub (BufferSize, OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data), &BufferSize);
       if (EFI_ERROR (Status)) {
-        gMmCorePrivate->CommunicationBuffer = 0;
-        gMmCorePrivate->ReturnStatus        = EFI_ACCESS_DENIED;
+        gMmCorePrivate.CommunicationBuffer = 0;
+        gMmCorePrivate.ReturnStatus        = EFI_ACCESS_DENIED;
         // Note: this will cause another difference compared to PiSmmCore,
         // as the normal one will handle asynchronous MMI sources.
         goto Cleanup;
@@ -498,9 +498,9 @@ MmEntryPoint (
         ASSERT (FALSE);
       }
 
-      gMmCorePrivate->BufferSize          = BufferSize;
-      gMmCorePrivate->CommunicationBuffer = 0;
-      gMmCorePrivate->ReturnStatus        = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+      gMmCorePrivate.BufferSize          = BufferSize;
+      gMmCorePrivate.CommunicationBuffer = 0;
+      gMmCorePrivate.ReturnStatus        = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
     } else if ((CommunicationBuffer == mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart) &&
                (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)))
     {
@@ -513,8 +513,8 @@ MmEntryPoint (
 
       Status = SafeUint64Sub (BufferSize, OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data), &BufferSize);
       if (EFI_ERROR (Status)) {
-        gMmCorePrivate->CommunicationBuffer = 0;
-        gMmCorePrivate->ReturnStatus        = EFI_ACCESS_DENIED;
+        gMmCorePrivate.CommunicationBuffer = 0;
+        gMmCorePrivate.ReturnStatus        = EFI_ACCESS_DENIED;
         goto Cleanup;
       }
 
@@ -537,9 +537,9 @@ MmEntryPoint (
         ASSERT (FALSE);
       }
 
-      gMmCorePrivate->BufferSize          = BufferSize;
-      gMmCorePrivate->CommunicationBuffer = 0;
-      gMmCorePrivate->ReturnStatus        = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+      gMmCorePrivate.BufferSize          = BufferSize;
+      gMmCorePrivate.CommunicationBuffer = 0;
+      gMmCorePrivate.ReturnStatus        = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
       //
       // Do not handle asynchronous MMI sources. This cannot be it...
       //
@@ -548,8 +548,8 @@ MmEntryPoint (
       //
       // If CommunicationBuffer is not in valid address scope, return EFI_ACCESS_DENIED
       //
-      gMmCorePrivate->CommunicationBuffer = 0;
-      gMmCorePrivate->ReturnStatus        = EFI_ACCESS_DENIED;
+      gMmCorePrivate.CommunicationBuffer = 0;
+      gMmCorePrivate.ReturnStatus        = EFI_ACCESS_DENIED;
     }
   }
 
@@ -566,9 +566,9 @@ Cleanup:
   //
   // Clear the InMm flag as we are going to leave MM
   //
-  gMmCorePrivate->InMm = FALSE;
+  gMmCorePrivate.InMm = FALSE;
   if (gMmCoreMailbox != NULL) {
-    CopyMem (gMmCoreMailbox, gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
+    CopyMem (gMmCoreMailbox, &gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
     gMmCoreMailbox->InMm = FALSE;
   }
 
@@ -595,19 +595,19 @@ MmConfigurationMmNotify (
   //
   // Register the MM Entry Point provided by the MM Core with the MM COnfiguration protocol
   //
-  Status = MmConfiguration->RegisterMmEntry (MmConfiguration, (EFI_MM_ENTRY_POINT)(UINTN)gMmCorePrivate->MmEntryPoint);
+  Status = MmConfiguration->RegisterMmEntry (MmConfiguration, (EFI_MM_ENTRY_POINT)(UINTN)gMmCorePrivate.MmEntryPoint);
   ASSERT_EFI_ERROR (Status);
 
   //
   // Set flag to indicate that the MM Entry Point has been registered which
   // means that MMIs are now fully operational.
   //
-  gMmCorePrivate->MmEntryPointRegistered = TRUE;
+  gMmCorePrivate.MmEntryPointRegistered = TRUE;
 
   //
   // Print debug message showing MM Core entry point address.
   //
-  DEBUG ((DEBUG_INFO, "MM Core registered MM Entry Point address %p\n", (VOID *)(UINTN)gMmCorePrivate->MmEntryPoint));
+  DEBUG ((DEBUG_INFO, "MM Core registered MM Entry Point address %p\n", (VOID *)(UINTN)gMmCorePrivate.MmEntryPoint));
   return EFI_SUCCESS;
 }
 
@@ -664,14 +664,14 @@ MmCoreInstallLoadedImage (
   mMmCoreDriverEntry->LoadedImage->DeviceHandle = NULL;
   mMmCoreDriverEntry->LoadedImage->FilePath     = NULL;
 
-  mMmCoreDriverEntry->LoadedImage->ImageBase     = (VOID *)(UINTN)gMmCorePrivate->MmCoreImageBase;
-  mMmCoreDriverEntry->LoadedImage->ImageSize     = gMmCorePrivate->MmCoreImageSize;
+  mMmCoreDriverEntry->LoadedImage->ImageBase     = (VOID *)(UINTN)gMmCorePrivate.MmCoreImageBase;
+  mMmCoreDriverEntry->LoadedImage->ImageSize     = gMmCorePrivate.MmCoreImageSize;
   mMmCoreDriverEntry->LoadedImage->ImageCodeType = EfiRuntimeServicesCode;
   mMmCoreDriverEntry->LoadedImage->ImageDataType = EfiRuntimeServicesData;
 
-  mMmCoreDriverEntry->ImageEntryPoint = gMmCorePrivate->MmCoreEntryPoint;
-  mMmCoreDriverEntry->ImageBuffer     = gMmCorePrivate->MmCoreImageBase;
-  mMmCoreDriverEntry->NumberOfPage    = EFI_SIZE_TO_PAGES ((UINTN)gMmCorePrivate->MmCoreImageSize);
+  mMmCoreDriverEntry->ImageEntryPoint = gMmCorePrivate.MmCoreEntryPoint;
+  mMmCoreDriverEntry->ImageBuffer     = gMmCorePrivate.MmCoreImageBase;
+  mMmCoreDriverEntry->NumberOfPage    = EFI_SIZE_TO_PAGES ((UINTN)gMmCorePrivate.MmCoreImageSize);
 
   //
   // Create a new image handle in the MM handle database for the MM Driver
@@ -747,7 +747,7 @@ DiscoverStandaloneMmDriversInFvHobs (
                       );
       if (!EFI_ERROR (Status)) {
         if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
-          gMmCorePrivate->StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
+          gMmCorePrivate.StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
           DEBUG ((
             DEBUG_INFO,
             "[%a]   Discovered Standalone MM Core [%g] in FV at 0x%x.\n",
@@ -810,7 +810,7 @@ InitializePolicy (
   do {
     Status =  FfsFindNextFile (
                 EFI_FV_FILETYPE_FREEFORM,
-                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate->StandaloneBfvAddress,
+                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate.StandaloneBfvAddress,
                 &FileHeader
                 );
     if (EFI_ERROR (Status)) {
@@ -942,8 +942,6 @@ MmSupervisorMain (
   UINT64                          StartTicker;
   UINT64                          EndTicker;
 
-  ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
-
   DEBUG ((DEBUG_INFO, "MmMain - 0x%x\n", HobStart));
 
   //
@@ -957,12 +955,11 @@ MmSupervisorMain (
     // Allocate and zero memory for a MM_CORE_PRIVATE_DATA table and then
     // initialise it
     //
-    gMmCorePrivate = (MM_CORE_PRIVATE_DATA *)AllocateRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)));
-    SetMem ((VOID *)(UINTN)gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA), 0);
-    gMmCorePrivate->Signature              = MM_CORE_PRIVATE_DATA_SIGNATURE;
-    gMmCorePrivate->MmEntryPointRegistered = FALSE;
-    gMmCorePrivate->InMm                   = FALSE;
-    gMmCorePrivate->ReturnStatus           = EFI_SUCCESS;
+    SetMem ((VOID *)&gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA), 0);
+    gMmCorePrivate.Signature              = MM_CORE_PRIVATE_DATA_SIGNATURE;
+    gMmCorePrivate.MmEntryPointRegistered = FALSE;
+    gMmCorePrivate.InMm                   = FALSE;
+    gMmCorePrivate.ReturnStatus           = EFI_SUCCESS;
 
     //
     // Extract the MMRAM ranges from the MMRAM descriptor HOB
@@ -986,24 +983,14 @@ MmSupervisorMain (
     // Copy the MMRAM ranges into MM_CORE_PRIVATE_DATA table just in case any
     // code relies on them being present there
     //
-    gMmCorePrivate->MmramRangeCount = (UINT64)MmramRangeCount;
-    gMmCorePrivate->MmramRanges     =
-      (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePool (MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
-    ASSERT (gMmCorePrivate->MmramRanges != 0);
-    CopyMem (
-      (VOID *)(UINTN)gMmCorePrivate->MmramRanges,
-      MmramRanges,
-      MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR)
-      );
+    gMmCorePrivate.MmramRangeCount = (UINT64)MmramRangeCount;
   } else {
     DataInHob      = GET_GUID_HOB_DATA (GuidHob);
     gMmCoreMailbox = (MM_CORE_PRIVATE_DATA *)(UINTN)DataInHob->Address;
-    gMmCorePrivate = (MM_CORE_PRIVATE_DATA *)AllocateRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)));
-    ASSERT (gMmCorePrivate != NULL);
-    SetMem ((VOID *)(UINTN)gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA), 0);
-    CopyMem (gMmCorePrivate, gMmCoreMailbox, sizeof (MM_CORE_PRIVATE_DATA));
-    MmramRanges     = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
-    MmramRangeCount = (UINTN)gMmCorePrivate->MmramRangeCount;
+    SetMem ((VOID *)&gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA), 0);
+    CopyMem (&gMmCorePrivate, gMmCoreMailbox, sizeof (MM_CORE_PRIVATE_DATA));
+    MmramRanges     = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate.MmramRanges;
+    MmramRangeCount = (UINTN)gMmCorePrivate.MmramRangeCount;
   }
 
   //
@@ -1021,6 +1008,13 @@ MmSupervisorMain (
   }
 
   //
+  // Initialize memory service using free MMRAM
+  //
+  DEBUG ((DEBUG_INFO, "MmInitializeMemoryServices\n"));
+  MmInitializeMemoryServices (MmramRangeCount, MmramRanges);
+  mMemoryAllocationMmst = &gMmCoreMmst;
+
+  //
   // Copy the MMRAM ranges into private MMRAM
   //
   mMmramRangeCount = MmramRangeCount;
@@ -1030,28 +1024,10 @@ MmSupervisorMain (
   ASSERT (mMmramRanges != NULL);
   CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
 
-  //
-  // Discover Standalone MM drivers for dispatch
-  //
-  StartTicker = GetPerformanceCounter ();
-  Status      = DiscoverStandaloneMmDriversInFvHobs ();
-  EndTicker   = GetPerformanceCounter ();
-  ASSERT_EFI_ERROR (Status);
-  DEBUG ((
-    DEBUG_INFO,
-    "Mm Dispatch StandaloneBfvAddress - 0x%08x, consumed %dms.\n",
-    gMmCorePrivate->StandaloneBfvAddress,
-    (GetTimeInNanoSecond (EndTicker - StartTicker) / 1000000)
-    ));
-
-  gMmCorePrivate->Mmst         = (EFI_PHYSICAL_ADDRESS)(UINTN)&gMmCoreMmst;
-  gMmCorePrivate->MmEntryPoint = (EFI_PHYSICAL_ADDRESS)(UINTN)MmEntryPoint;
-
-  //
-  // No need to initialize memory service.
-  // It is done in constructor of StandaloneMmCoreMemoryAllocationLib(),
-  // so that the library linked with StandaloneMmCore can use AllocatePool() in constructor.
-  //
+  // Then we can use our own copy of MMRAM ranges
+  gMmCorePrivate.MmramRanges  = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmramRanges;
+  gMmCorePrivate.Mmst         = (EFI_PHYSICAL_ADDRESS)(UINTN)&gMmCoreMmst;
+  gMmCorePrivate.MmEntryPoint = (EFI_PHYSICAL_ADDRESS)(UINTN)MmEntryPoint;
 
   DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
   //
@@ -1066,6 +1042,22 @@ MmSupervisorMain (
   CopyMem (mMmHobStart, HobStart, mMmHobSize);
   Status = MmInstallConfigurationTable (&gMmCoreMmst, &gEfiHobListGuid, mMmHobStart, mMmHobSize);
   ASSERT_EFI_ERROR (Status);
+
+  ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
+
+  //
+  // Discover Standalone MM drivers for dispatch
+  //
+  StartTicker = GetPerformanceCounter ();
+  Status      = DiscoverStandaloneMmDriversInFvHobs ();
+  EndTicker   = GetPerformanceCounter ();
+  ASSERT_EFI_ERROR (Status);
+  DEBUG ((
+    DEBUG_INFO,
+    "Mm Dispatch StandaloneBfvAddress - 0x%08x, consumed %dms.\n",
+    gMmCorePrivate.StandaloneBfvAddress,
+    (GetTimeInNanoSecond (EndTicker - StartTicker) / 1000000)
+    ));
 
   //
   // Register notification for EFI_MM_CONFIGURATION_PROTOCOL registration and
@@ -1129,7 +1121,7 @@ MmSupervisorMain (
   mCoreInitializationComplete = TRUE;
 
   if (gMmCoreMailbox != NULL) {
-    CopyMem (gMmCoreMailbox, gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
+    CopyMem (gMmCoreMailbox, &gMmCorePrivate, sizeof (MM_CORE_PRIVATE_DATA));
   }
 
   PostRelocationRun ();

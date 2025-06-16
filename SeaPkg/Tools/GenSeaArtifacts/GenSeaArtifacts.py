@@ -17,6 +17,7 @@ from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
 
 HASH_ALGORITHM = "sha256"
+AUX_CONFIG_NAME = "AuxConfig.toml"
 
 
 class GenSeaArtifacts(IUefiHelperPlugin):
@@ -56,6 +57,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             temp_out_dir = stm_build_dir / "temp_out.inc"
 
             aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, stm_build_dir, workspace=workspace)
+            
+            # Copy the aux configuration file to the same directory as the aux file.
+            shutil.copy2(aux_config_path, stm_build_dir / AUX_CONFIG_NAME)
 
             cmd = "BinToPcd.py"
             args = f"-i {aux_path}"
@@ -123,7 +127,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path):
+    def generate_sea_artifacts(mm_supervisor_build_dir: Path, sea_build_dir: Path, output_dir: Path, workspace = None):
         """Moves all the necessary SEA related artifacts to the directory specified by output_dir.
 
         Generates the following artifacts:
@@ -134,6 +138,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             mm_supervisor_build_dir: Path to the MM Supervisor build output.
             sea_build_dir: Path to the Sea Package build output.
             output_dir: Path to place the artifacts.
+            workspace: Path to the workspace. If not provided, the current directory is used.
         """
         try:
             stm_build_dir = sea_build_dir / "Core" / "Stm" / "DEBUG"
@@ -146,6 +151,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
             misc_dir = output_dir / "Misc"
             misc_dir.mkdir(exist_ok=True)
+
+            # Generate the test-aux binary, place it in misc_dir
+            generate_test_aux_binary(misc_dir, mm_supervisor_build_dir, sea_build_dir, workspace=workspace)
 
             # Copy over STM artifacts
             shutil.copy2(
@@ -164,6 +172,11 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             shutil.copy2(
                 stm_build_dir / "MmSupervisorCore.json",
                 misc_dir / "MmSupervisorCore.json"
+            )
+
+            shutil.copy2(
+                stm_build_dir / AUX_CONFIG_NAME,
+                misc_dir / AUX_CONFIG_NAME
             )
 
             # Copy over MmSupervisorCore artifacts
@@ -291,18 +304,18 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     Args:
         aux_config_path: Path to the aux gen config file.
         mm_supervisor_build_dir: Path to the MM Supervisor build output.
-        scopes: A list of scopes to activate for rule filtering. See gen_aux --help for more information.
+        scopes: A list of scopes to activate for rule filtering. See create-aux --help for more information.
         output_dir: Path to place the artifacts.
 
     Raises:
-        RuntimeError: if gen_aux fails
+        RuntimeError: if create-aux fails
     """
 
     output_path = output_dir / 'MmSupervisorCore.aux'
     manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
     args = f"run --manifest-path {str(manifest_path)}"
-    args += " --bin gen_aux --"
+    args += " --bin create-aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
     args += f" --output {str(output_path)}"
@@ -364,3 +377,31 @@ def generate_stm_binary(stm_dll: Path, output_dir: Path):
     ret = RunCmd(cmd, args)
     if ret != 0:
         raise RuntimeError("GenStm failed. Review command output.")
+
+def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, sea_build_dir: Path, workspace = None):
+    """Generates the test-aux binary.
+
+    Args:
+        output_path (Path): Path to place the test-aux binary
+        mm_supervisor_build_dir (Path): Path to the MM Supervisor build output.
+        sea_build_dir (Path): Path to the Sea Package build output.
+        workspace (Path): Path to the workspace. If not provided, the current directory is used.
+    """
+
+    manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
+
+    os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(sea_build_dir / "Library" / "BasePeCoffValidationLib" / "BasePeCoffValidationLib" / "OUTPUT")
+    os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.pdb")
+    os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+    os.environ['RUSTC_BOOTSTRAP'] = str("1")
+
+    args = 'build --release'
+    args += ' --bin test-aux'
+    args += f' --manifest-path {str(manifest_path)}'
+
+    ret = RunCmd("cargo", args)
+    if ret != 0:
+        raise RuntimeError("Failed to compile test-aux. Is your Cargo workspace setup correctly?")
+
+    bin_path = manifest_path.parent / "target" / "release" / "test-aux.exe"
+    bin_path.rename(output_path / "test-aux.exe")

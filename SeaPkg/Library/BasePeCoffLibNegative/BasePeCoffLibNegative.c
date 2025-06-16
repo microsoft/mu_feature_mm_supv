@@ -811,6 +811,7 @@ PeCoffImageDiffValidation (
   IN      EFI_PHYSICAL_ADDRESS                PageTableBase
   )
 {
+  EFI_PHYSICAL_ADDRESS           OriginalImageLoadAddress;
   IMAGE_VALIDATION_ENTRY_HEADER  *ImageValidationEntryHdr;
   IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   UINTN                          Index;
@@ -859,7 +860,8 @@ PeCoffImageDiffValidation (
     return Status;
   }
 
-  ImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
+  ImageValidationEntryHdr  = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
+  OriginalImageLoadAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(UINT8 *)OriginalImageBaseAddress;
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
     if ((UINT8 *)(ImageValidationEntryHdr) >= ((UINT8 *)ImageValidationHdr + ImageValidationHdr->Size)) {
@@ -906,7 +908,7 @@ PeCoffImageDiffValidation (
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_MEM_ATTR *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_SELF_REF:
-        Status                      = PeCoffImageValidationSelfRef (OriginalImageBaseAddress, ImageValidationEntryHdr);
+        Status                      = PeCoffImageValidationSelfRef (OriginalImageBaseAddress, ImageValidationEntryHdr, OriginalImageLoadAddress);
         NextImageValidationEntryHdr = (IMAGE_VALIDATION_ENTRY_HEADER *)((IMAGE_VALIDATION_SELF_REF *)ImageValidationEntryHdr + 1);
         break;
       case IMAGE_VALIDATION_ENTRY_TYPE_POINTER:
@@ -926,6 +928,12 @@ PeCoffImageDiffValidation (
     }
 
     if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "Validation Error! Dumping Info...\n"));
+      DEBUG ((DEBUG_ERROR, "  MsegBase = \"0x%p\"\n", MsegBase));
+      DEBUG ((DEBUG_ERROR, "  MsegSize = \"0x%x\"\n", MsegSize));
+      DEBUG ((DEBUG_ERROR, "  MmSupervisorBase = \"0x%x\"\n", OriginalImageLoadAddress));
+      DEBUG ((DEBUG_ERROR, "  MmSupervisor:\n"));
+      DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
       break;
     }
 

@@ -498,7 +498,7 @@ InitializePolicy (
   do {
     Status =  FfsFindNextFile (
                 EFI_FV_FILETYPE_FREEFORM,
-                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate->StandaloneBfvAddress,
+                (EFI_FIRMWARE_VOLUME_HEADER *)gMmCorePrivate.StandaloneBfvAddress,
                 &FileHeader
                 );
     if (EFI_ERROR (Status)) {
