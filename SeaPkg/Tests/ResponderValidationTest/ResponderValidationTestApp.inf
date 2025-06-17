@@ -32,30 +32,15 @@
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
   SeaPkg/SeaPkg.dec
-  UefiTestingPkg/UefiTestingPkg.dec
 
 [LibraryClasses]
   BaseLib
   BaseMemoryLib
-  DebugLib
   PrintLib
   UefiApplicationEntryPoint
   UefiLib
-  UnitTestLib
   ShellLib
-  DxeServicesLib
+  StmLib
 
 [Guids]
-  gSeaValidationTestHandlerGuid
-  gMmSupervisorCommunicationRegionTableGuid
   gEfiEventExitBootServicesGuid
-
-[Protocols]
-  gMmSupervisorCommunicationProtocolGuid
-  gEfiTcg2ProtocolGuid
-
-[Pcd]
-  gEfiSeaPkgTokenSpaceGuid.PcdAuxBinFile                   ## CONSUMES
-  gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinHash              ## CONSUMES
-  gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinSize              ## CONSUMES
-  gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash         ## CONSUMES
