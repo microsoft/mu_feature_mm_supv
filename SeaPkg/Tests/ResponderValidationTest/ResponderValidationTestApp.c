@@ -24,7 +24,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #define GET_MEMORY_MAP_RETRIES  1000
 
-STATIC EFI_EVENT  mExitBootServicesEvent       = NULL;
+// STATIC EFI_EVENT  mExitBootServicesEvent       = NULL;
 EFI_HANDLE        gTestImageHandle = NULL;
 VOID              *TestVmxOnBuffer = NULL;
 VOID              *TestVmcsBuffer = NULL;
@@ -176,13 +176,13 @@ ResponderValidationTestAppEntry (
   //
   // Get the EFI memory map.
   //
-  UINTN                  Retry  = 0;
-  EFI_MEMORY_DESCRIPTOR  *EfiMemoryMap = NULL;
-  UINTN                  EfiMemoryMapSize;
-  EFI_STATUS             Status;
-  UINTN                  EfiMapKey;
-  UINTN                  EfiDescriptorSize;
-  UINT32                 EfiDescriptorVersion;
+  // UINTN                  Retry  = 0;
+  // EFI_MEMORY_DESCRIPTOR  *EfiMemoryMap = NULL;
+  // UINTN                  EfiMemoryMapSize;
+  EFI_STATUS             Status = EFI_SUCCESS;
+  // UINTN                  EfiMapKey;
+  // UINTN                  EfiDescriptorSize;
+  // UINT32                 EfiDescriptorVersion;
 
   TestVmxOnBuffer = AllocateAlignedPages (4, EFI_PAGE_SIZE);
   if (TestVmxOnBuffer == NULL) {
@@ -200,62 +200,64 @@ ResponderValidationTestAppEntry (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  // Install EBS callback handler
-  Status = gBS->CreateEventEx (
-        EVT_NOTIFY_SIGNAL,
-        (TPL_APPLICATION + 1),
-        InvokeVmcalls,
-        gImageHandle,
-        &gEfiEventExitBootServicesGuid,
-        &mExitBootServicesEvent
-        );
+  InvokeVmcalls (NULL, NULL);
 
-  do {
-    if (EfiMemoryMap != NULL) {
-      FreePool (EfiMemoryMap);
-    }
+  // // Install EBS callback handler
+  // Status = gBS->CreateEventEx (
+  //       EVT_NOTIFY_SIGNAL,
+  //       (TPL_APPLICATION + 1),
+  //       InvokeVmcalls,
+  //       gImageHandle,
+  //       &gEfiEventExitBootServicesGuid,
+  //       &mExitBootServicesEvent
+  //       );
 
-    EfiMemoryMapSize = 0;
-    EfiMemoryMap     = NULL;
-    Status           = gBS->GetMemoryMap (
-                              &EfiMemoryMapSize,
-                              EfiMemoryMap,
-                              &EfiMapKey,
-                              &EfiDescriptorSize,
-                              &EfiDescriptorVersion
-                              );
-    if ((Status != EFI_BUFFER_TOO_SMALL) || !EfiMemoryMapSize) {
-      Print (L"GetMemoryMap Error %r\n", Status);
-      return EFI_BAD_BUFFER_SIZE;
-    }
+  // do {
+  //   if (EfiMemoryMap != NULL) {
+  //     FreePool (EfiMemoryMap);
+  //   }
 
-    EfiMemoryMapSize += EfiMemoryMapSize + 64 * EfiDescriptorSize;
-    EfiMemoryMap      = AllocateZeroPool (EfiMemoryMapSize);
-    if (EfiMemoryMap == NULL) {
-      return EFI_OUT_OF_RESOURCES;
-    }
+  //   EfiMemoryMapSize = 0;
+  //   EfiMemoryMap     = NULL;
+  //   Status           = gBS->GetMemoryMap (
+  //                             &EfiMemoryMapSize,
+  //                             EfiMemoryMap,
+  //                             &EfiMapKey,
+  //                             &EfiDescriptorSize,
+  //                             &EfiDescriptorVersion
+  //                             );
+  //   if ((Status != EFI_BUFFER_TOO_SMALL) || !EfiMemoryMapSize) {
+  //     Print (L"GetMemoryMap Error %r\n", Status);
+  //     return EFI_BAD_BUFFER_SIZE;
+  //   }
 
-    Status = gBS->GetMemoryMap (
-                    &EfiMemoryMapSize,
-                    EfiMemoryMap,
-                    &EfiMapKey,
-                    &EfiDescriptorSize,
-                    &EfiDescriptorVersion
-                    );
-    if (EFI_ERROR (Status)) {
-      Print (L"GetMemoryMap Error %r\n", Status);
-      return Status;
-    }
+  //   EfiMemoryMapSize += EfiMemoryMapSize + 64 * EfiDescriptorSize;
+  //   EfiMemoryMap      = AllocateZeroPool (EfiMemoryMapSize);
+  //   if (EfiMemoryMap == NULL) {
+  //     return EFI_OUT_OF_RESOURCES;
+  //   }
 
-    //
-    // Create exit boot services event
-    //
-    // Print (L"Calling ExitBootServices - Retry = %d\n", Retry);
-    Status = gBS->ExitBootServices (
-                    gTestImageHandle,
-                    EfiMapKey
-                    );
-  } while (EFI_ERROR (Status) && Retry++ < GET_MEMORY_MAP_RETRIES);
+  //   Status = gBS->GetMemoryMap (
+  //                   &EfiMemoryMapSize,
+  //                   EfiMemoryMap,
+  //                   &EfiMapKey,
+  //                   &EfiDescriptorSize,
+  //                   &EfiDescriptorVersion
+  //                   );
+  //   if (EFI_ERROR (Status)) {
+  //     Print (L"GetMemoryMap Error %r\n", Status);
+  //     return Status;
+  //   }
+
+  //   //
+  //   // Create exit boot services event
+  //   //
+  //   // Print (L"Calling ExitBootServices - Retry = %d\n", Retry);
+  //   Status = gBS->ExitBootServices (
+  //                   gTestImageHandle,
+  //                   EfiMapKey
+  //                   );
+  // } while (EFI_ERROR (Status) && Retry++ < GET_MEMORY_MAP_RETRIES);
 
   if (EFI_ERROR (Status)) {
     Print (L"ERROR - Exit Boot Services returned %r\n", Status);
