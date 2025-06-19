@@ -124,7 +124,8 @@ InvokeVmcalls (
 
   // Ready to get capabilities from SEA through VMCALL
   Print (L"%a - Getting capabilities from SEA...\n", __func__);
-  Ret = AsmVmCall (SEA_API_GET_CAPABILITIES, (UINT32)(UINTN)TestCommBuffer, 0, 0);
+  ZeroMem (TestCommBuffer, EFI_PAGE_SIZE);
+  Ret = AsmVmCall (SEA_API_GET_CAPABILITIES, (UINT32)(UINTN)TestCommBuffer, 0, 1);
   Print (L"%a - Getting capabilities completed - 0x%x!\n", __func__, Ret);
 
   if (Ret != STM_SUCCESS) {
@@ -133,6 +134,7 @@ InvokeVmcalls (
   }
 
   Print (L"%a - Getting resources from SEA...\n", __func__);
+  ZeroMem (TestCommBuffer, EFI_PAGE_SIZE);
   Ret = AsmVmCall (SEA_API_GET_RESOURCES, 0, 0, 0);
   Print (L"%a - Getting resources completed - 0x%x!\n", __func__, Ret);
 
@@ -142,7 +144,8 @@ InvokeVmcalls (
   }
 
   Print (L"%a - Getting resources with buffer size %d...\n", __func__, EFI_PAGE_SIZE);
-  Ret = AsmVmCall (SEA_API_GET_RESOURCES, (UINT32)(UINTN)TestCommBuffer, 1, 0);
+  ZeroMem (TestCommBuffer, EFI_PAGE_SIZE);
+  Ret = AsmVmCall (SEA_API_GET_RESOURCES, (UINT32)(UINTN)TestCommBuffer, 0, 1);
   Print (L"%a - BSP getting resources completed - 0x%x!\n", __func__, Ret);
 
   if (Ret != STM_SUCCESS) {
