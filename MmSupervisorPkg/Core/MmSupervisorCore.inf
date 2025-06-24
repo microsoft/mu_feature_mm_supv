@@ -236,6 +236,7 @@
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
+  gMmCoreDataHobGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
