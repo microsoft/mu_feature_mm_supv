@@ -63,6 +63,7 @@ array.index = 'Optional[Int]'|'Optional[Array[Int;2]]'
 array.sentinel = 'Optional[Boolean]'
 validation.type = 'Required[String]'
 reviewed-by = 'Optional[Array[String]]'
+remarks = 'Optional[String]'
 ```
 
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
@@ -74,6 +75,7 @@ reviewed-by = 'Optional[Array[String]]'
 settings in the `[[rule]]`.
 - `reviewed-by`: A list of reviewers using git sign-off format of `First Last <email>`. This value is passed through to
 the final report.
+- `remarks`: Additional context to this rule / symbol and why the validation type was selected.
 
 #### Validation Type: None
 
