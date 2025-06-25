@@ -117,7 +117,8 @@ fn main() -> Result<()> {
         .iter()
         .map(|entry| {
             let name = metadata
-                .name_from_address(&entry.offset)
+                .context_from_address(&entry.offset)
+                .map(|c| c.name.clone())
                 .unwrap_or("Padding".to_string());
             (name, entry)
         })
