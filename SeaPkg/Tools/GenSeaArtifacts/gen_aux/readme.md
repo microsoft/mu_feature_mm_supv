@@ -63,6 +63,7 @@ array.index = 'Optional[Int]'|'Optional[Array[Int;2]]'
 array.sentinel = 'Optional[Boolean]'
 validation.type = 'Required[String]'
 reviewed-by = 'Optional[Array[String]]'
+last-reviewed = 'Optional[String]'
 remarks = 'Optional[String]'
 ```
 
@@ -75,6 +76,7 @@ remarks = 'Optional[String]'
 settings in the `[[rule]]`.
 - `reviewed-by`: A list of reviewers using git sign-off format of `First Last <email>`. This value is passed through to
 the final report.
+- `last-reviewed`: The date this rule was last reviewed, with the format YYYY-MM-DD.
 - `remarks`: Additional context to this rule / symbol and why the validation type was selected.
 
 #### Validation Type: None
