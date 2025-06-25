@@ -102,9 +102,35 @@ pub struct Rule {
         deserialize_with = "deserialize_reviewers"
     )]
     pub reviewers: Vec<String>,
+    /// The date [YYYY-MM-DD] when the rule was last reviewed.
+    #[serde(
+        default,
+        rename = "last-reviewed",
+        deserialize_with = "deserialize_date"
+    )]
+    pub last_reviewed: String,
     /// Any additional remarks / context for the rule.
     #[serde(default)]
     pub remarks: String,
+}
+
+fn deserialize_date<'de, D>(deserializer: D) -> core::result::Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::{Deserialize, Error};
+
+    let date: String = String::deserialize(deserializer)?;
+    // Validate the date format YYYY-MM-DD
+    if !regex::Regex::new(r"^\d{4}-\d{2}-\d{2}$")
+        .unwrap()
+        .is_match(&date)
+    {
+        return Err(D::Error::custom(
+            "Invalid date format. Expected YYYY-MM-DD.",
+        ));
+    }
+    Ok(date)
 }
 
 fn deserialize_reviewers<'de, D>(deserializer: D) -> core::result::Result<Vec<String>, D::Error>

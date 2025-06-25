@@ -24,14 +24,16 @@ const POINTER_LENGTH: u64 = 8;
 pub struct Context {
     pub name: String,
     pub reviewers: Vec<String>,
+    pub last_reviewed: String,
     pub remarks: String,
 }
 
 impl Context {
-    fn new(name: String, reviewers: Vec<String>, remarks: String) -> Self {
+    fn new(name: String, reviewers: Vec<String>, last_reviewed: String, remarks: String) -> Self {
         Context {
             name,
             reviewers,
+            last_reviewed,
             remarks,
         }
     }
@@ -165,7 +167,12 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             }
             self.context_map.insert(
                 entry.offset,
-                Context::new(name, rule.reviewers.clone(), rule.remarks.clone()),
+                Context::new(
+                    name,
+                    rule.reviewers.clone(),
+                    rule.last_reviewed.clone(),
+                    rule.remarks.clone(),
+                ),
             );
 
             ret.push((entry, default));
