@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         .iter()
     {
         buffer.push_str(&format!(
-            "[[rule]]\nsymbol = \"{}\"\nvalidation.type = \"none\"\nlast_reviewed = \"{}\"\n\n",
+            "[[rule]]\nsymbol = \"{}\"\nvalidation.type = \"none\"\nlast-reviewed = \"{}\"\n\n",
             segment.symbol(),
             chrono::Local::now().format("%Y-%m-%d")
         ))
