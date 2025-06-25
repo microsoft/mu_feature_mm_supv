@@ -140,6 +140,16 @@ validation.type = "pointer"
 validation.in_mseg = true # Default: false
 ```
 
+#### Validation Type: Guid
+
+The guid validation type verifies that a symbol representing a guid is the expected guid value. Behind the scenes,
+this rule simply generates a `Content` rule of the bytes, but does the conversion for you.
+
+``` toml
+validation.type = "guid"
+validation.guid = [0x0, 0x0, 0x0, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]]
+```
+
 ### config
 
 The below configuration options reside in a top level `[config]` section of the configuration file.
