@@ -64,6 +64,9 @@ struct Args {
     /// Path to the config file for this tool
     #[arg(short, long)]
     config: PathBuf,
+    /// 0..n scopes used to filter validation rules on for the the auxiliary file generation.
+    #[arg(name = "scope", short, long)]
+    scopes: Vec<String>,
 }
 
 /// A structure representing all configuration data dumped from the run log.
@@ -103,7 +106,7 @@ fn main() -> Result<()> {
         return Err(anyhow!("Config file does not exist."));
     }
 
-    let (aux, metadata) = build_aux(&args.aux_config)?;
+    let (aux, metadata) = build_aux(&args.aux_config, &args.scopes)?;
 
     let test_suite = TestSuite::new(&args.config, aux.to_bytes()?)?;
 
@@ -304,9 +307,11 @@ impl TestSuite {
 /// Builds the auxiliary file based off the provided configuration file.
 pub fn build_aux(
     config: &PathBuf,
+    scopes: &[String],
 ) -> Result<(AuxFile, PdbMetadata<'static, Cursor<&'static [u8]>>)> {
     let mut metadata = PdbMetadata::<Cursor<&'static [u8]>>::new(MM_SUPV_PDB, MM_SUPV_EFI)?;
-    let config = ConfigFile::from_file(config)?;
+    let mut config = ConfigFile::from_file(config)?;
+    config.filter_by_scopes(scopes)?;
 
     let mut aux = AuxFile::default();
     for key in config.keys.iter() {
