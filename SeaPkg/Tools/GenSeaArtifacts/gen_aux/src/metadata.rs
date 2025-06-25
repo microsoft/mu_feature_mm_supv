@@ -24,7 +24,7 @@ const POINTER_LENGTH: u64 = 8;
 pub struct PdbMetadata<'a, S: Source<'a>> {
     pdb: PDB<'a, S>,
     sections: Vec<Section>,
-    addr_to_name: HashMap<u32, String>,
+    addr_map: HashMap<u32, (String, Vec<String>)>,
     unloaded_image: Vec<u8>,
     loaded_image: Vec<u8>,
 }
@@ -37,12 +37,12 @@ impl<'a> PdbMetadata<'a, File> {
         let sections = Self::get_sections(&mut pdb)?;
         let unloaded_image = std::fs::read(efi_path)?;
         let loaded_image = Self::load_image(&unloaded_image)?;
-        let addr_to_name = HashMap::new();
+        let addr_map = HashMap::new();
 
         let mut metadata = PdbMetadata {
             pdb,
             sections,
-            addr_to_name,
+            addr_map,
             unloaded_image,
             loaded_image,
         };
@@ -61,12 +61,12 @@ impl<'a> PdbMetadata<'a, Cursor<&'a [u8]>> {
         let sections = Self::get_sections(&mut pdb)?;
         let unloaded_image = efi.to_vec();
         let loaded_image = Self::load_image(&unloaded_image)?;
-        let addr_to_name = HashMap::new();
+        let addr_map = HashMap::new();
 
         let mut metadata = PdbMetadata {
             pdb,
             sections,
-            addr_to_name,
+            addr_map,
             unloaded_image,
             loaded_image,
         };
@@ -146,7 +146,8 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             if let Some(field) = &rule.field {
                 name += format!(".{}", field).as_str();
             }
-            self.addr_to_name.insert(entry.offset, name);
+            self.addr_map
+                .insert(entry.offset, (name, rule.reviewers.clone()));
 
             ret.push((entry, default));
         }
@@ -198,7 +199,12 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
     /// Gives the specific symbol instance for the given address including it's index and field.
     pub fn name_from_address(&self, address: &u32) -> Option<String> {
-        self.addr_to_name.get(address).cloned()
+        self.addr_map.get(address).map(|map| map.0.clone())
+    }
+
+    /// Gives the reviewers for the given address.
+    pub fn reviewers_from_address(&self, address: &u32) -> Option<Vec<String>> {
+        self.addr_map.get(address).map(|map| map.1.clone())
     }
 
     pub fn symbol_fields(&mut self, symbol: &str) -> Option<Vec<String>> {
