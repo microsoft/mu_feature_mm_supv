@@ -11,6 +11,7 @@
 use std::ops::RangeInclusive;
 
 use serde::{Deserialize, Serialize};
+use r_efi::efi::Guid;
 
 /// The configuration file for generating an auxiliary file.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -240,4 +241,83 @@ pub enum Validation {
         #[serde(default)]
         in_mseg: bool,
     },
+    /// The symbol is validated against a GUID as a Content rule.
+    #[serde(rename = "guid")]
+    Guid {
+        /// The GUID to validate against.
+        #[serde(deserialize_with = "deserialize_guid", serialize_with = "serialize_guid")]
+        guid: Guid,
+    }
+}
+
+/// A custom deserializer for a [Guid].
+fn deserialize_guid<'de, D>(deserializer: D) -> core::result::Result<Guid, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use core::fmt;
+    use serde::de::{Error, SeqAccess, Visitor};
+
+    struct RangeVisitor;
+
+    impl<'de> Visitor<'de> for RangeVisitor {
+        type Value = Guid;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("A sequence of [u32, u16, u16 [u8; 8]]")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> core::result::Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            let f1: u32 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 0 to be u32"))?;
+            let f2: u16 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 1 to be u16"))?;
+            let f3: u16 = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 2 to be u16"))?;
+            let f4: [u8; 8] = seq
+                .next_element()?
+                .ok_or_else(|| A::Error::custom("Expected index 3 to be [u8; 8]"))?;
+
+            Ok(Guid::from_fields(
+                f1,
+                f2,
+                f3,
+                f4[0],
+                f4[1],
+                &[f4[2], f4[3], f4[4], f4[5], f4[6], f4[7]],
+            ))
+        }
+    }
+
+    deserializer.deserialize_any(RangeVisitor)
+}
+
+/// A custom serializer for a `Guid` that outputs it as [u32, u16, u16, [u8; 8]]
+fn serialize_guid<S>(guid: &Guid, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::ser::SerializeTuple;
+
+    // Decompose the GUID into its fields
+    let (data1, data2, data3, data4_0, data4_1, data4_tail) = guid.as_fields();
+
+    // Reconstruct full [u8; 8] from (u8, u8, &[u8; 6])
+    let mut data4 = [0u8; 8];
+    data4[0] = data4_0;
+    data4[1] = data4_1;
+    data4[2..].copy_from_slice(data4_tail);
+
+    let mut tuple = serializer.serialize_tuple(4)?;
+    tuple.serialize_element(&data1)?;
+    tuple.serialize_element(&data2)?;
+    tuple.serialize_element(&data3)?;
+    tuple.serialize_element(&data4)?;
+    tuple.end()
 }
