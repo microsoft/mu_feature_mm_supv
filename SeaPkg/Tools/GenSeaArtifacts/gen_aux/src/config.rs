@@ -10,8 +10,8 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::ops::RangeInclusive;
 
-use serde::{Deserialize, Serialize};
 use r_efi::efi::Guid;
+use serde::{Deserialize, Serialize};
 
 /// The configuration file for generating an auxiliary file.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -102,6 +102,9 @@ pub struct Rule {
         deserialize_with = "deserialize_reviewers"
     )]
     pub reviewers: Vec<String>,
+    /// Any additional remarks / context for the rule.
+    #[serde(default)]
+    pub remarks: String,
 }
 
 fn deserialize_reviewers<'de, D>(deserializer: D) -> core::result::Result<Vec<String>, D::Error>
@@ -245,9 +248,12 @@ pub enum Validation {
     #[serde(rename = "guid")]
     Guid {
         /// The GUID to validate against.
-        #[serde(deserialize_with = "deserialize_guid", serialize_with = "serialize_guid")]
+        #[serde(
+            deserialize_with = "deserialize_guid",
+            serialize_with = "serialize_guid"
+        )]
         guid: Guid,
-    }
+    },
 }
 
 /// A custom deserializer for a [Guid].

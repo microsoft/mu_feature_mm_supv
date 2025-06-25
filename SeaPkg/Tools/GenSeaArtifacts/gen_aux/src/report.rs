@@ -451,6 +451,8 @@ pub struct Segment {
     ///
     /// This field is only used when the segment is covered by a validation rule.
     reviewers: Vec<String>,
+    /// Comments about the segment.
+    remarks: String,
 }
 
 impl Segment {
@@ -465,6 +467,7 @@ impl Segment {
             covered,
             reason,
             reviewers: Vec::new(),
+            remarks: String::new(),
         }
     }
 
@@ -491,19 +494,20 @@ impl Segment {
     ) -> Self {
         let validation = &entry.validation_type;
         let rule = validation.to_string();
+        let (symbol, reviewers, remarks) = metadata.context_from_address(&entry.offset).map_or(
+            ("Symbol Padding".to_string(), vec![], "".to_string()),
+            |c| (c.name.clone(), c.reviewers.clone(), c.remarks.clone()),
+        );
         Segment {
-            symbol: metadata
-                .name_from_address(&entry.offset)
-                .unwrap_or("Symbol Padding".to_string()),
+            symbol,
             start: format!("{:#x}", entry.offset),
             _start: entry.offset,
             end: format!("{:#x}", entry.offset + entry.size),
             _end: entry.offset + entry.size,
             covered: true,
             reason: format!("Validation Rule: {}", rule),
-            reviewers: metadata
-                .reviewers_from_address(&entry.offset)
-                .unwrap_or_default(),
+            reviewers,
+            remarks,
         }
     }
 }
