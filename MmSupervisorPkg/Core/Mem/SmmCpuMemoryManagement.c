@@ -1883,16 +1883,23 @@ CoalesceHobMemory (
     return EFI_INVALID_PARAMETER;
   }
 
-  Index   = mMmramRangeCount;
-  Hob.Raw = GetFirstHob (EFI_HOB_TYPE_RESOURCE_DESCRIPTOR);
-  while (Hob.Raw != NULL) {
-    ResourceDescriptor = (EFI_HOB_RESOURCE_DESCRIPTOR *)Hob.Raw;
-    if (!SkipResourceDescriptor (ResourceDescriptor)) {
+  Index              = mMmramRangeCount;
+  Hob.Raw            = GetHobList ();
+  ResourceDescriptor = NULL;
+
+  while (!END_OF_HOB_LIST (Hob)) {
+    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
+      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
+    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
+      ResourceDescriptor = Hob.ResourceDescriptor;
+    }
+
+    if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
       Index++;
     }
 
-    Hob.Raw = GET_NEXT_HOB (Hob);
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_RESOURCE_DESCRIPTOR, Hob.Raw);
+    ResourceDescriptor = NULL;
+    Hob.Raw            = GET_NEXT_HOB (Hob);
   }
 
   TempBuffer = AllocateZeroPool (sizeof (MEMORY_ADDRESS_POINT) * Index * 2);
@@ -1902,10 +1909,15 @@ CoalesceHobMemory (
 
   // This is dumb, let me know if you have better ways...
   Index   = 0;
-  Hob.Raw = GetFirstHob (EFI_HOB_TYPE_RESOURCE_DESCRIPTOR);
-  while (Hob.Raw != NULL) {
-    ResourceDescriptor = (EFI_HOB_RESOURCE_DESCRIPTOR *)Hob.Raw;
-    if (!SkipResourceDescriptor (ResourceDescriptor)) {
+  Hob.Raw = GetHobList ();
+  while (!END_OF_HOB_LIST (Hob)) {
+    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
+      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
+    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
+      ResourceDescriptor = Hob.ResourceDescriptor;
+    }
+
+    if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
       DEBUG ((
         DEBUG_INFO,
         "%a - MemoryResource - Start(0x%0lx) Length(0x%0lx) Type(0x%x)\n",
@@ -1929,8 +1941,8 @@ CoalesceHobMemory (
       Index += 2;
     }
 
-    Hob.Raw = GET_NEXT_HOB (Hob);
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_RESOURCE_DESCRIPTOR, Hob.Raw);
+    ResourceDescriptor = NULL;
+    Hob.Raw            = GET_NEXT_HOB (Hob);
   }
 
   ASSERT (mMmramRanges != NULL);
