@@ -19,7 +19,6 @@
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/IoLib.h>
-#include <Library/PciLib.h>
 #include <Library/SynchronizationLib.h>
 #include <Library/DebugLib.h>
 #include <Library/StmPlatformLib.h>
@@ -27,7 +26,6 @@
 #include <Library/MemoryAllocationLib.h>
 #include <IndustryStandard/Acpi.h>
 #include <IndustryStandard/MemoryMappedConfigurationSpaceAccessTable.h>
-#include <IndustryStandard/Pci.h>
 #include <Protocol/DebugSupport.h>
 #include <Register/StmApi.h>
 #include <Register/Intel/StmApiInternal.h>
@@ -55,9 +53,6 @@
 #define STM_SIZE_TO_PAGES(a)  (((a) >> STM_PAGE_SHIFT) + (((a) & STM_PAGE_MASK) ? 1 : 0))
 
 #define STM_PAGES_TO_SIZE(a)  ( (a) << STM_PAGE_SHIFT)
-
-#define PCI_EXPRESS_ADDRESS(Bus, Device, Function, Offset) \
-  (((Offset) & 0xfff) | (((Function) & 0x07) << 12) | (((Device) & 0x1f) << 15) | (((Bus) & 0xff) << 20))
 
 #pragma pack (push, 1)
 
