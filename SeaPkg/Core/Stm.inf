@@ -58,7 +58,6 @@
   BaseLib
   BaseMemoryLib
   IoLib
-  PciLib
   SynchronizationLib
   DebugLib
   StmLib
