@@ -15,11 +15,6 @@
 #include "StmInit.h"
 #include <Library/SafeIntLib.h>
 
-#define BUS_FROM_PCIE_ADDRESS(PcieAddress)       (UINT8)(((UINTN)(PcieAddress) & 0x0FF00000) >> 20)
-#define DEVICE_FROM_PCIE_ADDRESS(PcieAddress)    (UINT8)(((UINTN)(PcieAddress) & 0x000F8000) >> 15)
-#define FUNCTION_FROM_PCIE_ADDRESS(PcieAddress)  (UINT8)(((UINTN)(PcieAddress) & 0x00007000) >> 12)
-#define REGISTER_FROM_PCIE_ADDRESS(PcieAddress)  (UINT16)((UINTN)(PcieAddress) & 0x00000FFF)
-
 #define PAGE_PROGATE_BITS  (BIT0 | BIT1 | BIT2 | BIT3 | BIT4 | BIT5)
 
 #define PAGING_4K_MASK  0xFFF
