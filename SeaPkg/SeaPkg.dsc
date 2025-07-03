@@ -92,14 +92,14 @@
 [Components.X64]
   SeaPkg/Core/Stm.inf {
     <LibraryClasses>
-      NULL|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
+      StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
   }
   SeaPkg/MmiEntrySea/MmiEntrySea.inf
 
   SeaPkg/Core/Test/ResponderValidationTestLib.inf
   SeaPkg/Tests/ResponderValidationTest/ResponderValidationTestApp.inf {
     <LibraryClasses>
-      NULL|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
+      StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
   }
 
   SeaPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
