@@ -1,6 +1,12 @@
 # @file
 # UEFI Helper plugin for generating SEA artifacts based off of the MM Supervisor build.
 #
+# While all helper functions and underlying binary executables work on both Windows and Linux,
+# some of the helper functions rely on the presence of the MM supervisor build PDB, which is only
+# available on Windows. We continue to keep these helper functions available on linux for scenarios
+# where the PDB's are available, such as in CI environments where the PDB files are copied over
+# from the Windows build.
+#
 # Copyright (c) Microsoft Corporation
 #
 # SPDX-License-Identifier: BSD-2-Clause-Patent
@@ -226,9 +232,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             stm_dll (Path): path to the STM DLL
             output_dir (Path): path to place the STM binary
         """
-        base_tools_dir = Path(os.environ['BASE_TOOLS_PATH'])
-        gen_stm = base_tools_dir / "Bin" / "Win32" / "GenStm.exe"
-        cmd = str(gen_stm)
+        cmd = "GenStm.exe" if os.name.startswith('nt') else "GenStm"
 
         args = f"-e --debug 5 {stm_dll} -o {output_dir / 'Stm.bin'}"
         ret = RunCmd(cmd, args)
@@ -264,8 +268,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             logging.error("Failed to compile test-aux. Is your Cargo workspace setup correctly?")
             return ret
         
-        bin_path = manifest_path.parent / "target" / "release" / "test-aux.exe"
-        bin_path.rename(output_path / "test-aux.exe")
+        cmd = "test-aux.exe" if os.name.startswith('nt') else "test-aux"
+        bin_path = manifest_path.parent / "target" / "release" / cmd
+        bin_path.rename(output_path / cmd)
         return 0
 
 
