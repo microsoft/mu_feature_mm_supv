@@ -121,11 +121,15 @@ where
     use serde::de::{Deserialize, Error};
 
     let date: String = String::deserialize(deserializer)?;
+
     // Validate the date format YYYY-MM-DD
-    if !regex::Regex::new(r"^\d{4}-\d{2}-\d{2}$")
-        .unwrap()
-        .is_match(&date)
-    {
+    let Ok(re) = regex::Regex::new(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$") else {
+        return Err(D::Error::custom(
+            "Failed to compile regex for date validation.",
+        ));
+    };
+
+    if !re.is_match(&date) {
         return Err(D::Error::custom(
             "Invalid date format. Expected YYYY-MM-DD.",
         ));
@@ -140,8 +144,11 @@ where
     use serde::de::{Deserialize, Error};
 
     let reviewers: Vec<String> = Vec::deserialize(deserializer)?;
-    let re =
-        regex::Regex::new(r"^[A-Z][a-z]+(?: [A-Z][a-z]+)* <[^<>@]+@[^<>@]+\.[^<>@]+>$").unwrap();
+    let Ok(re) = regex::Regex::new(r"^[A-Z][a-z]+ [A-Z][a-z]+ <[^<>@]+@[^<>@]+\.[^<>@]+>$") else {
+        return Err(D::Error::custom(
+            "Failed to compile regex for reviewer validation.",
+        ));
+    };
 
     for reviewer in &reviewers {
         if !re.is_match(reviewer) {
@@ -352,4 +359,196 @@ where
     tuple.serialize_element(&data3)?;
     tuple.serialize_element(&data4)?;
     tuple.end()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_date_valid() {
+        let date = "\"2023-10-01\"";
+        let mut deserializer = serde_json::de::Deserializer::from_str(date);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_ok_and(|s| s == "2023-10-01".to_string()));
+    }
+
+    #[test]
+    fn test_deserialize_date_invalid_format_dd_mm_yyyy() {
+        let data = "\"01-10-2023\"";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_date_invalid_month() {
+        let data = "\"2025-13-01\"";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_date_completely_invalid() {
+        let data = "\"invalid-date\"";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_date_not_a_string() {
+        let data = "12345";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_date_invalid_day() {
+        let data = "\"2025-12-32\"";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<String, _> = deserialize_date(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_range_valid() {
+        let data = "[1, 5]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let range: Option<RangeInclusive<usize>> = deserialize_range(&mut deserializer).unwrap();
+        assert_eq!(range, Some(1..=5));
+    }
+
+    #[test]
+    fn test_deserialize_range_single_value() {
+        let data = "3";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let range: Option<RangeInclusive<usize>> = deserialize_range(&mut deserializer).unwrap();
+        assert_eq!(range, Some(3..=3));
+    }
+
+    #[test]
+    fn test_deserialize_range_one_element() {
+        let data = "[1]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<Option<RangeInclusive<usize>>, _> = deserialize_range(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_range_more_than_two_elements() {
+        let data = "[1, 2, 3]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<Option<RangeInclusive<usize>>, _> = deserialize_range(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_range_elements_reversed() {
+        let data = "[5, 1]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<Option<RangeInclusive<usize>>, _> = deserialize_range(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_range_elements_not_numbers() {
+        let data = "[1, 'a']";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let result: Result<Option<RangeInclusive<usize>>, _> = deserialize_range(&mut deserializer);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_guid() {
+        let data = "[305419896,4660,22136,[18,52,86,120,154,188,222,240]]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let guid = deserialize_guid(&mut deserializer).unwrap();
+        assert_eq!(guid.as_fields(), (0x12345678, 0x1234, 0x5678, 0x12, 0x34, &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]));
+    }
+
+    #[test]
+    fn test_serialize_guid() {
+        let guid = Guid::from_fields(0x12345678, 0x1234, 0x5678, 0x12, 0x34, &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]);
+        let mut serializer = serde_json::ser::Serializer::new(Vec::new());
+        assert!(serialize_guid(&guid, &mut serializer).is_ok());
+
+        let string = String::from_utf8(serializer.into_inner()).unwrap();
+        assert_eq!(string, "[305419896,4660,22136,[18,52,86,120,154,188,222,240]]");
+    }
+
+    #[test]
+    fn test_deserialize_reviewers_valid() {
+        let data = "[\"John Doe <john.doe@example.com>\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let reviewers: Vec<String> = deserialize_reviewers(&mut deserializer).unwrap();
+        assert_eq!(reviewers.len(), 1);
+        assert_eq!(reviewers[0], "John Doe <john.doe@example.com>");
+    }
+
+    #[test]
+    fn test_deserialize_multiple_reviewers_valid() {
+        let data = "[\"John Doe <john.doe@example.com>\", \"Jane Smith <jane.smith@example.com>\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        let reviewers: Vec<String> = deserialize_reviewers(&mut deserializer).unwrap();
+        assert_eq!(reviewers.len(), 2);
+        assert_eq!(reviewers[0], "John Doe <john.doe@example.com>");
+        assert_eq!(reviewers[1], "Jane Smith <jane.smith@example.com>");
+    }
+
+    #[test]
+    fn test_deserialize_reviewers_invalid_format_missing_last() {
+        let data = "[\"John <john.doe@example.com>\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        assert!(deserialize_reviewers(&mut deserializer).is_err());
+    }
+
+    #[test]
+    fn test_deserialize_reviewers_invalid_format_too_many_names() {
+        let data = "[\"John Doe Smith <john.doe.smith@example.com>\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        assert!(deserialize_reviewers(&mut deserializer).is_err());
+    }
+
+    #[test]
+    fn test_deserialize_reviewers_invalid_format_missing_carrot() {
+        let data = "[\"John Doe <john.doe@example.com\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        assert!(deserialize_reviewers(&mut deserializer).is_err());
+    }
+
+    #[test]
+    fn test_deserialize_reviewers_invalid_format_bad_email() {
+        let data = "[\"John Doe <john.doe.smithexample.com>\"]";
+        let mut deserializer = serde_json::de::Deserializer::from_str(data);
+        assert!(deserialize_reviewers(&mut deserializer).is_err());
+    }
+
+    #[test]
+    fn test_from_file_valid() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join("test")
+            .join("example.toml");
+
+        assert!(path.exists(), "Test file does not exist: {:?}", path);
+
+        // Attempt to read the config file
+        let result = ConfigFile::from_file(path);
+        assert!(result.is_ok());
+
+        // Check that removing rules by scope works
+        let mut config = result.unwrap();
+        let scopes = vec!["debug".to_string()];
+        let rule_count = config.rules.len();
+        config.filter_by_scopes(&scopes).unwrap();
+        assert!(config.rules.len() < rule_count, "Expected some rules to be filtered out");
+
+        // Attempt to write the config file back to a temporary location
+        let temp = tempfile::NamedTempFile::new().unwrap();
+        let result = config.to_file(temp.path());
+        assert!(result.is_ok());
+    }
 }

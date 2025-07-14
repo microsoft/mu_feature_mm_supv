@@ -1,0 +1,1852 @@
+[config]
+no_missing_rules = true
+
+[[key]]
+signature = ['F', 'P', 'O', 'L']
+symbol = 'FirmwarePolicy'
+
+[[key]]
+signature = ['P', 'G', 'T', 'B']
+symbol = 'mSmmCr3'
+
+[[key]]
+signature = ['M', 'R', 'D', 'V']
+symbol = 'SmiRendezvous'
+
+# For memory attribute type, find MdePkg/Include/Uefi/UefiSpec.h
+# for full list of memory attribute values under EFI_MEMORY_*.
+
+[[rule]]
+symbol = "gcSmiIdtr"
+field = "Base"
+validation.type = "mem attr"
+# This is an empirical value, but an IDT really should not exceed 4k
+validation.memory_size = 0x1000
+validation.must_have = 0x2000
+validation.must_not_have = 0x0
+
+[[rule]]
+symbol = "gcSmiIdtr"
+field = "Limit"
+validation.type = "content"
+validation.content = [0xFF, 0x01]
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmStartupThisAp"
+validation.type = "self"
+validation.reference = "SmmStartupThisAp"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "CurrentlyExecutingCpu"
+validation.type = "none"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "NumberOfCpus"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "CpuSaveStateSize"
+validation.type = "mem attr"
+# This is an empirical value, this at least should be 8 for only 1 core
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "CpuSaveState"
+validation.type = "mem attr"
+# This is an empirical value, this is at least should be 8 for only 1 core
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmConfigurationTable"
+validation.type = "mem attr"
+# This is a minimal value, this is at least EFI_CONFIGURATION_TABLE
+validation.memory_size = 0x18
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "NumberOfTableEntries"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "Hdr"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmFirmwareVendor"
+validation.type = "none"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmFirmwareRevision"
+validation.type = "none"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmIo"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmInstallConfigurationTable"
+validation.type = "self"
+validation.reference = "MmInstallConfigurationTable"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmAllocatePool"
+validation.type = "self"
+validation.reference = "MmAllocateSupervisorPool"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmFreePool"
+validation.type = "self"
+validation.reference = "MmFreeSupervisorPool"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmAllocatePages"
+validation.type = "self"
+validation.reference = "MmAllocateSupervisorPages"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmFreePages"
+validation.type = "self"
+validation.reference = "MmFreePages"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmInstallProtocolInterface"
+validation.type = "self"
+validation.reference = "MmInstallProtocolInterface"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmHandleProtocol"
+validation.type = "self"
+validation.reference = "MmHandleProtocol"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmRegisterProtocolNotify"
+validation.type = "self"
+validation.reference = "MmRegisterProtocolNotify"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmLocateHandle"
+validation.type = "self"
+validation.reference = "MmLocateHandle"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmLocateProtocol"
+validation.type = "self"
+validation.reference = "MmLocateProtocol"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmiManage"
+validation.type = "self"
+validation.reference = "MmiManage"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmiHandlerRegister"
+validation.type = "self"
+validation.reference = "MmiSupvHandlerRegister"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmiHandlerUnRegister"
+validation.type = "self"
+validation.reference = "MmiHandlerSupvUnRegister"
+
+[[rule]]
+symbol = "gMmCoreMmst"
+field = "MmUninstallProtocolInterface"
+validation.type = "self"
+validation.reference = "MmUninstallProtocolInterface"
+
+[[rule]]
+symbol = "mMmCoreMmiHandlers"
+array.sentinel = true
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmRebootOnException"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "ArrayLength"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "ApicId"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "SmBase"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "SmrrBase"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "SmrrSize"
+validation.type = "non zero"
+
+# Needed for 100% coverage
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "Revision"
+validation.type = "none"
+
+# Needed for 100% coverage
+[[rule]]
+symbol = "mCpuHotPlugData"
+field = "Reserved"
+validation.type = "none"
+
+[[rule]]
+symbol = "mMaxNumberOfCpus"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mCetSupported"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mFreeMemoryMapEntryList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mFreeMemoryMapEntryList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmMemoryMap"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmMemoryMap"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gMemoryMap"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gMemoryMap"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gHandleList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gHandleList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mProtocolDatabase"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mProtocolDatabase"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmiEntryList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmiEntryList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mFwVolList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mFwVolList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mDiscoveredList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mDiscoveredList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMapLevel"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mUnblockedMemoryList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mUnblockedMemoryList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCpuHandle"
+validation.type = "mem attr"
+validation.memory_size = 0x10
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntry"
+validation.type = "self"
+validation.reference = "MmEntryPoint"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "ProcessorInfo"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of EFI_PROCESSOR_INFORMATION
+validation.memory_size = 0x30
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "Operation"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of SMM_CPU_OPERATION
+validation.memory_size = 0x04
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "CpuSaveStateSize"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of UINTN
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "CpuSaveState"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of VOID*
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntryContext.SmmStartupThisAp"
+validation.type = "self"
+validation.reference = "SmmStartupThisAp"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntryContext.CurrentlyExecutingCpu"
+validation.type = "none"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntryContext.NumberOfCpus"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntryContext.CpuSaveStateSize"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of UINTN
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmCoreEntryContext.CpuSaveState"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of UINTN
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "ApWrapperFunc"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of PROCEDURE_WRAPPER
+validation.memory_size = 0x10
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "TokenList"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "FirstFreeToken"
+validation.type = "mem attr"
+# This is a minimal value, to cover one struct of PROCEDURE_WRAPPER
+validation.memory_size = 0x10
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "Signature"
+validation.type = "content"
+validation.content = [0x73, 0x63, 0x70, 0x75, 0x00, 0x00, 0x00, 0x00]
+
+# Needed for 100% coverage
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmReservedSmramRegion"
+validation.type = "none"
+
+# Needed for 100% coverage
+[[rule]]
+symbol = "mSmmCpuPrivateData"
+field = "SmmConfiguration"
+validation.type = "none"
+
+[[rule]]
+symbol = "mNumberOfCpus"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mPagingMode"
+validation.type = "content"
+validation.content = [0x03, 0x04, 0x00, 0x00]
+
+[[rule]]
+symbol = "mImagePropertiesPrivateData"
+field = "Signature"
+validation.type = "content"
+validation.content = [0x49, 0x50, 0x50, 0x44]
+
+[[rule]]
+symbol = "mImagePropertiesPrivateData"
+field = "ImageRecordCount"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mImagePropertiesPrivateData"
+field = "CodeSegmentCountMax"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mImagePropertiesPrivateData"
+field = "ImageRecordList"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mExceptionHandlerData"
+field = "DisplayMessageSpinLock"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mExceptionHandlerData"
+field = "IdtEntryCount"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mExceptionHandlerData"
+field = "ReservedVectors"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mExceptionHandlerData"
+field = "ExternalInterruptHandler"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gHobList"
+validation.type = "mem attr"
+validation.memory_size = 0x10000
+validation.must_have = 0x2000
+validation.must_not_have = 0x0
+
+[[rule]]
+symbol = "gMmCoreMailbox"
+validation.type = "mem attr"
+validation.memory_size = 0x1000
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mCoreInitializationComplete"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mMmReadyToLockDone"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "SupervisorToUserDataBuffer"
+validation.type = "mem attr"
+validation.memory_size = 0x1000
+validation.must_have = 0x4000
+validation.must_not_have = 0x62000
+
+[[rule]]
+symbol = "mConfigSmmCodeAccessCheckLock"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mSmmCodeAccessCheckEnable"
+# Check to see if we're correctly setting the value using the PCD
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "FirmwarePolicy"
+validation.type = "mem attr"
+validation.memory_size = 0x1000 #0x268
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "MemPolicySnapshot"
+validation.type = "mem attr"
+validation.memory_size = 0x400
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mNeedConfigureMtrrs"
+validation.type = "content"
+# Using 64-bit processor
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mRootSmiEntryList"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mRootSmiEntryList"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mRootMmiEntry"
+field = "Signature"
+validation.type = "content"
+validation.content = [0x6d, 0x6d, 0x69, 0x65, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mRootMmiEntry"
+field = "AllEntries"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mRootMmiEntry"
+field = "MmiHandlers"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mRootMmiEntry"
+field = "HandlerType"
+validation.type = "none"
+
+[[rule]]
+symbol = "mMsrStarStore"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 8 for only 1 core
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mMsrStar64Store"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 8 for only 1 core
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mMsrEferStore"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 8 for only 1 core
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mCpuToken"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mMmSupvGsStore"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 8 for only 1 core
+validation.memory_size = 0x32
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mCpuExceptionCountBuffer"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 1 for only 1 core
+validation.memory_size = 0x01
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mCpuExceptionToken"
+validation.type = "mem attr"
+# This is a minimal value, this is at least should be 1 for only 1 core
+validation.memory_size = 0x01
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "gMmUserMmst"
+validation.type = "mem attr"
+validation.memory_size = 0xF0
+validation.must_have = 0x4000
+validation.must_not_have = 0x62000
+
+[[rule]]
+symbol = "gMmCorePrivate"
+validation.type = "mem attr"
+validation.memory_size = 0x1000
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mEfiLocateHandleRequest"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "RegErrorReportJumpPointer"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x20000
+validation.must_not_have = 0x46000
+
+[[rule]]
+symbol = "RegisteredRing3JumpPointer"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x20000
+validation.must_not_have = 0x46000
+
+[[rule]]
+symbol = "RegApRing3JumpPointer"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x20000
+validation.must_not_have = 0x46000
+
+[[rule]]
+symbol = "mSmmInitialized"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mMmiManageCallingDepth"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mMmSystemTableAllocateSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmMpSyncData"
+validation.type = "pointer"
+
+[[rule]]
+# This maybe shouldn't be a pointer validation
+symbol = "mPackageFirstThreadIndex"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mPFLock"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mInitMemoryMapSize"
+validation.type = "non zero"
+
+# New rules after running no_missing_rules
+
+[[rule]]
+symbol = "gMmSupervisorCoreGuid"
+validation.type = "guid"
+validation.guid = [ 0x4e4c89dc, 0xa452, 0x4b6b, [ 0xb1, 0x83, 0xf1, 0x6a, 0x2a, 0x22, 0x37, 0x33 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "mReservedVectorsData"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mImageStruct"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "gEfiDxeMmReadyToLockProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x60ff8964, 0xe906, 0x41d0, [ 0xaf, 0xed, 0xf2, 0x41, 0xe9, 0x74, 0xe0, 0x8e ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gSmmCpuPrivate"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gEfiSmmGpiDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x25566b03, 0xb577, 0x4cbf, [ 0x95, 0x8c, 0xed, 0x66, 0x3e, 0xa2, 0x43, 0x80 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mSmmCpuSmramRangeCount"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mMapDepth"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mSmmImageDatabaseSize"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "gMpInformation2HobGuid"
+validation.type = "guid"
+validation.guid = [ 0x417a7f64, 0xf4e9, 0x4b32, [ 0x84, 0x6a, 0x5c, 0xc4, 0xd8, 0x62, 0x18, 0x79 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in UefiCpuPkg.dec."
+
+[[rule]]
+symbol = "gSeaBinFileGuid"
+validation.type = "guid"
+validation.guid = [ 0xe7f9abc2, 0x61a6, 0x4af3, [ 0xa0, 0xf, 0x11, 0x50, 0xcc, 0x6e, 0xfe, 0x20 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in UefiCpuPkg.dec."
+
+[[rule]]
+symbol = "mSmmStackArrayBase"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+# Look into
+[[rule]]
+symbol = "mSmmSaveStateRegisterLma"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mAlreadyMoved"
+validation.type = "content"
+validation.content = [0x01]
+
+# LOOK INTO WHY THIS IS HERE
+[[rule]]
+symbol = "mMsrValues"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+scope = "debug"
+
+[[rule]]
+symbol = "mSmrrEnabled"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gStmSmiHandlerIdtr"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmStackSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiPersistentVirtualDiskGuid"
+validation.type = "guid"
+validation.guid = [ 0x5CEA02C9, 0x4D07, 0x69D3, [0x26, 0x9F ,0x44, 0x96, 0xFB, 0xE0, 0x96, 0xF9 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiHobListGuid"
+validation.type = "guid"
+validation.guid = [ 0x7739F24C, 0x93D7, 0x11D4, [ 0x9A, 0x3A, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiSmmPeriodicTimerDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x4cec368e, 0x8e8e, 0x4d71, [ 0x8b, 0xe1, 0x95, 0x8c, 0x45, 0xfc, 0x8a, 0x53 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "UserHandlerRegHolder"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mSmmStartupThisApToken"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mPte4KEntries"
+validation.type = "none"
+scope = "supv_audit_tests"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+
+[[rule]]
+symbol = "mFfsDriverCacheList"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mFfsDriverCacheList"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gEfiVirtualCdGuid"
+validation.type = "guid"
+validation.guid = [ 0x3D5ABD30, 0x4175, 0x87CE, [ 0x6D, 0x64, 0xD2, 0xAD, 0xE5, 0x23, 0xC4, 0xBB ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mOnGuarding"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mMmCoreDriverEntry"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mIsReadOnlyPageTable"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mSmmCpuSmramRanges"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gRequestDispatch"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "gSmiHandlerProfileGuid"
+validation.type = "guid"
+validation.guid = [ 0x49174342, 0x7108, 0x409b, [0x8b, 0xbe, 0x65, 0xfd, 0xa8, 0x53, 0x89, 0xf5 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdeModulePkg.dec."
+
+[[rule]]
+symbol = "mIoCurrSize"
+validation.type = "content"
+validation.content = [0x00]
+scope = "debug"
+
+# Too large to compare with memory attribute type
+[[rule]]
+symbol = "UserSaveStateAccessHolder"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mImageStructCountMax"
+validation.type = "non zero"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mPdeCount"
+validation.type = "none"
+scope = "supv_audit_tests"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+
+[[rule]]
+symbol = "mMmiEntrySize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mGdtStepSize"
+validation.type = "content"
+validation.content = [0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "m1GPageTableSupport"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mDepexEvaluationStack"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mImageStructCount"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mInitMemoryMap"
+validation.type = "pointer"
+
+# We don't use a shadow stack so should be 0
+[[rule]]
+symbol = "mCetInterruptSsp"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "gMmMps"
+validation.type = "non zero"
+scope = "debug"
+
+[[rule]]
+symbol = "gMmMps"
+validation.type = "none"
+scope = "release"
+
+[[rule]]
+symbol = "gEfiSmmIoTrapDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x58dc368d, 0x7bfa, 0x4e77, [0xab, 0xbc, 0xe, 0x29, 0x41, 0x8d, 0xf9, 0x30 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mTimeoutTicker2"
+validation.type = "non zero"
+
+# We don't use a shadow stack so should be 0
+[[rule]]
+symbol = "mCetPl0Ssp"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mScheduledQueue"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mScheduledQueue"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mExternalInterruptHandlerTable"
+validation.type = "non zero"
+
+# Look into
+[[rule]]
+symbol = "gEfiCallerIdGuid"
+validation.type = "content"
+validation.content = [0xDC, 0x89, 0x4C, 0x4E, 0x52, 0xA4, 0x6B, 0x4B, 0xB1, 0x83, 0xF1, 0x6A, 0x2A, 0x22, 0x37, 0x33]
+
+# We don't use a shadow stack so should be 0
+[[rule]]
+symbol = "mSmmShadowStackSize"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "gDispatcherRunning"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mPageTablePool"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gEfiDebugPortProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0xEBA4E8D2, 0x3858, 0x41EC, [ 0xA2, 0x81, 0x26, 0x47, 0xBA, 0x96, 0x60, 0xD0 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiVT100PlusGuid"
+validation.type = "guid"
+validation.guid = [ 0x7BAEC70B, 0x57E0, 0x4C76, [ 0x8E, 0x87, 0x2F, 0x9E, 0x28, 0x08, 0x83, 0x43 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mInitDescriptorSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiSmmStandbyButtonDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x7300c4a1, 0x43f2, 0x4017, [ 0xa5, 0x1b, 0xc8, 0x1a, 0x7f, 0x40, 0x58, 0x5b  ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mSmmCpuFeaturesSmmRelocated"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mXdSupported"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mMemoryProtectionAttribute"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiPersistentVirtualCdGuid"
+validation.type = "guid"
+validation.guid = [ 0x08018188, 0x42CD, 0xBB48, [ 0x10, 0x0F, 0x53, 0x87, 0xD5, 0x3D, 0xED, 0x3D ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+# Size is too big so non zero is the best verification
+[[rule]]
+symbol = "gSmiMtrrs"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mCycle"
+validation.type = "none"
+
+[[rule]]
+symbol = "m5LevelPagingNeeded"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mPrintInfo"
+validation.type = "content"
+validation.content = [0x00]
+
+[[rule]]
+symbol = "mSmiHandlerProfileRecordingStatus"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mLockLoadMonitor"
+validation.type = "content"
+validation.content = [0x01]
+
+# Part of a shell app we don't normally run
+# Check why there is 0x0F
+[[rule]]
+symbol = "mSmiHandlerProfileDatabaseSize"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mSmrrPhysBaseMsr"
+validation.type = "non zero"
+
+# Should be NULL or something
+[[rule]]
+symbol = "mEfiSystemTable"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMachineCheckSupported"
+validation.type = "content"
+validation.content = [0x01]
+
+# Should probably be content validated
+[[rule]]
+symbol = "mSmiHandlerProfile"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+# Set to 0 in the pcd
+[[rule]]
+symbol = "mCpuSmmSyncMode"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mMpInformationHobData"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x6000
+validation.must_not_have = 0x60000
+
+# Part of the shadow stack we don't use
+[[rule]]
+symbol = "mCetInterruptSspTable"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "gSmmBaseHobGuid"
+validation.type = "guid"
+validation.guid = [ 0xc2217ba7, 0x03bb, 0x4f63, [ 0xa6, 0x47, 0x7c, 0x25, 0xc5, 0xfc, 0x9d, 0x73 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in UefiCpuPkg.dec."
+
+[[rule]]
+symbol = "gMmSupervisorPolicyFileGuid"
+validation.type = "guid"
+validation.guid = [ 0x81ff0793, 0x3e18, 0x489b, [ 0x9a, 0x8, 0xa1, 0xeb, 0x71, 0xb2, 0x3d, 0x20 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "gEfiSmmUsbDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0xee9b8d90, 0xc5a6, 0x40a2, [ 0xbd, 0xe2, 0x52, 0x55, 0x8d, 0x33, 0xcc, 0xa1 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+# Look into
+[[rule]]
+symbol = "mBspApicId"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mSmmSmiDatabaseSize"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mPagePool"
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mPagePool"
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gMmiEntrySeaFileGuid"
+validation.type = "guid"
+validation.guid = [ 0x20a3658c, 0x982, 0x4d69, [ 0x80, 0x44, 0x7, 0xc7, 0x87, 0x1e, 0xdb, 0xed ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in SeaPkg.dec."
+
+[[rule]]
+symbol = "gLzmaCustomDecompressGuid"
+validation.type = "guid"
+validation.guid = [ 0xEE4E5898, 0x3914, 0x4259, [ 0x9D, 0x6E, 0xDC, 0x7B, 0xD7, 0x94, 0x03, 0xCF ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdeModulePkg.dec."
+
+[[rule]]
+symbol = "gMmPagingAuditMmiHandlerGuid"
+validation.type = "guid"
+validation.guid =  [ 0x59b149, 0x1117, 0x47dc, [ 0x80, 0xbb, 0x11, 0x25, 0xe9, 0x8b, 0x41, 0x8c ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature. However, GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "gEfiSmmConfigurationProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x26eeb3de, 0xb689, 0x492e, [ 0x80, 0xf0, 0xbe, 0x8b, 0xd7, 0xda, 0x4b, 0xa7 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mGdtBuffer"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mPdeEntries"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "gEfiVT100Guid"
+validation.type = "guid"
+validation.guid = [ 0xDFA66065, 0xB419, 0x11D3, [ 0x9A, 0x2D, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mBtsSupported"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mMmMemLibInternalMaximumSupportAddress"
+validation.type = "non zero"
+
+# Probably should be changed to content validation
+[[rule]]
+symbol = "mSmrrPhysMaskMsr"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiLoadedImageProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x5B1B31A1, 0x9562, 0x11D2, [ 0x8E, 0x3F, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+# Used in Test/PagingAudit.c
+[[rule]]
+symbol = "mPageTableDataLoaded"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+# Serial library globals that don't need validation
+[[rule]]
+symbol = "mAccessMode32bit"
+validation.type = "none"
+
+[[rule]]
+symbol = "mSerialPortBaseAddress"
+validation.type = "none"
+
+[[rule]]
+symbol = "mSerialPortPciCfgBaseAddress"
+validation.type = "none"
+
+# Used in Test/PagingAudit.c
+[[rule]]
+symbol = "mPte2MCount"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+# Maybe validate contents
+[[rule]]
+symbol = "mMsegSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmProtectedRegionHobGuid"
+validation.type = "guid"
+validation.guid = [ 0x6c0792ac, 0x13d7, 0x431b, [ 0xa4, 0x89, 0x3, 0x2f, 0x4a, 0xf9, 0x73, 0x80 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "gMsegSmramGuid"
+validation.type = "guid"
+validation.guid = [ 0x6c0792ac, 0x13d7, 0x431b, [ 0xa4, 0x89, 0x3, 0x2f, 0x4a, 0xf9, 0x73, 0x80 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in UefiCpuPkg.dec."
+
+# We don't reach this code
+[[rule]]
+symbol = "gSmiHandlerIdtr"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mMapStack"
+validation.type = "none"
+
+[[rule]]
+symbol = "mMmiEntryBaseAddress"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiSasDevicePathGuid"
+validation.type = "guid"
+validation.guid = [ 0xd487ddb4, 0x008b, 0x11d9, [ 0xaf, 0xdc, 0x00, 0x10, 0x83, 0xff, 0xca, 0x4d ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gMmMemoryProtectionSettingsGuid"
+validation.type = "guid"
+validation.guid = [ 0x0CF445DD, 0xA67C, 0x4F8C, [ 0x81, 0x9B, 0xB7, 0xB6, 0x86, 0xED, 0x7C, 0x75 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdeModulePkg.dec."
+
+[[rule]]
+symbol = "gMmSupervisorDriverDispatchGuid"
+validation.type = "guid"
+validation.guid = [ 0x2e135da6, 0xade0, 0x4b96, [ 0x9b, 0x40, 0xb2, 0xf3, 0x67, 0xe9, 0xf7, 0xf7 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "mMmramRangeCount"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mMmSupervisorAccessBuffer"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmiHandlerProfileDatabase"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mSemaphoreSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mInternalCommBufferCopy"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gMmSupervisorRequestHandlerGuid"
+validation.type = "guid"
+validation.guid = [ 0x8c633b23, 0x1260, 0x4ea6, [ 0x83, 0xf, 0x7d, 0xdc, 0x97, 0x38, 0x21, 0x11 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "gEfiSmmSmramMemoryGuid"
+validation.type = "guid"
+validation.guid = [ 0x6dadf1d1, 0xd4cc, 0x4910, [ 0xbb, 0x6e, 0x82, 0xb1, 0xfd, 0x80, 0xff, 0x3d ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiSmmSxDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x456d2859, 0xa84b, 0x4e47, [ 0xa2, 0xee, 0x32, 0x76, 0xd8, 0x86, 0x99, 0x7d ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+# Values can change between builds so keep rule as non zero
+[[rule]]
+symbol = "mSmmStackArrayEnd"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "_fltused"
+validation.type = "non zero"
+
+# Part of the paging audit test.  We don't care about its contents
+[[rule]]
+symbol = "mPte4KCount"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "mSmmRootSmiDatabaseSize"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+# We don't care about the performance counter
+[[rule]]
+symbol = "mCountDown"
+validation.type = "none"
+
+[[rule]]
+symbol = "mSmmMpSyncDataSize"
+validation.type = "non zero"
+
+# We don't care about the timeout ticker
+[[rule]]
+symbol = "mTimeoutTicker"
+validation.type = "none"
+
+[[rule]]
+symbol = "gEfiVirtualDiskGuid"
+validation.type = "guid"
+validation.guid = [ 0x77AB535A, 0x45FC, 0x624B, [ 0x55, 0x60, 0xF7, 0xB2, 0x81, 0xD1, 0xF9, 0x6E ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiMmConfigurationProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x26eeb3de, 0xb689, 0x492e, [ 0x80, 0xf0, 0xbe, 0x8b, 0xd7, 0xda, 0x4b, 0xa7 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mCpuSmmRestrictedMemoryAccess"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "mMmHobSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mDepexEvaluationStackPointer"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gMmst"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mMmHobStart"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x24000
+validation.must_not_have = 0x42000
+
+# We don't care about the shadow stack value because we currently don't use CET
+[[rule]]
+symbol = "mIsShadowStack"
+validation.type = "none"
+
+[[rule]]
+symbol = "gMmCommonRegionHobGuid"
+validation.type = "guid"
+validation.guid = [ 0xd4ffc718, 0xfb82, 0x4274, [ 0x9a, 0xfc, 0xaa, 0x8b, 0x1e, 0xef, 0x52, 0x93 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "gEfiPcAnsiGuid"
+validation.type = "guid"
+validation.guid = [ 0xE0C14753, 0xF9BE, 0x11D2, [ 0x9A, 0x0C, 0x00, 0x90, 0x27, 0x3F, 0xC1, 0x4D ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mMmSupvPoolLists"
+array.index = 0
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmSupvPoolLists"
+array.index = 0
+field = "BackLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmSupvPoolLists"
+array.index = 1
+field = "ForwardLink"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmSupvPoolLists"
+array.index = 1
+field = "BackLink"
+validation.type = "pointer"
+
+# Rule for the 2D array part of the mMmSupvPoolLists.  This is needed for 100% coverage
+[[rule]]
+symbol = "mMmSupvPoolLists"
+array.index = [2, 11]
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mPte1GCount"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "gEfiSmmSwDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x18a3c6dc, 0x5eea, 0x48c8, [ 0xa1, 0xc1, 0xb5, 0x33, 0x89, 0xf9, 0x89, 0x99 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mMsrCurrSize"
+validation.type = "none"
+scope = "debug"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used for debug printing only in the syscall dispatcher."
+
+[[rule]]
+symbol = "mMsegBase"
+validation.type = "pointer"
+validation.in_mseg = true
+
+[[rule]]
+symbol = "mGuardedMemoryMap"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mMmMemLibInternalMmramCount"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mMmramRanges"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mPhysicalAddressBits"
+validation.type = "non zero"
+
+# Always set to zero currently
+[[rule]]
+symbol = "mAddressEncMask"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "mGuardEntries"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "mStmConfigurationTableInitialized"
+validation.type = "content"
+validation.content = [0x01]
+
+[[rule]]
+symbol = "gMmUnblockRegionHobGuid"
+validation.type = "guid"
+validation.guid = [ 0x3def51c5, 0x228f, 0x481d, [ 0x82, 0x1b, 0x32, 0xec, 0x4d, 0xf7, 0xd9, 0xc7 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MmSupervisorPkg.dec."
+
+[[rule]]
+symbol = "mDepexEvaluationStackEnd"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "mFreeMapStack"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+
+[[rule]]
+symbol = "gEfiSmmPowerButtonDispatch2ProtocolGuid"
+validation.type = "guid"
+validation.guid = [ 0x1b1183fa, 0x1823, 0x46a7, [ 0x88, 0x72, 0x9c, 0x57, 0x87, 0x55, 0x40, 0x9d ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "mSmmCr3"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mHardwareSmiEntryList"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+[[rule]]
+symbol = "mPte2MEntries"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "mSmmCpuSemaphores"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "gEfiVTUTF8Guid"
+validation.type = "guid"
+validation.guid = [ 0xAD15A0D6, 0x8BEC, 0x4ACF, [ 0xA0, 0x73, 0xD0, 0x1D, 0xE7, 0x7E, 0x2D, 0x88 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gEfiUartDevicePathGuid"
+validation.type = "guid"
+validation.guid = [ 0x37499a9d, 0x542f, 0x4c89, [ 0xa0, 0x26, 0x35, 0xda, 0x14, 0x20, 0x94, 0xe4 ] ]
+scope = "smi_profiler"
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in MdePkg.dec."
+
+[[rule]]
+symbol = "gSeaValidationTestHandlerGuid"
+validation.type = "guid"
+validation.guid = [ 0x2f5df5d9, 0xa4c1, 0x4f6d, [ 0xb5, 0x34, 0x4, 0xdd, 0x9b, 0x49, 0x59, 0x9f ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>", "Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by SEA validation feature. However, GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in SeaPkg.dec."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "gMmCoreDataHobGuid"
+validation.type = "guid"
+validation.guid = [ 0xa160bf99, 0x2aa4, 0x4d7d, [ 0x99, 0x93, 0x89, 0x9c, 0xb1, 0x2d, 0xf3, 0x76 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in StandaloneMmPkg.dec."
+
+[[rule]]
+symbol = "gEfiMmPeiMmramMemoryReserveGuid"
+validation.type = "guid"
+validation.guid = [ 0x0703f912, 0xbf8d, 0x4e2a, [ 0xbe, 0x07, 0xab, 0x27, 0x25, 0x25, 0xc5, 0x92 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in StandaloneMmPkg.dec."
+
+[[rule]]
+symbol = "gMpInformationHobGuid"
+validation.type = "guid"
+validation.guid = [ 0xba33f15d, 0x4000, 0x45c1, [ 0x8e, 0x88, 0xf9, 0x16, 0x92, 0xd4, 0x57, 0xe3 ] ]
+reviewed-by = ["Joey Vagedes <joeyvagedes@microsoft.com>"]
+last-reviewed = "2025-07-08"
+remarks = "GUIDs should never be changed, however they are in a Read/Write section. This rule verifies the GUID is the same as the one defined in StandaloneMmPkg.dec."
+
+[[rule]]
+symbol = "mPte1GEntries"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "mSmmCpl3StackArrayBase"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mIoValues"
+validation.type = "none"
+scope = "debug"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Only used for debug printing internal to the syscall dispatcher."
+
+# Used in paging audit, expected to be 0
+[[rule]]
+symbol = "mGuardCount"
+validation.type = "none"
+reviewed-by = ["Kun Qin <kuqin@microsoft.com>"]
+last-reviewed = "2025-07-10"
+remarks = "Used by paging audit feature."
+scope = "supv_audit_tests"
+
+[[rule]]
+symbol = "mGdtBufferSize"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mMmMemLibInternalMmramRanges"
+validation.type = "pointer"
+
+# Used in shell app so should be 0
+[[rule]]
+symbol = "mSmmHardwareSmiDatabaseSize"
+validation.type = "none"
+scope = "smi_profiler"
+reviewed-by = ["Michael Kubacki <mikuback@microsoft.com>"]
+last-reviewed = "2025-07-09"
+remarks = "Used by SMI handler profile feature."
+
+# Maybe change to validate content
+[[rule]]
+symbol = "gPhyMask"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mSmmCpuService"
+validation.type = "non zero"
+
+[[rule]]
+symbol = "mGdtrPtr"
+validation.type = "mem attr"
+validation.memory_size = 0x08
+validation.must_have = 0x44000
+validation.must_not_have = 0x22000
+
+[[rule]]
+symbol = "mStmResourcesPtr"
+validation.type = "pointer"
+
+[[rule]]
+symbol = "gcSmiHandlerTemplate"
+validation.type = "none"
+
+[[rule]]
+symbol = "mInternalCr3"
+validation.type = "content"
+validation.content = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
