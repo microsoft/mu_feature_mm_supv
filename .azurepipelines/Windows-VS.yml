@@ -33,3 +33,18 @@ extends:
         Pkgs: 'SeaPkg'
         Targets: 'DEBUG,RELEASE,NO-TARGET,NOOPT'
         ArchList: $(arch_list)
+    extra_jobs:
+      # Add a job to build the tools in the SeaPkg workspace in std
+      - job: CargoCmds
+        displayName: Workspace Cargo STD Build Commands
+        pool:
+          vmImage: windows-latest
+        steps:
+          - checkout: self
+            fetchDepth: 1
+            clean: true
+          - template: Steps/RustSetupSteps.yml@mu_devops
+          - template: Steps/RustCargoSteps.yml@mu_devops
+            parameters:
+              test_command: cargo test
+              build_command: cargo build
