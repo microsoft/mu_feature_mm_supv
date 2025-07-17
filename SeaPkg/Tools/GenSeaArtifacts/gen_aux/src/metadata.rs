@@ -809,7 +809,7 @@ impl TypeInfo {
             pdb::TypeData::Union(union) => TypeInfo::one(union.size as u32, Some(index)),
             // We don't have a good way to deal with bit-fields in this code, so we just return the size of the
             // underlying type. This is a limitation of the current implementation because the size we set is in bytes,
-            // but the size of a particular bi-field is in bits. If we ever wish to make a rule for individual
+            // but the size of a particular bit-field is in bits. If we ever wish to make a rule for individual
             // bit-fields (similar to how we do for fields in a class) we will need to change this. Probably to make
             // the TypeInfo struct we return deal with sizes in bites instead of Bytes.
             pdb::TypeData::Bitfield(bf) => TypeInfo::from_type_index(info, bf.underlying_type)?,
