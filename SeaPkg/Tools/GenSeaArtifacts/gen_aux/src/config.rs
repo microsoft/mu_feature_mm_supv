@@ -548,26 +548,39 @@ mod tests {
 
     #[test]
     fn test_from_file_valid() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("resources")
-            .join("test")
-            .join("example.toml");
+        let toml = r#"
+        [config]
+        no_missing_rules = true
 
-        assert!(path.exists(), "Test file does not exist: {:?}", path);
+        [[key]]
+        signature = ['F', 'P', 'O', 'L']
+        symbol = 'FirmwarePolicy'
 
+        [[rule]]
+        symbol = "gcSmiIdtr"
+        field = "Limit"
+        validation.type = "content"
+        validation.content = [0xFF, 0x01]
+
+        [[rule]]
+        symbol = "mIoCurrSize"
+        validation.type = "content"
+        validation.content = [0x00]
+        scope = "other"
+        "#;
         // Attempt to read the config file
-        let result = ConfigFile::from_file(path);
+        let tempfile = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tempfile.path(), toml).unwrap();
+        let result = ConfigFile::from_file(tempfile.path());
         assert!(result.is_ok());
 
         // Check that removing rules by scope works
         let mut config = result.unwrap();
         let scopes = vec!["debug".to_string()];
-        let rule_count = config.rules.len();
+        assert_eq!(config.rules.len(), 2);
         config.filter_by_scopes(&scopes).unwrap();
-        assert!(
-            config.rules.len() < rule_count,
-            "Expected some rules to be filtered out"
-        );
+        assert_eq!(config.rules.len(), 1); // the "other" scope should be removed
+        assert_eq!(config.rules[0].symbol, "gcSmiIdtr");
 
         // Attempt to write the config file back to a temporary location
         let temp = tempfile::NamedTempFile::new().unwrap();
