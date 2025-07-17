@@ -17,3 +17,7 @@ __pycache__/
 /Common
 /MU_BASECORE
 _TEMP_*/
+
+# Rust specific ignores
+/target
+/Cargo.lock
