@@ -539,3 +539,411 @@ impl Debug for Segment {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+    use crate::{file::ImageValidationEntryHeader, metadata};
+
+    fn create_metadata() -> metadata::PdbMetadata<'static, Cursor<&'static [u8]>> {
+        let pdb = include_bytes!("../resources/test/example.pdb");
+        let efi = include_bytes!("../resources/test/example.efi");
+        let Ok(metadata) = metadata::PdbMetadata::<'_, Cursor<_>>::new(pdb, efi) else {
+            panic!("Failed to create PdbMetadata");
+        };
+        metadata
+    }
+
+    #[test]
+    fn test_debug_creates_expected_output() {
+        use super::*;
+        let segment = Segment::new(0x1000, 0x2000, true, "Test".to_string());
+        let output = format!("{:?}", segment);
+        assert!(output.contains("Segment"));
+        assert!(output.contains("symbol: \"\""));
+        assert!(output.contains("start: \"0x1000\""));
+        assert!(output.contains("end: \"0x2000\""));
+        assert!(output.contains("covered: true"));
+    }
+
+    #[test]
+    fn test_segment_from_entry() {
+        let mut metadata = create_metadata();
+
+        // Generate the header to test creating a segment.
+        let Ok(headers) = metadata.build_entries(&crate::config::Rule {
+            symbol: "gMpInformation2HobGuid".to_string(),
+            field: None,
+            scope: None,
+            array: None,
+            validation: crate::config::Validation::None,
+            reviewers: vec!["Test Reviewer <Test@example.com>".to_string()],
+            last_reviewed: "2025-07-11".to_string(),
+            remarks: "An Amazing Rule".to_string(),
+        }) else {
+            panic!("Failed to build entries");
+        };
+
+        assert_eq!(headers.len(), 1);
+        let (entry, data) = &headers[0];
+
+        // Just validate the header is correct for the actual test below.
+        assert_eq!(entry.signature, 0x52544E45);
+        assert_eq!(entry.offset, 0x37020);
+        assert_eq!(entry.size, 0x10);
+        assert_eq!(entry.offset_to_default, 0x0); // This is the first rule, so its offset is 0
+        assert_eq!(data.len(), 0x10);
+
+        let segment = Segment::from_entry(entry, &metadata);
+
+        assert_eq!(segment.symbol(), "gMpInformation2HobGuid");
+        assert_eq!(segment.start(), 0x37020);
+        assert_eq!(segment.start, "0x37020");
+        assert_eq!(segment.end(), 0x37030);
+        assert_eq!(segment.end, "0x37030");
+        assert!(segment.covered());
+        assert_eq!(segment.reason, "Validation Rule: None");
+        assert_eq!(
+            segment.reviewers,
+            vec!["Test Reviewer <Test@example.com>".to_string()]
+        );
+        assert_eq!(segment.last_reviewed, "2025-07-11".to_string());
+        assert_eq!(segment.remarks, "An Amazing Rule".to_string());
+    }
+
+    #[test]
+    fn test_segment_list_insert_split_middle() {
+        let mut segments = SegmentList::new(0x1000);
+        assert_eq!(segments.segments.len(), 1);
+
+        // Insert a segment that will split an existing segment in two
+        segments
+            .insert(Segment::new(0x400, 0x600, true, "Test".to_string()))
+            .unwrap_or_else(|_| panic!("Failed to insert segment"));
+        assert_eq!(segments.segments.len(), 3);
+        assert_eq!(segments.segments[0]._start, 0x0);
+        assert_eq!(segments.segments[0]._end, 0x400);
+        assert_eq!(segments.segments[1]._start, 0x400);
+        assert_eq!(segments.segments[1]._end, 0x600);
+        assert_eq!(segments.segments[1].reason, "Test");
+        assert_eq!(segments.segments[2]._start, 0x600);
+        assert_eq!(segments.segments[2]._end, 0x1000);
+    }
+
+    #[test]
+    fn test_segment_list_insert_split_exact() {
+        let mut segments = SegmentList::new(0x1000);
+        assert_eq!(segments.segments.len(), 1);
+        assert_eq!(segments.segments[0]._start, 0x0);
+        assert_eq!(segments.segments[0]._end, 0x1000);
+        assert!(!segments.segments[0].covered());
+
+        segments
+            .insert(Segment::new(0x0, 0x1000, true, "Test".to_string()))
+            .unwrap_or_else(|_| panic!("Failed to insert segment"));
+        assert_eq!(segments.segments.len(), 1);
+        assert_eq!(segments.segments[0]._start, 0x0);
+        assert_eq!(segments.segments[0]._end, 0x1000);
+        assert!(segments.segments[0].covered());
+        assert_eq!(segments.segments[0].reason, "Test");
+    }
+
+    #[test]
+    fn test_segment_list_insert_left() {
+        let mut segments = SegmentList::new(0x1000);
+        assert_eq!(segments.segments.len(), 1);
+
+        // Insert a segment that will be to the left of the existing segment
+        segments
+            .insert(Segment::new(0x0, 0x400, true, "Test".to_string()))
+            .unwrap_or_else(|_| panic!("Failed to insert segment"));
+        assert_eq!(segments.segments.len(), 2);
+        assert_eq!(segments.segments[0]._start, 0x0);
+        assert_eq!(segments.segments[0]._end, 0x400);
+        assert_eq!(segments.segments[0].reason, "Test");
+        assert!(segments.segments[0].covered());
+        assert_eq!(segments.segments[1]._start, 0x400);
+        assert_eq!(segments.segments[1]._end, 0x1000);
+    }
+
+    #[test]
+    fn test_segment_list_insert_right() {
+        let mut segments = SegmentList::new(0x1000);
+        assert_eq!(segments.segments.len(), 1);
+
+        // Insert a segment that will be to the right of the existing segment
+        segments
+            .insert(Segment::new(0x600, 0x1000, true, "Test".to_string()))
+            .unwrap_or_else(|_| panic!("Failed to insert segment"));
+        assert_eq!(segments.segments.len(), 2);
+        assert_eq!(segments.segments[0]._start, 0x0);
+        assert_eq!(segments.segments[0]._end, 0x600);
+        assert_eq!(segments.segments[1]._start, 0x600);
+        assert_eq!(segments.segments[1]._end, 0x1000);
+        assert_eq!(segments.segments[1].reason, "Test");
+        assert!(segments.segments[1].covered());
+    }
+
+    #[test]
+    fn test_segment_list_add_section_padding() {
+        let mut segments = SegmentList::new(0x3d400);
+        assert_eq!(segments.segments.len(), 1);
+
+        // Passing the wrong file type should fail
+        assert!(segments
+            .add_section_padding(include_bytes!("../resources/test/example.pdb"))
+            .is_err());
+
+        // Passing the correct file type should succeed
+        assert!(segments
+            .add_section_padding(include_bytes!("../resources/test/example.efi"))
+            .is_ok());
+
+        // (1) PE Header + .text Section
+        // (2) .text Section Padding (COVERED)
+        // (3) .rdata Section
+        // (4) .rdata Section Padding (COVERED)
+        // (5) .data Section
+        // (6) .data Section Padding (COVERED)
+        // (7) (unnamed) Section
+        // (8) (unnamed) Section Padding (COVERED)
+        // (9) .xdata Section
+        // (10) .xdata Section Padding (COVERED)
+        // (11) .reloc Section
+        // (12) .reloc Section Padding (COVERED)
+        assert_eq!(segments.segments.len(), 12);
+
+        let segments = segments.into_inner();
+        for segment in segments.iter().skip(1).step_by(2) {
+            assert!(segment.covered())
+        }
+
+        for segment in segments.iter().step_by(2) {
+            assert!(!segment.covered())
+        }
+    }
+
+    #[test]
+    fn test_segment_list_insert_overlapping() {
+        let mut segments = SegmentList::new(0x3d400);
+        assert_eq!(segments.segments.len(), 1);
+
+        // Insert a segment that overlaps with the existing segment
+        segments
+            .insert(Segment::new(0x200, 0x800, true, "Test".to_string()))
+            .unwrap_or_else(|_| panic!("Failed to insert segment"));
+
+        // This should panic because the segment overlaps with the existing segment
+        assert!(segments
+            .insert(Segment::new(0x100, 0x300, true, "Test".to_string()))
+            .is_err());
+    }
+
+    #[test]
+    fn test_segment_list_add_pe_header() {
+        let pe = include_bytes!("../resources/test/example.efi");
+        let mut segments = SegmentList::new(pe.len() as u32);
+        assert_eq!(segments.segments.len(), 1);
+
+        let Ok(_) = segments.add_pe_header(pe) else {
+            panic!("Failed to add PE header");
+        };
+
+        // (1) The PE header
+        // (2) The padding after the PE header
+        // (3) The rest of the image
+        assert_eq!(segments.segments.len(), 3);
+
+        // These values are hardcoded as we know the correct values for this test image.
+        assert_eq!(segments.segments[0].start(), 0x0);
+        assert_eq!(segments.segments[0].end(), 0x400);
+
+        assert_eq!(segments.segments[1].start(), 0x400);
+        assert_eq!(segments.segments[1].end(), 0x1000);
+
+        assert_eq!(segments.segments[2].start(), 0x1000);
+        assert_eq!(segments.segments[2].end(), pe.len() as u32);
+    }
+
+    #[test]
+    fn test_segment_list_get_size() {
+        let mut segments = SegmentList::new(0x3d400);
+        segments
+            .add_segments_from_image(include_bytes!("../resources/test/example.efi"))
+            .unwrap_or_else(|_| panic!("Failed to add segments from image"));
+
+        assert_eq!(segments.get_size(|seg| seg._start == 0x0), 0x400); // Hardcoded truth for this exact binary
+        assert_eq!(segments.get_size(|seg| seg.reason == "PE Header"), 0x400); // Hardcoded truth for this exact binary
+    }
+
+    #[test]
+    fn test_segment_list_get_size_by_reason() {
+        let mut segments = SegmentList::new(0x3d400);
+        segments
+            .add_segments_from_image(include_bytes!("../resources/test/example.efi"))
+            .unwrap_or_else(|_| panic!("Failed to add segments from image"));
+
+        assert_eq!(segments.get_size_by_reason("PE Header"), 0x400); // Hardcoded truth for this exact binary
+        assert_eq!(segments.get_size_by_reason("Section: R"), 0x10A00); // Hardcoded truth for this exact binary
+        assert_eq!(segments.get_size_by_reason("Padding"), 0x3A30); // Hardcoded truth for this exact binary
+    }
+
+    #[test]
+    fn test_segment_list_add_segments_from_aux_entries() {
+        let mut metadata = create_metadata();
+        let mut segments = SegmentList::new(metadata.image_size() as u32);
+
+        // Generate a header to populate the context map.
+        let Ok(headers) = metadata.build_entries(&crate::config::Rule {
+            symbol: "gMpInformation2HobGuid".to_string(),
+            field: None,
+            scope: None,
+            array: None,
+            validation: crate::config::Validation::None,
+            reviewers: vec!["Test Reviewer <Test@example.com>".to_string()],
+            last_reviewed: "2025-07-11".to_string(),
+            remarks: "An Amazing Rule".to_string(),
+        }) else {
+            panic!("Failed to build entries");
+        };
+
+        assert_eq!(headers.len(), 1);
+        let guid_size = headers[0].0.size;
+
+        assert_eq!(
+            segments.get_size(|seg| seg.symbol() == "gMpInformation2HobGuid"),
+            0
+        );
+
+        let headers: Vec<ImageValidationEntryHeader> =
+            headers.into_iter().map(|(h, _)| h).collect::<Vec<_>>();
+        segments
+            .add_segments_from_aux_entries(headers.as_slice(), &mut metadata)
+            .unwrap_or_else(|_| panic!("Failed to add segments from aux entries"));
+
+        assert_eq!(
+            segments.get_size(|seg| seg.symbol() == "gMpInformation2HobGuid"),
+            guid_size
+        );
+    }
+
+    #[test]
+    fn test_segment_list_update_missing_symbol_names() {
+        let mut segments = SegmentList::new(0x3d400);
+
+        let mut metadata = create_metadata();
+
+        assert_eq!(
+            segments.get_size(|seg| seg.symbol() == "gMpInformation2HobGuid"),
+            0
+        );
+        segments
+            .update_missing_symbol_names(&mut metadata)
+            .unwrap_or_else(|_| panic!("Failed to update missing symbol names"));
+        assert!(segments.get_size(|seg| seg.symbol() == "gMpInformation2HobGuid") > 0);
+    }
+
+    #[test]
+    fn test_section_list_add_sections_from_image() {
+        let mut sections = SectionList::new(0x3d400);
+        assert_eq!(sections.sections.len(), 0);
+
+        sections
+            .add_sections_from_image(include_bytes!("../resources/test/example.efi"))
+            .unwrap_or_else(|_| panic!("Failed to add sections from image"));
+
+        // 6 sections + 1 for the PE header, which we include here
+        assert_eq!(sections.sections.len(), 7);
+
+        let sections = sections.into_inner();
+
+        // Test that the entire binary is covered by the sections
+        let test_bin_section_names = [
+            ".text",
+            ".rdata",
+            ".data",
+            ".xdata",
+            ".reloc",
+            "PE Header",
+            "",
+            "PE Header",
+        ];
+
+        let mut cur_size = 0x0;
+        for section in sections.iter() {
+            let section_start = section.start.trim_start_matches("0x");
+            let section_end = section.end.trim_start_matches("0x");
+            let section_start = u32::from_str_radix(section_start, 16)
+                .unwrap_or_else(|e| panic!("Failed to parse section start address: [{e}]"));
+            let section_end = u32::from_str_radix(section_end, 16)
+                .unwrap_or_else(|e| panic!("Failed to parse section end address: [{e}]"));
+            assert_eq!(cur_size, section_start);
+            assert!(test_bin_section_names.contains(&section.name.as_str()));
+            assert!(section_start < section_end);
+            cur_size = section_end;
+        }
+    }
+
+    #[test]
+    fn test_update_missing_symbol_names() {
+        let mut metadata = create_metadata();
+
+        // Generate a header to populate the context map.
+        let Ok(_) = metadata.build_entries(&crate::config::Rule {
+            symbol: "gMpInformation2HobGuid".to_string(),
+            field: None,
+            scope: None,
+            array: None,
+            validation: crate::config::Validation::None,
+            reviewers: vec!["Test Reviewer <Test@example.com>".to_string()],
+            last_reviewed: "2025-07-11".to_string(),
+            remarks: "An Amazing Rule".to_string(),
+        }) else {
+            panic!("Failed to build entries");
+        };
+
+        let segments = SegmentList::new(metadata.image_size() as u32);
+        assert!(segments.get_size(|seg| seg.symbol() == "gMpInformation2HobGuid") == 0);
+    }
+
+    #[test]
+    fn test_coverage_build() {
+        // Honestly this is more of an integration test.
+        let mut metadata = create_metadata();
+        let mut aux_file = AuxFile::default();
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x37020,
+            size: 0x10,
+            offset_to_default: 0x0,
+            validation_type: crate::file::ValidationType::None,
+        };
+        aux_file.add_entry(entry, vec![0; 0x10].as_ref());
+
+        let Ok(report) = Coverage::build(&aux_file, &mut metadata) else {
+            panic!("Failed to build report");
+        };
+
+        assert_eq!(report.covered_by_rules, "0x10");
+        assert_eq!(report.coverable_by_rules, "0x23d0"); // Hardcoded truth for this exact binary
+        assert_eq!(report.covered_by_rules_percent, "0.17%");
+
+        let covered = report
+            .segments(|seg| seg.covered())
+            .iter()
+            .fold(0, |acc, seg| acc + seg.end() - seg.start());
+        assert!(covered > 0, "No segments were covered in the report");
+    }
+
+    #[test]
+    fn test_coverage_to_file() {
+        let mut metadata = create_metadata();
+        let aux_file = AuxFile::default();
+
+        let Ok(_) = Coverage::build(&aux_file, &mut metadata) else {
+            panic!("Failed to build report");
+        };
+    }
+}

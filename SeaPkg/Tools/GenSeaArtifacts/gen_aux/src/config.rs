@@ -370,7 +370,7 @@ mod tests {
         let date = "\"2023-10-01\"";
         let mut deserializer = serde_json::de::Deserializer::from_str(date);
         let result: Result<String, _> = deserialize_date(&mut deserializer);
-        assert!(result.is_ok_and(|s| s == "2023-10-01".to_string()));
+        assert!(result.is_ok_and(|s| s == *"2023-10-01"));
     }
 
     #[test]
@@ -466,17 +466,37 @@ mod tests {
         let data = "[305419896,4660,22136,[18,52,86,120,154,188,222,240]]";
         let mut deserializer = serde_json::de::Deserializer::from_str(data);
         let guid = deserialize_guid(&mut deserializer).unwrap();
-        assert_eq!(guid.as_fields(), (0x12345678, 0x1234, 0x5678, 0x12, 0x34, &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]));
+        assert_eq!(
+            guid.as_fields(),
+            (
+                0x12345678,
+                0x1234,
+                0x5678,
+                0x12,
+                0x34,
+                &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]
+            )
+        );
     }
 
     #[test]
     fn test_serialize_guid() {
-        let guid = Guid::from_fields(0x12345678, 0x1234, 0x5678, 0x12, 0x34, &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]);
+        let guid = Guid::from_fields(
+            0x12345678,
+            0x1234,
+            0x5678,
+            0x12,
+            0x34,
+            &[0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0],
+        );
         let mut serializer = serde_json::ser::Serializer::new(Vec::new());
         assert!(serialize_guid(&guid, &mut serializer).is_ok());
 
         let string = String::from_utf8(serializer.into_inner()).unwrap();
-        assert_eq!(string, "[305419896,4660,22136,[18,52,86,120,154,188,222,240]]");
+        assert_eq!(
+            string,
+            "[305419896,4660,22136,[18,52,86,120,154,188,222,240]]"
+        );
     }
 
     #[test]
@@ -544,7 +564,10 @@ mod tests {
         let scopes = vec!["debug".to_string()];
         let rule_count = config.rules.len();
         config.filter_by_scopes(&scopes).unwrap();
-        assert!(config.rules.len() < rule_count, "Expected some rules to be filtered out");
+        assert!(
+            config.rules.len() < rule_count,
+            "Expected some rules to be filtered out"
+        );
 
         // Attempt to write the config file back to a temporary location
         let temp = tempfile::NamedTempFile::new().unwrap();

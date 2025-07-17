@@ -21,6 +21,7 @@ use crate::{config, file, report};
 const POINTER_LENGTH: u64 = 8;
 
 /// Additional context associated with a rule
+#[derive(Debug)]
 pub struct Context {
     pub name: String,
     pub reviewers: Vec<String>,
@@ -43,7 +44,7 @@ impl Context {
 pub struct PdbMetadata<'a, S: Source<'a>> {
     pdb: PDB<'a, S>,
     sections: Vec<Section>,
-    context_map: HashMap<u32, Context>,
+    pub context_map: HashMap<u32, Context>,
     unloaded_image: Vec<u8>,
     loaded_image: Vec<u8>,
 }
@@ -312,7 +313,6 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
             if let Some(index) = &array.index {
                 if index.end() >= &element_count {
-                    println!("{}", element_count);
                     return Err(
                         anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array index {:#?} is out of bounds.", symbol.name, index)
                     );
@@ -673,17 +673,19 @@ impl Symbol {
                             }
                         }
                         return Err(anyhow::anyhow!(
-                            "Attribute [{}] not found for symbol [{}]",
+                            "Field [{}] not found in symbol [{}]",
                             attribute,
                             symbol
                         ));
                     }
+                    // Theoretically unreachable, unless the pdb file is malformed or there is a bug in the pdb crate
+                    // code.
                     return Err(anyhow::anyhow!(
                         "UNEXPECTED: Symbol [{}] fields are not a field list.",
                         symbol
                     ));
                 }
-
+                // Theoretically unreachable as you cannot have a struct defined without fields in C.
                 Err(anyhow::anyhow!(
                     "Symbol [{}] is a class, but has no fields.",
                     symbol
@@ -710,13 +712,13 @@ impl std::fmt::Debug for TypeInfo {
         if let Some(r#type) = self.element_type {
             write!(
                 f,
-                "{{ element_type: {:?}, element_size: {:08X}, count: {} }}",
+                "TypeInfo {{ element_type: {:?}, element_size: 0x{:08X}, count: {} }}",
                 r#type, self.element_size, self.count
             )
         } else {
             write!(
                 f,
-                "{{ element_size: {:08X}, count: {} }}",
+                "TypeInfo {{ element_size: 0x{:08X}, count: {} }}",
                 self.element_size, self.count
             )
         }
@@ -782,44 +784,8 @@ impl TypeInfo {
                 }
             }
             TypeData::Class(class) => TypeInfo::one(class.size as u32, Some(index)),
-            TypeData::Member(_) => {
-                log::error!("Member type unexpected in global data.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::MemberFunction(_) => {
-                log::error!("Member function unexpected in global data.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::OverloadedMethod(_) => {
-                log::error!("Overloaded method unexpected in C.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::Method(_) => {
-                log::error!("Method unexpected in C.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::StaticMember(_) => {
-                log::error!("Static method unexpected in C.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::Nested(_) => {
-                log::error!("Nested unexpected in global data.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::BaseClass(_) => {
-                log::error!("BaseClass unexpected in C.");
-                TypeInfo::one(0, Some(index))
-            }
-            TypeData::VirtualBaseClass(_) => {
-                log::error!("VirtualBaseClass unexpected in C.");
-                TypeInfo::one(0, Some(index))
-            }
             TypeData::VirtualFunctionTablePointer(_) => {
                 TypeInfo::one(POINTER_LENGTH as u32, Some(index))
-            }
-            TypeData::Procedure(_) => {
-                log::error!("Procedure unexpected in C.");
-                TypeInfo::one(0, Some(index))
             }
             TypeData::Pointer(_) => TypeInfo::one(POINTER_LENGTH as u32, Some(index)),
             TypeData::Modifier(modifier) => {
@@ -827,10 +793,6 @@ impl TypeInfo {
             }
             pdb::TypeData::Enumeration(enm) => {
                 TypeInfo::from_type_index(info, enm.underlying_type)?
-            }
-            TypeData::Enumerate(_) => {
-                log::error!("Unknown Type Enumerate");
-                TypeInfo::one(0, Some(index))
             }
             TypeData::Array(arr) => {
                 // The recursive nature of `TypeInfo::from_type_index` flattens n-dimensional arrays into a single
@@ -846,11 +808,12 @@ impl TypeInfo {
                 )
             }
             pdb::TypeData::Union(union) => TypeInfo::one(union.size as u32, Some(index)),
-            pdb::TypeData::Bitfield(bf) => {
-                let type_info = TypeInfo::from_type_index(info, bf.underlying_type)?;
-                let size = type_info.total_size() * bf.length as u32;
-                TypeInfo::one(size, Some(index))
-            }
+            // We don't have a good way to deal with bit-fields in this code, so we just return the size of the
+            // underlying type. This is a limitation of the current implementation because the size we set is in bytes,
+            // but the size of a particular bi-field is in bits. If we ever wish to make a rule for individual
+            // bit-fields (similar to how we do for fields in a class) we will need to change this. Probably to make
+            // the TypeInfo struct we return deal with sizes in bites instead of Bytes.
+            pdb::TypeData::Bitfield(bf) => TypeInfo::from_type_index(info, bf.underlying_type)?,
             TypeData::FieldList(fl) => {
                 let mut size = 0;
                 for type_data in fl.fields {
@@ -868,13 +831,8 @@ impl TypeInfo {
                 }
                 TypeInfo::one(size, Some(index))
             }
-            TypeData::MethodList(_) => {
-                log::error!("MethodList unexpected in C.");
-                TypeInfo::one(0, None)
-            }
-            _ => {
-                log::error!("Unknown Type");
-                TypeInfo::one(0, None)
+            data => {
+                return Err(anyhow!("Unhandled TypeData for C Code: {:?}", data));
             }
         })
     }
@@ -975,5 +933,848 @@ impl TypeInfo {
                 0
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use r_efi::efi::Guid;
+
+    use super::*;
+
+    use crate::{
+        config::{Array, Key, Rule, Validation},
+        file::AuxFile,
+        report::Coverage,
+    };
+
+    use std::{fs::File, path::PathBuf};
+
+    fn get_path(s: &str) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.pop(); // pop the crate name, file adds it
+        path.push(file!());
+        path.pop();
+        path.pop();
+        path.push("resources");
+        path.push("test");
+        path.push(s);
+        path
+    }
+
+    fn build_metadata() -> PdbMetadata<'static, Cursor<&'static [u8]>> {
+        let pdb = include_bytes!("../resources/test/example.pdb");
+        let efi = include_bytes!("../resources/test/example.efi");
+        PdbMetadata::<'static, Cursor<&'static [u8]>>::new(pdb, efi)
+            .expect("Failed to build metadata")
+    }
+
+    #[test]
+    fn test_metadata_new_with_good_files() {
+        let pdb = get_path("example.pdb");
+        let efi = get_path("example.efi");
+        assert!(PdbMetadata::<File>::new(pdb, efi).is_ok());
+    }
+
+    #[test]
+    fn test_metadata_new_with_good_buffers() {
+        let pdb = include_bytes!("../resources/test/example.pdb");
+        let efi = include_bytes!("../resources/test/example.efi");
+        assert!(PdbMetadata::<Cursor<&[u8]>>::new(pdb, efi).is_ok());
+    }
+
+    #[test]
+    fn test_new_with_bad_files() {
+        let pdb = get_path("example.pdb");
+        assert!(pdb.exists());
+
+        let efi = get_path("example.efi");
+        assert!(efi.exists());
+
+        // pdb path does not exist
+        assert!(PdbMetadata::<File>::new(
+            PathBuf::from("non_existent.pdb"),
+            PathBuf::from("non_existent.bin")
+        )
+        .is_err());
+
+        // pdb path exists, but file does not
+        assert!(PdbMetadata::<File>::new(pdb.clone(), PathBuf::from("non_existent.bin")).is_err());
+
+        // pdb path exists, but is not a pdb file
+        assert!(PdbMetadata::<File>::new(efi.clone(), efi.clone()).is_err());
+        // file exists, but is not a efi binary
+        assert!(PdbMetadata::<File>::new(pdb.clone(), pdb.clone()).is_err());
+    }
+
+    #[test]
+    fn test_new_with_bad_buffers() {
+        let pdb = include_bytes!("../resources/test/example.pdb");
+        let efi = include_bytes!("../resources/test/example.efi");
+
+        // pdb buffer is not a pdb file
+        assert!(PdbMetadata::<Cursor<&[u8]>>::new(efi, efi).is_err());
+
+        // efi buffer is not a efi binary
+        assert!(PdbMetadata::<Cursor<&[u8]>>::new(pdb, pdb).is_err());
+    }
+
+    #[test]
+    fn test_build_entries_with_elements() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            array: Some(Array {
+                sentinel: false,
+                index: Some(1usize..=2usize),
+            }),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
+
+        assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn test_build_entries_with_field() {
+        let mut metadata = build_metadata();
+
+        let rule1 = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            field: Some("ForwardLink".to_string()),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let rule2 = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries1 = metadata
+            .build_entries(&rule1)
+            .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
+        assert_eq!(entries1.len(), 12); // Did not specify a range, so it created this rule for all list elements.
+        let entries2 = metadata
+            .build_entries(&rule2)
+            .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
+        assert_eq!(entries2.len(), 12); // Did not specify a field, so it created this rule for the entire symbol.
+
+        for (entry1, entry2) in entries1.iter().zip(entries2.iter()) {
+            // entry1 is for the first field in the symbol while entry2 is for the entire symbol
+            // Due to this, the offset should be the same but the size should be different.)
+            assert_eq!(entry1.0.offset, entry2.0.offset);
+            assert!(entry1.0.size < entry2.0.size);
+        }
+    }
+
+    #[test]
+    fn test_build_entries_with_elements_and_sentinel() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            validation: config::Validation::None,
+            array: Some(Array {
+                sentinel: true,
+                index: None,
+            }),
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
+        assert_eq!(entries.len(), 12);
+
+        // All but the last entry should have a validation type of None.
+        for entry in entries.iter().rev().skip(1) {
+            assert_eq!(entry.0.validation_type, file::ValidationType::None);
+        }
+
+        // The last entry should have a validation type of Content with a sentinel value.
+        if let Some(file::ValidationType::Content { content }) =
+            entries.last().map(|e| &e.0.validation_type)
+        {
+            // mmSupvPoolLists is a list of structs that have 2 pointers. So the size is 2 pointers.
+            assert_eq!(
+                content.as_slice(),
+                vec![0x00; (POINTER_LENGTH * 2) as usize].as_slice()
+            );
+        } else {
+            panic!("Last entry should have a sentinel value.");
+        };
+    }
+
+    #[test]
+    #[should_panic(expected = "Symbol ABCDEFG not found in PDB file.")]
+    fn test_build_key_symbol_missing_symbol() {
+        let mut metadata = build_metadata();
+
+        let key = Key {
+            symbol: "ABCDEFG".to_string(),
+            signature: ['L', 'O', 'O', 'L'],
+        };
+
+        // This will panic
+        let _ = metadata.build_key_symbol(&key);
+    }
+    #[test]
+    fn test_build_key_symbol() {
+        let mut metadata = build_metadata();
+
+        let key = Key {
+            symbol: "mMmSupvPoolLists".to_string(),
+            signature: ['P', 'O', 'O', 'L'],
+        };
+
+        let key_symbol = metadata
+            .build_key_symbol(&key)
+            .unwrap_or_else(|e| panic!("Failed to build key symbol: [{}]", e));
+        assert_eq!(key_symbol.signature, 0x4c_4f_4f_50); // 'POOL'
+    }
+
+    #[test]
+    fn test_build_symbol_padding_entries() {
+        let mut metadata = build_metadata();
+        let aux = AuxFile::default();
+
+        let coverage = Coverage::build(&aux, &mut metadata)
+            .unwrap_or_else(|e| panic!("Failed to build coverage: [{}]", e));
+        let entries = metadata
+            .build_symbol_padding_entries(&coverage)
+            .unwrap_or_else(|e| panic!("Failed to build symbol padding entries: [{}]", e));
+
+        // In this exact binary, we have 39 areas of padding between symbols in a R/W section, for alignment purposes.
+        // If we start detecting more or less, then the new change is wrong, or we were wrong.
+        // Not the best way to write tests, but this will at least prevent regressions.
+        assert_eq!(entries.len(), 39);
+    }
+
+    #[test]
+    fn test_build_field_padding_entries() {
+        // mImagePropertiesPrivateData has padding between symbols. Adding a rule for each individual field
+        // should make it such that we can detect the padding between fields, and generate entries with
+        // build_field_padding_entries.
+        let rules = {
+            let mut rules = Vec::new();
+            for field in [
+                "Signature",
+                "ImageRecordCount",
+                "CodeSegmentCountMax",
+                "ImageRecordList",
+            ] {
+                rules.push(Rule {
+                    symbol: "mImagePropertiesPrivateData".to_string(),
+                    field: Some(field.to_string()),
+                    validation: config::Validation::None,
+                    ..Default::default()
+                })
+            }
+            rules
+        };
+
+        let mut metadata = build_metadata();
+        let mut entries = {
+            let mut entries = Vec::new();
+            for rule in rules {
+                entries.extend(
+                    metadata
+                        .build_entries(&rule)
+                        .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e)),
+                );
+            }
+            entries
+        };
+
+        let mut aux = AuxFile::default();
+
+        for entry in entries.drain(..) {
+            aux.add_entry(entry.0, &entry.1);
+        }
+
+        let coverage = Coverage::build(&aux, &mut metadata)
+            .unwrap_or_else(|e| panic!("Failed to build coverage: [{}]", e));
+        let entries = metadata
+            .build_field_padding_entries(&coverage)
+            .unwrap_or_else(|e| panic!("Failed to build field padding entries: [{}]", e));
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0.offset, 0x0000_3766C); // Hardcoded for this specific binary.
+        assert_eq!(entries[0].0.size, 0x0000_0004); // Hardcoded for this specific binary.
+
+        // The 1 field padding we created, plus the 39 symbol padding entries, should give us a total of 40 entries.
+        assert_eq!(
+            metadata.create_padding_entries(&coverage).unwrap().len(),
+            40
+        );
+    }
+
+    #[test]
+    fn test_validate_rule_content() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mSmmCpuService".to_string(),
+            validation: config::Validation::Content {
+                content: vec![0x0; 48],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mSmmCpuService").clone();
+
+        metadata
+            .validate_rule(&symbol, &rule)
+            .unwrap_or_else(|e| panic!("Failed to validate rule: [{}]", e));
+    }
+
+    #[test]
+    fn test_validate_rule_content_bad_size() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mSmmCpuService".to_string(),
+            validation: config::Validation::Content {
+                content: vec![0x0; 32],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mSmmCpuService").clone();
+
+        match metadata.validate_rule(&symbol, &rule) {
+            Ok(_) => panic!("Expected validation to fail"),
+            Err(e) => {
+                assert!(e.to_string().contains("does not match symbol size"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_rule_content_and_field() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mUnblockedMemoryList".to_string(),
+            field: Some("ForwardLink".to_string()),
+            validation: config::Validation::Content {
+                content: vec![0x0; 8],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mUnblockedMemoryList").clone();
+
+        metadata
+            .validate_rule(&symbol, &rule)
+            .unwrap_or_else(|e| panic!("Failed to validate rule: [{}]", e));
+    }
+
+    #[test]
+    fn test_validate_rule_content_and_field_bad_size() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mUnblockedMemoryList".to_string(),
+            field: Some("ForwardLink".to_string()),
+            validation: config::Validation::Content {
+                content: vec![0x0; 4],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mUnblockedMemoryList").clone();
+
+        assert!(metadata.validate_rule(&symbol, &rule).is_err());
+    }
+
+    #[test]
+    fn test_validate_rule_when_array_field_but_symbol_not_array() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mUnblockedMemoryList".to_string(),
+            array: Some(Array {
+                sentinel: false,
+                index: Some(1..=2),
+            }),
+            validation: config::Validation::Content {
+                content: vec![0x0; 16],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mUnblockedMemoryList").clone();
+
+        match metadata.validate_rule(&symbol, &rule) {
+            Ok(_) => panic!("Expected validation to fail"),
+            Err(e) => {
+                assert!(e.to_string().contains("is not an array"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_rule_when_array_index_and_array_sentinel_is_set() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mReservedVectorsData".to_string(),
+            array: Some(Array {
+                sentinel: true,
+                index: Some(1..=2),
+            }),
+            validation: config::Validation::Content {
+                content: vec![0x0; 96],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mReservedVectorsData").clone();
+
+        match metadata.validate_rule(&symbol, &rule) {
+            Ok(_) => panic!("Expected validation to fail"),
+            Err(e) => {
+                assert!(e.to_string().contains("cannot be combined"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_rule_index_out_of_bounds() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            array: Some(Array {
+                sentinel: false,
+                index: Some(99..=99),
+            }),
+            validation: config::Validation::Content {
+                content: vec![0x0; 16],
+            },
+            ..Default::default()
+        };
+
+        let symbol = metadata.find_symbol("mMmSupvPoolLists").clone();
+
+        match metadata.validate_rule(&symbol, &rule) {
+            Ok(_) => panic!("Expected validation to fail"),
+            Err(e) => {
+                assert!(e.to_string().contains("is out of bounds"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_build_validation_type() {
+        let metadata = build_metadata();
+
+        let v = metadata
+            .build_validation_type(&Validation::None)
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(v, file::ValidationType::None);
+
+        let v = metadata
+            .build_validation_type(&Validation::Content {
+                content: vec![0x0; 8],
+            })
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(
+            v,
+            file::ValidationType::Content {
+                content: vec![0x0; 8]
+            }
+        );
+
+        let v = metadata
+            .build_validation_type(&Validation::NonZero)
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(v, file::ValidationType::NonZero);
+
+        let v = metadata
+            .build_validation_type(&Validation::Guid {
+                guid: Guid::from_fields(0xffffffff, 0, 0, 0, 0, &[0, 0, 0, 0, 0, 0]),
+            })
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(
+            v,
+            file::ValidationType::Content {
+                content: vec![
+                    0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00
+                ]
+            }
+        );
+
+        let v = metadata
+            .build_validation_type(&Validation::MemAttr {
+                memory_size: 0x1,
+                must_have: 0x2,
+                must_not_have: 0x3,
+            })
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(
+            v,
+            file::ValidationType::MemAttr {
+                memory_size: 0x1,
+                must_have: 0x2,
+                must_not_have: 0x3
+            }
+        );
+
+        let v = metadata
+            .build_validation_type(&Validation::Pointer { in_mseg: true })
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(v, file::ValidationType::Pointer { in_mseg: true });
+
+        let v = metadata
+            .build_validation_type(&Validation::Ref {
+                reference: "mUnblockedMemoryList".to_string(),
+            })
+            .unwrap_or_else(|e| panic!("Failed to build validation type: [{}]", e));
+        assert_eq!(
+            v,
+            file::ValidationType::Ref {
+                address: 0x0003_76D8
+            }
+        );
+    }
+
+    #[test]
+    fn test_type_info_primitive_size_values() {
+        // This test is purely to acknowledge that adjusting the primitive size values is dangerous and probably wrong.
+        assert_eq!(0, TypeInfo::get_size_from_primitive(PrimitiveKind::NoType));
+        assert_eq!(
+            POINTER_LENGTH as u32,
+            TypeInfo::get_size_from_primitive(PrimitiveKind::Void)
+        );
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::Char));
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::UChar));
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::WChar));
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::RChar));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::RChar16));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::RChar32));
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::I8));
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::U8));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::Short));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::UShort));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::I16));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::U16));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::Long));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::ULong));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::I32));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::U32));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::Quad));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::UQuad));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::I64));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::U64));
+        assert_eq!(16, TypeInfo::get_size_from_primitive(PrimitiveKind::Octa));
+        assert_eq!(16, TypeInfo::get_size_from_primitive(PrimitiveKind::UOcta));
+        assert_eq!(16, TypeInfo::get_size_from_primitive(PrimitiveKind::I128));
+        assert_eq!(16, TypeInfo::get_size_from_primitive(PrimitiveKind::U128));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::F16));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::F32));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::F32PP));
+        assert_eq!(6, TypeInfo::get_size_from_primitive(PrimitiveKind::F48));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::F64));
+        assert_eq!(10, TypeInfo::get_size_from_primitive(PrimitiveKind::F80));
+        assert_eq!(16, TypeInfo::get_size_from_primitive(PrimitiveKind::F128));
+        assert_eq!(
+            8,
+            TypeInfo::get_size_from_primitive(PrimitiveKind::Complex32)
+        );
+        assert_eq!(
+            16,
+            TypeInfo::get_size_from_primitive(PrimitiveKind::Complex64)
+        );
+        assert_eq!(
+            20,
+            TypeInfo::get_size_from_primitive(PrimitiveKind::Complex80)
+        );
+        assert_eq!(
+            32,
+            TypeInfo::get_size_from_primitive(PrimitiveKind::Complex128)
+        );
+        assert_eq!(1, TypeInfo::get_size_from_primitive(PrimitiveKind::Bool8));
+        assert_eq!(2, TypeInfo::get_size_from_primitive(PrimitiveKind::Bool16));
+        assert_eq!(4, TypeInfo::get_size_from_primitive(PrimitiveKind::Bool32));
+        assert_eq!(8, TypeInfo::get_size_from_primitive(PrimitiveKind::Bool64));
+        assert_eq!(0, TypeInfo::get_size_from_primitive(PrimitiveKind::HRESULT));
+    }
+
+    #[test]
+    fn test_type_info_from_type_data_primitives() {
+        // Test the TypeInfo::from_type_data method with basic primitive types
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+        let index = TypeIndex(1);
+
+        // Test with a primitive type (I32)
+        let primitive_data = TypeData::Primitive(pdb::PrimitiveType {
+            kind: PrimitiveKind::I32,
+            indirection: None,
+        });
+        let result = TypeInfo::from_type_data(type_info, primitive_data, index).unwrap();
+        assert_eq!(result.element_size(), 4);
+        assert_eq!(result.element_count(), 1);
+        assert_eq!(result.total_size(), 4);
+        assert_eq!(result.type_id(), Some(index));
+
+        // Test with various primitive types and their expected sizes
+        let test_primitives = vec![
+            (PrimitiveKind::I8, 1),
+            (PrimitiveKind::U8, 1),
+            (PrimitiveKind::I16, 2),
+            (PrimitiveKind::U16, 2),
+            (PrimitiveKind::I32, 4),
+            (PrimitiveKind::U32, 4),
+            (PrimitiveKind::I64, 8),
+            (PrimitiveKind::U64, 8),
+            (PrimitiveKind::F32, 4),
+            (PrimitiveKind::F64, 8),
+            (PrimitiveKind::Bool8, 1),
+            (PrimitiveKind::Bool32, 4),
+            (PrimitiveKind::Char, 1),
+            (PrimitiveKind::UChar, 1),
+            (PrimitiveKind::Short, 2),
+            (PrimitiveKind::UShort, 2),
+            (PrimitiveKind::Long, 4),
+            (PrimitiveKind::ULong, 4),
+            (PrimitiveKind::Void, POINTER_LENGTH as u32),
+        ];
+
+        for (primitive_kind, expected_size) in test_primitives {
+            let primitive_data = TypeData::Primitive(pdb::PrimitiveType {
+                kind: primitive_kind,
+                indirection: None,
+            });
+            let result = TypeInfo::from_type_data(type_info, primitive_data, index).unwrap();
+            assert_eq!(
+                result.element_size(),
+                expected_size,
+                "Failed for primitive kind: {:?}",
+                primitive_kind
+            );
+            assert_eq!(result.element_count(), 1);
+            assert_eq!(result.total_size(), expected_size);
+            assert_eq!(result.type_id(), Some(index));
+        }
+
+        // Test with a pointer type (by using a primitive with indirection)
+        let mut primitive_ptr = pdb::PrimitiveType {
+            kind: PrimitiveKind::I32,
+            indirection: None,
+        };
+        primitive_ptr.indirection = Some(pdb::Indirection::Near16);
+        let pointer_data = TypeData::Primitive(primitive_ptr);
+        let result = TypeInfo::from_type_data(type_info, pointer_data, index).unwrap();
+        assert_eq!(result.element_size(), POINTER_LENGTH as u32);
+        assert_eq!(result.element_count(), 1);
+        assert_eq!(result.total_size(), POINTER_LENGTH as u32);
+        assert_eq!(result.type_id(), Some(index));
+    }
+
+    #[test]
+    fn test_type_info_from_type_data_bitfield() {
+        // Test the TypeInfo::from_type_data method with a class type
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        // Grab an idx we know exists, that we can use later.
+        let idx = type_info.finder().max_index();
+        let size = TypeInfo::from_type_index(type_info, idx)
+            .unwrap()
+            .total_size();
+
+        let bitfield = TypeData::Bitfield(pdb::BitfieldType {
+            underlying_type: idx,
+            length: 5,
+            position: 0,
+        });
+        let result = TypeInfo::from_type_data(type_info, bitfield, idx).unwrap();
+        // Right now, we just return the total size of the struct, not the individual bitfield. This test will fail when
+        // we change that.
+        assert_eq!(result.total_size(), size);
+    }
+
+    #[test]
+    fn test_type_info_from_type_data_fieldlist() {
+        // Test the TypeInfo::from_type_data method with a field list type
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        // Grab an idx we know exists, that we can use later.
+        let idx = type_info.finder().max_index();
+        let size = TypeInfo::from_type_index(type_info, idx)
+            .unwrap()
+            .total_size();
+
+        let field_list = TypeData::FieldList(pdb::FieldList {
+            fields: vec![
+                TypeData::Primitive(pdb::PrimitiveType {
+                    kind: PrimitiveKind::I32,
+                    indirection: None,
+                }),
+                TypeData::Primitive(pdb::PrimitiveType {
+                    kind: PrimitiveKind::U32,
+                    indirection: None,
+                }),
+            ],
+            continuation: Some(idx),
+        });
+        let result = TypeInfo::from_type_data(type_info, field_list, idx).unwrap();
+
+        // 4 bytes for I32 and 4 bytes for U32 + the size of the continuation type.
+        assert_eq!(result.total_size(), 8 + size);
+    }
+
+    #[test]
+    fn test_type_info_from_type_data_argument_list() {
+        // Test the TypeInfo::from_type_data method with an argument list type
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        // Grab an idx we know exists, that we can use later.
+        let idx = type_info.finder().max_index();
+        let size = TypeInfo::from_type_index(type_info, idx)
+            .unwrap()
+            .total_size();
+
+        let argument_list = TypeData::ArgumentList(pdb::ArgumentList {
+            arguments: vec![idx; 10],
+        });
+        let result = TypeInfo::from_type_data(type_info, argument_list, idx).unwrap();
+
+        // 4 bytes for I32 and 4 bytes for U32 + the size of the continuation type.
+        assert_eq!(result.total_size(), size * 10);
+    }
+
+    #[test]
+    fn test_type_info_from_unsupported_type_data() {
+        let index = TypeIndex(1);
+        let data = TypeData::OverloadedMethod(pdb::OverloadedMethodType {
+            count: 0,
+            method_list: index,
+            name: "".into(),
+        });
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let result = TypeInfo::from_type_data(type_info, data, index);
+        assert!(result.is_err_and(|err| err
+            .to_string()
+            .contains("Unhandled TypeData for C Code: OverloadedMethod")));
+    }
+
+    #[test]
+    fn test_type_info_formatter() {
+        let mut ti = TypeInfo::many(0x1, 4, Some(TypeIndex(0x1)));
+        let formatted = format!("{:?}", ti);
+        assert_eq!(
+            formatted,
+            "TypeInfo { element_type: TypeIndex(0x1), element_size: 0x00000001, count: 4 }"
+        );
+
+        ti.element_type = None;
+        let formatted = format!("{:?}", ti);
+        assert_eq!(formatted, "TypeInfo { element_size: 0x00000001, count: 4 }");
+    }
+
+    #[test]
+    fn test_symbol_find_field_offset_and_size_simple() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let symbol = "mRootMmiEntry";
+        let field = "AllEntries";
+        let type_index = metadata
+            .find_symbol("mRootMmiEntry")
+            .type_info
+            .type_id()
+            .unwrap();
+
+        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        let Ok((offset, size)) = result else {
+            panic!(
+                "Failed to find field offset and size for {}.{}",
+                symbol, field
+            );
+        };
+
+        assert_eq!(offset, 0x8); // AllEntries follows a UINTN, which is 8 bytes in size.
+        assert_eq!(size, 0x10); // AllEntries is a LIST_ENTRY, which is a struct with 2 pointers, so 8 bytes each.
+    }
+
+    #[test]
+    fn test_symbol_find_field_offset_and_size_recurse() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let symbol = "mRootMmiEntry";
+        let field = "AllEntries.BackLink";
+        let type_index = metadata
+            .find_symbol("mRootMmiEntry")
+            .type_info
+            .type_id()
+            .unwrap();
+
+        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        let Ok((offset, size)) = result else {
+            panic!(
+                "Failed to find field offset and size for {}.{}",
+                symbol, field
+            );
+        };
+
+        // ForwardLink follows a UINTN, which is 8 bytes in size. BackLink is the second field in LIST_ENTRY, where the
+        // first is ForwardLink, a pointer (8 bytes). Due to this, the offset should be 16 bytes.
+        assert_eq!(offset, 0x10);
+        assert_eq!(size, 0x8); // BackLink is a pointer, so 8 bytes in size.
+    }
+
+    #[test]
+    fn test_symbol_find_field_offset_and_size_not_attribute() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let symbol = "mRootMmiEntry";
+        let field = "NonExistentField";
+        let type_index = metadata
+            .find_symbol("mRootMmiEntry")
+            .type_info
+            .type_id()
+            .unwrap();
+
+        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        assert!(result.is_err_and(|err| err
+            .to_string()
+            .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")));
+    }
+
+    #[test]
+    fn test_symbol_find_field_offset_and_size_not_class() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let symbol = "mMapDepth";
+        let field = "AllEntries";
+        let type_index = metadata
+            .find_symbol("mMapDepth")
+            .type_info
+            .type_id()
+            .unwrap();
+
+        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        assert!(result.is_err_and(|err| err
+            .to_string()
+            .contains("Symbol [mMapDepth] is not a class. Cannot get class fields.")));
     }
 }
