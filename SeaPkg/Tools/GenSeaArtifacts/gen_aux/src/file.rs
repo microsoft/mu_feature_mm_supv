@@ -261,7 +261,7 @@ impl TryIntoCtx<Endian> for &ImageValidationEntryHeader {
 /// Ref - IMAGE_VALIDATION_SELF_REF
 /// Pointer - IMAGE_VALIDATION_ENTRY_HEADER
 ///
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 #[non_exhaustive]
 #[allow(non_camel_case_types)]
 #[repr(u32)]
@@ -339,5 +339,398 @@ impl TryIntoCtx<Endian> for &ValidationType {
             }
         }
         Ok(offset)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::fmt::Write;
+    use std::io::Read;
+
+    #[test]
+    fn test_key_symbol_signature_creation() {
+        assert_eq!(
+            KeySymbol::new(['A', 'B', 'C', 'D'], 0x0).signature,
+            0x44_43_42_41
+        );
+        assert_eq!(
+            KeySymbol::new(['a', 'b', 'c', 'd'], 0x0).signature,
+            0x64_63_62_61
+        );
+        assert_eq!(
+            KeySymbol::new(['1', '2', '3', '4'], 0x0).signature,
+            0x34_33_32_31
+        );
+        assert_eq!(
+            KeySymbol::new(['!', '@', '#', '$'], 0x0).signature,
+            0x24_23_40_21
+        );
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_none() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::None,
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x00, 0x00, 0x00, 0x00, // validation_type (None)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_non_zero() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x01, 0x00, 0x00, 0x00, // validation_type (NonZero)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_content() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::Content {
+                content: vec![0x01, 0x02, 0x03, 0x04],
+            },
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x02, 0x00, 0x00, 0x00, // validation_type (Content)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+            0x01, 0x02, 0x03, 0x04, // content
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_mem_attr() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::MemAttr {
+                memory_size: 0x1000,
+                must_have: 0x0001,
+                must_not_have: 0x0002,
+            },
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x03, 0x00, 0x00, 0x00, // validation_type (MemAttr)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+            // Memory attributes
+            0x00, 0x10, 0x00, 0x00, // memory_size
+            0x00, 0x00, 0x00, 0x00, // cont.
+            0x01, 0x00, 0x00, 0x00, // must_have
+            0x00, 0x00, 0x00, 0x00, // cont.
+            0x02, 0x00, 0x00, 0x00, // must_not_have
+            0x00, 0x00, 0x00, 0x00, // cont.
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_ref() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::Ref { address: 0x2000 },
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x04, 0x00, 0x00, 0x00, // validation_type (Ref)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+            0x00, 0x20, 0x00, 0x00, // address
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_to_bytes_validation_type_pointer() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::Pointer { in_mseg: true },
+            offset_to_default: 0x2000,
+        };
+        let mut buffer = vec![0; entry.header_size() as usize];
+        entry.try_into_ctx(&mut buffer, scroll::LE).unwrap();
+
+        let expected = [
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x20, 0x00, 0x00, 0x00, // size
+            0x05, 0x00, 0x00, 0x00, // validation_type (Pointer)
+            0x00, 0x20, 0x00, 0x00, // offset_to_default
+            0x01, 0x0, 0x00, 0x00, // address
+        ];
+
+        assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_image_validation_entry_header_formatter() {
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::None,
+            offset_to_default: 0x2000,
+        };
+
+        let mut s = String::new();
+        write!(&mut s, "{:?}", entry).unwrap();
+
+        assert!(s.contains("offset: 0x00001000"));
+        assert!(s.contains("size: 0x00000020"));
+        assert!(s.contains("offset_to_default: 0x00002000"));
+    }
+
+    #[test]
+    fn test_validation_type_formatter() {
+        let validation = ValidationType::default();
+        assert_eq!(format!("{}", validation), "None");
+
+        let validation = ValidationType::NonZero;
+        assert_eq!(format!("{}", validation), "NonZero");
+
+        let validation = ValidationType::Content {
+            content: vec![0x01, 0x02, 0x03, 0x04],
+        };
+        assert_eq!(format!("{}", validation), "Content");
+
+        let validation = ValidationType::MemAttr {
+            memory_size: 0x1000,
+            must_have: 0x0001,
+            must_not_have: 0x0002,
+        };
+
+        assert_eq!(format!("{}", validation), "MemAttr");
+
+        let validation = ValidationType::Ref { address: 0x2000 };
+        assert_eq!(format!("{}", validation), "Ref");
+
+        let validation = ValidationType::Pointer { in_mseg: true };
+        assert_eq!(format!("{}", validation), "Pointer");
+    }
+
+    #[test]
+    #[should_panic(expected = "Default value raw data must match the size being validated.")]
+    fn test_aux_file_ensure_catch_mismatched_raw_data_size() {
+        let mut aux_file = AuxFile::default();
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+        aux_file.add_entry(entry, &[0x01, 0x02]); // Incorrect size
+    }
+
+    #[test]
+    fn test_aux_file_add_key_symbol() {
+        let mut aux_file = AuxFile::default();
+        let key_symbol = KeySymbol::new(['A', 'B', 'C', 'D'], 0x1000);
+        aux_file.add_key_symbol(key_symbol);
+
+        assert_eq!(aux_file.key_symbols.len(), 1);
+        assert_eq!(aux_file.key_symbols[0].signature, 0x44434241);
+        assert_eq!(aux_file.key_symbols[0].offset, 0x1000);
+    }
+
+    #[test]
+    fn test_aux_file_finalize_no_key_symbol() {
+        let mut aux_file = AuxFile::default();
+
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+        aux_file.add_entry(entry, &[0x01; 32]);
+
+        aux_file.finalize();
+
+        assert_eq!(aux_file.header.key_symbol_count, 0);
+        // this offset is set to 0 to indicate there is no key_symbol.
+        assert_eq!(aux_file.header.offset_to_first_key_symbol, 0);
+        assert_eq!(aux_file.header.entry_count, 1);
+        assert!(aux_file.header.size > 0);
+    }
+
+    #[test]
+    fn test_aux_file_finalize() {
+        let mut aux_file = AuxFile::default();
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+        aux_file.add_entry(entry, &[0x01; 32]);
+
+        let key_symbol = KeySymbol::new(['A', 'B', 'C', 'D'], 0x1000);
+        aux_file.add_key_symbol(key_symbol);
+
+        aux_file.finalize();
+
+        assert_eq!(aux_file.header.key_symbol_count, 1);
+        assert_eq!(
+            aux_file.header.offset_to_first_key_symbol,
+            size_of::<ImageValidationDataHeader>() as u32
+        );
+        assert_eq!(aux_file.header.entry_count, 1);
+        assert_eq!(aux_file.header.offset_to_first_entry, 0x24);
+        assert_eq!(aux_file.entries[0].offset_to_default, 0x38);
+
+        // Add a new key symbol to ensure we calculate the offsets correctly
+        let new_key_symbol = KeySymbol::new(['E', 'F', 'G', 'H'], 0x2000);
+        aux_file.add_key_symbol(new_key_symbol);
+        aux_file.finalize();
+
+        assert_eq!(aux_file.header.offset_to_first_entry, 0x2C);
+        assert_eq!(aux_file.header.offset_to_first_default, 0x40);
+
+        // Add a new entry to ensure we calculate the offsets correctly
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 0x20,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+
+        aux_file.add_entry(entry, &[0x01; 32]);
+        aux_file.finalize();
+
+        assert_eq!(aux_file.header.offset_to_first_entry, 0x2C);
+        assert_eq!(aux_file.header.offset_to_first_default, 0x54);
+
+        assert_eq!(aux_file.entries[0].offset_to_default, 0x54);
+        assert_eq!(aux_file.entries[1].offset_to_default, 0x74);
+    }
+
+    #[test]
+    fn test_aux_file_to_bytes() {
+        // We already have tests that all the other structs can be converted to bytes,
+        // so we will just do one simple call and validate.
+
+        let mut aux_file = AuxFile::default();
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 4,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+
+        aux_file.add_key_symbol(KeySymbol::new(['A', 'B', 'C', 'D'], 0x1000));
+        aux_file.add_entry(entry, &[0xFF; 4]);
+        aux_file.finalize();
+
+        let bytes = aux_file
+            .to_bytes()
+            .expect("Failed to convert aux file to bytes");
+        let expected = vec![
+            0x56, 0x41, 0x4C, 0x44, // signature
+            0x3C, 0x00, 0x00, 0x00, // size
+            0x01, 0x00, 0x00, 0x00, // entry_count
+            0x24, 0x00, 0x00, 0x00, // offset_to_first_entry
+            0x38, 0x00, 0x00, 0x00, // offset_to_first_default
+            0x01, 0x00, 0x00, 0x00, // key_symbol_count
+            0x1C, 0x00, 0x00, 0x00, // offset_to_first_key_symbol
+            // KeySymbol data
+            0x41, 0x42, 0x43, 0x44, // KeySymbol signature (ABCD)
+            0x00, 0x10, 0x00, 0x00, // KeySymbol offset
+            // Entry data
+            0x45, 0x4E, 0x54, 0x52, // signature
+            0x00, 0x10, 0x00, 0x00, // offset
+            0x04, 0x00, 0x00, 0x00, // size
+            0x01, 0x00, 0x00, 0x00, // validation_type (NonZero)
+            0x38, 0x00, 0x00, 0x00, // offset_to_default
+            // Default value data
+            0xff, 0xff, 0xff, 0xff,
+        ];
+
+        assert_eq!(bytes, expected);
+    }
+
+    #[test]
+    fn test_aux_file_to_file() {
+        let mut aux_file = AuxFile::default();
+        let entry = ImageValidationEntryHeader {
+            signature: 0x52544E45,
+            offset: 0x1000,
+            size: 4,
+            validation_type: ValidationType::NonZero,
+            offset_to_default: 0x2000,
+        };
+
+        aux_file.add_key_symbol(KeySymbol::new(['A', 'B', 'C', 'D'], 0x1000));
+        aux_file.add_entry(entry, &[0xFF; 4]);
+        aux_file.finalize();
+
+        let t_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
+        assert!(aux_file.to_file(t_file.path()).is_ok());
+        assert!(t_file.bytes().fold(0, |acc, _| acc + 1) > 0);
     }
 }
