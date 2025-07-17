@@ -21,7 +21,6 @@ use crate::{config, file, report};
 const POINTER_LENGTH: u64 = 8;
 
 /// Additional context associated with a rule
-#[derive(Debug)]
 pub struct Context {
     pub name: String,
     pub reviewers: Vec<String>,
@@ -44,7 +43,7 @@ impl Context {
 pub struct PdbMetadata<'a, S: Source<'a>> {
     pdb: PDB<'a, S>,
     sections: Vec<Section>,
-    pub context_map: HashMap<u32, Context>,
+    context_map: HashMap<u32, Context>,
     unloaded_image: Vec<u8>,
     loaded_image: Vec<u8>,
 }
