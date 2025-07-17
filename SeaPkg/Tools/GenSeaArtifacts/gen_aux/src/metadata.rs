@@ -947,19 +947,7 @@ mod test {
         report::Coverage,
     };
 
-    use std::{fs::File, path::PathBuf};
-
-    fn get_path(s: &str) -> PathBuf {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.pop(); // pop the crate name, file adds it
-        path.push(file!());
-        path.pop();
-        path.pop();
-        path.push("resources");
-        path.push("test");
-        path.push(s);
-        path
-    }
+    use std::{fs::File, io::Write, path::PathBuf};
 
     fn build_metadata() -> PdbMetadata<'static, Cursor<&'static [u8]>> {
         let pdb = include_bytes!("../resources/test/example.pdb");
@@ -970,9 +958,15 @@ mod test {
 
     #[test]
     fn test_metadata_new_with_good_files() {
-        let pdb = get_path("example.pdb");
-        let efi = get_path("example.efi");
-        assert!(PdbMetadata::<File>::new(pdb, efi).is_ok());
+        let mut pdb = tempfile::NamedTempFile::new().unwrap();
+        pdb.write_all(include_bytes!("../resources/test/example.pdb"))
+            .unwrap();
+        let mut efi = tempfile::NamedTempFile::new().unwrap();
+        efi.write_all(include_bytes!("../resources/test/example.efi"))
+            .unwrap();
+        assert!(
+            PdbMetadata::<File>::new(pdb.path().to_path_buf(), efi.path().to_path_buf()).is_ok()
+        );
     }
 
     #[test]
@@ -984,11 +978,15 @@ mod test {
 
     #[test]
     fn test_new_with_bad_files() {
-        let pdb = get_path("example.pdb");
-        assert!(pdb.exists());
+        let mut pdb = tempfile::NamedTempFile::new().unwrap();
+        pdb.write_all(include_bytes!("../resources/test/example.pdb"))
+            .unwrap();
+        assert!(pdb.path().exists());
 
-        let efi = get_path("example.efi");
-        assert!(efi.exists());
+        let mut efi = tempfile::NamedTempFile::new().unwrap();
+        efi.write_all(include_bytes!("../resources/test/example.efi"))
+            .unwrap();
+        assert!(efi.path().exists());
 
         // pdb path does not exist
         assert!(PdbMetadata::<File>::new(
@@ -998,12 +996,20 @@ mod test {
         .is_err());
 
         // pdb path exists, but file does not
-        assert!(PdbMetadata::<File>::new(pdb.clone(), PathBuf::from("non_existent.bin")).is_err());
+        assert!(PdbMetadata::<File>::new(
+            pdb.path().to_path_buf(),
+            PathBuf::from("non_existent.bin")
+        )
+        .is_err());
 
         // pdb path exists, but is not a pdb file
-        assert!(PdbMetadata::<File>::new(efi.clone(), efi.clone()).is_err());
+        assert!(
+            PdbMetadata::<File>::new(efi.path().to_path_buf(), efi.path().to_path_buf()).is_err()
+        );
         // file exists, but is not a efi binary
-        assert!(PdbMetadata::<File>::new(pdb.clone(), pdb.clone()).is_err());
+        assert!(
+            PdbMetadata::<File>::new(pdb.path().to_path_buf(), pdb.path().to_path_buf()).is_err()
+        );
     }
 
     #[test]
