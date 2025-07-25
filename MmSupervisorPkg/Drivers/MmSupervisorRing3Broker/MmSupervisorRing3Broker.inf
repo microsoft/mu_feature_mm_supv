@@ -12,12 +12,12 @@
 
 # release/202502
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 887d09c7b82217d50d0b0cf311290739 | 2025-05-23T09-22-55 | a0369d2113577ca80280fb1eeafe3dc7c536d5d8
-# Dev/202405
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | fcc0084f42574f4331ad258e53381c93 | 2025-01-27T21-27-02 | f54f113b0b84eb2fec245b97aad60545ba7a554b
-# Release/202405
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 6967cd9168f4e96b0df5067c87ad9bc3 | 2025-02-18T23-53-24 | ea000218a1be694999a087d8f12cfb3400a82556
+# Secure
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+# Non-Secure
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 8a2e0cba770931bcc8f3e706859b3478 | 2025-04-12T15-03-15 | 6a19361b3a5c70a4779011d1dd35490e3b87dcc4
+#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 
 [Defines]
   INF_VERSION                    = 0x0001001A
