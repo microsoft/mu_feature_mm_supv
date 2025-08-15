@@ -30,7 +30,7 @@
   Hash/CryptSha256.c
   SysCall/CrtWrapper.c
   SysCall/BaseMemAllocation.c
-  SysCall/TimerWrapper.c
+  # SysCall/TimerWrapper.c
 
 [Packages]
   MdePkg/MdePkg.dec
