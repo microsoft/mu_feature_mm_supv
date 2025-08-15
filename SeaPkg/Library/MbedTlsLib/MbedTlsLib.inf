@@ -22,6 +22,7 @@
 
 [Sources]
   Include/mbedtls/mbedtls_config.h
+  # MU_CHANGE Starts: Do not build anything other than hash functions
   # mbedtls/library/aes.c
   # mbedtls/library/asn1parse.c
   # mbedtls/library/asn1write.c
@@ -37,7 +38,9 @@
   # mbedtls/library/debug.c
   # mbedtls/library/des.c
   # mbedtls/library/dhm.c
+  # MU_CHANGE Ends
   EcSm2Null.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
   # mbedtls/library/error.c
   # mbedtls/library/gcm.c
   # mbedtls/library/hkdf.c
@@ -50,7 +53,9 @@
   # mbedtls/library/ssl_client.c
   # mbedtls/library/ssl_debug_helpers_generated.c
   # mbedtls/library/rsa_alt_helpers.c
+  # MU_CHANGE Ends
   mbedtls/library/hash_info.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
   # mbedtls/library/bignum_core.c
   # mbedtls/library/constant_time.c
   # mbedtls/library/memory_buffer_alloc.c
@@ -67,17 +72,21 @@
   # mbedtls/library/poly1305.c
   # mbedtls/library/ripemd160.c
   # mbedtls/library/rsa.c
+  # MU_CHANGE Ends
   mbedtls/library/sha1.c
   mbedtls/library/sha256.c
   mbedtls/library/sha512.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
   # mbedtls/library/ssl_cache.c
   # mbedtls/library/ssl_ciphersuites.c
   # mbedtls/library/ssl_cookie.c
   # mbedtls/library/ssl_ticket.c
   # mbedtls/library/ssl_tls.c
   # mbedtls/library/threading.c
+  # MU_CHANGE Ends
   mbedtls/library/version.c
   mbedtls/library/version_features.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
   # mbedtls/library/x509.c
   # mbedtls/library/x509write_crt.c
   # mbedtls/library/x509write_csr.c
@@ -86,6 +95,7 @@
   # mbedtls/library/x509_crt.c
   # mbedtls/library/x509_csr.c
   # mbedtls/library/pkcs7.c
+  # MU_CHANGE Ends
   mbedtls/library/platform_util.c
   CrtWrapper.c
 
