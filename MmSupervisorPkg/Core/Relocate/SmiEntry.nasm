@@ -113,7 +113,11 @@ ProtFlatMode:
     mov eax, strict dword 0               ; source operand will be patched
 ASM_PFX(gPatchSmiCr3):
     mov     cr3, rax
-    mov     eax, 0x100E68                ; as cr4.PGE is not set here, refresh cr3
+    mov     eax, 0x100E28                ; as cr4.PGE is not set here, refresh cr3
+                                         ; Set SMEP and UMIP.
+                                         ; Do not assume that IDT.limit is loaded with a zero value upon SMM entry.
+                                         ; Delay enabling Machine Check Exceptions in SMM until after the SMM IDT
+                                         ; has been reloaded.
 
     mov     cl, strict byte 0            ; source operand will be patched
 ASM_PFX(gPatch5LevelPagingNeeded):
@@ -203,6 +207,10 @@ SmiHandlerIdtrAbsAddr:
     mov     gs, eax
     mov     ax, [rbx + DSC_SS]
     mov     ss, eax
+
+    mov     rax, cr4                    ; enable MCE
+    bts     rax, 6
+    mov     cr4, rax
 
     mov     rbx, [rsp + 0x8]             ; rbx <- CpuIndex
 
