@@ -43,22 +43,10 @@ release ${joined_args}
 '''
 
 [tasks.build]
-description = """Builds a single rust package.
-
-Customizations:
-    -p [development|release]: Builds in debug or release. Default: development
-    -e ARCH=[IA32|X64|AARCH64|LOCAL]: Builds with specifed arch. Default: X64
-    -e FEATURES=[feature,...]: Builds with the specified features. Default: none
-
-Example:
-    `cargo make build RustModule`
-    `cargo make -p release build RustModule`
-    `cargo make -e ARCH=IA32 build RustLib`
-    `cargo make -e FEATURES=feature1,feature2 build RustLib`
-"""
+description = "Builds a single rust package."
 clear = true
 command = "cargo"
-args = ["build", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "@@split(BUILD_FLAGS, )", "@@split(CARGO_FEATURES_FLAG, ,remove-empty)"]
+args = ["build"]
 dependencies = ["individual-package-targets"]
 
 [tasks.check]
