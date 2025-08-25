@@ -277,14 +277,14 @@ DiscoverSmiEntryInFvHobs (
               break;
             }
 
+            SeaResponderFound = TRUE;
+
             Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SeaBinSize);
             // Moving the buffer like size field to our local variable
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SEA [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
-              break;
+              goto Done;
             }
-
-            SeaResponderFound = TRUE;
           }
 
           if (MmiEntryFound && SeaResponderFound) {

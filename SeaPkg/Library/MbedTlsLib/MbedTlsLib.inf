@@ -22,70 +22,80 @@
 
 [Sources]
   Include/mbedtls/mbedtls_config.h
-  mbedtls/library/aes.c
-  mbedtls/library/asn1parse.c
-  mbedtls/library/asn1write.c
-  mbedtls/library/base64.c
-  mbedtls/library/bignum.c
-  mbedtls/library/ccm.c
-  mbedtls/library/chacha20.c
-  mbedtls/library/chachapoly.c
-  mbedtls/library/cipher.c
-  mbedtls/library/cipher_wrap.c
-  mbedtls/library/cmac.c
-  mbedtls/library/ctr_drbg.c
-  mbedtls/library/debug.c
-  mbedtls/library/des.c
-  mbedtls/library/dhm.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
+  # mbedtls/library/aes.c
+  # mbedtls/library/asn1parse.c
+  # mbedtls/library/asn1write.c
+  # mbedtls/library/base64.c
+  # mbedtls/library/bignum.c
+  # mbedtls/library/ccm.c
+  # mbedtls/library/chacha20.c
+  # mbedtls/library/chachapoly.c
+  # mbedtls/library/cipher.c
+  # mbedtls/library/cipher_wrap.c
+  # mbedtls/library/cmac.c
+  # mbedtls/library/ctr_drbg.c
+  # mbedtls/library/debug.c
+  # mbedtls/library/des.c
+  # mbedtls/library/dhm.c
+  # MU_CHANGE Ends
   EcSm2Null.c
-  mbedtls/library/error.c
-  mbedtls/library/gcm.c
-  mbedtls/library/hkdf.c
-  mbedtls/library/hmac_drbg.c
-  mbedtls/library/md.c
-  mbedtls/library/md5.c
-  mbedtls/library/ssl_msg.c
-  mbedtls/library/ssl_tls12_client.c
-  mbedtls/library/ssl_tls12_server.c
-  mbedtls/library/ssl_client.c
-  mbedtls/library/ssl_debug_helpers_generated.c
-  mbedtls/library/rsa_alt_helpers.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
+  # mbedtls/library/error.c
+  # mbedtls/library/gcm.c
+  # mbedtls/library/hkdf.c
+  # mbedtls/library/hmac_drbg.c
+  # mbedtls/library/md.c
+  # mbedtls/library/md5.c
+  # mbedtls/library/ssl_msg.c
+  # mbedtls/library/ssl_tls12_client.c
+  # mbedtls/library/ssl_tls12_server.c
+  # mbedtls/library/ssl_client.c
+  # mbedtls/library/ssl_debug_helpers_generated.c
+  # mbedtls/library/rsa_alt_helpers.c
+  # MU_CHANGE Ends
   mbedtls/library/hash_info.c
-  mbedtls/library/bignum_core.c
-  mbedtls/library/constant_time.c
-  mbedtls/library/memory_buffer_alloc.c
-  mbedtls/library/nist_kw.c
-  mbedtls/library/oid.c
-  mbedtls/library/padlock.c
-  mbedtls/library/pem.c
-  mbedtls/library/pk.c
-  mbedtls/library/pkcs12.c
-  mbedtls/library/pkcs5.c
-  mbedtls/library/pkparse.c
-  mbedtls/library/pkwrite.c
-  mbedtls/library/pk_wrap.c
-  mbedtls/library/poly1305.c
-  mbedtls/library/ripemd160.c
-  mbedtls/library/rsa.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
+  # mbedtls/library/bignum_core.c
+  # mbedtls/library/constant_time.c
+  # mbedtls/library/memory_buffer_alloc.c
+  # mbedtls/library/nist_kw.c
+  # mbedtls/library/oid.c
+  # mbedtls/library/padlock.c
+  # mbedtls/library/pem.c
+  # mbedtls/library/pk.c
+  # mbedtls/library/pkcs12.c
+  # mbedtls/library/pkcs5.c
+  # mbedtls/library/pkparse.c
+  # mbedtls/library/pkwrite.c
+  # mbedtls/library/pk_wrap.c
+  # mbedtls/library/poly1305.c
+  # mbedtls/library/ripemd160.c
+  # mbedtls/library/rsa.c
+  # MU_CHANGE Ends
   mbedtls/library/sha1.c
   mbedtls/library/sha256.c
   mbedtls/library/sha512.c
-  mbedtls/library/ssl_cache.c
-  mbedtls/library/ssl_ciphersuites.c
-  mbedtls/library/ssl_cookie.c
-  mbedtls/library/ssl_ticket.c
-  mbedtls/library/ssl_tls.c
-  mbedtls/library/threading.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
+  # mbedtls/library/ssl_cache.c
+  # mbedtls/library/ssl_ciphersuites.c
+  # mbedtls/library/ssl_cookie.c
+  # mbedtls/library/ssl_ticket.c
+  # mbedtls/library/ssl_tls.c
+  # mbedtls/library/threading.c
+  # MU_CHANGE Ends
   mbedtls/library/version.c
   mbedtls/library/version_features.c
-  mbedtls/library/x509.c
-  mbedtls/library/x509write_crt.c
-  mbedtls/library/x509write_csr.c
-  mbedtls/library/x509_create.c
-  mbedtls/library/x509_crl.c
-  mbedtls/library/x509_crt.c
-  mbedtls/library/x509_csr.c
-  mbedtls/library/pkcs7.c
+  # MU_CHANGE Starts: Do not build anything other than hash functions
+  # mbedtls/library/x509.c
+  # mbedtls/library/x509write_crt.c
+  # mbedtls/library/x509write_csr.c
+  # mbedtls/library/x509_create.c
+  # mbedtls/library/x509_crl.c
+  # mbedtls/library/x509_crt.c
+  # mbedtls/library/x509_csr.c
+  # mbedtls/library/pkcs7.c
+  # MU_CHANGE Ends
   mbedtls/library/platform_util.c
   CrtWrapper.c
 

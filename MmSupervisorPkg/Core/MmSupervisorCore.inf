@@ -17,7 +17,7 @@
 # Non-Secure
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 4db1640daa92830eafef49cff474b792 | 2025-04-12T14-55-03 | 6a19361b3a5c70a4779011d1dd35490e3b87dcc4
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 893482d99df7281b751ba1d536449089 | 2025-08-18T14-36-04 | 62220125fdc9fa3a2963ac6eb41e4468e121a848
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 [Defines]
   INF_VERSION                    = 0x0001001A
