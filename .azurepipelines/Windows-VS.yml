@@ -45,6 +45,3 @@ extends:
             clean: true
           - template: Steps/RustSetupSteps.yml@mu_devops
           - template: Steps/RustCargoSteps.yml@mu_devops
-            parameters:
-              test_command: cargo test
-              build_command: cargo build

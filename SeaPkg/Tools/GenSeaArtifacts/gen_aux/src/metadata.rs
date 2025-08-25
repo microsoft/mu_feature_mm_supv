@@ -48,7 +48,7 @@ pub struct PdbMetadata<'a, S: Source<'a>> {
     loaded_image: Vec<u8>,
 }
 
-impl<'a> PdbMetadata<'a, File> {
+impl PdbMetadata<'_, File> {
     pub fn new(pdb_path: PathBuf, efi_path: PathBuf) -> Result<Self> {
         let file = File::open(pdb_path)?;
         let mut pdb = PDB::open(file)?;
@@ -138,7 +138,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             let validation_type = if rule
                 .array
                 .as_ref()
-                .map_or(false, |a| a.sentinel && i == element_count - 1)
+                .is_some_and(|a| a.sentinel && i == element_count - 1)
             {
                 file::ValidationType::Content {
                     content: vec![0; size as usize],
