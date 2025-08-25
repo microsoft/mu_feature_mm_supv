@@ -937,9 +937,15 @@ PeCoffImageDiffValidation (
       break;
     }
 
-    // We should not do this when the above validation fails
-    CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+    // If OffsetToDefault is MAX_UINT32, then zero the memory rather that copy
+    if (ImageValidationEntryHdr->OffsetToDefault == MAX_UINT32) {
+      ZeroMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+    } else {
+      // We should not do this when the above validation fails
+      CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+    }
 
+    
     ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
 
