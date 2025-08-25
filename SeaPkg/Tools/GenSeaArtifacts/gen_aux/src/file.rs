@@ -25,12 +25,21 @@ pub struct AuxFile {
 
 impl AuxFile {
     /// Adds a new validation entry to the aux file.
-    pub fn add_entry(&mut self, entry: ImageValidationEntryHeader, raw_data: &[u8]) {
+    pub fn add_entry(&mut self, mut entry: ImageValidationEntryHeader, raw_data: &[u8]) {
         assert_eq!(
             entry.size as usize,
             raw_data.len(),
             "Default value raw data must match the size being validated."
         );
+
+        // If the raw data is all zeros, we will zero the memory range instead of copying it
+        // from the aux file.
+        if raw_data.iter().all(|&b| b == 0) {
+            entry.offset_to_default = u32::MAX; // Indicate that we want to zero the memory.
+            self.entries.push(entry);
+            return;
+        }
+
         self.entries.push(entry);
         self.raw_data.extend_from_slice(raw_data);
     }
@@ -63,11 +72,17 @@ impl AuxFile {
                 .fold(0, |acc, entry| acc + entry.header_size());
 
         for entry in self.entries.iter_mut() {
-            entry.offset_to_default = offset_to_default;
-            offset_to_default += entry.size;
-
-            self.header.size += entry.size + entry.header_size();
+            self.header.size += entry.header_size();
             self.header.entry_count += 1;
+
+            // If the offset_to_default is u32::MAX, it means we are zeroing the memory instead of
+            // copying it from the aux file, so we leave it as u32::MAX. The u32::MAX value is set when
+            // the rule is added to this struct [Self::add_entry].
+            if entry.offset_to_default != u32::MAX {
+                entry.offset_to_default = offset_to_default;
+                offset_to_default += entry.size;
+                self.header.size += entry.size;
+            }
         }
 
         // Now that all entries have been added, we can calculate the offset to
