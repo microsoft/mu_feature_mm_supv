@@ -9,8 +9,6 @@
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 
-#![cfg_attr(not(test), no_std)] // does not fix error :(
-
 pub mod config;
 pub mod file;
 pub mod metadata;
