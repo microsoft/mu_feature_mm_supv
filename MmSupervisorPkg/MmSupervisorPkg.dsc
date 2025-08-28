@@ -53,6 +53,7 @@
   PanicLib|MdePkg/Library/BasePanicLibNull/BasePanicLibNull.inf
   StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
+  MmSupervisorCoreInitLib|MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
 
 [LibraryClasses.IA32]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
@@ -125,6 +126,7 @@
   UnitTestResultReportLib|UnitTestFrameworkPkg/Library/UnitTestResultReportLib/UnitTestResultReportLibDebugLib.inf
 
 [Components]
+  MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
   MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
 
 [Components.IA32]

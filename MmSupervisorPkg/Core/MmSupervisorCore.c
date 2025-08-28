@@ -20,6 +20,7 @@
 #include <Protocol/PiPcd.h>
 
 #include <Guid/MmCommonRegion.h>
+#include <Library/MmSupervisorCoreInitLib.h>
 #include <Library/SecurePolicyLib.h>
 
 EFI_STATUS
@@ -941,6 +942,8 @@ MmSupervisorMain (
   UINTN                           MmramRangeCount;
   UINT64                          StartTicker;
   UINT64                          EndTicker;
+
+  MmSupervisorCoreEntryInit ();
 
   DEBUG ((DEBUG_INFO, "MmMain - 0x%x\n", HobStart));
 

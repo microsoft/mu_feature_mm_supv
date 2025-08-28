@@ -148,6 +148,7 @@
   SmmCpuSyncLib
   PanicLib
   SecurePolicyLib
+  MmSupervisorCoreInitLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES

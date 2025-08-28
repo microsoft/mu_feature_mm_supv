@@ -53,6 +53,12 @@ For more general background about the steps necessary to integrate the MM Superv
 | MmSupervisorRing3Performance  | MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf |
 | MmSupervisorErrorReport       | MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf |
 
+## MM Standalone Core Libraries
+
+| Library | Location |
+| --- | ---|
+| MmSupervisorCoreInitLib | MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf |
+
 ## MM Standalone User Mode Libraries
 
 *These MM User Mode libraries are expected to be used as is and linked to other MM standalone drivers for standard functionality.*

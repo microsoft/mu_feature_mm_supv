@@ -28,6 +28,7 @@
   SmmPolicyGateLib|Include/Library/SmmPolicyGateLib.h
   IhvSmmSaveStateSupervisionLib|Include/Library/IhvSmmSaveStateSupervisionLib.h
   SecurePolicyLib|Include/Library/SecurePolicyLib.h
+  MmSupervisorCoreInitLib|Include/Library/MmSupervisorCoreInitLib.h
 
 [Guids]
   gMmCommonRegionHobGuid                          = { 0xd4ffc718, 0xfb82, 0x4274, { 0x9a, 0xfc, 0xaa, 0x8b, 0x1e, 0xef, 0x52, 0x93 } }
