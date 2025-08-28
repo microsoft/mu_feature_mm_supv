@@ -1,0 +1,26 @@
+## @file
+#  A null library instance that performs no actions.
+#
+#  Copyright (C) Microsoft Corporation.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = BaseMmSupervisorCoreInitLibNull
+  FILE_GUID                      = 54C5DBE2-254E-459C-BB42-10526932631C
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 0.1
+  LIBRARY_CLASS                  = MmSupervisorCoreInitLib|MM_CORE_STANDALONE
+
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  BaseMmSupervisorCoreInitLibNull.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
