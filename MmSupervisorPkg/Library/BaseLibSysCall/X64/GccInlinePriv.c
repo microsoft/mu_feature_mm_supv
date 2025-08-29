@@ -10,6 +10,7 @@
 
 #include "BaseLibInternals.h"
 #include <Library/RegisterFilterLib.h>
+#include <Library/SysCallLib.h>
 
 /**
   Enables CPU interrupts.
@@ -38,7 +39,7 @@ DisableInterrupts (
   VOID
   )
 {
-  __asm__ __volatile__ ("cli"::: "memory");
+  SysCall (SMM_SC_CLI, 0, 0, 0);
 }
 
 /**
@@ -61,20 +62,12 @@ AsmReadMsr64 (
   IN      UINT32  Index
   )
 {
-  UINT32   LowData;
-  UINT32   HighData;
   UINT64   Value;
   BOOLEAN  Flag;
 
   Flag = FilterBeforeMsrRead (Index, &Value);
   if (Flag) {
-    __asm__ __volatile__ (
-      "rdmsr"
-      : "=a" (LowData),   // %0
-        "=d" (HighData)   // %1
-      : "c"  (Index)      // %2
-    );
-    Value = (((UINT64)HighData) << 32) | LowData;
+    Value = SysCall (SMM_SC_RDMSR, Index, 0, 0);
   }
 
   FilterAfterMsrRead (Index, &Value);
@@ -106,21 +99,11 @@ AsmWriteMsr64 (
   IN      UINT64  Value
   )
 {
-  UINT32   LowData;
-  UINT32   HighData;
   BOOLEAN  Flag;
 
   Flag = FilterBeforeMsrWrite (Index, &Value);
   if (Flag) {
-    LowData  = (UINT32)(Value);
-    HighData = (UINT32)(Value >> 32);
-    __asm__ __volatile__ (
-      "wrmsr"
-      :
-      : "c" (Index),
-        "a" (LowData),
-        "d" (HighData)
-    );
+    SysCall (SMM_SC_WRMSR, Index, (UINTN)Value, 0);
   }
 
   FilterAfterMsrWrite (Index, &Value);
@@ -1157,7 +1140,7 @@ AsmWbinvd (
   VOID
   )
 {
-  __asm__ __volatile__ ("wbinvd":::"memory");
+  SysCall (SMM_SC_WBINVD, 0, 0, 0);
 }
 
 /**
