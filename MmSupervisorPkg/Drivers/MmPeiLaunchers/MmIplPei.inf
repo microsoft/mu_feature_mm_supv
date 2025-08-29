@@ -18,7 +18,7 @@
   ENTRY_POINT                    = MmIplPeiEntry
 
 # dev/202502, release/202502
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 15b4ceb0a19a407293662f8da4e7a8a3 | 2025-07-25T21-32-28 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 3dd4263d24d9aab1423696633b261277 | 2025-08-29T23-27-13 | ce057040b889378a53850c22545f0ae134f4ea4e
 
 #Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 21106e057e22a548508f22875b3c2124 | 2024-08-28T17-14-15 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
 
