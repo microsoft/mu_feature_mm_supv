@@ -124,7 +124,10 @@
             "MTRRCAP",
             "dlink",
             "uintn",
-            "unprotect"
+            "unprotect",
+            "ghash",
+            "mllvm",
+            "wineh"
         ]
     }
 }
