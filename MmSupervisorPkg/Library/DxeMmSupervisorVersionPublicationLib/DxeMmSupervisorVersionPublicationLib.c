@@ -23,9 +23,11 @@
 #include <Protocol/VariablePolicy.h>
 #include <Protocol/VariableWrite.h>
 
-MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *mSupvCommunicationProtocol;
-VOID                                  *mMmSupvCommonCommBufferAddress;
-UINTN                                 mMmSupvCommonCommBufferSize;
+VOID   *mMmSupvCommonCommBufferAddress;
+UINTN  mMmSupvCommonCommBufferSize;
+
+MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *mSupvCommunicationProtocol = NULL;
+EDKII_VARIABLE_POLICY_PROTOCOL        *mVariablePolicyProtocol    = NULL;
 
 /**
   Sends the communication request to the supervisor.
@@ -230,15 +232,11 @@ ConvertSupervisorVersionInfoToDecimalString (
 
   The UEFI variable is volatile with variable policy applied in this function.
 
-  @param[in] Event           The signaled event.
-  @param[in] Context         Not used.
-
 **/
 VOID
 EFIAPI
 PublishUefiVariable (
-  IN EFI_EVENT  Event,
-  IN VOID       *Context
+  VOID
   )
 {
   EFI_STATUS                         Status;
@@ -347,6 +345,66 @@ PublishUefiVariable (
 }
 
 /**
+ A protocol notification function that is invoked when the MM Supervisor Communication protocol is installed.
+
+  @param[in] Event           The signaled event.
+  @param[in] Context         Not used.
+
+**/
+VOID
+EFIAPI
+MmSupervisorCommunicationAvailable (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_STATUS  Status;
+
+  if (mSupvCommunicationProtocol == NULL) {
+    Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&mSupvCommunicationProtocol);
+    if (EFI_ERROR (Status)) {
+      return;
+    } else {
+      gBS->CloseEvent (Event);
+    }
+
+    if ((mSupvCommunicationProtocol != NULL) && (mVariablePolicyProtocol != NULL)) {
+      PublishUefiVariable ();
+    }
+  }
+}
+
+/**
+ A protocol notification function that is invoked when the MM Supervisor Communication protocol is installed.
+
+  @param[in] Event           The signaled event.
+  @param[in] Context         Not used.
+
+**/
+VOID
+EFIAPI
+UefiVariablePolicyAvailable (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_STATUS  Status;
+
+  if (mVariablePolicyProtocol == NULL) {
+    Status = gBS->LocateProtocol (&gEdkiiVariablePolicyProtocolGuid, NULL, (VOID **)&mVariablePolicyProtocol);
+    if (EFI_ERROR (Status)) {
+      return;
+    } else {
+      gBS->CloseEvent (Event);
+    }
+
+    if ((mSupvCommunicationProtocol != NULL) && (mVariablePolicyProtocol != NULL)) {
+      PublishUefiVariable ();
+    }
+  }
+}
+
+/**
   Constructor that performs the steps necessary to publish MM Supervisor version information.
 
   @param[in]  ImageHandle  Image Handle.
@@ -370,9 +428,17 @@ DxeMmSupervisorVersionPublicationLibConstructor (
   //       Arch protocol and MM Supervisor Communication protocol being installed as they are required
   //       to write variables.
   Event = EfiCreateProtocolNotifyEvent (
+            &gMmSupervisorCommunicationProtocolGuid,
+            TPL_CALLBACK,
+            MmSupervisorCommunicationAvailable,
+            NULL,
+            &Registration
+            );
+  ASSERT (Event != NULL);
+  Event = EfiCreateProtocolNotifyEvent (
             &gEdkiiVariablePolicyProtocolGuid,
             TPL_CALLBACK,
-            PublishUefiVariable,
+            UefiVariablePolicyAvailable,
             NULL,
             &Registration
             );
