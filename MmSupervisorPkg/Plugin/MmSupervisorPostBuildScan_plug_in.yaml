@@ -1,0 +1,11 @@
+## @file
+# Build Plugin to scan X64 Mm Standalone
+# binaries for use of protected instructions
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+{
+    "scope": "global-win",
+    "name": "Mm Supervisor Post Build Scan",
+    "module": "MmSupervisorPostBuildScan"
+}
