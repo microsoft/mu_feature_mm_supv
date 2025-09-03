@@ -306,7 +306,9 @@ flash drivers, SW MMI dispatcher drivers, etc.
     <LibraryClasses>
       NULL|StandaloneMmPkg/Library/VariableMmDependency/VariableMmDependency.inf
       # Note: This library can be linked against any DXE_DRIVER or DXE_RUNTIME_DRIVER in the platform. It is an
-      #       optional library that publishes a UEFI variable with MM Supervisor information.
+      #       optional library that publishes a UEFI variable with MM Supervisor information. It requires that
+      #       an instance of gEdkiiVariablePolicyProtocolGuid (and gMmSupervisorCommunicationProtocolGuid) be
+      #       produced in order to publish the variable.
       NULL|MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
   }
 !endif
