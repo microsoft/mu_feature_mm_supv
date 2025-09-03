@@ -288,8 +288,8 @@ pub enum ValidationType {
 impl ValidationType {
     pub fn idx(&self) -> u32 {
         match self {
-            ValidationType::None { .. } => 0,
-            ValidationType::NonZero { .. } => 1,
+            ValidationType::None => 0,
+            ValidationType::NonZero => 1,
             ValidationType::Content { .. } => 2,
             ValidationType::MemAttr { .. } => 3,
             ValidationType::Ref { .. } => 4,
@@ -301,8 +301,8 @@ impl ValidationType {
 impl core::fmt::Display for ValidationType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ValidationType::None { .. } => write!(f, "None"),
-            ValidationType::NonZero { .. } => write!(f, "NonZero"),
+            ValidationType::None => write!(f, "None"),
+            ValidationType::NonZero => write!(f, "NonZero"),
             ValidationType::Content { .. } => write!(f, "Content"),
             ValidationType::MemAttr { .. } => write!(f, "MemAttr"),
             ValidationType::Ref { .. } => write!(f, "Ref"),
@@ -317,8 +317,8 @@ impl TryIntoCtx<Endian> for &ValidationType {
         let mut offset = 0;
 
         match self {
-            ValidationType::None { .. } => {}
-            ValidationType::NonZero { .. } => {}
+            ValidationType::None => {}
+            ValidationType::NonZero => {}
             ValidationType::Content { content } => {
                 this.gwrite_with(content.as_slice(), &mut offset, ())?;
             }
@@ -347,7 +347,7 @@ mod tests {
     use super::*;
 
     use std::fmt::Write;
-    use std::io::Read;
+    use std::io::{BufReader, Read};
 
     #[test]
     fn test_key_symbol_signature_creation() {
@@ -731,6 +731,11 @@ mod tests {
 
         let t_file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
         assert!(aux_file.to_file(t_file.path()).is_ok());
-        assert!(t_file.bytes().fold(0, |acc, _| acc + 1) > 0);
+        assert!(
+            BufReader::new(t_file.as_file())
+                .bytes()
+                .fold(0, |acc, _| acc + 1)
+                > 0
+        );
     }
 }
