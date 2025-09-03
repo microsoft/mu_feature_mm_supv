@@ -17,7 +17,10 @@
 # Non-Secure
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 6967cd9168f4e96b0df5067c87ad9bc3 | 2025-01-30T00-05-25 | 564d4055cdf6801ee0c7264a4510748131d3165e
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 9fb206ccfd2135c81d12dbe0369113ce | 2025-09-03T01-21-50 | 1a9247999773b189b60ac17b2a6a88be255bae32
+# dev/202405
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b40f7ef1db3d5dcc7818b5b9e450e83f | 2025-09-03T02-30-48 | 75f990f4dd276843bb720c02b2aeb7160651d60b
+# release/202405
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 9fb206ccfd2135c81d12dbe0369113ce | 2025-09-03T02-31-49 | 1a9247999773b189b60ac17b2a6a88be255bae32
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | a391d46c2a0b5cf66f61056e2f79ae72 | 2024-10-01T17-01-09 | f2547000cccf6f8d37d730498c8f0b5a91ce8d89
 
 [Defines]
