@@ -1,9 +1,12 @@
-"""Post-build plugin to scan MM Standalone modules for use of protected instructions."""
+"""Post-build plugin to scan MM Standalone modules for use of protected
+instrs."""
 
 import glob
 import logging
+import re
 from io import StringIO
 from pathlib import Path
+from typing import Any, List, Set
 
 from edk2toolext.environment.plugintypes.uefi_build_plugin import (
     IUefiBuildPlugin
@@ -11,49 +14,49 @@ from edk2toolext.environment.plugintypes.uefi_build_plugin import (
 from edk2toollib.uefi.edk2.parsers.buildreport_parser import BuildReport
 from edk2toollib.utility_functions import RunCmd
 from edk2toollib.windows.locate_tools import GetVsWherePath
-import re
+from edk2toolext.environment import shell_environment
 
-privileged_instructions = [
-    "clts",       # Clear the task-switched (TS) flag in CR0
-    "lmsw",       # Load machine status word (lower bits of CR0)
-    "smsw",       # Store machine status word (lower bits of CR0)
-    "lgdt",       # Load global descriptor table register
-    "sgdt",       # Store global descriptor table register
-    "lidt",       # Load interrupt descriptor table register
-    "sidt",       # Store interrupt descriptor table register
-    "lldt",       # Load local descriptor table register
-    "sldt",       # Store local descriptor table register
-    "ltr",        # Load task register
-    "str",        # Store task register
-    "arpl",       # Adjust requested privilege level of a selector
-    "verr",       # Verify segment for read access
-    "verw",       # Verify segment for write access
-    "sti",        # Set interrupt flag (enable interrupts)
-    "cli",        # Clear interrupt flag (disable interrupts)
-    "iret",       # Return from interrupt
-    "in",         # Read from I/O port
-    "out",        # Write to I/O port
-    "invd",       # Invalidate internal caches
-    "wbinvd",     # Write back and invalidate caches
-    "hlt",        # Halt the processor until the next interrupt
-    "rsm",        # Resume from system management mode
-    "sysenter",   # Fast system call entry (used in 32-bit systems)
-    "sysexit",    # Fast system call exit (used in 32-bit systems)
-    "sysret",     # Fast system call return (used in 64-bit systems)
-    "rdpmc",      # Read performance-monitoring counters
-    "rdmsr",      # Read model-specific register
-    "wrmsr",      # Write model-specific register
-    "rdtsc",      # Read time-stamp counter
-    "vmread",     # Read from a virtual machine control structure
-    "vmwrite",    # Write to a virtual machine control structure
-    "vmcall",     # Call to hypervisor (used in virtualization)
-    "vmlaunch",   # Launch a virtual machine
-    "vmresume",   # Resume a virtual machine
-    "vmptrld",    # Load pointer to VMCS
-    "vmptrst",    # Store pointer to VMCS
-    "invept",     # Invalidate extended page tables
-    "invvpid",    # Invalidate virtual processor ID mappings
-    "invpcid"     # Invalidate process-context identifier mappings
+
+privileged_instructions: List[str] = [
+    "cli",        # clear interrupt flag – disables maskable interrupts
+    "sti",        # set interrupt flag – enables maskable interrupts
+    "hlt",        # halt – stops CPU until next external interrupt
+    "lgdt",       # load global descriptor table – sets up memory segmentation
+    "sgdt",       # store global descriptor table – reads current GDT
+                  # (privileged in 64-bit mode)
+    "lidt",       # load interrupt descriptor table – sets up interrupt
+                  # handling
+    "sidt",       # store interrupt descriptor table – reads current IDT
+                  # (privileged in 64-bit mode)
+    "lldt",       # load local descriptor table – sets up task-specific
+                  # segment descriptors
+    "sldt",       # store local descriptor table – reads current LDT
+                  # (privileged in 64-bit mode)
+    "ltr",        # load task register – sets the task register for
+                  # multitasking
+    "str",        # store task register – reads the current task register
+    "invlpg",     # invalidate TLB entry – flushes a single page from the TLB
+    "invd",       # invalidate caches – invalidates internal CPU caches
+                  # without writing back
+    "wbinvd",     # write back and invalidate cache – writes back and
+                  # invalidates caches
+    "rdmsr",      # read model-specific register – reads from MSRs
+                  # (used for CPU control)
+    "wrmsr",      # write model-specific register – writes to MSRs
+    "rsm",        # resume from system management mode – resumes from SMM
+                  # (ring -2)
+    "sysret",     # fast system call return – returns from syscall
+    "sysenter",   # fast system call entry (intel) – requires ring 0 setup
+    "sysexit",    # fast system call return (intel)
+    "vmcall",     # call to hypervisor – used in virtualization
+    "vmlaunch",   # launch a virtual machine – enters vmx non-root mode
+    "vmresume",   # resume a virtual machine – resumes from vm exit
+    "vmxon",      # enter vmx operation – enables virtualization
+    "vmxoff",     # exit vmx operation – disables virtualization
+    "vmread",     # read from vmcs – reads VM control structure
+    "vmwrite",    # write to vmcs – writes to VM control structure
+    "vmptrld",    # load pointer to vmcs – sets current VMCS
+    "vmptrst"     # store pointer to vmcs – gets current VMCS pointer
 ]
 
 
@@ -64,8 +67,11 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
     instructions (rdmsr/wrmsr) in MM Standalone modules.
     """
 
-    def do_post_build(self, thebuilder) -> int:
-        """Perform post-build scanning for MSR instructions.
+    def do_post_build(self, thebuilder: Any) -> int:
+        """Perform post-build scanning for protected instructions.
+
+        Analyzes the build output to find and report usage of protected
+        instructions in MM Standalone modules.
 
         Args:
             thebuilder: The builder object containing environment and paths.
@@ -73,6 +79,7 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         Returns:
             int: Return code (0 for success).
         """
+        error_count = 0
         env = (thebuilder.env.GetAllBuildKeyValues() |
                thebuilder.env.GetAllNonBuildKeyValues())
 
@@ -81,32 +88,84 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
             logging.info(
                 "Build report not present, skipping Mm Standalone Scanning"
             )
-            return
+            return 0
+
+        # yes, this really is only handing x86/x64 because that is all mm
+        # supv supports.
+        self.ToolChain = env.get("TOOL_CHAIN_TAG", "")
+        if self.ToolChain == "VS2022":
+            self.disassemble_executable = self.find_dumpbin()
+            self.disassemble_options = "/DISASM "
+            # Match function labels that appear on their own line ending
+            # with colon
+            self.function_regex = r'^([A-Za-z_][A-Za-z_0-9@?$]*)\s*:\s*$'
+        elif "CLANG" in self.ToolChain:
+            # ClangPdb could technically use dumpbin from Vs2022, but it would
+            # introduce a dependency on an unspecified tool chain.
+            clang_bin = shell_environment.GetEnvironment().get_shell_var(
+                "CLANG_BIN"
+            )
+            if clang_bin:
+                self.disassemble_executable = clang_bin + "llvm-objdump"
+            else:
+                # Fall back to system PATH if CLANG_BIN is not defined
+                self.disassemble_executable = "llvm-objdump"
+            self.disassemble_options = (
+                "-d -S --x86-asm-syntax=intel --show-all-symbols --debuginfod"
+            )
+            # Match function symbols, excluding static string labels that
+            # start with .L
+            self.function_regex = (
+                r'^\w+\s*<([A-Za-z_][A-Za-z_0-9]*(?:@[A-Za-z_0-9]+)?)>:$'
+            )
+        elif "GCC" in self.ToolChain:
+            self.disassemble_executable = "objdump"
+            self.disassemble_options = "-d -S -M intel --show-all-symbols --debuginfod "
+            self.function_regex = r'^([A-Za-z_][A-Za-z_0-9@?$]*)\s*:\s*$'
+        else:
+            logging.info("Unknown tool chain, skipping MmStandaloneScanning")
+            return 0
 
         self.parse_build_report_file(thebuilder)
         self.find_standalonemm_modules(thebuilder)
 
         if self.module_list:
-            self.dumpbin_path = self.find_dumpbin()
-#            self.objdump_path = self.file_objdump()
-
             for efi_file in self.module_list:
                 workspace_path = thebuilder.edk2path.WorkspacePath
-                file_pattern = Path(workspace_path, "**", efi_file + ".efi")
+                file_pattern = Path(
+                    workspace_path,
+                    "**/*_" + self.ToolChain + "/**/DEBUG/",
+                    efi_file + ".dll"
+                )
                 path_to_efi_file = glob.glob(
                     file_pattern.as_posix(), recursive=True
                 )
                 if path_to_efi_file:
-                    disassembly = self.disassemble_efi_file(path_to_efi_file[0])
-                    Instructions = self.find_protected_instructions(disassembly)
-                    if Instructions:
-                        logging.warning(f"Protected Instructions found in {path_to_efi_file[0]}")
-                        logging.warning(f"\t{Instructions}")
+                    disassembly = self.disassemble_efi_file(
+                        path_to_efi_file[0]
+                    )
+                    instructions = self.find_protected_instructions(
+                        disassembly
+                    )
+                    if instructions:
+                        error_count = error_count + 1
+                        logging.warning(
+                            f"Protected Instructions found in "
+                            f"{path_to_efi_file[0]}"
+                        )
+                        logging.warning(f"\t{instructions}\n")
 
-        return 0
+        return error_count
 
-    def parse_build_report_file(self, thebuilder):
+    def parse_build_report_file(self, thebuilder: Any) -> None:
+        """Parse the build report file to extract module information.
 
+        Args:
+            thebuilder: The builder object containing environment and paths.
+
+        Returns:
+            None
+        """
         self.report = BuildReport(
             self.build_report,
             thebuilder.edk2path.WorkspacePath,
@@ -116,7 +175,15 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         self.report.BasicParse()
         return
 
-    def find_standalonemm_modules(self, thebuilder):
+    def find_standalonemm_modules(self, thebuilder: Any) -> None:
+        """Find all MM Standalone modules in the build report.
+
+        Args:
+            thebuilder: The builder object containing environment and paths.
+
+        Returns:
+            None
+        """
         self.module_list = []
         for module in self.report.Modules.values():
             if module.FvName and module.Type == "MM_STANDALONE":
@@ -155,36 +222,55 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         return possible_bins[0]
 
     def disassemble_efi_file(self, file_path: str) -> str:
-        """Disassemble a file.
+        """Disassemble an EFI file using dumpbin.
 
         Args:
-            file_path: Path to the file to disassemble.
+            file_path: Path to the EFI file to disassemble.
 
         Returns:
-            List of disassembly lines.
+            str: The disassembly output as a string.
         """
         result_io = StringIO()
         ret = RunCmd(
-            self.dumpbin_path,
-            f'/DISASM "{file_path}"',
+            self.disassemble_executable,
+            self.disassemble_options + f" {file_path}",
             outstream=result_io,
             capture=True,
             logging_level=logging.DEBUG
         )
-#        ret = RunCmd(
-#            self.objdump_path,
-#            f'-d -M intel -j .text {file_path}',
-#            outstream=result_io
-#        )
         if ret != 0:
-            logging.error(f"Failed to disassemble {file_path}: exit code {ret}")
-            return []
+            logging.error(
+                f"Failed to disassemble {file_path}: exit code {ret}"
+            )
+            return ""
         return result_io.getvalue()
 
-    def find_protected_instructions(self, diss: str):
+    def find_protected_instructions(self, diss: str) -> Set[str]:
+        """Find protected instructions in disassembly output.
+
+        Args:
+            diss: The disassembly output as a string.
+
+        Returns:
+            Set[str]: Set of protected instruction names found.
+        """
         found = set()
         for instr in privileged_instructions:
-            pattern = r'\b' + re.escape(instr) + r'\b'
+            # Why is this \s instead of \b? Because objdump will leave
+            # a lot of <.L.str.1.153> in the disassmebly
+            pattern = r'\s+' + re.escape(instr) + r'\b'
             for m in re.finditer(pattern, diss, re.IGNORECASE):
-                found.add(instr)
+                # A Ring0 instruction was found, attempt to find the function
+                # where it was referenced
+                function_header_pattern = re.compile(
+                    self.function_regex, re.MULTILINE | re.IGNORECASE
+                )
+
+                matches = list(function_header_pattern.finditer(
+                    diss[:m.start()]
+                ))
+                if matches:
+                    found.add(matches[-1].group(1) + " " + instr)
+                else:
+                    found.add("<unknown function> " + instr)
         return found
