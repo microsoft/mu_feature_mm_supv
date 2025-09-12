@@ -386,29 +386,56 @@ fn display_results_summary(results: &[(String, &ImageValidationEntryHeader, Stat
 fn display_results_table(results: &[(String, &ImageValidationEntryHeader, Status)]) {
     // Calculate the max width of each column
     let c1 = results.iter().map(|(s, _, _)| s.len()).max().unwrap_or(0);
-    let c2 = "Test Type".len().max(
+    let c2 = "Offset".len().max(
+        results
+            .iter()
+            .map(|(_, entry, _)| format!("0x{:X}", entry.offset).len())
+            .max()
+            .unwrap_or(0),
+    );
+    let c3 = "Size".len().max(
+        results
+            .iter()
+            .map(|(_, entry, _)| format!("0x{:X}", entry.size).len())
+            .max()
+            .unwrap_or(0),
+    );
+    let c4 = "Test Type".len().max(
         results
             .iter()
             .map(|(_, entry, _)| entry.validation_type.to_string().len())
             .max()
             .unwrap_or(0),
     );
-    let c3 = results
-        .iter()
-        .map(|(_, _, s)| format!("{}", PrettyStatus(*s)).len())
-        .max()
-        .unwrap_or(0);
+    let c5 = "Status".len().max(
+        results
+            .iter()
+            .map(|(_, _, s)| PrettyStatus(*s).to_string().len())
+            .max()
+            .unwrap_or(0),
+    );
 
     // print the table
     println!(
-        "| {:c1$} | {:c2$} | {:c3$} |",
-        "Name", "Test Type", "Status"
+        "| {:c1$} | {:c2$} | {:c3$} | {:c4$} | {:c5$} |",
+        "Name", "Offset", "Size", "Test Type", "Status"
     );
-    println!("| {:-<c1$} | {:-<c2$} | {:-<c3$} |", "", "", "");
+    println!(
+        "| {:-<c1$} | {:-<c2$} | {:-<c3$} | {:-<c4$} | {:-<c5$} |",
+        "", "", "", "", ""
+    );
     for (name, hdr, result) in results {
         let status = PrettyStatus(*result).to_string();
         let test_type = hdr.validation_type.to_string();
-        println!("| {:c1$} | {:c2$} | {:c3$} |", name, test_type, status);
+        let offset = format!("0x{:X}", hdr.offset);
+        let size = format!("0x{:X}", hdr.size);
+        println!(
+            "| {:c1$} | {:c2$} | {:c3$} | {:c4$} | {:c5$} |",
+            name, offset, size, test_type, status
+        );
     }
-    println!("| {:-<c1$} | {:-<c2$} | {:-<c3$} |", "", "", "");
+    println!(
+        "| {:-<c1$} | {:-<c2$} | {:-<c3$} | {:-<c4$} | {:-<c5$} |",
+        "", "", "", "", ""
+    );
 }
