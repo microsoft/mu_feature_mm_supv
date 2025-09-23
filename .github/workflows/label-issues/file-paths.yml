@@ -14,5 +14,5 @@
 
 # Maintenance: Keep labels organized in ascending alphabetical order - easier to scan, identify duplicates, etc.
 
-language:python:
+'language:python':
   - '**/*.py'
