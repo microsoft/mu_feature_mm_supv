@@ -24,7 +24,7 @@ EnableInterrupts (
   VOID
   )
 {
-  __asm__ __volatile__ ("sti"::: "memory");
+  SysCall (SMM_SC_STI, 0, 0, 0);
 }
 
 /**
@@ -1156,7 +1156,7 @@ AsmInvd (
   VOID
   )
 {
-  __asm__ __volatile__ ("invd":::"memory");
+  SysCall (SMM_SC_INVD, 0, 0, 0);
 }
 
 /**
