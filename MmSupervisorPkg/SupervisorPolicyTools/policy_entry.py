@@ -10,7 +10,6 @@ import struct
 import sys
 from enum import IntEnum
 from typing import Type, IO
-import logging
 
 
 class POLICY_TYPE(IntEnum):
@@ -30,6 +29,8 @@ class SUPPORTED_INSTRUCTION(IntEnum):
             SECURE_POLICY_INSTRUCTION_CLI,
             SECURE_POLICY_INSTRUCTION_WBINVD,
             SECURE_POLICY_INSTRUCTION_HLT,
+            SECURE_POLICY_INSTRUCTION_STI,
+            SECURE_POLICY_INSTRUCTION_INVD,
             // Do not append after COUNT entry
             SECURE_POLICY_INSTRUCTION_COUNT
         } SECURE_POLICY_INSTRUCTION;
@@ -37,6 +38,8 @@ class SUPPORTED_INSTRUCTION(IntEnum):
     CLI = 0
     WBINVD = 1
     HLT = 2
+    STI = 3
+    INVD = 4
 
 
 class ALLOWED_SAVE_STATE_FIELD(IntEnum):

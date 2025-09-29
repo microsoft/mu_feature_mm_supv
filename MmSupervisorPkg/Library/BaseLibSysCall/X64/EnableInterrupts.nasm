@@ -18,29 +18,10 @@
     DEFAULT REL
     SECTION .text
 
-;------------------------------------------------------------------------------
-; VOID
-; EFIAPI
-; EnableInterrupts (
-;   VOID
-;   );
-;------------------------------------------------------------------------------
-global ASM_PFX(EnableInterrupts)
-ASM_PFX(EnableInterrupts):
-    sti
-    ret
-
 ; MS_CHANGE - START
-;------------------------------------------------------------------------------
-; VOID
-; EFIAPI
-; EnableInterruptsAndSleep (
-;   VOID
-;   );
-;------------------------------------------------------------------------------
-global ASM_PFX(EnableInterruptsAndSleep)
-ASM_PFX(EnableInterruptsAndSleep):
-    sti
-    hlt
-    ret
+; Note: EnableInterrupts and EnableInterruptsAndSleep functions are now implemented
+; in EnableInterrupts.c using syscalls (SMM_SC_STI and SMM_SC_HLT) to properly
+; handle privilege separation in the MM Supervisor environment.
+; The direct 'sti' and 'hlt' instructions have been replaced with syscall-based
+; implementations to ensure proper security policy enforcement.
 ; MS_CHANGE - END

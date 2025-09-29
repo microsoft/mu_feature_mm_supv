@@ -82,9 +82,9 @@
   X64/ReadMsr64.c | MSFT
   X64/CpuPause.nasm| MSFT
   X64/DisableInterrupts.c| MSFT
-  X64/EnableInterrupts.nasm| MSFT
+  X64/EnableInterrupts.c| MSFT
   X64/FlushCacheLine.nasm| MSFT
-  X64/Invd.nasm| MSFT
+  X64/Invd.c| MSFT
   X64/Wbinvd.c| MSFT
   X64/Mwait.nasm| MSFT
   X64/Monitor.nasm| MSFT
@@ -173,7 +173,7 @@
   X86SpeculationBarrier.c
   X64/GccInline.c | GCC
   X64/GccInlinePriv.c | GCC
-  X64/EnableDisableInterrupts.nasm
+  X64/EnableDisableInterrupts.c
   X64/DisablePaging64.nasm
   X64/Pvalidate.nasm
   X64/RdRand.nasm

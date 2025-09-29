@@ -18,15 +18,10 @@
     DEFAULT REL
     SECTION .text
 
-;------------------------------------------------------------------------------
-; VOID
-; EFIAPI
-; AsmInvd (
-;   VOID
-;   );
-;------------------------------------------------------------------------------
-global ASM_PFX(AsmInvd)
-ASM_PFX(AsmInvd):
-    invd
-    ret
+; MS_CHANGE - START
+; Note: AsmInvd function is now implemented in Invd.c using syscalls (SMM_SC_INVD)
+; to properly handle privilege separation in the MM Supervisor environment.
+; The direct 'invd' instruction has been replaced with syscall-based
+; implementation to ensure proper security policy enforcement.
+; MS_CHANGE - END
 

@@ -301,6 +301,19 @@ SyscallDispatcher (
       DisableInterrupts ();
       DEBUG ((DEBUG_VERBOSE, "%a Disable interrupts\n", __FUNCTION__));
       break;
+    case SMM_SC_STI:
+      Status = IsInstructionExecutionAllowed (
+                 FirmwarePolicy,
+                 SECURE_POLICY_INSTRUCTION_STI
+                 );
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a Instruction execution STI blocked by policy - %r\n", __FUNCTION__, Status));
+        goto Exit;
+      }
+
+      EnableInterrupts ();
+      DEBUG ((DEBUG_VERBOSE, "%a Enable interrupts\n", __FUNCTION__));
+      break;
     case SMM_SC_IO_READ:
       DEBUG ((DEBUG_VERBOSE, "%a Read IO type %d at %x got ", __FUNCTION__, Arg2, Arg1));
       if ((Arg2 != MM_IO_UINT8) && (Arg2 != MM_IO_UINT16) && (Arg2 != MM_IO_UINT32)) {
@@ -386,6 +399,19 @@ SyscallDispatcher (
 
       DEBUG ((DEBUG_VERBOSE, "%a Write back and invalidate cache\n", __FUNCTION__));
       AsmWbinvd ();
+      break;
+    case SMM_SC_INVD:
+      Status = IsInstructionExecutionAllowed (
+                 FirmwarePolicy,
+                 SECURE_POLICY_INSTRUCTION_INVD
+                 );
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a Instruction execution INVD blocked by policy - %r\n", __FUNCTION__, Status));
+        goto Exit;
+      }
+
+      DEBUG ((DEBUG_VERBOSE, "%a invalidate cache\n", __FUNCTION__));
+      AsmInvd ();
       break;
     case SMM_SC_HLT:
       Status = IsInstructionExecutionAllowed (

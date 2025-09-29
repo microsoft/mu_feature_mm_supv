@@ -32,6 +32,8 @@ typedef enum {
   SMM_SC_SVST_READ  = 0x0007,
   SMM_SC_PROC_READ  = 0x0008,
   SMM_SC_PROC_WRITE = 0x0009,
+  SMM_SC_STI        = 0x000A,
+  SMM_SC_INVD       = 0x000B,
   SMM_SC_LEGACY_MAX = 0xFFFF,
   // Below is for new supervisor interfaces only,
   // legacy supervisor should not write below this line
