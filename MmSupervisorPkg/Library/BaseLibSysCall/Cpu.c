@@ -50,7 +50,7 @@ SetInterruptState (
   )
 {
   if (InterruptState) {
-    EnableInterrupts ();
+    ASSERT (FALSE); // Interrupts cannot be enabled in supervised mode
   } else {
     DisableInterrupts ();
   }

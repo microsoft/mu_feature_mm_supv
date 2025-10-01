@@ -70,6 +70,7 @@
   X64/LongJump.nasm
   X64/SetJump.nasm
   X64/SwitchStack.nasm
+  X64/Lfence.nasm
   CpuBreakAssert.nasm
 
   X64/CpuBreakpoint.c | MSFT
