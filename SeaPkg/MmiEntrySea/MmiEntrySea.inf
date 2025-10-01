@@ -11,8 +11,7 @@
 ##
 
 # Track release/202502
-#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | 893482d99df7281b751ba1d536449089 | 2025-08-18T14-36-42 | 62220125fdc9fa3a2963ac6eb41e4468e121a848
-
+#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2025-09-30T17-01-30 | 22a192411052c19a6556e6f092e3d2c72c023e2b
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmEntrySea
