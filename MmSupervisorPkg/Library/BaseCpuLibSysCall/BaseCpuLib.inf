@@ -32,7 +32,7 @@
 #
 
 [Sources.X64]
-  X86CpuFlushTlb.c
+  X64/CpuSleep.c
 
 [Packages]
   MdePkg/MdePkg.dec

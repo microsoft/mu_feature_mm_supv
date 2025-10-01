@@ -89,11 +89,6 @@
   X64/Non-existing.c
   Math64.c
   Unaligned.c
-  X86WriteIdtr.c
-  X86WriteGdtr.c
-  X86Thunk.c
-  X86ReadIdtr.c
-  X86ReadGdtr.c
   X86Msr.c
   X86MemoryFence.c | MSFT
   X86GetInterruptState.c
