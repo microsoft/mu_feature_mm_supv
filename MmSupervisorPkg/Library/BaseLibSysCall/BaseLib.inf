@@ -87,6 +87,9 @@
   X64/ReadCs.nasm| MSFT
   X64/ReadEflags.nasm| MSFT
 
+  X64/TdVmcall.c
+  X64/TdProbe.c
+
   X64/Non-existing.c
   Math64.c
   Unaligned.c
