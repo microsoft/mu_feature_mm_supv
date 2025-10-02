@@ -6,6 +6,7 @@
 **/
 
 #include <Library/BaseLib.h>
+#include <Library/DebugLib.h>
 #include <Register/Intel/Cpuid.h>
 
 /**
