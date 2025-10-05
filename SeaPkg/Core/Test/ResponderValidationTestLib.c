@@ -12,7 +12,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <SmmSecurePolicy.h>
 
 #include <IndustryStandard/Tpm20.h>
-#include <Guid/MmCoreData.h>
 #include <Guid/SeaTestCommRegion.h>
 
 #include <Library/StandaloneMmMemLib.h>
@@ -25,7 +24,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/PcdLib.h>
 #include <Library/SecurePolicyLib.h>
 
-extern MM_CORE_PRIVATE_DATA              *gMmCorePrivate;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot;
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
 

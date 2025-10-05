@@ -16,7 +16,6 @@
 #include <Library/MmServicesTableLib.h>
 #include <Library/TpmMeasurementLib.h>
 #include <Guid/MpInformation.h>
-#include <Guid/MmCoreData.h>
 #include <Protocol/MmEndOfDxe.h>
 #include <Register/Intel/Cpuid.h>
 #include <Register/Intel/ArchitecturalMsr.h>
