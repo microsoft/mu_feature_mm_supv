@@ -18,8 +18,7 @@
 #include <Ppi/MmSupervisorCommunication.h>
 #include <Ppi/MmConfiguration.h> // MU_CHANGE: Added MM configuration PPI
 
-#include <Guid/MmCoreData.h>
-#include <Guid/MmCoreProfileData.h>
+#include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
@@ -75,11 +74,6 @@ SmmCommunicationCommunicate (
   IN CONST EFI_PEI_SMM_COMMUNICATION_PPI  *This,
   IN OUT VOID                             *CommBuffer,
   IN OUT UINTN                            *CommSize
-  );
-
-EFI_MMRAM_DESCRIPTOR *
-GetFullMmramRanges (
-  OUT UINTN  *FullMmramRangeCount
   );
 
 // MU_CHANGE: MM_SUPV: Supervisor communication function prototype
@@ -159,28 +153,6 @@ STATIC EFI_PEI_PPI_DESCRIPTOR  mPeiMmIplPpiList[] =
 };
 
 //
-// SMM Core Private Data structure that contains the data shared between
-// the SMM IPL and the SMM Core.
-//
-MM_CORE_PRIVATE_DATA  mSmmCorePrivateData = {
-  MM_CORE_PRIVATE_DATA_SIGNATURE,     // Signature
-  0,                                  // MmramRangeCount
-  0,                                  // MmramRanges
-  0,                                  // MmEntryPoint
-  FALSE,                              // MmEntryPointRegistered
-  FALSE,                              // InMm
-  0,                                  // Mmst
-  0,                                  // CommunicationBuffer
-  0,                                  // BufferSize
-  EFI_SUCCESS                         // ReturnStatus
-};
-
-//
-// Global pointer used to access mSmmCorePrivateData from outside and inside SMM
-//
-MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
-
-//
 // SMM IPL global variables
 //
 EFI_PEI_MM_CONTROL_PPI  *mSmmControl;
@@ -237,6 +209,8 @@ InternalMmControlTrigger (
 VOID
 GetMmramCacheRange (
   IN  EFI_MMRAM_DESCRIPTOR  *MmramRange,
+  IN  EFI_MMRAM_DESCRIPTOR  *MmramRanges,
+  IN  UINTN                 MmramRangeCount,
   OUT EFI_PHYSICAL_ADDRESS  *MmramCacheBase,
   OUT UINT64                *MmramCacheSize
   )
@@ -245,16 +219,13 @@ GetMmramCacheRange (
   EFI_PHYSICAL_ADDRESS  RangeCpuStart;
   UINT64                RangePhysicalSize;
   BOOLEAN               FoundAdjacentRange;
-  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
 
   *MmramCacheBase = MmramRange->CpuStart;
   *MmramCacheSize = MmramRange->PhysicalSize;
 
-  MmramRanges = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
-
   do {
     FoundAdjacentRange = FALSE;
-    for (Index = 0; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
+    for (Index = 0; (UINT64)Index < MmramRangeCount; Index++) {
       RangeCpuStart     = MmramRanges[Index].CpuStart;
       RangePhysicalSize = MmramRanges[Index].PhysicalSize;
       if ((RangeCpuStart < *MmramCacheBase) && (*MmramCacheBase == (RangeCpuStart + RangePhysicalSize))) {
@@ -384,7 +355,9 @@ SmmIplGuidedEventNotify (
 }
 
 // MU_CHANGE Starts: MM_SUPV: Will immediately signal MM core to dispatch MM drivers
-
+#define COMM_BUFFER_MM_DISPATCH_ERROR    0x00
+#define COMM_BUFFER_MM_DISPATCH_SUCCESS  0x01
+#define COMM_BUFFER_MM_DISPATCH_RESTART  0x02
 /**
   Invokes the MM core to dispatch drivers from inside MM environment. This
   function will only be called after MM foundation is successfully set.
@@ -428,6 +401,8 @@ MmDriverDispatchNotify (
     //
     if (mCommunicateHeader->Data[0] != COMM_BUFFER_MM_DISPATCH_RESTART) {
       return Status;
+    } else {
+      ASSERT (FALSE);
     }
   }
 
@@ -724,10 +699,63 @@ MmIplAllocateMmramPage (
   //
   ZeroMem (&MmramInfoHob->Name, sizeof (MmramInfoHob->Name));
 
-  // Update the gMmCorePrivate MmRanges to point to the new new version of mmRanges
-  gMmCorePrivate->MmramRanges = (EFI_PHYSICAL_ADDRESS)(UINTN)GetFullMmramRanges ((UINTN *)&gMmCorePrivate->MmramRangeCount);
-
   return Allocated->CpuStart;
+}
+
+/**
+  Builds a HOB for a loaded PE32 module.
+
+  This function builds a HOB for a loaded PE32 module.
+  It can only be invoked during PEI phase;
+  If physical address of the Module is not 4K aligned, then ASSERT().
+  If new HOB buffer is NULL, then ASSERT().
+
+  @param[in]       Hob            The pointer of new HOB buffer.
+  @param[in, out]  HobBufferSize  The available size of the HOB buffer when as input.
+                                  The used size of when as output.
+  @param[in]       ModuleName     The GUID File Name of the module.
+  @param[in]       Base           The 64 bit physical address of the module.
+  @param[in]       Length         The length of the module in bytes.
+  @param[in]       EntryPoint     The 64 bit physical address of the module entry point.
+
+**/
+EFI_STATUS
+MmIplBuildMmCoreAllocationHob (
+  IN CONST EFI_GUID        *ModuleName,
+  IN EFI_PHYSICAL_ADDRESS  Base,
+  IN UINT64                Length,
+  IN EFI_PHYSICAL_ADDRESS  EntryPoint
+  )
+{
+  EFI_STATUS                        Status;
+
+  if (!IS_ALIGNED (Base, EFI_PAGE_SIZE) || !IS_ALIGNED (Length, EFI_PAGE_SIZE)) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  if ((EntryPoint < Base) || (EntryPoint >= Base + Length)) {
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  // TODO: This deviates from the EDK2 implementation which uses
+  // the build module HOB.
+  BuildMemoryAllocationHob (
+    Base,
+    Length,
+    EfiReservedMemoryType
+  );
+
+  TagMemoryAllocationHobWithGuid (
+    Base,
+    ModuleName
+  );
+
+  Status = EFI_SUCCESS;
+
+Exit:
+  return Status;
 }
 
 // MU_CHANGE Ends
@@ -740,16 +768,13 @@ MmIplAllocateMmramPage (
                                         hold SMM Core will be excluded.
   @param[in, out] MmramRangeSmmCore     Descriptor for the range of SMRAM to hold SMM Core.
 
-  @param[in]      Context               Context to pass into SMM Core
-
   @return  EFI_STATUS
 
 **/
 EFI_STATUS
 ExecuteMmCoreFromMmram (
   IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRange,
-  IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRangeSmmCore,
-  IN     VOID                  *Context
+  IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRangeSmmCore
   )
 {
   EFI_STATUS                            Status;
@@ -757,10 +782,7 @@ ExecuteMmCoreFromMmram (
   PE_COFF_LOADER_IMAGE_CONTEXT          ImageContext;
   UINTN                                 PageCount;
   STANDALONE_MM_FOUNDATION_ENTRY_POINT  EntryPoint;
-  EFI_HOB_GUID_TYPE                     *GuidHob;
-  MM_CORE_DATA_HOB_DATA                 *DataInHob;
-  // MM_CORE_MM_PROFILE_DATA               *BufferInHob;
-  VOID  *HobStart;
+  VOID                                  *HobStart;
 
   DEBUG ((DEBUG_INFO, "%a Enters...\n", __func__));
   //
@@ -838,20 +860,20 @@ ExecuteMmCoreFromMmram (
       //
       DEBUG ((DEBUG_INFO, "SMM IPL calling SMM Core at SMRAM address %p\n", (VOID *)(UINTN)ImageContext.EntryPoint));
 
-      gMmCorePrivate->MmCoreImageBase  = ImageContext.ImageAddress;
-      gMmCorePrivate->MmCoreImageSize  = ImageContext.ImageSize;
-      gMmCorePrivate->MmCoreEntryPoint = ImageContext.EntryPoint;
-      DEBUG ((DEBUG_INFO, "PiSmmCoreImageBase - 0x%016lx\n", gMmCorePrivate->MmCoreImageBase));
-      DEBUG ((DEBUG_INFO, "PiSmmCoreImageSize - 0x%016lx\n", gMmCorePrivate->MmCoreImageSize));
-      DEBUG ((DEBUG_INFO, "PiSmmCoreEntryPont - 0x%016lx\n", gMmCorePrivate->MmCoreEntryPoint));
-
-      // MU_CHANGE: Patch the core private data allocated in this module into HOB
-      GuidHob            = GetFirstGuidHob (&gMmCoreDataHobGuid);
-      DataInHob          = GET_GUID_HOB_DATA (GuidHob);
-      DataInHob->Address = (UINTN)gMmCorePrivate;
-
       // MU_CHANGE Starts: To load x64 MM foundation, mode switch is needed
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
+
+      Status = MmIplBuildMmCoreAllocationHob (
+                  &gMmSupervisorCoreGuid,
+                  ImageContext.ImageAddress,
+                  (UINT64)EFI_PAGES_TO_SIZE (PageCount),
+                  (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
+                  );
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "%a Failed to build MM core module HOB - %r...\n", __func__, Status));
+        goto Exit;
+      }
+
       HobStart   = GetHobList ();
  #ifdef MDE_CPU_IA32
       //
@@ -1113,65 +1135,6 @@ SmmIsMmramOverlap (
 }
 
 /**
-  Get full SMRAM ranges.
-
-  It will get SMRAM ranges from either the gEfiMmPeiMmramMemoryReserveGuid or
-  gEfiSmmSmramMemoryGuid HOB.
-
-  @param[out] FullMmramRangeCount   Output pointer to full SMRAM range count.
-
-  @return Pointer to full SMRAM ranges.
-
-**/
-EFI_MMRAM_DESCRIPTOR *
-GetFullMmramRanges (
-  OUT UINTN  *FullMmramRangeCount
-  )
-{
-  EFI_MMRAM_DESCRIPTOR  *FullMmramRanges;
-  UINTN                 MmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
-
-  EFI_MMRAM_HOB_DESCRIPTOR_BLOCK  *MmramRangesHobData;
-  EFI_HOB_GUID_TYPE               *MmramRangesHob;
-
-  MmramRangesHob = GetFirstGuidHob (&gEfiMmPeiMmramMemoryReserveGuid);
-  if (MmramRangesHob == NULL) {
-    MmramRangesHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
-    if (MmramRangesHob == NULL) {
-      DEBUG ((DEBUG_ERROR, "[%a] - Critical HOB missing that describes MMRAM regions. Cannot load MM.\n", __FUNCTION__));
-      ASSERT (MmramRangesHob != NULL);
-      PANIC ("Critical HOB missing that describes MMRAM regions");
-    }
-  }
-
-  MmramRangesHobData = GET_GUID_HOB_DATA (MmramRangesHob);
-  if (MmramRangesHobData == NULL) {
-    return NULL;
-  }
-
-  MmramRanges = MmramRangesHobData->Descriptor;
-  if (MmramRanges == NULL) {
-    return NULL;
-  }
-
-  MmramRangeCount = (UINTN)MmramRangesHobData->NumberOfMmReservedRegions;
-  if (MmramRanges == NULL) {
-    return NULL;
-  }
-
-  FullMmramRanges = (EFI_MMRAM_DESCRIPTOR *)AllocateZeroPool (MmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
-  if (FullMmramRanges == NULL) {
-    return NULL;
-  }
-
-  CopyMem (FullMmramRanges, MmramRanges, (MmramRangeCount) * sizeof (EFI_MMRAM_DESCRIPTOR));
-  *FullMmramRangeCount = MmramRangeCount;
-
-  return FullMmramRanges;
-}
-
-/**
   The Entry Point for PEI MM IPL
 
   Load MM Core into MMRAM, register MM Core entry point for SMIs, install
@@ -1222,12 +1185,6 @@ MmIplPeiEntry (
     return Status;
   }
 
-  // MU_CHANGE: MM_SUPV: Allocate designated runtime buffer for gMmCorePrivate, it will be unblocked with Supervisor access
-  // Here we allocate the core private data and copy the data
-  gMmCorePrivate = AllocateAlignedPages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), SIZE_4KB);
-  ASSERT (gMmCorePrivate != NULL);
-  CopyMem (gMmCorePrivate, &mSmmCorePrivateData, sizeof (MM_CORE_PRIVATE_DATA));
-
   //
   // Get SMM Access PPI
   //
@@ -1252,9 +1209,6 @@ MmIplPeiEntry (
                              );
   ASSERT_EFI_ERROR (Status);
 
-  gMmCorePrivate->MmramRanges = (EFI_PHYSICAL_ADDRESS)(UINTN)GetFullMmramRanges ((UINTN *)&gMmCorePrivate->MmramRangeCount);
-  MmramRanges                 = (EFI_MMRAM_DESCRIPTOR *)(UINTN)gMmCorePrivate->MmramRanges;
-
   //
   // Open all SMRAM ranges
   //
@@ -1265,6 +1219,19 @@ MmIplPeiEntry (
     // This is not right...
     ASSERT (FALSE);
     return EFI_DEVICE_ERROR;
+  }
+
+  MmramRanges = AllocatePool (Size);
+  if (MmramRanges == NULL) {
+    ASSERT (MmramRanges != NULL);
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, MmramRanges);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "SMM IPL failed to get SMRAM capabilities - %r\n", Status));
+    ASSERT (FALSE);
+    return Status;
   }
 
   MmramRangeCount = Size / sizeof (EFI_MMRAM_DESCRIPTOR);
@@ -1288,7 +1255,7 @@ MmIplPeiEntry (
   // Find the largest SMRAM range between 1MB and 4GB that is at least 256KB - 4K in size
   //
   mCurrentMmramRange = NULL;
-  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < gMmCorePrivate->MmramRangeCount; Index++) {
+  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < MmramRangeCount; Index++) {
     //
     // Skip any SMRAM region that is already allocated, needs testing, or needs ECC initialization
     //
@@ -1317,7 +1284,7 @@ MmIplPeiEntry (
       (VOID *)(UINTN)(mCurrentMmramRange->CpuStart + mCurrentMmramRange->PhysicalSize - 1)
       ));
 
-    GetMmramCacheRange (mCurrentMmramRange, &mMmramCacheBase, &mMmramCacheSize);
+    GetMmramCacheRange (mCurrentMmramRange, MmramRanges, MmramRangeCount, &mMmramCacheBase, &mMmramCacheSize);
     // MU_CHANGE: MM_SUPV: Memory space descriptor marking is directly using MTRR registers
     //
     // Make sure we can change the desired memory attributes.
@@ -1338,8 +1305,7 @@ MmIplPeiEntry (
     //
     Status = ExecuteMmCoreFromMmram (
                mCurrentMmramRange,
-               &MmramRanges[gMmCorePrivate->MmramRangeCount - 1],
-               gMmCorePrivate
+               &MmramRanges[MmramRangeCount - 1]
                );
     if (EFI_ERROR (Status)) {
       //
@@ -1435,7 +1401,7 @@ MmIplPeiEntry (
     //
     // Free all allocated resources
     //
-    FreePool ((VOID *)(UINTN)gMmCorePrivate->MmramRanges);
+    FreePool ((VOID *)MmramRanges);
 
     return EFI_UNSUPPORTED;
   }
