@@ -70,11 +70,11 @@
   gEfiEventReadyToBootGuid
   gEfiEventVirtualAddressChangeGuid             ## CONSUMES             ## Event
   gEfiEndOfDxeEventGroupGuid                    ## CONSUMES             ## Event
-  gMmCoreDataHobGuid                            ## CONSUMES
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
   gMmSupervisorCommunicationRegionTableGuid     ## CONSUMES
   gEdkiiPiSmmCommunicationRegionTableGuid       ## CONSUMES
+  gMmCommBufferHobGuid                          ## CONSUMES
 
 [Depex]
   gEfiSmmControl2ProtocolGuid

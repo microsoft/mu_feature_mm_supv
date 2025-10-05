@@ -17,7 +17,7 @@
 #include <Protocol/MmSupervisorCommunication.h>
 
 #include <Guid/EventGroup.h>
-#include <Guid/MmCoreData.h>
+#include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/PiSmmCommunicationRegionTable.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
@@ -37,42 +37,6 @@
 //
 // Function prototypes from produced protocols
 //
-
-/**
-  Indicate whether the driver is currently executing in the SMM Initialization phase.
-
-  @param   This                    The EFI_MM_BASE_PROTOCOL instance.
-  @param   InSmram                 Pointer to a Boolean which, on return, indicates that the driver is currently executing
-                                   inside of SMRAM (TRUE) or outside of SMRAM (FALSE).
-
-  @retval  EFI_INVALID_PARAMETER   InSmram was NULL.
-  @retval  EFI_SUCCESS             The call returned successfully.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmBase2InSmram (
-  IN CONST EFI_MM_BASE_PROTOCOL  *This,
-  OUT      BOOLEAN               *InSmram
-  );
-
-/**
-  Retrieves the location of the System Management System Table (Mmst).
-
-  @param   This                    The EFI_MM_BASE_PROTOCOL instance.
-  @param   Mmst                    On return, points to a pointer to the System Management Service Table (MMST).
-
-  @retval  EFI_INVALID_PARAMETER   Mmst or This was invalid.
-  @retval  EFI_SUCCESS             The memory was returned to the system.
-  @retval  EFI_UNSUPPORTED         Not in SMM.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmBase2GetSmstLocation (
-  IN CONST EFI_MM_BASE_PROTOCOL  *This,
-  OUT      EFI_MM_SYSTEM_TABLE   **Mmst
-  );
 
 /**
   Communicates with a registered handler.
@@ -257,14 +221,6 @@ typedef struct {
 EFI_HANDLE  mSmmIplHandle = NULL;
 
 //
-// SMM Base 2 Protocol instance
-//
-EFI_MM_BASE_PROTOCOL  mSmmBase2 = {
-  SmmBase2InSmram,
-  SmmBase2GetSmstLocation
-};
-
-//
 // SMM Communication Protocol instance
 //
 EFI_SMM_COMMUNICATION_PROTOCOL  mSmmCommunication = {
@@ -287,12 +243,6 @@ MM_SUPERVISOR_COMMUNICATION_PROTOCOL  mMmSupvCommunication = {
   .Version     = MM_SUPERVISOR_COMM_PROTOCOL_VER,
   .Communicate = SupvCommunicationCommunicate
 };
-
-// MU_CHANGE: MM_SUPV: Designated a pointer for core private data as it is allocated runtime
-//
-// Global pointer used to access mSmmCorePrivateData from outside and inside SMM
-//
-MM_CORE_PRIVATE_DATA  *gMmCorePrivate = NULL;
 
 //
 // SMM IPL global variables
@@ -342,7 +292,7 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   //
   { FALSE, FALSE, &gEfiEventReadyToBootGuid,          SmmIplGuidedEventNotify,       &gEfiEventReadyToBootGuid,          TPL_CALLBACK, NULL },
   //
-  // Declare event notification on SetVirtualAddressMap() Event Group.  This is used to convert gMmCorePrivate
+  // Declare event notification on SetVirtualAddressMap() Event Group.  This is used to convert mMmCommBufferStatus
   // and mSmmControl2 from physical addresses to virtual addresses.
   //
   { FALSE, FALSE, &gEfiEventVirtualAddressChangeGuid, SmmIplSetVirtualAddressNotify, NULL,                               TPL_CALLBACK, NULL },
@@ -368,64 +318,6 @@ InternalMmControlTrigger (
   )
 {
   return mSmmControl2->Trigger (mSmmControl2, NULL, NULL, FALSE, 0);
-}
-
-/**
-  Indicate whether the driver is currently executing in the SMM Initialization phase.
-
-  @param   This                    The EFI_MM_BASE_PROTOCOL instance.
-  @param   InSmram                 Pointer to a Boolean which, on return, indicates that the driver is currently executing
-                                   inside of SMRAM (TRUE) or outside of SMRAM (FALSE).
-
-  @retval  EFI_INVALID_PARAMETER   InSmram was NULL.
-  @retval  EFI_SUCCESS             The call returned successfully.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmBase2InSmram (
-  IN CONST EFI_MM_BASE_PROTOCOL  *This,
-  OUT      BOOLEAN               *InSmram
-  )
-{
-  if (InSmram == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  *InSmram = gMmCorePrivate->InMm;
-
-  return EFI_SUCCESS;
-}
-
-/**
-  Retrieves the location of the System Management System Table (SMST).
-
-  @param   This                    The EFI_MM_BASE_PROTOCOL instance.
-  @param   Smst                    On return, points to a pointer to the System Management Service Table (SMST).
-
-  @retval  EFI_INVALID_PARAMETER   Smst or This was invalid.
-  @retval  EFI_SUCCESS             The memory was returned to the system.
-  @retval  EFI_UNSUPPORTED         Not in SMM.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmBase2GetSmstLocation (
-  IN CONST EFI_MM_BASE_PROTOCOL  *This,
-  OUT      EFI_MM_SYSTEM_TABLE   **Mmst
-  )
-{
-  if ((This == NULL) || (Mmst == NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  if (!gMmCorePrivate->InMm) {
-    return EFI_UNSUPPORTED;
-  }
-
-  *Mmst = (EFI_MM_SYSTEM_TABLE *)(UINTN)gMmCorePrivate->Mmst;
-
-  return EFI_SUCCESS;
 }
 
 // MU_CHANGE: MM_SUPV: Added interface for MM Supervisor communication
@@ -708,7 +600,7 @@ SmmIplSetVirtualAddressNotify (
   // MU_CHANGE: These "external "entries need update since used in MM Communication routine
   EfiConvertPointer (0x0, (VOID **)&mMmSupvCommonBuffer);
   EfiConvertPointer (0x0, (VOID **)&mMmUserCommonBuffer);
-  EfiConvertPointer (0x0, (VOID **)&gMmCorePrivate);
+  EfiConvertPointer (0x0, (VOID **)&mMmCommBufferStatus);
   EfiConvertPointer (0x0, (VOID **)&mMmSupvCommunication.CommunicationRegion.VirtualStart);
 }
 
@@ -738,7 +630,7 @@ UpdateDxeCommunicateBuffer (
   MM_SUPERVISOR_COMM_UPDATE_BUFFER  *NewCommBuffer;
   VOID                              *NewUserCommBuffer;
   VOID                              *NewSupvCommBuffer;
-  VOID                              *NewMmCoreBuffer;
+  VOID                              *NewMmCommBufferStatus;
 
   if ((VersionInfo == NULL) || (UpdatedCommBuffer == NULL)) {
     ASSERT (VersionInfo != NULL);
@@ -754,12 +646,12 @@ UpdateDxeCommunicateBuffer (
   // Now we are in the real deal, start with allocating new buffers
   NewUserCommBuffer = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
   NewSupvCommBuffer = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
-  NewMmCoreBuffer   = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_CORE_PRIVATE_DATA)), EFI_PAGE_SIZE);
+  NewMmCommBufferStatus   = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
 
-  if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCoreBuffer == NULL)) {
+  if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCommBufferStatus == NULL)) {
     ASSERT (NewUserCommBuffer != NULL);
     ASSERT (NewSupvCommBuffer != NULL);
-    ASSERT (NewMmCoreBuffer != NULL);
+    ASSERT (NewMmCommBufferStatus != NULL);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -774,7 +666,8 @@ UpdateDxeCommunicateBuffer (
   ZeroMem ((VOID *)(UINTN)mCommunicateHeader, Size);
 
   CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorRequestHandlerGuid);
-  mCommunicateHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+  mCommunicateHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) +
+                                      sizeof (MM_SUPERVISOR_COMM_UPDATE_BUFFER);
 
   RequestHeader            = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
   RequestHeader->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -785,9 +678,9 @@ UpdateDxeCommunicateBuffer (
   CopyMem (&(NewCommBuffer->NewMmCoreData.IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
   NewCommBuffer->NewMmCoreData.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
   NewCommBuffer->NewMmCoreData.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCoreBuffer;
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCoreBuffer;
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_COMM_BUFFER_STATUS) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
+  NewCommBuffer->NewMmCoreData.MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
 
   CopyMem (&(NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
   NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
@@ -814,9 +707,10 @@ UpdateDxeCommunicateBuffer (
   }
 
   // Re-check the return status on the new buffers.
-  gMmCorePrivate = (MM_CORE_PRIVATE_DATA *)NewMmCoreBuffer;
-  if ((UINTN)gMmCorePrivate->ReturnStatus != 0) {
-    Status = gMmCorePrivate->ReturnStatus;
+  mMmCommBufferStatus = (MM_COMM_BUFFER_STATUS *)NewMmCommBufferStatus;
+  DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommMailboxBufferStatus to new location - %p!\n", __func__, mMmCommBufferStatus));
+  if ((UINTN)mMmCommBufferStatus->ReturnStatus != 0) {
+    Status = mMmCommBufferStatus->ReturnStatus;
     DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM to switch core mailbox - %r!!\n", __FUNCTION__, Status));
     Status = EFI_DEVICE_ERROR;
     goto Done;
@@ -1011,8 +905,6 @@ MmDxeSupportEntry (
   EFI_STATUS             Status;
   UINTN                  Index;
   VOID                   *Registration;
-  MM_CORE_DATA_HOB_DATA  *DataInHob;
-  EFI_PEI_HOB_POINTERS   HobPointer;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
   MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
@@ -1025,16 +917,6 @@ MmDxeSupportEntry (
     DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __FUNCTION__, Status));
     return Status;
   }
-
-  // MU_CHANGE: Fetch allocated gMmCorePrivate address from HOB data
-  // Here we allocate the core private data and copy the data
-  HobPointer.Guid = GetFirstGuidHob (&gMmCoreDataHobGuid);
-  if (HobPointer.Guid == NULL) {
-    return EFI_DEVICE_ERROR;
-  }
-
-  DataInHob      = GET_GUID_HOB_DATA (HobPointer.Guid);
-  gMmCorePrivate = (MM_CORE_PRIVATE_DATA *)(UINTN)DataInHob->Address;
 
   //
   // Get SMM Control2 Protocol
@@ -1060,6 +942,7 @@ MmDxeSupportEntry (
     return Status;
   }
 
+  // Needs clean up
   Status = PublishMmCommunicationBuffer (&NewCommBuffer);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to publish communicate buffer configuration tables - %r\n", __FUNCTION__, Status));
@@ -1080,8 +963,6 @@ MmDxeSupportEntry (
   //
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &mSmmIplHandle,
-                  &gEfiSmmBase2ProtocolGuid,
-                  &mSmmBase2,
                   &gEfiSmmCommunicationProtocolGuid,
                   &mSmmCommunication,
                   &gEfiMmCommunication2ProtocolGuid,

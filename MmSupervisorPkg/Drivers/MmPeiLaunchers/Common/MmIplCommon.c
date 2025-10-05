@@ -10,7 +10,7 @@
 #include <StandaloneMm.h>
 
 #include <Protocol/SmmCommunication.h>
-#include <Guid/MmCoreData.h>
+#include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/MmSupervisorRequestData.h>
 
@@ -31,7 +31,8 @@ VOID    *mMmUserCommonBuffer         = NULL;
 VOID    *mMmSupvCommonBufferPhysical = NULL;
 VOID    *mMmUserCommonBufferPhysical = NULL;
 
-EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader = NULL;
+EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader  = NULL;
+MM_COMM_BUFFER_STATUS      *mMmCommBufferStatus = NULL;
 
 /**
   Helper function for MM Communication protocol or PPI.
@@ -119,6 +120,8 @@ SmmCommunicationCommunicateWorker (
 
       return EFI_BAD_BUFFER_SIZE;
     }
+    DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using Supervisor Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
+    mMmCommBufferStatus->CommunicateChannel = MM_SUPERVISOR_BUFFER_T;
   } else {
     CommunicateHeader         = mMmUserCommonBuffer;
     CommunicateBufferPhysical = mMmUserCommonBufferPhysical;
@@ -131,6 +134,8 @@ SmmCommunicationCommunicateWorker (
 
       return EFI_BAD_BUFFER_SIZE;
     }
+    mMmCommBufferStatus->CommunicateChannel = MM_USER_BUFFER_T;
+    DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using User Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   }
 
   if (CommunicateHeader != CommBuffer) {
@@ -143,17 +148,15 @@ SmmCommunicationCommunicateWorker (
   // Standalone version will not have the scenario when communication protocol is ready but MM foundation is not set.
   // Thus this function should always be invoked from non-MM environment to trigger a MMI to communicate to MM core
   //
-  if (gMmCorePrivate->InMm) {
-    // MU_CHANGE: MM_SUPV: For MM supervisor model, we will always communicate to core through software MMI
+  if (mMmCommBufferStatus->IsCommBufferValid) {
     ASSERT (FALSE);
     return EFI_INVALID_PARAMETER;
   }
 
   //
-  // Put arguments for Software SMI in gMmCorePrivate
+  // Put arguments for Software SMI in mMmCommBufferStatus
   //
-  gMmCorePrivate->CommunicationBuffer = (UINTN)CommunicateBufferPhysical;
-  gMmCorePrivate->BufferSize          = TempCommSize;
+  mMmCommBufferStatus->IsCommBufferValid = TRUE;
 
   // MU_CHANGE: Use abstracted routine to trigger MM, where PEI and DXE will invoke their own MmControl->Trigger, respectively.
   //
@@ -165,7 +168,7 @@ SmmCommunicationCommunicateWorker (
   }
 
   // MU_CHANGE Starts: Covert UINT64 to UINTN using SafeInt routine, and use them for further operations
-  Status = SafeUint64ToUintn (gMmCorePrivate->BufferSize, &TempCommSize);
+  Status = SafeUint64ToUintn (mMmCommBufferStatus->ReturnBufferSize, &TempCommSize);
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     return EFI_BAD_BUFFER_SIZE;
@@ -186,8 +189,8 @@ SmmCommunicationCommunicateWorker (
   // Convert to 32-bit Status and return
   //
   Status = EFI_SUCCESS;
-  if ((UINTN)gMmCorePrivate->ReturnStatus != 0) {
-    Status = ENCODE_ERROR ((UINTN)gMmCorePrivate->ReturnStatus);
+  if ((UINTN)mMmCommBufferStatus->ReturnStatus != 0) {
+    Status = ENCODE_ERROR ((UINTN)mMmCommBufferStatus->ReturnStatus);
   }
 
   return Status;
@@ -261,6 +264,7 @@ InitializeCommunicationBufferFromHob (
   EFI_STATUS            Status;
   EFI_PEI_HOB_POINTERS  GuidHob;
   MM_COMM_REGION_HOB    *CommRegionHob;
+  MM_COMM_BUFFER        *CommBuffer;
 
   if (SupvCommonRegionDesc == NULL) {
     DEBUG ((DEBUG_ERROR, "%a Incoming memory descriptor cannot be NULL!!!\n", __func__));
@@ -275,36 +279,42 @@ InitializeCommunicationBufferFromHob (
   }
 
   Status = EFI_SUCCESS;
-  while (GuidHob.Guid != NULL) {
-    CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
-    if (CommRegionHob->MmCommonRegionType == MM_USER_BUFFER_T) {
-      if ((mMmUserCommonBufferPages != 0) || (mMmUserCommonBuffer != NULL)) {
-        Status = EFI_ALREADY_STARTED;
-        break;
-      }
-
-      mMmUserCommonBufferPages    = CommRegionHob->MmCommonRegionPages;
-      mMmUserCommonBuffer         = (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr;
-      mMmUserCommonBufferPhysical = mMmUserCommonBuffer;
-    } else if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
-      if ((mMmSupvCommonBufferPages != 0) || (mMmSupvCommonBuffer != NULL)) {
-        Status = EFI_ALREADY_STARTED;
-        break;
-      }
-
-      mMmSupvCommonBufferPages    = CommRegionHob->MmCommonRegionPages;
-      mMmSupvCommonBuffer         = (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr;
-      mMmSupvCommonBufferPhysical = mMmSupvCommonBuffer;
-
-      SupvCommonRegionDesc->Type          = EfiRuntimeServicesData;
-      SupvCommonRegionDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmSupvCommonBuffer;
-      SupvCommonRegionDesc->VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmSupvCommonBuffer;
-      SupvCommonRegionDesc->NumberOfPages = mMmSupvCommonBufferPages;
-      SupvCommonRegionDesc->Attribute     = 0;
+  CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
+  if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
+    if ((mMmSupvCommonBufferPages != 0) || (mMmSupvCommonBuffer != NULL)) {
+      Status = EFI_ALREADY_STARTED;
     }
 
-    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmCommonRegionHobGuid, GuidHob.Guid);
+    mMmSupvCommonBufferPages    = CommRegionHob->MmCommonRegionPages;
+    mMmSupvCommonBuffer         = (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr;
+    mMmSupvCommonBufferPhysical = mMmSupvCommonBuffer;
+
+    SupvCommonRegionDesc->Type          = EfiRuntimeServicesData;
+    SupvCommonRegionDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmSupvCommonBuffer;
+    SupvCommonRegionDesc->VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmSupvCommonBuffer;
+    SupvCommonRegionDesc->NumberOfPages = mMmSupvCommonBufferPages;
+    SupvCommonRegionDesc->Attribute     = 0;
+  } else {
+    DEBUG ((DEBUG_ERROR, "%a - Invalid common buffer type %x."
+      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n", __func__, CommRegionHob->MmCommonRegionType));
+    Status = EFI_UNSUPPORTED;
+  }
+
+  // Cover the user level buffer, through the EDK2 way...
+  if ((mMmUserCommonBufferPages == 0) && (mMmUserCommonBuffer == NULL)) {
+    GuidHob.Guid = GetFirstGuidHob (&gMmCommBufferHobGuid);
+    if (GuidHob.Guid == NULL) {
+      DEBUG ((DEBUG_ERROR, "Failed to find MM Communication Buffer HOB\n"));
+      DEBUG ((DEBUG_ERROR, "Only Root MMI Handlers will be supported!\n"));
+      return Status;
+    }
+    CommBuffer = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
+    mMmUserCommonBufferPages    = CommBuffer->NumberOfPages;
+    mMmUserCommonBuffer         = (VOID *)(UINTN)CommBuffer->PhysicalStart;
+    mMmUserCommonBufferPhysical = mMmUserCommonBuffer;
+    mMmCommBufferStatus         = (MM_COMM_BUFFER_STATUS*)(UINTN)CommBuffer->Status;
+  } else {
+    Status = EFI_ALREADY_STARTED;
   }
 
   if (EFI_ERROR (Status)) {
@@ -360,7 +370,7 @@ QuerySupervisorVersion (
   ZeroMem ((VOID *)(UINTN)mCommunicateHeader, Size);
 
   CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorRequestHandlerGuid);
-  mCommunicateHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+  mCommunicateHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER);
 
   RequestHeader            = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
   RequestHeader->Signature = MM_SUPERVISOR_REQUEST_SIG;
