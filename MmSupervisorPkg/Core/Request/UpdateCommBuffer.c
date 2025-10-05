@@ -48,25 +48,25 @@ VerifyandMoveUnblockedPages (
   EFI_STATUS  Status;
 
   if ((NewMemParam == NULL) || (OldMemParam == NULL)) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are NULL - %p and %p!\n", __FUNCTION__, NewMemParam, OldMemParam));
+    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are NULL - %p and %p!\n", __func__, NewMemParam, OldMemParam));
     Status = EFI_INVALID_PARAMETER;
     goto Done;
   }
 
   if (NewMemParam->MemoryDescriptor.NumberOfPages != OldMemParam->MemoryDescriptor.NumberOfPages) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different sizes, this is not allowed!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different sizes, this is not allowed!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
 
   if (NewMemParam->MemoryDescriptor.Attribute != OldMemParam->MemoryDescriptor.Attribute) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different attributes, this is not allowed!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different attributes, this is not allowed!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
 
   if (NewMemParam->MemoryDescriptor.Type != OldMemParam->MemoryDescriptor.Type) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different types, this is not allowed!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different types, this is not allowed!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
@@ -74,13 +74,13 @@ VerifyandMoveUnblockedPages (
   // Okay, again, enough complaints, now get to work.
   Status = ProcessUnblockPages (NewMemParam);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to unblock the requested new communicate buffers - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to unblock the requested new communicate buffers - %r!\n", __func__, Status));
     goto Done;
   }
 
   Status = ProcessBlockPages (OldMemParam);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to block memory %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to block memory %r!\n", __func__, Status));
     goto Done;
   }
 
@@ -123,14 +123,14 @@ ProcessUpdateCommBufferRequest (
     DEBUG ((
       DEBUG_ERROR,
       "%a - Comm buffer update requested after ready to lock, will not proceed!\n",
-      __FUNCTION__
+      __func__
       ));
     return EFI_ACCESS_DENIED;
   }
 
   // Some more sanity checks here
   if (UpdateCommBuffer == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid parameter detected - %p!\n", __FUNCTION__, UpdateCommBuffer));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid parameter detected - %p!\n", __func__, UpdateCommBuffer));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -142,7 +142,7 @@ ProcessUpdateCommBufferRequest (
     CopyMem (&(MmCoreDataDesc.MemoryDescriptor), &(mMmSupervisorAccessBuffer[Index]), sizeof (MmCoreDataDesc.MemoryDescriptor));
     Status = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewCommBuffers[Index], &MmCoreDataDesc);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __FUNCTION__, Index, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __func__, Index, Status));
       goto Done;
     }
 
@@ -150,21 +150,22 @@ ProcessUpdateCommBufferRequest (
     CopyMem (&mMmSupervisorAccessBuffer[Index], &(UpdateCommBuffer->NewCommBuffers[Index].MemoryDescriptor), sizeof (mMmSupervisorAccessBuffer[0]));
   }
 
-  // Next deal with the gMmCoreMailbox
+  // Next deal with the mMmCommMailboxBufferStatus
   // Craft a temp block for the existing buffer
-  MmCoreDataDesc.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox;
-  MmCoreDataDesc.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  MmCoreDataDesc.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
+  MmCoreDataDesc.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_COMM_BUFFER_STATUS) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
   MmCoreDataDesc.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
   Status                                        = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewMmCoreData, &MmCoreDataDesc);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __FUNCTION__, Index, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __func__, Index, Status));
     goto Done;
   }
 
   // Then update the cached global variable and prepare for the content fix up.
-  gMmCoreMailbox = (MM_CORE_PRIVATE_DATA *)(UINTN)UpdateCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart;
+  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UpdateCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart;
+  DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommMailboxBufferStatus to new location - %p!\n", __func__, mMmCommMailboxBufferStatus));
 
-  // Note: The content on the original communicate buffer and gMmCoreMailbox will be restored to the new buffer,
+  // Note: The content on the original communicate buffer and mMmCommMailboxBufferStatus will be restored to the new buffer,
   // so no need to worry about copy contents here.
 
   mAlreadyMoved = TRUE;

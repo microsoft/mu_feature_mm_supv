@@ -1632,8 +1632,8 @@ IsSmmCommBufferForbiddenAddress (
     }
   }
 
-  if ((Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox) &&
-      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox + ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
+  if ((Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus) &&
+      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus + ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
   {
     return FALSE;
   }
@@ -2322,8 +2322,8 @@ SetCommonBufferRegionAttribute (
     } else {
       // Sanity check on the comm buffers and the mailbox data region
       if (InternalIsBufferOverlapped (
-            (UINT8 *)gMmCoreMailbox,
-            sizeof (MM_CORE_PRIVATE_DATA),
+            (UINT8 *)mMmCommMailboxBufferStatus,
+            sizeof (MM_COMM_BUFFER_STATUS),
             (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
             EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
             ))
@@ -2350,8 +2350,8 @@ SetCommonBufferRegionAttribute (
   // is the difference if you will need it for common buffer anyway?
   // Remove RX set above
   ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
-  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)gMmCoreMailbox;
-  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_CORE_PRIVATE_DATA) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
+  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
   UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
   UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
   Status                                             = ProcessUnblockPages (&UnblockRegionParams);
