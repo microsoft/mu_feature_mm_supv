@@ -121,7 +121,6 @@ SmmCommunicationCommunicateWorker (
       return EFI_BAD_BUFFER_SIZE;
     }
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using Supervisor Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
-    mMmCommBufferStatus->CommunicateChannel = MM_SUPERVISOR_BUFFER_T;
   } else {
     CommunicateHeader         = mMmUserCommonBuffer;
     CommunicateBufferPhysical = mMmUserCommonBufferPhysical;
@@ -134,9 +133,9 @@ SmmCommunicationCommunicateWorker (
 
       return EFI_BAD_BUFFER_SIZE;
     }
-    mMmCommBufferStatus->CommunicateChannel = MM_USER_BUFFER_T;
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using User Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   }
+  mMmCommBufferStatus->TalkToSupervisor = TalkToSupervisor;
 
   if (CommunicateHeader != CommBuffer) {
     CopyMem (CommunicateHeader, CommBuffer, TempCommSize);
