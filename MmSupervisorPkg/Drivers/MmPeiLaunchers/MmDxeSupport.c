@@ -15,6 +15,7 @@
 #include <Protocol/SmmControl2.h>
 #include <Protocol/DxeSmmReadyToLock.h>
 #include <Protocol/MmSupervisorCommunication.h>
+#include <Protocol/MmCommBufferUpdate.h>
 
 #include <Guid/EventGroup.h>
 #include <Guid/MmCommBuffer.h>
@@ -522,6 +523,7 @@ MmDxeSupportEntry (
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
   MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
+  MM_COMM_BUFFER_UPDATE_PROTOCOL     *MmCommBufferUpdate;
 
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
@@ -539,6 +541,14 @@ MmDxeSupportEntry (
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     return Status;
+  }
+
+  Status = gBS->LocateProtocol (&gMmCommBufferUpdateProtocolGuid, NULL, NULL);
+  if (!EFI_ERROR (Status)) {
+    // MM_COMM_BUFFER_UPDATE_PROTOCOL is already installed, this can't be right
+    DEBUG ((DEBUG_ERROR, "%a MM_COMM_BUFFER_UPDATE_PROTOCOL already installed, skip update\n", __FUNCTION__));
+    ASSERT (FALSE);
+    return EFI_ALREADY_STARTED;
   }
 
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
@@ -560,6 +570,28 @@ MmDxeSupportEntry (
   Status = QuerySupervisorVersion (&VersionInfo);
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
+    return Status;
+  }
+
+  MmCommBufferUpdate = AllocateZeroPool (sizeof (*MmCommBufferUpdate));
+  if (MmCommBufferUpdate == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  MmCommBufferUpdate->Version                          = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
+  MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart  = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+  MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages  = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
+  MmCommBufferUpdate->UpdatedCommBuffer.Status         = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
+
+  Status = gBS->InstallMultipleProtocolInterfaces (
+                  &ImageHandle,
+                  &gMmCommBufferUpdateProtocolGuid,
+                  MmCommBufferUpdate,
+                  NULL
+                  );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __FUNCTION__, Status));
+    FreePool (MmCommBufferUpdate);
     return Status;
   }
 

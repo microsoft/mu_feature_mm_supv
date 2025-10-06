@@ -53,6 +53,7 @@
   ## UNDEFINED # Used to do smm communication
   gEfiDxeSmmReadyToLockProtocolGuid
   gMmSupervisorCommunicationProtocolGuid        ## PRODUCES
+  gMmCommBufferUpdateProtocolGuid               ## PRODUCES
 
 [Guids]
   ## SOMETIMES_CONSUMES ## Event
