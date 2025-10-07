@@ -797,9 +797,7 @@ MmAddToDriverList (
 
   return EFI_SUCCESS;
 }
-#define COMM_BUFFER_MM_DISPATCH_ERROR    0x00
-#define COMM_BUFFER_MM_DISPATCH_SUCCESS  0x01
-#define COMM_BUFFER_MM_DISPATCH_RESTART  0x02
+
 /**
   This function is the main entry point for an SMM handler dispatch
   or communicate-based callback.
@@ -858,24 +856,11 @@ PrepareCommonBuffer:
   // Check to see if CommBuffer and CommBufferSize are valid
   //
   if ((CommBuffer != NULL) && (CommBufferSize != NULL)) {
-    if (*CommBufferSize > 0) {
-      if (Status == EFI_NOT_READY) {
-        //
-        // If a the SMM Core Entry Point was just registered, then set flag to
-        // request the SMM Dispatcher to be restarted.
-        //
-        *(UINT8 *)CommBuffer = COMM_BUFFER_MM_DISPATCH_RESTART;
-      } else if (!EFI_ERROR (Status)) {
-        //
-        // Set the flag to show that the SMM Dispatcher executed without errors
-        //
-        *(UINT8 *)CommBuffer = COMM_BUFFER_MM_DISPATCH_SUCCESS;
-      } else {
-        //
-        // Set the flag to show that the SMM Dispatcher encountered an error
-        //
-        *(UINT8 *)CommBuffer = COMM_BUFFER_MM_DISPATCH_ERROR;
-      }
+    if (*CommBufferSize > sizeof (EFI_STATUS)) {
+      //
+      // Set the status of MmDispatcher to CommBuffer
+      //
+      *(EFI_STATUS *)CommBuffer = Status;
     }
   }
 

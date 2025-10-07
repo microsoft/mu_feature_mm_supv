@@ -1,0 +1,88 @@
+## @file
+#  This module provide an MM CIS compliant implementation of MM IPL in PEI.
+#
+#  Copyright (c) 2009 - 2018, Intel Corporation. All rights reserved.<BR>
+#  Copyright (c) Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = MmPeiSupport
+  FILE_GUID                      = B525E664-18E1-4EB3-806E-078F75058454
+  MODULE_TYPE                    = PEIM
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = MmPeiSupportEntry
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = IA32 X64
+#
+
+[Sources]
+  MmPeiSupport.c
+  Common/MmIplCommon.c
+  Common/MmIplCommon.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  PeimEntryPoint
+  BaseLib
+  BaseMemoryLib
+  PeCoffLib
+  CacheMaintenanceLib
+  MemoryAllocationLib
+  DebugLib
+  PcdLib
+  ReportStatusCodeLib
+  SafeIntLib  #MU_CHANGE: BZ3398
+  SecurityLockAuditLib  #MSCHANGE
+  PeCoffGetEntryPointLib
+  MtrrLib  #MU_CHANGE: MM_SUPV: MMRAM region cachability during init
+  PerformanceLib  #MU_CHANGE: MM_SUPV: Added performance data points
+  PeiServicesLib  #MU_CHANGE: Add PeiServicesLib to INF
+  HobLib  #MU_CHANGE: Add HobLib to INF
+  PanicLib  #MU_CHANGE: Add PanicLib to INF
+
+[Ppis]
+  gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
+  gEfiPeiMmAccessPpiGuid                        ## CONSUMES
+  gEfiPeiMmControlPpiGuid                       ## CONSUMES
+  gPeiMmSupervisorCommunicationPpiGuid          ## PRODUCES
+  gEfiPeiLoadFilePpiGuid                        ## CONSUMES
+  gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
+  gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
+
+[Guids]
+  # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
+  gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
+  gMmCommonRegionHobGuid                        ## PRODUCES
+  gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
+  gMmSupervisorRequestHandlerGuid               ## CONSUMES
+  gEfiMmPeiMmramMemoryReserveGuid               ## CONSUMES
+  gEfiSmmSmramMemoryGuid                        ## CONSUMES
+  gMmCommBufferHobGuid                          ## CONSUMES
+  gMmSupervisorCoreGuid                         ## CONSUMES
+
+[Pcd]
+  # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
+  gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable        ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode              ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdUse1GPageTable                      ## CONSUMES
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPteMemoryEncryptionAddressOrMask    ## CONSUMES
+  gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile                   ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize          ## CONSUMES
+
+[Depex]
+  gEfiPeiMmAccessPpiGuid AND gEfiPeiMmControlPpiGuid AND gMmCommunicationBufferReadyPpiGuid
