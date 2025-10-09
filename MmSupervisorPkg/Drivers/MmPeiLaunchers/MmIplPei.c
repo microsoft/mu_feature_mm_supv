@@ -22,6 +22,7 @@
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmramMemoryReserve.h>
+#include <Guid/MmSupervisorRequestData.h>
 
 #include <Library/BaseLib.h>
 #include <Library/HobLib.h>

@@ -17,6 +17,7 @@
 #include <Ppi/EndOfPeiPhase.h>
 #include <Ppi/MmSupervisorCommunication.h>
 
+#include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
 #include <Guid/MmramMemoryReserve.h>
@@ -91,25 +92,6 @@ SupvCommunicationCommunicate (
   IN OUT UINTN                              *CommSize OPTIONAL
   );
 
-/**
-  Event notification that is fired when a GUIDed Event Group is signaled.
-
-  @param  PeiServices      Indirect reference to the PEI Services Table.
-  @param  NotifyDescriptor Address of the notification descriptor data structure.
-  @param  Ppi              Address of the PPI that was installed.
-
-  @return Status of the notification.
-          The status code returned from this function is ignored.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmIplGuidedEventNotify (
-  IN EFI_PEI_SERVICES           **PeiServices,
-  IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
-  IN VOID                       *Ppi
-  );
-
 // MU_CHANGE: MM_SUPV: Supervisor communication PPI instance
 //
 // Supervisor MM Communication PPI instance
@@ -140,23 +122,6 @@ EFI_PEI_MM_ACCESS_PPI   *mSmmAccess;
 EFI_MMRAM_DESCRIPTOR    *mCurrentMmramRange;
 EFI_PHYSICAL_ADDRESS    mMmramCacheBase;
 UINT64                  mMmramCacheSize;
-
-// MU_CHANGE: Loaded Fixed Address information is unsupported
-// EFI_LOAD_FIXED_ADDRESS_CONFIGURATION_TABLE    *mLMFAConfigurationTable = NULL;
-
-//
-// Table of PPI notification and GUIDed Event notifications that the SMM IPL requires
-//
-STATIC EFI_PEI_NOTIFY_DESCRIPTOR  mPeiMmIplNotifyList =
-{
-  //
-  // Declare event notification on Exit Boot Services Event Group.  This is used to inform the SMM Core
-  // to notify SMM driver that system enter exit boot services.
-  //
-  (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
-  &gEfiEndOfPeiSignalPpiGuid,
-  SmmIplGuidedEventNotify
-};
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
 
@@ -298,7 +263,7 @@ MmDriverDispatchNotify (
 **/
 EFI_STATUS
 EFIAPI
-MmIplPeiEntry (
+MmPeiSupportEntry (
   IN       EFI_PEI_FILE_HANDLE  FileHandle,
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
@@ -478,12 +443,6 @@ MmIplPeiEntry (
   // Install MM Communication and Supervisor MM Communication PPI
   //
   Status = (*PeiServices)->InstallPpi (PeiServices, mPeiMmIplPpiList);
-  ASSERT_EFI_ERROR (Status);
-
-  //
-  // Create the set of ppi and event notifications that the SMM IPL requires
-  //
-  Status = (*PeiServices)->NotifyPpi (PeiServices, &mPeiMmIplNotifyList);
   ASSERT_EFI_ERROR (Status);
 
   return EFI_SUCCESS;
