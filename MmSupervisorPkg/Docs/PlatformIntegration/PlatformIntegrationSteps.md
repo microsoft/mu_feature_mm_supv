@@ -521,3 +521,14 @@ LimitedRead are accepted. Note that when LimitedRead is indicated, the AccessCon
 <AccessCondition Value="IoWrite" /> <!-- Optional node to indicate what condition of LimitedRead can be accepted. Only
 IoWrite is accepted for RAX LimitedRead entry. -->
 ```
+
+### Integration Troubleshooting
+
+#### Build Time Failures
+
+- For override validation failures, ensure all submodules are updated to the correct Project Mu version.
+- For unresolved external symbols related to BaseLib or IoLib functions, this might indicate that the platform is trying
+to use a privileged instruction or function that is intentionally left out by the syscall instance of these libraries.
+__These functions will not work in a non-privileged context even if the build errors are resolved__ but can be resolved by
+either filing a github issue that extends the syscall interface to support the needed function or by finding an alternative
+implementation that does not require privileged access.
