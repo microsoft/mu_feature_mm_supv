@@ -13,7 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <SmmSecurePolicy.h>
 
-#define MEM_POLICY_SNAPSHOT_SIZE  0x400   // 1K should be more than enough to describe allowed non-MMRAM regions
+#define MEM_POLICY_SNAPSHOT_SIZE  0x1000   // 4K should be more than enough to describe allowed non-MMRAM regions
 
 /**
   Dump a single memory policy data.
