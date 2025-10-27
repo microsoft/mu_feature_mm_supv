@@ -31,6 +31,9 @@
 #  VALID_ARCHITECTURES           = X64
 #
 
+[Sources.IA32, Sources.X64]
+  X86BaseCpuLib.c
+
 [Sources.X64]
   X64/CpuSleep.c
 
