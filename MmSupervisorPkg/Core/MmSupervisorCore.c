@@ -675,12 +675,29 @@ MmCoreInstallLoadedImage (
   EFI_PEI_HOB_POINTERS  Hob;
 
   //
-  // TODO: This deviates from the EDK2 implementation which uses the memory allocation
-  // module to retrieve the memory allocation HOB.
   // Searching for Memory Allocation HOB
   //
   Hob.Raw = GetHobList ();
-  Hob.Raw = GetNextMemoryAllocationGuidHob (&gMmSupervisorCoreGuid, Hob.Raw);
+  while ((Hob.Raw = GetNextHob (EFI_HOB_TYPE_MEMORY_ALLOCATION, Hob.Raw)) != NULL) {
+    //
+    // Find MM Core HOB
+    //
+    if (CompareGuid (
+          &Hob.MemoryAllocationModule->MemoryAllocationHeader.Name,
+          &gEfiHobMemoryAllocModuleGuid
+          ))
+    {
+      if (CompareGuid (&Hob.MemoryAllocationModule->ModuleName, &gEfiCallerIdGuid)) {
+        break;
+      }
+    }
+
+    Hob.Raw = GET_NEXT_HOB (Hob);
+  }
+
+  if (Hob.Raw == NULL) {
+    return;
+  }
 
   if (Hob.Raw == NULL) {
     DEBUG ((DEBUG_ERROR, "MM Core Memory Allocation HOB not found!\n"));
