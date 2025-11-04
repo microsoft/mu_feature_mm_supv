@@ -462,62 +462,6 @@ MmIplAllocateMmramPage (
   return Allocated->CpuStart;
 }
 
-/**
-  Builds a HOB for a loaded PE32 module.
-
-  This function builds a HOB for a loaded PE32 module.
-  It can only be invoked during PEI phase;
-  If physical address of the Module is not 4K aligned, then ASSERT().
-  If new HOB buffer is NULL, then ASSERT().
-
-  @param[in]       Hob            The pointer of new HOB buffer.
-  @param[in, out]  HobBufferSize  The available size of the HOB buffer when as input.
-                                  The used size of when as output.
-  @param[in]       ModuleName     The GUID File Name of the module.
-  @param[in]       Base           The 64 bit physical address of the module.
-  @param[in]       Length         The length of the module in bytes.
-  @param[in]       EntryPoint     The 64 bit physical address of the module entry point.
-
-**/
-EFI_STATUS
-MmIplBuildMmCoreAllocationHob (
-  IN CONST EFI_GUID        *ModuleName,
-  IN EFI_PHYSICAL_ADDRESS  Base,
-  IN UINT64                Length,
-  IN EFI_PHYSICAL_ADDRESS  EntryPoint
-  )
-{
-  EFI_STATUS                        Status;
-
-  if (!IS_ALIGNED (Base, EFI_PAGE_SIZE) || !IS_ALIGNED (Length, EFI_PAGE_SIZE)) {
-    Status = EFI_INVALID_PARAMETER;
-    goto Exit;
-  }
-
-  if ((EntryPoint < Base) || (EntryPoint >= Base + Length)) {
-    Status = EFI_INVALID_PARAMETER;
-    goto Exit;
-  }
-
-  // TODO: This deviates from the EDK2 implementation which uses
-  // the build module HOB.
-  BuildMemoryAllocationHob (
-    Base,
-    Length,
-    EfiReservedMemoryType
-  );
-
-  TagMemoryAllocationHobWithGuid (
-    Base,
-    ModuleName
-  );
-
-  Status = EFI_SUCCESS;
-
-Exit:
-  return Status;
-}
-
 // MU_CHANGE Ends
 
 /**
@@ -623,16 +567,12 @@ ExecuteMmCoreFromMmram (
       // MU_CHANGE Starts: To load x64 MM foundation, mode switch is needed
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
 
-      Status = MmIplBuildMmCoreAllocationHob (
-                  &gMmSupervisorCoreGuid,
-                  ImageContext.ImageAddress,
-                  (UINT64)EFI_PAGES_TO_SIZE (PageCount),
-                  (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
-                  );
-      if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Failed to build MM core module HOB - %r...\n", __func__, Status));
-        goto Exit;
-      }
+      BuildModuleHob (
+        &gMmSupervisorCoreGuid,
+        ImageContext.ImageAddress,
+        (UINT64)EFI_PAGES_TO_SIZE (PageCount),
+        (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
+        );
 
       HobStart   = GetHobList ();
  #ifdef MDE_CPU_IA32
