@@ -12,8 +12,8 @@ use std::{
 
 use r_efi::efi::Status;
 
-const WIDTH: usize = 8usize * core::mem::size_of::<Status>();
-const WARNING_MASK: usize = 0x0 << (WIDTH - 8);
+const STATUS_WIDTH: usize = 8usize * core::mem::size_of::<Status>();
+const WARNING_MASK: usize = 0x0 << (STATUS_WIDTH - 8);
 /// Custom warning status to indicate skipped test
 pub const WARNING_SKIP_TEST: Status = Status::from_usize(8 | WARNING_MASK);
 
