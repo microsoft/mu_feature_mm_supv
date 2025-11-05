@@ -889,9 +889,8 @@ PeCoffImageDiffValidation (
 
     DEBUG ((
       DEBUG_INFO,
-      "%a: Validating aux entry: Rule address in loaded aux=0x%p, Validation type=0x%x, Evaluated symbol offset in image=0x%x\n",
+      "%a: Evaluating symbol at offset=0x%x in the target image with rule type=0x%x\n",
       __func__,
-      ImageValidationEntryHdr,
       ImageValidationEntryHdr->ValidationType,
       ImageValidationEntryHdr->Offset,
     ));
