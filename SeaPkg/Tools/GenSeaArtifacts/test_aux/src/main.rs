@@ -304,7 +304,7 @@ impl TestSuite {
                 // Custom warning status just to indicate skipped test
                 efi::WARNING_SKIP_TEST
             }
-            _ => Status::SUCCESS, // Skip PeCoffImageValidationMemAttr for now
+            _ => Status::SUCCESS,
         })
     }
 }
