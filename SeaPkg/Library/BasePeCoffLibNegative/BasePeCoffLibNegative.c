@@ -887,6 +887,15 @@ PeCoffImageDiffValidation (
       return EFI_COMPROMISED_DATA;
     }
 
+    DEBUG ((
+      DEBUG_INFO,
+      "%a: Validating aux entry: Rule address in loaded aux=0x%p, Validation type=0x%x, Evaluated symbol offset in image=0x%x\n",
+      __func__,
+      ImageValidationEntryHdr,
+      ImageValidationEntryHdr->ValidationType,
+      ImageValidationEntryHdr->Offset,
+    ));
+
     // All validation has been updated to reference the original image.  PeCoffLoaderRevertRelocateImage will
     // touch up various parts of the image that will include some pointers causing parts of the TargetImage to
     // already be reverted.  To still validate the original contents we can reference the original image address
