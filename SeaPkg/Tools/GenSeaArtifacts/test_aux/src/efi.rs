@@ -12,6 +12,11 @@ use std::{
 
 use r_efi::efi::Status;
 
+const WIDTH: usize = 8usize * core::mem::size_of::<Status>();
+const WARNING_MASK: usize = 0x0 << (WIDTH - 8);
+/// Custom warning status to indicate skipped test
+pub const WARNING_SKIP_TEST: Status = Status::from_usize(8 | WARNING_MASK);
+
 static DEBUG_PRINT_ENABLED: AtomicBool = AtomicBool::new(false);
 
 pub fn set_debug_print(enabled: bool) {
@@ -28,6 +33,7 @@ impl core::fmt::Display for PrettyStatus {
             Status::BUFFER_TOO_SMALL => write!(f, "BUFFER_TOO_SMALL"),
             Status::SECURITY_VIOLATION => write!(f, "SECURITY_VIOLATION"),
             Status::COMPROMISED_DATA => write!(f, "COMPROMISED_DATA"),
+            WARNING_SKIP_TEST => write!(f, "SKIPPED"),
             _ => write!(f, "Unknown status: {:?}", self.0),
         }
     }
