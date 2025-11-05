@@ -889,10 +889,10 @@ PeCoffImageDiffValidation (
 
     DEBUG ((
       DEBUG_INFO,
-      "%a: Evaluating symbol at offset=0x%x in the target image with rule type=0x%x\n",
+      "%a: Evaluating symbol at offset: 0x%x in the target image with rule type: 0x%x\n",
       __func__,
       ImageValidationEntryHdr->Offset,
-      ImageValidationEntryHdr->ValidationType,
+      ImageValidationEntryHdr->ValidationType
       ));
 
     // All validation has been updated to reference the original image.  PeCoffLoaderRevertRelocateImage will
