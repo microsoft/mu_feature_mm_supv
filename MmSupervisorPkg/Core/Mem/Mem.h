@@ -12,7 +12,6 @@
 #ifndef _MM_CORE_MEM_H_
 #define _MM_CORE_MEM_H_
 
-#include <Guid/MmCoreData.h>
 #include <Library/CpuPageTableLib.h>
 
 ///

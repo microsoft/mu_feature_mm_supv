@@ -797,7 +797,9 @@ MmAddToDriverList (
 
   return EFI_SUCCESS;
 }
-
+#define COMM_BUFFER_MM_DISPATCH_ERROR    0x00
+#define COMM_BUFFER_MM_DISPATCH_SUCCESS  0x01
+#define COMM_BUFFER_MM_DISPATCH_RESTART  0x02
 /**
   This function is the main entry point for an SMM handler dispatch
   or communicate-based callback.

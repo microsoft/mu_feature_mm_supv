@@ -31,9 +31,8 @@
 #include <Guid/HobList.h>
 #include <Guid/MmFvDispatch.h>
 #include <Guid/MmramMemoryReserve.h>
+#include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
-#include <Guid/MmCoreProfileData.h>
-#include <Guid/MmCoreData.h>
 
 #include <Library/StandaloneMmCoreEntryPoint.h>
 #include <Library/BaseLib.h>
@@ -229,14 +228,13 @@ typedef struct {
 // Used to share data from supervisor to user space, nothing should be security sensitive
 //
 typedef struct {
-  MM_CORE_PRIVATE_DATA    gMmCorePrivateDummy;
+  UINT64  UserBufferSize;
 } MM_SUPV_USER_COMMON_BUFFER;
 
 //
 // MM Core Global Variables
 //
-extern MM_CORE_PRIVATE_DATA              gMmCorePrivate;
-extern MM_CORE_PRIVATE_DATA              *gMmCoreMailbox;
+extern MM_COMM_BUFFER_STATUS             *mMmCommMailboxBufferStatus;
 extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
 extern LIST_ENTRY                        gHandleList;

@@ -127,6 +127,6 @@ extern VOID                       *mMmSupvCommonBufferPhysical;
 extern VOID                       *mMmUserCommonBufferPhysical;
 extern EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader;
 
-extern MM_CORE_PRIVATE_DATA  *gMmCorePrivate;
+extern MM_COMM_BUFFER_STATUS      *mMmCommBufferStatus;
 
 #endif // MM_IPL_COMMON_H_

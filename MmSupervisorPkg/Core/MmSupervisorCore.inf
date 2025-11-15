@@ -224,6 +224,7 @@
 
   gMmCoreMmProfileGuid
   gMmCommonRegionHobGuid                        ## CONSUMES
+  gMmCommBufferHobGuid                          ## CONSUMES
   gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
   gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
   gMmSupervisorCoreGuid                         ## CONSUMES
@@ -237,7 +238,6 @@
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
-  gMmCoreDataHobGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

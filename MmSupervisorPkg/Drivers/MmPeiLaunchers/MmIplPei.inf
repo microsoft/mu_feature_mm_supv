@@ -75,13 +75,14 @@
 
 [Guids]
   # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
-  gMmCoreDataHobGuid                            ## CONSUMES
   gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
   gMmCommonRegionHobGuid                        ## PRODUCES
   gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
-  gEfiMmPeiMmramMemoryReserveGuid
-  gEfiSmmSmramMemoryGuid
+  gEfiMmPeiMmramMemoryReserveGuid               ## CONSUMES
+  gEfiSmmSmramMemoryGuid                        ## CONSUMES
+  gMmCommBufferHobGuid                          ## CONSUMES
+  gMmSupervisorCoreGuid                         ## CONSUMES
 
 [Pcd]
   # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
