@@ -182,7 +182,7 @@ PrepareCommonBuffers (
   CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
   if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
     if (mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart != 0) {
-      DEBUG ((DEBUG_ERROR, "%a - Duplicated hobs for type %x!!\n", __func__, CommRegionHob->MmCommonRegionType));
+      DEBUG ((DEBUG_ERROR, "%a - Duplicated hobs for type %x!!\n", __FUNCTION__, CommRegionHob->MmCommonRegionType));
       Status = EFI_ALREADY_STARTED;
       goto Exit;
     }
@@ -195,7 +195,7 @@ PrepareCommonBuffers (
       DEBUG ((
         DEBUG_ERROR,
         "%a - Buffer (%p) invalid for type %x!!\n",
-        __func__,
+        __FUNCTION__,
         mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
         CommRegionHob->MmCommonRegionType
         ));
@@ -227,7 +227,7 @@ PrepareCommonBuffers (
 
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __FUNCTION__, Status));
       goto Exit;
     }
 
@@ -235,14 +235,14 @@ PrepareCommonBuffers (
     DEBUG ((
       DEBUG_INFO,
       "%a - Populating MM Access Buffer Type %d to 0x%p with 0x%x pages\n",
-      __func__,
+      __FUNCTION__,
       CommRegionHob->MmCommonRegionType,
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages
       ));
   } else {
     DEBUG ((DEBUG_ERROR, "%a - Invalid common buffer type %x."
-      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n", __func__, CommRegionHob->MmCommonRegionType));
+      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n", __FUNCTION__, CommRegionHob->MmCommonRegionType));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
@@ -291,7 +291,7 @@ PrepareCommonBuffers (
 
   ASSERT_EFI_ERROR (Status);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __FUNCTION__, Status));
     goto Exit;
   }
 
@@ -299,7 +299,7 @@ PrepareCommonBuffers (
   DEBUG ((
     DEBUG_INFO,
     "%a - Populating MM Access Buffer Type %d to 0x%p with 0x%x pages\n",
-    __func__,
+    __FUNCTION__,
     MM_USER_BUFFER_T,
     mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart,
     mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages
@@ -307,7 +307,7 @@ PrepareCommonBuffers (
 
   mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS*)(UINTN)UserCommRegionHob->Status;
   if (mMmCommMailboxBufferStatus == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid MM Communication Buffer Status pointer!\n", __func__));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid MM Communication Buffer Status pointer!\n", __FUNCTION__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -320,13 +320,13 @@ PrepareCommonBuffers (
              );
   ASSERT_EFI_ERROR (Status);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate supervisor to user buffer, cannot continue...\n", __func__));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate supervisor to user buffer, cannot continue...\n", __FUNCTION__));
     goto Exit;
   }
 
 Exit:
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to prepare communicate buffer for Standalone MM environment... - %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to prepare communicate buffer for Standalone MM environment... - %r\n", __FUNCTION__, Status));
     ZeroMem (mMmSupervisorAccessBuffer, sizeof (mMmSupervisorAccessBuffer));
   }
 
@@ -503,7 +503,7 @@ MmEntryPoint (
         SupervisorToUserDataBuffer->UserBufferSize = CommunicateHeader->MessageLength;
         if (SupervisorToUserDataBuffer->UserBufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
           // The input buffer size is larger than the maximal allowed size, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
           mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
@@ -527,7 +527,7 @@ MmEntryPoint (
           CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
         } else {
           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
         }
 
@@ -549,7 +549,7 @@ MmEntryPoint (
         BufferSize = CommunicateHeader->MessageLength;
         if (BufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
           // The input buffer size is larger than the maximal allowed size, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
           mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
@@ -573,7 +573,7 @@ MmEntryPoint (
           CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
         } else {
           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
         }
 
@@ -791,7 +791,7 @@ DiscoverStandaloneMmDriversInFvHobs (
       DEBUG ((
         DEBUG_INFO,
         "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __func__,
+        __FUNCTION__,
         (UINTN)FwVolHeader,
         FwVolHeader->FvLength
         ));
@@ -799,7 +799,7 @@ DiscoverStandaloneMmDriversInFvHobs (
       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
       if (ExtHeaderOffset != 0) {
         ExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + ExtHeaderOffset);
-        DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, &ExtHeader->FvName));
+        DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __FUNCTION__, &ExtHeader->FvName));
       }
 
       //
@@ -818,7 +818,7 @@ DiscoverStandaloneMmDriversInFvHobs (
           DEBUG ((
             DEBUG_INFO,
             "[%a]   Discovered Standalone MM Core [%g] in FV at 0x%x.\n",
-            __func__,
+            __FUNCTION__,
             &gEfiCallerIdGuid,
             (UINTN)FwVolHeader
             ));
@@ -836,7 +836,7 @@ DiscoverStandaloneMmDriversInFvHobs (
         DEBUG ((
           DEBUG_INFO,
           "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
-          __func__,
+          __FUNCTION__,
           (UINTN)FwVolHeader
           ));
         Status = MmCoreFfsFindMmDriver (FwVolHeader);
@@ -886,7 +886,7 @@ InitializePolicy (
       DEBUG ((
         DEBUG_ERROR,
         "[%a] Failed to locate firmware policy file from given FV - %r\n",
-        __func__,
+        __FUNCTION__,
         Status
         ));
       break;
@@ -899,7 +899,7 @@ InitializePolicy (
     DEBUG ((
       DEBUG_INFO,
       "[%a] Discovered policy file in FV at 0x%p.\n",
-      __func__,
+      __FUNCTION__,
       FileHeader
       ));
 
@@ -913,7 +913,7 @@ InitializePolicy (
       DEBUG ((
         DEBUG_ERROR,
         "[%a] Failed to find raw section from discovered policy file - %r\n",
-        __func__,
+        __FUNCTION__,
         Status
         ));
       break;
@@ -924,7 +924,7 @@ InitializePolicy (
       DEBUG ((
         DEBUG_ERROR,
         "[%a] Policy data size 0x%x > blob size 0x%x.\n",
-        __func__,
+        __FUNCTION__,
         PolicySize,
         SectionDataSize
         ));
@@ -938,7 +938,7 @@ InitializePolicy (
       DEBUG ((
         DEBUG_ERROR,
         "[%a] Cannot allocate page for firmware provided policy - %r\n",
-        __func__,
+        __FUNCTION__,
         Status
         ));
       break;
@@ -955,7 +955,7 @@ InitializePolicy (
   } while (TRUE);
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Unable to locate a valid firmware policy from given FV, bail here - %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Unable to locate a valid firmware policy from given FV, bail here - %r\n", __FUNCTION__, Status));
     ASSERT_EFI_ERROR (Status);
     goto Done;
   }
@@ -963,14 +963,14 @@ InitializePolicy (
   // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
   Status = AllocateMemForPolicySnapshot (&MemPolicySnapshot);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __FUNCTION__, Status));
     ASSERT_EFI_ERROR (Status);
     goto Done;
   }
 
   Status = SecurityPolicyCheck (FirmwarePolicy);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Policy check failed on policy blob from firmware - %r\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Policy check failed on policy blob from firmware - %r\n", __FUNCTION__, Status));
     ASSERT_EFI_ERROR (Status);
     goto Done;
   }
@@ -1126,14 +1126,14 @@ MmSupervisorMain (
 
   Status = InitializeMmSupervisorTestAgents ();
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to initialize test agents - Status %d\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to initialize test agents - Status %d\n", __FUNCTION__, Status));
     ASSERT (FALSE);
     goto Exit;
   }
 
   Status = PrepareCommonBuffers ();
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to prepare comm buffer - Status %d\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to prepare comm buffer - Status %d\n", __FUNCTION__, Status));
     ASSERT (FALSE);
     goto Exit;
   }
@@ -1160,7 +1160,7 @@ MmSupervisorMain (
 
 Exit:
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Standalone MM foundation not properly set, system may not boot - %r!\n", __func__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Standalone MM foundation not properly set, system may not boot - %r!\n", __FUNCTION__, Status));
   }
 
   return Status;
