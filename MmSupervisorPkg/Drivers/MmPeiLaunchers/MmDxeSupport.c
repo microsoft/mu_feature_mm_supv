@@ -152,20 +152,20 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // the associated event is immediately signalled, so the notification function will be executed and the
   // DXE SMM Ready To Lock Protocol will be found if it is already in the handle database.
   //
-  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify,  &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
+  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify, &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
   //
   // Declare event notification on EndOfDxe event.  This is used to set EndOfDxe event signaled flag.
   //
-  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,     &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK, NULL },
+  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,    &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK,     NULL },
   //
   // Declare event notification on Ready To Boot Event Group.  This is an extra event notification that is
   // used to make sure SMRAM is locked before any boot options are processed.
   //
-  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify,  &gEfiEventReadyToBootGuid,          TPL_CALLBACK, NULL },
+  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify, &gEfiEventReadyToBootGuid,          TPL_CALLBACK,     NULL },
   //
   // Terminate the table of event notifications
   //
-  { FALSE, FALSE, NULL,                               NULL,                          NULL,                               TPL_CALLBACK, NULL }
+  { FALSE, FALSE, NULL,                               NULL,                         NULL,                               TPL_CALLBACK,     NULL }
 };
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
@@ -384,9 +384,9 @@ UpdateDxeCommunicateBuffer (
   }
 
   // Now we are in the real deal, start with allocating new buffers
-  NewUserCommBuffer = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
-  NewSupvCommBuffer = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
-  NewMmCommBufferStatus   = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
+  NewUserCommBuffer     = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
+  NewSupvCommBuffer     = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
+  NewMmCommBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
 
   if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCommBufferStatus == NULL)) {
     ASSERT (NewUserCommBuffer != NULL);
@@ -484,7 +484,8 @@ UpdateDxeCommunicateBuffer (
     DEBUG ((DEBUG_ERROR, "Only Root MMI Handlers will be supported!\n"));
     return Status;
   }
-  CommBuffer = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
+
+  CommBuffer                = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
   CommBuffer->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmUserCommonBuffer;
   CommBuffer->Status        = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
 
@@ -517,9 +518,9 @@ MmDxeSupportEntry (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_STATUS             Status;
-  UINTN                  Index;
-  VOID                   *Registration;
+  EFI_STATUS  Status;
+  UINTN       Index;
+  VOID        *Registration;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
   MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
@@ -578,10 +579,10 @@ MmDxeSupportEntry (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  MmCommBufferUpdate->Version                          = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
-  MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart  = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
-  MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages  = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
-  MmCommBufferUpdate->UpdatedCommBuffer.Status         = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
+  MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
+  MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+  MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
+  MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
 
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &ImageHandle,

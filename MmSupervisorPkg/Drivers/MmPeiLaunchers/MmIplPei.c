@@ -358,6 +358,7 @@ SmmIplGuidedEventNotify (
 #define COMM_BUFFER_MM_DISPATCH_ERROR    0x00
 #define COMM_BUFFER_MM_DISPATCH_SUCCESS  0x01
 #define COMM_BUFFER_MM_DISPATCH_RESTART  0x02
+
 /**
   Invokes the MM core to dispatch drivers from inside MM environment. This
   function will only be called after MM foundation is successfully set.
@@ -814,7 +815,7 @@ ExecuteMmCoreFromMmram (
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
         );
 
-      HobStart   = GetHobList ();
+      HobStart = GetHobList ();
  #ifdef MDE_CPU_IA32
       //
       // Thunk to x64 then execute image , and then come back...

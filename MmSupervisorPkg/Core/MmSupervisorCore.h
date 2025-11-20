@@ -228,7 +228,7 @@ typedef struct {
 // Used to share data from supervisor to user space, nothing should be security sensitive
 //
 typedef struct {
-  UINT64  UserBufferSize;
+  UINT64    UserBufferSize;
 } MM_SUPV_USER_COMMON_BUFFER;
 
 //

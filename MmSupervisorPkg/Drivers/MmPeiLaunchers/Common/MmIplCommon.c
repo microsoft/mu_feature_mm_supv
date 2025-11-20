@@ -120,6 +120,7 @@ SmmCommunicationCommunicateWorker (
 
       return EFI_BAD_BUFFER_SIZE;
     }
+
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using Supervisor Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   } else {
     CommunicateHeader         = mMmUserCommonBuffer;
@@ -133,8 +134,10 @@ SmmCommunicationCommunicateWorker (
 
       return EFI_BAD_BUFFER_SIZE;
     }
+
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using User Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   }
+
   mMmCommBufferStatus->TalkToSupervisor = TalkToSupervisor;
 
   if (CommunicateHeader != CommBuffer) {
@@ -277,7 +280,7 @@ InitializeCommunicationBufferFromHob (
     return EFI_NOT_FOUND;
   }
 
-  Status = EFI_SUCCESS;
+  Status        = EFI_SUCCESS;
   CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
   if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
     if ((mMmSupvCommonBufferPages != 0) || (mMmSupvCommonBuffer != NULL)) {
@@ -294,8 +297,13 @@ InitializeCommunicationBufferFromHob (
     SupvCommonRegionDesc->NumberOfPages = mMmSupvCommonBufferPages;
     SupvCommonRegionDesc->Attribute     = 0;
   } else {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid common buffer type %x."
-      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n", __func__, CommRegionHob->MmCommonRegionType));
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a - Invalid common buffer type %x."
+      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n",
+      __func__,
+      CommRegionHob->MmCommonRegionType
+      ));
     Status = EFI_UNSUPPORTED;
   }
 
@@ -307,11 +315,12 @@ InitializeCommunicationBufferFromHob (
       DEBUG ((DEBUG_ERROR, "Only Root MMI Handlers will be supported!\n"));
       return Status;
     }
-    CommBuffer = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
+
+    CommBuffer                  = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
     mMmUserCommonBufferPages    = CommBuffer->NumberOfPages;
     mMmUserCommonBuffer         = (VOID *)(UINTN)CommBuffer->PhysicalStart;
     mMmUserCommonBufferPhysical = mMmUserCommonBuffer;
-    mMmCommBufferStatus         = (MM_COMM_BUFFER_STATUS*)(UINTN)CommBuffer->Status;
+    mMmCommBufferStatus         = (MM_COMM_BUFFER_STATUS *)(UINTN)CommBuffer->Status;
   } else {
     Status = EFI_ALREADY_STARTED;
   }
