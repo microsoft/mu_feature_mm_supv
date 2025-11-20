@@ -33,6 +33,7 @@
 #include <Guid/MmramMemoryReserve.h>
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
+#include <Guid/MmDispatch.h>
 
 #include <Library/StandaloneMmCoreEntryPoint.h>
 #include <Library/BaseLib.h>

@@ -20,6 +20,7 @@
 
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
+#include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
@@ -355,9 +356,6 @@ SmmIplGuidedEventNotify (
 }
 
 // MU_CHANGE Starts: MM_SUPV: Will immediately signal MM core to dispatch MM drivers
-#define COMM_BUFFER_MM_DISPATCH_ERROR    0x00
-#define COMM_BUFFER_MM_DISPATCH_SUCCESS  0x01
-#define COMM_BUFFER_MM_DISPATCH_RESTART  0x02
 
 /**
   Invokes the MM core to dispatch drivers from inside MM environment. This
