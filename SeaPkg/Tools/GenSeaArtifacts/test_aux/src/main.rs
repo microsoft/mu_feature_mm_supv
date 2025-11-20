@@ -139,7 +139,7 @@ fn main() -> Result<()> {
     let failed = results
         .into_iter()
         .filter_map(|(name, hdr, result)| {
-            if result != Status::SUCCESS {
+            if result.is_error() {
                 Some((name, hdr))
             } else {
                 None
@@ -300,7 +300,11 @@ impl TestSuite {
             ValidationType::Pointer { .. } => unsafe {
                 PeCoffImageValidationPointer(target_image, hdr, mseg_base, mseg_size)
             },
-            _ => Status::SUCCESS, // Skip PeCoffImageValidationMemAttr for now
+            ValidationType::MemAttr { .. } => {
+                // Custom warning status just to indicate skipped test
+                efi::WARNING_SKIP_TEST
+            }
+            _ => Status::SUCCESS,
         })
     }
 }
@@ -372,12 +376,17 @@ fn display_test_information(aux_path: &Path, test_suite: &TestSuite) {
 fn display_results_summary(results: &[(String, &ImageValidationEntryHeader, Status)]) {
     let failed = results
         .iter()
-        .filter(|(_, _, result)| *result != Status::SUCCESS)
+        .filter(|(_, _, result)| result.is_error())
+        .count();
+    let skipped = results
+        .iter()
+        .filter(|(_, _, result)| *result == efi::WARNING_SKIP_TEST)
         .count();
     let passed = results.len() - failed;
 
     println!("\nTest Results (Summary):");
     println!("  Failed: {}", failed);
+    println!("  Skipped: {}", skipped);
     println!("  Passed: {}", passed);
     println!("  Total Executed: {}\n", results.len());
 }
