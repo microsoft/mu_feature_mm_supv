@@ -131,8 +131,6 @@
 
 [Components.IA32]
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
-
-  MmSupervisorPkg/Drivers/StandaloneMmHob/StandaloneMmHob.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
 

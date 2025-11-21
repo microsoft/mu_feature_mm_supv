@@ -92,10 +92,6 @@ acquire platform-specific details.
 1. [_Optional_] `gMmProtectedRegionHobGuid` - Any protected MMIO regions such as IOMMU can be described in HOBs with
    this GUID to prevent access from MM.
 
-> Note that the PEI module `MmSupervisorPkg/Drivers/StandaloneMmHob` will produce `gMmCoreDataHobGuid` which is used to
-  hold [`MM_CORE_PRIVATE_DATA`](https://github.com/tianocore/edk2/blob/master/StandaloneMmPkg/Include/Guid/MmCoreData.h)
-  and `gMmCoreMmProfileGuid` which is used to hold `MM_CORE_MM_PROFILE_DATA` as defined in `MmSupervisorPkg`.
-
 ### PPIs Required for PEI MM IPL
 
 1. MM Access PPI (`gEfiPeiMmAccessPpiGuid`)
@@ -290,7 +286,6 @@ flash drivers, SW MMI dispatcher drivers, etc.
   PerformanceLib|MdeModulePkg/Library/SmmPerformanceLib/StandaloneMmPerformanceLib.inf
 
 [Components.IA32]
-  MmSupervisorPkg/Drivers/StandaloneMmHob/StandaloneMmHob.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
 !if $(PEI_MM_IPL_ENABLED) == TRUE
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
@@ -391,7 +386,6 @@ Note: There might be other silicon specific drivers a platform will need for the
 
 ``` bash
 [FV.YOUR_PEI_FV]
-  INF  MmSupervisorPkg/Drivers/StandaloneMmHob/StandaloneMmHob.inf
   INF  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
 !if $(PEI_MM_IPL_ENABLED) == TRUE
   INF  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
