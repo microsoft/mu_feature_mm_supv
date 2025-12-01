@@ -19,7 +19,6 @@
 
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
-#include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
