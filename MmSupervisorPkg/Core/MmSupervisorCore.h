@@ -33,6 +33,7 @@
 #include <Guid/MmramMemoryReserve.h>
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
+#include <Guid/MmDispatch.h>
 
 #include <Library/StandaloneMmCoreEntryPoint.h>
 #include <Library/BaseLib.h>
@@ -228,7 +229,7 @@ typedef struct {
 // Used to share data from supervisor to user space, nothing should be security sensitive
 //
 typedef struct {
-  UINT64  UserBufferSize;
+  UINT64    UserBufferSize;
 } MM_SUPV_USER_COMMON_BUFFER;
 
 //

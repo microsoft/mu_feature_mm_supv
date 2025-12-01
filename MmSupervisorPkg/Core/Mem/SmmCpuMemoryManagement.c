@@ -1633,7 +1633,7 @@ IsSmmCommBufferForbiddenAddress (
   }
 
   if ((Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus) &&
-      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus + ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
+      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus + ((sizeof (*mMmCommMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
   {
     return FALSE;
   }
@@ -2323,7 +2323,7 @@ SetCommonBufferRegionAttribute (
       // Sanity check on the comm buffers and the mailbox data region
       if (InternalIsBufferOverlapped (
             (UINT8 *)mMmCommMailboxBufferStatus,
-            sizeof (MM_COMM_BUFFER_STATUS),
+            sizeof (*mMmCommMailboxBufferStatus),
             (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
             EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
             ))

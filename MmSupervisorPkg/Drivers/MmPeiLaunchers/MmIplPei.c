@@ -19,6 +19,7 @@
 
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
+#include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmramMemoryReserve.h>
@@ -574,7 +575,7 @@ ExecuteMmCoreFromMmram (
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
         );
 
-      HobStart   = GetHobList ();
+      HobStart = GetHobList ();
  #ifdef MDE_CPU_IA32
       //
       // Thunk to x64 then execute image , and then come back...

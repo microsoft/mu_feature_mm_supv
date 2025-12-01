@@ -155,47 +155,46 @@ MmEfiNotAvailableYetArg5 (
   return EFI_NOT_AVAILABLE_YET;
 }
 
-/*
+/**
 Function to extract common buffers to be used for both user handlers and supervisor handlers.
 
 Note: In SCPC implementation, any attempt in triggering MMI handler without using the pre-
 allocated buffer will be treated as a potential security violation.
-
-*/
+**/
 EFI_STATUS
 EFIAPI
 PrepareCommonBuffers (
   VOID
   )
 {
-  EFI_PEI_HOB_POINTERS   GuidHob;
-  MM_COMM_REGION_HOB     *CommRegionHob;
-  MM_COMM_BUFFER         *UserCommRegionHob;
-  EFI_STATUS             Status;
-  UINTN                  Index;
+  EFI_PEI_HOB_POINTERS  GuidHob;
+  MM_COMM_REGION_HOB    *CommRegionHob;
+  MM_COMM_BUFFER        *UserCommRegionHob;
+  EFI_STATUS            Status;
+  UINTN                 Index;
 
   for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
     ZeroMem (&mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
   }
 
-  GuidHob.Guid = GetFirstGuidHob (&gMmCommonRegionHobGuid);
+  GuidHob.Guid  = GetFirstGuidHob (&gMmCommonRegionHobGuid);
   CommRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
   if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
     if (mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart != 0) {
-      DEBUG ((DEBUG_ERROR, "%a - Duplicated hobs for type %x!!\n", __func__, CommRegionHob->MmCommonRegionType));
+      DEBUG ((DEBUG_ERROR, "%a - Duplicated hobs for type %x!!\n", __FUNCTION__, CommRegionHob->MmCommonRegionType));
       Status = EFI_ALREADY_STARTED;
       goto Exit;
     }
 
     if (!MmIsBufferOutsideMmValid (
-            mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
-            EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages)
-            ))
+           mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
+           EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages)
+           ))
     {
       DEBUG ((
         DEBUG_ERROR,
         "%a - Buffer (%p) invalid for type %x!!\n",
-        __func__,
+        __FUNCTION__,
         mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
         CommRegionHob->MmCommonRegionType
         ));
@@ -206,23 +205,23 @@ PrepareCommonBuffers (
 
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart = CommRegionHob->MmCommonRegionAddr;
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages = CommRegionHob->MmCommonRegionPages;
-    // But the memory itself is allocated under reserved..
+
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type      = EfiRuntimeServicesData;
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
     if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
       Status = MmAllocateSupervisorPages (
-                  AllocateAnyPages,
-                  EfiRuntimeServicesData,
-                  CommRegionHob->MmCommonRegionPages,
-                  (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                  );
+                 AllocateAnyPages,
+                 EfiRuntimeServicesData,
+                 CommRegionHob->MmCommonRegionPages,
+                 (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                 );
     } else {
       Status = MmAllocatePages (
-                  AllocateAnyPages,
-                  EfiRuntimeServicesData,
-                  CommRegionHob->MmCommonRegionPages,
-                  (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                  );
+                 AllocateAnyPages,
+                 EfiRuntimeServicesData,
+                 CommRegionHob->MmCommonRegionPages,
+                 (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+                 );
     }
 
     ASSERT_EFI_ERROR (Status);
@@ -235,14 +234,19 @@ PrepareCommonBuffers (
     DEBUG ((
       DEBUG_INFO,
       "%a - Populating MM Access Buffer Type %d to 0x%p with 0x%x pages\n",
-      __func__,
+      __FUNCTION__,
       CommRegionHob->MmCommonRegionType,
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages
       ));
   } else {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid common buffer type %x."
-      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n", __func__, CommRegionHob->MmCommonRegionType));
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a - Invalid common buffer type %x."
+      "Please make sure the user buffer is published through gMmCommBufferHobGuid!!\n",
+      __FUNCTION__,
+      CommRegionHob->MmCommonRegionType
+      ));
     Status = EFI_UNSUPPORTED;
     goto Exit;
   }
@@ -263,7 +267,12 @@ PrepareCommonBuffers (
     UserCommRegionHob->PhysicalStart,
     UserCommRegionHob->NumberOfPages
     ));
-  ASSERT (UserCommRegionHob->PhysicalStart != 0 && UserCommRegionHob->NumberOfPages != 0);
+
+  if ((UserCommRegionHob->PhysicalStart == 0) || (UserCommRegionHob->NumberOfPages == 0)) {
+    ASSERT (UserCommRegionHob->PhysicalStart != 0 && UserCommRegionHob->NumberOfPages != 0);
+    Status = EFI_NOT_FOUND;
+    goto Exit;
+  }
 
   if (!MmIsBufferOutsideMmValid (
          UserCommRegionHob->PhysicalStart,
@@ -279,9 +288,44 @@ PrepareCommonBuffers (
 
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart = UserCommRegionHob->PhysicalStart;
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages = UserCommRegionHob->NumberOfPages;
-  // But the memory itself is allocated under reserved..
-  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Type      = EfiRuntimeServicesData;
-  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Type          = EfiRuntimeServicesData;
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  Status                                                    = MmAllocatePages (
+                                                                AllocateAnyPages,
+                                                                EfiRuntimeServicesData,
+                                                                UserCommRegionHob->NumberOfPages,
+                                                                (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[MM_USER_BUFFER_T]
+                                                                );
+
+  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __FUNCTION__, Status));
+    goto Exit;
+  }
+
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].VirtualStart = 0;
+  DEBUG ((
+    DEBUG_INFO,
+    "%a - Populating MM Access Buffer Type %d to 0x%p with 0x%x pages\n",
+    __FUNCTION__,
+    MM_USER_BUFFER_T,
+    mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart,
+    mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages
+    ));
+
+  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UserCommRegionHob->Status;
+  if (mMmCommMailboxBufferStatus == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a - Invalid MM Communication Buffer Status pointer!\n", __FUNCTION__));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus))) {
+    DEBUG ((DEBUG_ERROR, "%a User Mm Comm region overlaps into SMM\n", __FUNCTION__));
+    Status = EFI_SECURITY_VIOLATION;
+    goto Exit;
+  }
+
   Status = MmAllocatePages (
               AllocateAnyPages,
               EfiRuntimeServicesData,
@@ -327,6 +371,7 @@ PrepareCommonBuffers (
 Exit:
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to prepare communicate buffer for Standalone MM environment... - %r\n", __func__, Status));
+    ZeroMem (mMmSupervisorAccessBuffer, sizeof (mMmSupervisorAccessBuffer));
     ZeroMem (mMmSupervisorAccessBuffer, sizeof (mMmSupervisorAccessBuffer));
   }
 
@@ -482,7 +527,7 @@ MmEntryPoint (
   // Mark the InMm flag as TRUE
   //
   if (mMmCommMailboxBufferStatus != NULL) {
-    CopyMem (&mMmCommunicationBufferStatus, (MM_COMM_BUFFER_STATUS*)(UINTN)mMmCommMailboxBufferStatus, sizeof (MM_COMM_BUFFER_STATUS));
+    CopyMem (&mMmCommunicationBufferStatus, (MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
 
     if (mMmCommunicationBufferStatus.IsCommBufferValid) {
       //
@@ -498,12 +543,12 @@ MmEntryPoint (
         CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_USER_BUFFER_T];
 
         //
-        // Now that we operate on the copy
+        // Now we operate on the copy
         //
         SupervisorToUserDataBuffer->UserBufferSize = CommunicateHeader->MessageLength;
         if (SupervisorToUserDataBuffer->UserBufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
           // The input buffer size is larger than the maximal allowed size, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
           mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
@@ -511,23 +556,23 @@ MmEntryPoint (
           goto Cleanup;
         }
 
-        Status                                     = MmiManage (
-                                                      &CommunicateHeader->HeaderGuid,
-                                                      NULL,
-                                                      CommunicateHeader->Data,
-                                                      (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
-                                                      );
+        Status = MmiManage (
+                   &CommunicateHeader->HeaderGuid,
+                   NULL,
+                   CommunicateHeader->Data,
+                   (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
+                   );
         //
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
         //
         BufferSize = SupervisorToUserDataBuffer->UserBufferSize +
-                    OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+                     OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
         if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
           CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
         } else {
           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
         }
 
@@ -549,7 +594,7 @@ MmEntryPoint (
         BufferSize = CommunicateHeader->MessageLength;
         if (BufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
           // The input buffer size is larger than the maximal allowed size, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
           mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
@@ -558,12 +603,12 @@ MmEntryPoint (
           goto Cleanup;
         }
 
-        Status     = MmiManage (
-                      &CommunicateHeader->HeaderGuid,
-                      NULL,
-                      CommunicateHeader->Data,
-                      (UINTN *)&BufferSize
-                      );
+        Status = MmiManage (
+                   &CommunicateHeader->HeaderGuid,
+                   NULL,
+                   CommunicateHeader->Data,
+                   (UINTN *)&BufferSize
+                   );
         //
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
@@ -573,11 +618,11 @@ MmEntryPoint (
           CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
         } else {
           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
+          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __FUNCTION__));
           ASSERT (FALSE);
         }
 
-        mMmCommunicationBufferStatus.IsCommBufferValid  = FALSE;
+        mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
         mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
         mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
@@ -605,7 +650,7 @@ Cleanup:
   // Clear the InMm flag as we are going to leave MM
   //
   if (mMmCommMailboxBufferStatus != NULL) {
-    CopyMem (mMmCommMailboxBufferStatus, &mMmCommunicationBufferStatus, sizeof (MM_COMM_BUFFER_STATUS));
+    CopyMem (mMmCommMailboxBufferStatus, &mMmCommunicationBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
   }
 
   DEBUG ((DEBUG_VERBOSE, "MmEntryPoint Done\n"));
@@ -693,10 +738,6 @@ MmCoreInstallLoadedImage (
     }
 
     Hob.Raw = GET_NEXT_HOB (Hob);
-  }
-
-  if (Hob.Raw == NULL) {
-    return;
   }
 
   if (Hob.Raw == NULL) {
@@ -1021,16 +1062,26 @@ MmSupervisorMain (
   if (MmramRangesHob == NULL) {
     MmramRangesHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
     if (MmramRangesHob == NULL) {
-      return EFI_UNSUPPORTED;
+      Status =  EFI_UNSUPPORTED;
+      goto Exit;
     }
   }
 
   MmramRangesHobData = GET_GUID_HOB_DATA (MmramRangesHob);
-  ASSERT (MmramRangesHobData != NULL);
+  if (MmramRangesHobData == NULL) {
+    ASSERT (MmramRangesHobData != NULL);
+    Status =  EFI_NOT_FOUND;
+    goto Exit;
+  }
+
   MmramRanges     = MmramRangesHobData->Descriptor;
   MmramRangeCount = (UINTN)MmramRangesHobData->NumberOfMmReservedRegions;
-  ASSERT (MmramRanges);
-  ASSERT (MmramRangeCount);
+  if ((MmramRanges == NULL) || (MmramRangeCount == 0)) {
+    ASSERT (MmramRanges);
+    ASSERT (MmramRangeCount);
+    Status =  EFI_NOT_FOUND;
+    goto Exit;
+  }
 
   //
   // Print the MMRAM ranges passed by the caller
@@ -1060,7 +1111,12 @@ MmSupervisorMain (
   DEBUG ((DEBUG_INFO, "mMmramRangeCount - 0x%x\n", mMmramRangeCount));
   mMmramRanges = AllocatePool (mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
   DEBUG ((DEBUG_INFO, "mMmramRanges - 0x%x\n", mMmramRanges));
-  ASSERT (mMmramRanges != NULL);
+  if (mMmramRanges == NULL) {
+    ASSERT (mMmramRanges != NULL);
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Exit;
+  }
+
   CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
 
   DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
@@ -1072,10 +1128,17 @@ MmSupervisorMain (
   // Allocated Hob data in code intentionally to guarantee it is read only in MM
   Status = MmAllocatePages (AllocateAnyPages, EfiRuntimeServicesCode, EFI_SIZE_TO_PAGES (mMmHobSize), (EFI_PHYSICAL_ADDRESS *)&mMmHobStart);
   DEBUG ((DEBUG_INFO, "Allocated mMmHobStart: 0x%x - %r\n", mMmHobStart, Status));
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    goto Exit;
+  }
+
   CopyMem (mMmHobStart, HobStart, mMmHobSize);
   Status = MmInstallConfigurationTable (&gMmCoreMmst, &gEfiHobListGuid, mMmHobStart, mMmHobSize);
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    goto Exit;
+  }
 
   ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
 
@@ -1085,7 +1148,11 @@ MmSupervisorMain (
   StartTicker = GetPerformanceCounter ();
   Status      = DiscoverStandaloneMmDriversInFvHobs (&StandaloneBfvAddress);
   EndTicker   = GetPerformanceCounter ();
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    goto Exit;
+  }
+
   DEBUG ((
     DEBUG_INFO,
     "Mm Dispatch StandaloneBfvAddress - 0x%08x, consumed %dms.\n",
@@ -1103,13 +1170,17 @@ MmSupervisorMain (
              MmConfigurationMmNotify,
              &Registration
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    goto Exit;
+  }
 
   Status = SetupSmiEntryExit ();
   if (EFI_ERROR (Status)) {
     // Should not happen
     DEBUG ((DEBUG_ERROR, "Configuring SMI entry and exit failed - %r\n", Status));
     ASSERT (FALSE);
+    goto Exit;
   }
 
   //
