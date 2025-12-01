@@ -236,40 +236,40 @@ drivers for proper function.
 
 [LibraryClasses.IA32.PEIM, LibraryClasses.X64.PEIM]
   # Replace instances of UefiCpuPkg/Library/MmUnblockMemoryLib/MmUnblockMemoryLib.inf with Mm Supervisor Version
-  MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
+  MmSupervisorUnblockMemoryLib  |MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
 
   # Replace instances of MdePkg/Library/MmUnblockMemoryLib/MmUnblockMemoryLibNull.inf
 [LibraryClasses.X64]
-  MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf
+  MmSupervisorUnblockMemoryLib  |MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf
 
 [LibraryClasses.X64.MM_CORE_STANDALONE]
 
   # Mm Supervisor only supports FixedatBuild/PatchableInModule PCDs
-  PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
+  PcdLib                        |MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
 
   # Library classes coming from MmSupervisorPkg 
-  IhvMmSaveStateSupervisionLib|MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
-  MemLib|MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
-  MemoryAllocationLib|StandaloneMmPkg/Library/StandaloneMmCoreMemoryAllocationLib/StandaloneMmCoreMemoryAllocationLib.inf
-  MmSupervisorCoreInitLib|MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
-  StandaloneMmCoreEntryPoint|StandaloneMmPkg/Library/StandaloneMmCoreEntryPoint/StandaloneMmCoreEntryPoint.inf
+  IhvMmSaveStateSupervisionLib  |MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
+  MemLib                        |MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
+  MemoryAllocationLib           |StandaloneMmPkg/Library/StandaloneMmCoreMemoryAllocationLib/StandaloneMmCoreMemoryAllocationLib.inf
+  MmSupervisorCoreInitLib       |MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
 
   # Library Classes coming from UefiCpuPkg
-  CpuExceptionHandlerLib|UefiCpuPkg/Library/CpuExceptionHandlerLib/SmmCpuExceptionHandlerLib.inf
-  SmmCpuPlatformHookLib|UefiCpuPkg/Library/SmmCpuPlatformHookLibNull/SmmCpuPlatformHookLibNull.inf
+  CpuExceptionHandlerLib        |UefiCpuPkg/Library/CpuExceptionHandlerLib/SmmCpuExceptionHandlerLib.inf
+  SmmCpuPlatformHookLib         |UefiCpuPkg/Library/SmmCpuPlatformHookLibNull/SmmCpuPlatformHookLibNull.inf
 
   # Library Classes coming from StandaloneMmPkg
-  HobLib|StandaloneMmPkg/Library/StandaloneMmCoreHobLib/StandaloneMmCoreHobLib.inf
-  FvLib|StandaloneMmPkg/Library/FvLib/FvLib.inf
+  HobLib                        |StandaloneMmPkg/Library/StandaloneMmCoreHobLib/StandaloneMmCoreHobLib.inf
+  FvLib                         |StandaloneMmPkg/Library/FvLib/FvLib.inf
+  StandaloneMmCoreEntryPoint    |StandaloneMmPkg/Library/StandaloneMmCoreEntryPoint/StandaloneMmCoreEntryPoint.inf
 
   # Library Classes coming from MdePkg
-  DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
-  ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
-  ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
+  DevicePathLib                 |MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
+  ExtractGuidedSectionLib       |MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
+  ReportStatusCodeLib           |MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
 
   # Note: If chosen timer lib is platform dependent, and needs to be initialized before
   #  MmSupervisor is executed.
-  TimerLib|PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
+  TimerLib                      |PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
 
 
 [LibraryClasses.X64.MM_STANDALONE]
