@@ -267,7 +267,7 @@ drivers for proper function.
   ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
   ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
 
-  # Note: If choosen timer lib is platform dependent, and needs to be initialized before
+  # Note: If chosen timer lib is platform dependent, and needs to be initialized before
   #  MmSupervisor is executed.
   TimerLib|PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
 
@@ -293,14 +293,14 @@ drivers for proper function.
   OpensslLib                    |CryptoPkg/Library/OpensslLib/OpensslLib.inf
   IntrinsicLib                  |CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
 
-  # Note: This needs to be a platform choosen ResetSystemLib (which should act as HwResetSystemLib instance)
+  # Note: This needs to be a platform chosen ResetSystemLib (which should act as HwResetSystemLib instance)
   #  MmSupervisor is executed.
   HwResetSystemLib              |PcAtChipsetPkg/Library/ResetSystemLib/ResetSystemLib.inf
 
   PlatformSecureLib             |SecurityPkg/Library/PlatformSecureLibNull/PlatformSecureLibNull.inf
   Tcg2PhysicalPresenceLib       |SecurityPkg/Library/SmmTcg2PhysicalPresenceLib/StandaloneMmTcg2PhysicalPresenceLib.inf
 
-  # Note: This needs to be the platform's choosen TimerLib instance
+  # Note: This needs to be the platform's chosen TimerLib instance
   TimerLib                      |PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
 
   # This library instance is only necessary if performance tracing is enabled in MM code.
@@ -548,7 +548,10 @@ After integrating the Mm Supervisor, verifying that the Standalone MM drivers fu
 This becomes a process of building the platform firmware, and attempting to execute it. Some of the more common
 errors are detailed below.
 
-##### The resource HOB range [0x0, 0x] overlaps with MMRAM range
+##### The resource HOB range [0x0, 0xNNNN] overlaps with MMRAM range
+
+A resource descriptor HOB's address space overlaps with the MM addresses. This points to the resource descriptor
+HOBs being incorrect because resources described should not have any overlap with the MM memory ranges.
 
 ##### Non-MM memory region starts with <> clashes with range <>
 
@@ -577,8 +580,10 @@ resources descriptor hobs.
 
 For the exception below, there is a clear message about the address that resulted
 in an access violation. A debugger can be used to step through the code to find what resource
-is missing an appropiate unblock or resource descriptor hob.
+is missing an appropiate unblock or resource descriptor hob. Knowledge of the platform's
+memory regions is also beneficial understand what resources is at the offending address.
 
+``` bash
 !!!! X64 Exception Type - 0E(#PF - Page-Fault)  CPU Apic ID - 00000000 !!!!
 ExceptionData - 0000000000000004  I:0 R:0 U:1 W:0 P:0 PK:0 SS:0 SGX:0
 RIP  - 00000000DD5AC03A, CS  - 000000000000005B, RFLAGS - 0000000000010046
@@ -598,6 +603,7 @@ GDTR - 00000000DF724000 000000000000007F, LDTR - 0000000000000000
 IDTR - 00000000DF738000 00000000000001FF,   TR - 0000000000000070
 FXSAVE_STATE - 00000000DF86AC60
 Access SMM communication forbidden address (0x1000000FD010)!
+```
 
 The platform can compile drivers with optimizations enabled, which can complicate
 debugging efforts. Is it possible to modify a single Inf file to disable optimizations
