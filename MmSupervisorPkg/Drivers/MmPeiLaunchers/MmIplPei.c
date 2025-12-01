@@ -22,8 +22,8 @@
 #include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
+#include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
 #include <Guid/MmramMemoryReserve.h>
-#include <Guid/MmSupervisorRequestData.h>
 
 #include <Library/BaseLib.h>
 #include <Library/HobLib.h>

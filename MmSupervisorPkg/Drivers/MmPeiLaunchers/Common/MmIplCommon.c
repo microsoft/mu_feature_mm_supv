@@ -137,7 +137,6 @@ SmmCommunicationCommunicateWorker (
 
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using User Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   }
-  mMmCommBufferStatus->TalkToSupervisor = TalkToSupervisor;
 
   mMmCommBufferStatus->TalkToSupervisor = TalkToSupervisor;
 
