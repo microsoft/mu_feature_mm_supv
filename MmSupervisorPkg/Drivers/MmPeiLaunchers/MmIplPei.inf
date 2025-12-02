@@ -72,7 +72,6 @@
   gEfiPeiLoadFilePpiGuid                        ## CONSUMES
   gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
   gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
-  gEfiMmEndOfPeiProtocol
 
 [Protocols]
   gEfiMmEndOfPeiProtocol                        ## PRODUCES
