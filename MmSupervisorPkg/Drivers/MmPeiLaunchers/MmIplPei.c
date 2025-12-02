@@ -77,6 +77,26 @@ SmmCommunicationCommunicate (
   IN OUT UINTN                            *CommSize
   );
 
+  // MU_CHANGE: MM_SUPV: Supervisor communication function prototype
+
+/**
+  Communicates with a registered handler.
+  This function provides a service to send and receive messages from a registered UEFI service.
+  @param[in] This                The MM_SUPERVISOR_COMMUNICATION_PPI instance.
+  @param[in] CommBuffer          A pointer to the buffer to convey into SMRAM.
+  @param[in] CommSize            The size of the data buffer being passed in.On exit, the size of data
+                                 being returned. Zero if the handler does not wish to reply with any data.
+  @retval EFI_SUCCESS            The message was successfully posted.
+  @retval EFI_INVALID_PARAMETER  The CommBuffer was NULL.
+**/
+EFI_STATUS
+EFIAPI
+SupvCommunicationCommunicate (
+  IN CONST MM_SUPERVISOR_COMMUNICATION_PPI  *This,
+  IN OUT VOID                               *CommBuffer,
+  IN OUT UINTN                              *CommSize OPTIONAL
+  );
+
 /**
   This is the callback function on end of PEI.
 
@@ -1075,14 +1095,20 @@ MmIplPeiEntry (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS              Status;
-  UINTN                   Index;
-  UINT64                  MaxSize;
-  UINTN                   Size;
-  UINTN                   MmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR    *MmramRanges;
-  MTRR_MEMORY_CACHE_TYPE  CacheAttribute;
-  EFI_MEMORY_DESCRIPTOR   CommunicationRegion;
+  EFI_STATUS  Status;
+  UINTN       Index;
+  UINT64      MaxSize;
+  UINTN       Size;
+  UINTN       MmramRangeCount;
+  // UINT64                          MmCodeSize;
+  // EFI_CPU_ARCH_PROTOCOL           *CpuArch;
+  // EFI_STATUS                      SetAttrStatus;
+  // EFI_MMRAM_DESCRIPTOR            *MmramRangeSmmDriver;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR MemDesc;
+  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
+  // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
+  MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
+  MTRR_MEMORY_CACHE_TYPE             CacheAttribute;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
 
@@ -1092,7 +1118,7 @@ MmIplPeiEntry (
 
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
-             &CommunicationRegion
+             &mMmSupvCommunication.CommunicationRegion
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __func__, Status));
@@ -1244,6 +1270,67 @@ MmIplPeiEntry (
     // Print error message that there are not enough SMRAM resources to load the SMM Core.
     //
     DEBUG ((DEBUG_ERROR, "SMM IPL could not find a large enough SMRAM region to load SMM Core\n"));
+  }
+
+  //
+  // Close all SMRAM ranges
+  //
+  // MU_CHANGE: Iterate through each MMRAM for PPI instance
+  for (Index = 0; Index < MmramRangeCount; Index++) {
+    Status = mSmmAccess->Close ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "SMM IPL failed to close SMRAM windows index %d - %r\n", Index, Status));
+      ASSERT (FALSE);
+      return Status;
+    }
+
+    //
+    // Print debug message that the SMRAM window is now closed.
+    //
+    DEBUG ((DEBUG_INFO, "MM IPL closed SMRAM window index %d\n", Index));
+  }
+
+  // MU_CHANGE: MM_SUPV: Locked immediately after closing instead of waiting for ready to lock event
+  //
+  // Lock the SMRAM (Note: Locking SMRAM may not be supported on all platforms)
+  //
+  for (Index = 0; Index < MmramRangeCount; Index++) {
+    Status = mSmmAccess->Lock ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
+    if (EFI_ERROR (Status)) {
+      //
+      // Print error message that the SMRAM failed to lock...
+      //
+      DEBUG ((DEBUG_ERROR, "MM IPL could not lock MMRAM (Index %d) after executing MM Core %r\n", Index, Status));
+      ASSERT (FALSE);
+      return Status;
+    }
+
+    //
+    // Print debug message that the SMRAM window is now closed.
+    //
+    DEBUG ((DEBUG_INFO, "MM IPL locked SMRAM window index %d\n", Index));
+  }
+
+  SECURITY_LOCK_REPORT_EVENT ("Lock MMRAM", HARDWARE_LOCK); // MSCHANGE
+
+  //
+  // Print debug message that the SMRAM window is now locked.
+  //
+  DEBUG ((DEBUG_INFO, "SMM IPL locked SMRAM window\n"));
+
+  // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail after setup.
+  Status = QuerySupervisorVersion (&VersionInfo);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
+
+  // MU_CHANGE: MM_SUPV: Added a forced trigger to load all drivers in MM
+  //
+  // Trigger to dispatch MM drivers from inside MM
+  //
+  if (!EFI_ERROR (Status)) {
+    Status = MmDriverDispatchNotify ();
+    DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
   }
 
   //
