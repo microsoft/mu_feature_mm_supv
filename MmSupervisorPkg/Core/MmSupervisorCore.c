@@ -327,36 +327,6 @@ PrepareCommonBuffers (
   }
 
   Status = MmAllocatePages (
-              AllocateAnyPages,
-              EfiRuntimeServicesData,
-              UserCommRegionHob->NumberOfPages,
-              (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[MM_USER_BUFFER_T]
-              );
-
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __FUNCTION__, Status));
-    goto Exit;
-  }
-
-  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].VirtualStart = 0;
-  DEBUG ((
-    DEBUG_INFO,
-    "%a - Populating MM Access Buffer Type %d to 0x%p with 0x%x pages\n",
-    __FUNCTION__,
-    MM_USER_BUFFER_T,
-    mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart,
-    mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages
-    ));
-
-  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS*)(UINTN)UserCommRegionHob->Status;
-  if (mMmCommMailboxBufferStatus == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid MM Communication Buffer Status pointer!\n", __FUNCTION__));
-    Status = EFI_INVALID_PARAMETER;
-    goto Exit;
-  }
-
-  Status = MmAllocatePages (
              AllocateAnyPages,
              EfiRuntimeServicesData,
              DEFAULT_SUPV_TO_USER_BUFFER_PAGE,
