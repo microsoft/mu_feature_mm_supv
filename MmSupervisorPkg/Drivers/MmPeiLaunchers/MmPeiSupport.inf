@@ -10,17 +10,12 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = MmIplPei
-  FILE_GUID                      = E6D1F588-F107-41DE-9832-CEA334B33C1F
+  BASE_NAME                      = MmPeiSupport
+  FILE_GUID                      = B525E664-18E1-4EB3-806E-078F75058454
   MODULE_TYPE                    = PEIM
   VERSION_STRING                 = 1.0
   PI_SPECIFICATION_VERSION       = 0x0001000A
-  ENTRY_POINT                    = MmIplPeiEntry
-
-# dev/202502, release/202502
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 3dd4263d24d9aab1423696633b261277 | 2025-08-29T23-27-13 | ce057040b889378a53850c22545f0ae134f4ea4e
-
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 21106e057e22a548508f22875b3c2124 | 2024-08-28T17-14-15 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
+  ENTRY_POINT                    = MmPeiSupportEntry
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -29,14 +24,9 @@
 #
 
 [Sources]
-  MmIplPei.c
+  MmPeiSupport.c
   Common/MmIplCommon.c
   Common/MmIplCommon.h
-  Common/CommonHeader.h
-
-[Sources.IA32]
-  IA32/X64Loader.c
-  IA32/X64Loader.h
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -70,11 +60,7 @@
   gEfiPeiMmControlPpiGuid                       ## CONSUMES
   gPeiMmSupervisorCommunicationPpiGuid          ## PRODUCES
   gEfiPeiLoadFilePpiGuid                        ## CONSUMES
-  gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
   gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
-
-[Protocols]
-  gEfiMmEndOfPeiProtocol                        ## PRODUCES
 
 [Guids]
   # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported

@@ -64,6 +64,7 @@
   gEfiDxeMmReadyToLockProtocolGuid        # PRODUCES
   gEfiMmReadyToLockProtocolGuid           # PRODUCES
   gEfiMmEndOfDxeProtocolGuid              # PRODUCES
+  gEfiMmEndOfPeiProtocol                  # PRODUCES
 
 [Guids]
   gEfiEndOfDxeEventGroupGuid              # PRODUCES

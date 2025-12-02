@@ -289,6 +289,15 @@ MmReadyToLockHandler (
 
 EFI_STATUS
 EFIAPI
+MmEndOfPeiHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context         OPTIONAL,
+  IN OUT VOID        *CommBuffer      OPTIONAL,
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  );
+
+EFI_STATUS
+EFIAPI
 MmEndOfDxeHandler (
   IN     EFI_HANDLE  DispatchHandle,
   IN     CONST VOID  *Context         OPTIONAL,
