@@ -20,7 +20,6 @@
 
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
-#include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
@@ -377,40 +376,42 @@ MmDriverDispatchNotify (
   UINTN       Size;
   EFI_STATUS  Status;
 
+  // MU_CHANGE: MM_SUPV: Driver dispatcher command only deals with supervisor
+  mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+
   //
-  // Keep calling the SMM Core Dispatcher until there is no request to restart it.
+  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
+  // Clear the buffer passed into the Software SMI.  This buffer will return
+  // the status of the SMM Core Dispatcher.
   //
-  while (TRUE) {
-    // MU_CHANGE: MM_SUPV: Driver dispatcher command only deals with supervisor
-    mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+  CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
+  mCommunicateHeader->MessageLength = 1;
+  mCommunicateHeader->Data[0]       = 0;
 
-    //
-    // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
-    // Clear the buffer passed into the Software SMI.  This buffer will return
-    // the status of the SMM Core Dispatcher.
-    //
-    CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
-    mCommunicateHeader->MessageLength = 1;
-    mCommunicateHeader->Data[0]       = 0;
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (EFI_MM_COMMUNICATE_HEADER);
+  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
 
-    //
-    // Generate the Software SMI and return the result
-    //
-    Size   = sizeof (EFI_MM_COMMUNICATE_HEADER);
-    Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
-
-    //
-    // Return if there is no request to restart the SMM Core Dispatcher
-    //
-    if (mCommunicateHeader->Data[0] != COMM_BUFFER_MM_DISPATCH_RESTART) {
-      return Status;
-    } else {
-      ASSERT (FALSE);
-    }
+  //
+  // Return if there is no request to restart the MM Core Dispatcher
+  //
+  if (Status != EFI_SUCCESS) {
+    DEBUG ((DEBUG_ERROR, "MM Driver Dispatch failed (%r)\n", Status));
+    return Status;
   }
 
-  // Should not be here
-  return EFI_DEVICE_ERROR;
+  //
+  // Get the status returned from the MM Core Dispatcher
+  //
+  if (Size >= sizeof (EFI_STATUS)) {
+    Status = *(EFI_STATUS*)mCommunicateHeader->Data;
+  } else {
+    Status = EFI_DEVICE_ERROR;
+  }
+
+  return Status;
 }
 
 // MU_CHANGE Ends: MM_SUPV
