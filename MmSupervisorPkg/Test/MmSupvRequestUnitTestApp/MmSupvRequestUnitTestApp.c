@@ -184,7 +184,8 @@ VerifyMemPolicy (
 /**
   This helper function preps the shared CommBuffer for use by the test step.
 
-  @param[out] CommBuffer   Returns a pointer to the CommBuffer for the test step to use.
+  @param[out] CommBuffer      Returns a pointer to the CommBuffer for the test step to use.
+  @param[in]  AdditionalSize  Additional size needed in the CommBuffer for test-specific data.
 
   @retval     EFI_SUCCESS         CommBuffer initialized and ready to use.
   @retval     EFI_ABORTED         Some error occurred.
