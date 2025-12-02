@@ -77,15 +77,18 @@ SmmCommunicationCommunicate (
   IN OUT UINTN                            *CommSize
   );
 
-  // MU_CHANGE: MM_SUPV: Supervisor communication function prototype
+// MU_CHANGE: MM_SUPV: Supervisor communication function prototype
 
 /**
   Communicates with a registered handler.
+
   This function provides a service to send and receive messages from a registered UEFI service.
+
   @param[in] This                The MM_SUPERVISOR_COMMUNICATION_PPI instance.
   @param[in] CommBuffer          A pointer to the buffer to convey into SMRAM.
   @param[in] CommSize            The size of the data buffer being passed in.On exit, the size of data
                                  being returned. Zero if the handler does not wish to reply with any data.
+
   @retval EFI_SUCCESS            The message was successfully posted.
   @retval EFI_INVALID_PARAMETER  The CommBuffer was NULL.
 **/
