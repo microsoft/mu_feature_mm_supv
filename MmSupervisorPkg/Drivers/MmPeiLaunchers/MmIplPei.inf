@@ -72,6 +72,7 @@
   gEfiPeiLoadFilePpiGuid                        ## CONSUMES
   gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
   gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
+  gEfiMmEndOfPeiProtocol
 
 [Guids]
   # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
