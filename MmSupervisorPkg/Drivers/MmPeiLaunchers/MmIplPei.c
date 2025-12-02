@@ -101,7 +101,9 @@ SupvCommunicationCommunicate (
   );
 
 /**
-  Event notification that is fired when a GUIDed Event Group is signaled.
+  This is the callback function on end of PEI.
+
+  This callback is used for call MmEndOfPeiHandler in standalone MM core.
 
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
@@ -113,7 +115,7 @@ SupvCommunicationCommunicate (
 **/
 EFI_STATUS
 EFIAPI
-SmmIplGuidedEventNotify (
+EndOfPeiCallback (
   IN EFI_PEI_SERVICES           **PeiServices,
   IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
   IN VOID                       *Ppi
@@ -176,7 +178,7 @@ STATIC EFI_PEI_NOTIFY_DESCRIPTOR  mPeiMmIplNotifyList =
   //
   (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiEndOfPeiSignalPpiGuid,
-  SmmIplGuidedEventNotify
+  EndOfPeiCallback
 };
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
@@ -329,7 +331,9 @@ SmmCommunicationCommunicate (
 }
 
 /**
-  Event notification that is fired when a GUIDed Event Group is signaled.
+  This is the callback function on end of PEI.
+
+  This callback is used for call MmEndOfPeiHandler in standalone MM core.
 
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
@@ -341,7 +345,7 @@ SmmCommunicationCommunicate (
 **/
 EFI_STATUS
 EFIAPI
-SmmIplGuidedEventNotify (
+EndOfPeiCallback (
   IN EFI_PEI_SERVICES           **PeiServices,
   IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
   IN VOID                       *Ppi
@@ -352,7 +356,7 @@ SmmIplGuidedEventNotify (
   }
 
   // MU_CHANGE: Abstracted implementation to SmmIplGuidedEventNotifyWork for DXE and PEI
-  return SmmIplGuidedEventNotifyWorker (NotifyDescriptor->Guid);
+  return SmmIplGuidedEventNotifyWorker (&gEfiMmEndOfPeiProtocol);
 }
 
 // MU_CHANGE Starts: MM_SUPV: Will immediately signal MM core to dispatch MM drivers
