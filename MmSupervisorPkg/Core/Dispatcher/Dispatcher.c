@@ -856,7 +856,7 @@ PrepareCommonBuffer:
   // Check to see if CommBuffer and CommBufferSize are valid
   //
   if ((CommBuffer != NULL) && (CommBufferSize != NULL)) {
-    if (*CommBufferSize > sizeof (EFI_STATUS)) {
+    if (*CommBufferSize >= sizeof (EFI_STATUS)) {
       //
       // Set the status of MmDispatcher to CommBuffer
       //
