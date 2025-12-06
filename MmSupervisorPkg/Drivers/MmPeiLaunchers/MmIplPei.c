@@ -385,6 +385,12 @@ MmDriverDispatchNotify (
   // the status of the SMM Core Dispatcher.
   //
   CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
+
+  //
+  // This is actually an empty payload command, but the EFI_MM_COMMUNICATE_HEADER structure
+  // comes with a payload of at least one byte. So we set the MessageLength to 1 and
+  // the first byte to 0.
+  //
   mCommunicateHeader->MessageLength = 1;
   mCommunicateHeader->Data[0]       = 0;
 
