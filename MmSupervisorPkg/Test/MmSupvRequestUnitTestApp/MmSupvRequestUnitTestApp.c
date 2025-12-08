@@ -184,7 +184,8 @@ VerifyMemPolicy (
 /**
   This helper function preps the shared CommBuffer for use by the test step.
 
-  @param[out] CommBuffer   Returns a pointer to the CommBuffer for the test step to use.
+  @param[out] CommBuffer      Returns a pointer to the CommBuffer for the test step to use.
+  @param[in]  AdditionalSize  Additional size needed in the CommBuffer for test-specific data.
 
   @retval     EFI_SUCCESS         CommBuffer initialized and ready to use.
   @retval     EFI_ABORTED         Some error occurred.
@@ -193,7 +194,8 @@ VerifyMemPolicy (
 STATIC
 EFI_STATUS
 MmSupvRequestGetCommBuffer (
-  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer
+  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer,
+  IN   UINT64                        AdditionalSize
   )
 {
   EFI_MM_COMMUNICATE_HEADER  *CommHeader;
@@ -206,7 +208,7 @@ MmSupvRequestGetCommBuffer (
 
   // First, let's zero the comm buffer. Couldn't hurt.
   CommHeader     = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonCommBufferAddress;
-  CommBufferSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  CommBufferSize = AdditionalSize + sizeof (MM_SUPERVISOR_REQUEST_HEADER) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
   if (CommBufferSize > mMmSupvCommonCommBufferSize) {
     DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer is too small!\n", __FUNCTION__));
     return EFI_ABORTED;
@@ -216,7 +218,7 @@ MmSupvRequestGetCommBuffer (
 
   // MM Communication Parameters
   CopyGuid (&CommHeader->HeaderGuid, &gMmSupervisorRequestHandlerGuid);
-  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + AdditionalSize;
 
   // Return a pointer to the CommBuffer for the test to modify.
   *CommBuffer = (MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data;
@@ -281,7 +283,7 @@ FetchSecurityPolicyFromSupv (
   SecurityPolicy = NULL;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, mMmSupvCommonCommBufferSize - sizeof (MM_SUPERVISOR_REQUEST_HEADER) - OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data));
   if (EFI_ERROR (Status)) {
     return NULL;
   }
@@ -644,7 +646,7 @@ RequestVersionInfo (
   MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -696,7 +698,7 @@ RequestUnblockRegion (
   }
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -884,7 +886,7 @@ RequestUpdateCommBuffer (
   MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_COMM_UPDATE_BUFFER));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;

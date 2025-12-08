@@ -82,6 +82,7 @@ SmmCommunicationCommunicate (
 
   This callback is used for call MmEndOfPeiHandler in standalone MM core.
 
+
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
   @param  Ppi              Address of the PPI that was installed.
