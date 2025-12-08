@@ -52,14 +52,14 @@ MmUnblockMemoryRequest (
   Status = gBS->LocateProtocol (&gMmSupervisorUnblockMemoryProtocolGuid, NULL, (VOID **)&MmSupvUnblockMemoryProtocol);
   if (EFI_ERROR (Status)) {
     // Should not happen due to depex requirement
-    DEBUG ((DEBUG_ERROR, "%a The unblock protocol has failed to locate - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a The unblock protocol has failed to locate - %r\n", __func__, Status));
     Status = EFI_NOT_AVAILABLE_YET;
     goto Done;
   }
 
   Status = MmSupvUnblockMemoryProtocol->RequestUnblockPages (UnblockAddress, NumberOfPages, &gEfiCallerIdGuid);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a The unblock request has failed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a The unblock request has failed - %r\n", __func__, Status));
   }
 
 Done:

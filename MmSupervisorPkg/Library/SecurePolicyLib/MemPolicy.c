@@ -478,7 +478,7 @@ DumpMemPolicyEntry (
   )
 {
   if (MemoryPolicy == NULL) {
-    DEBUG ((DEBUG_INFO, "%a Received null input pointer!\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Received null input pointer!\n", __func__));
     ASSERT (FALSE);
     return;
   }
@@ -519,7 +519,7 @@ PopulateMemoryPolicyEntries (
 
   if (SmmPolicyBuffer == NULL) {
     Status = EFI_INVALID_PARAMETER;
-    DEBUG ((DEBUG_ERROR, "%a Incoming policy buffer is null pointer.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Incoming policy buffer is null pointer.\n", __func__));
     goto Exit;
   }
 
@@ -536,7 +536,7 @@ PopulateMemoryPolicyEntries (
   if (i >= SmmPolicyBuffer->PolicyRootCount) {
     // TODO: Do we want to add handling here?
     // Something is wrong, there is not placeholder left for memory type, do not want to handle it...
-    DEBUG ((DEBUG_ERROR, "%a Incoming policy buffer does not contain memory type policy root.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Incoming policy buffer does not contain memory type policy root.\n", __func__));
     Status = EFI_NOT_FOUND;
     goto Exit;
   }
@@ -557,7 +557,7 @@ PopulateMemoryPolicyEntries (
   // Generate Policy of current Pagetable
   Status = GenMemPolicyAndShadowPageTable (Cr3, MemoryPolicy, MemoryPolicySize, &PolicyRoot->Count);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Fail to GenMemPolicyAndShadowPageTable for non-legacy structures %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Fail to GenMemPolicyAndShadowPageTable for non-legacy structures %r\n", __func__, Status));
     goto Exit;
   }
 
@@ -693,7 +693,7 @@ PrepareMemPolicySnapshot (
   // Then leave the heavy lifting job to the library
   Status = PopulateMemoryPolicyEntries (MemPolicySnapshot, MEM_POLICY_SNAPSHOT_SIZE, 0);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __func__, Status));
   }
 
 Done:

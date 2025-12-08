@@ -53,20 +53,20 @@ MmSupvRequestHandler (
   //
   // If either of the pointers are NULL, we can't proceed.
   if ((CommBuffer == NULL) || (CommBufferSize == NULL)) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer pointers!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer pointers!\n", __func__));
     return EFI_INVALID_PARAMETER;
   }
 
   Status = VerifyRequestSupvCommBuffer (CommBuffer, *CommBufferSize);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __FUNCTION__, CommBuffer, Status));
+    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __func__, CommBuffer, Status));
     return Status;
   }
 
   // If the size does not meet a minimum threshold, we cannot proceed.
   ExpectedSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
   if (*CommBufferSize < ExpectedSize) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad comm buffer size! %d < %d\n", __FUNCTION__, *CommBufferSize, ExpectedSize));
+    DEBUG ((DEBUG_ERROR, "%a - Bad comm buffer size! %d < %d\n", __func__, *CommBufferSize, ExpectedSize));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -75,7 +75,7 @@ MmSupvRequestHandler (
   if ((MmSupvRequestHeader->Signature != MM_SUPERVISOR_REQUEST_SIG) ||
       (MmSupvRequestHeader->Revision != MM_SUPERVISOR_REQUEST_REVISION))
   {
-    DEBUG ((DEBUG_ERROR, "%a - Signature or revision are incorrect!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Signature or revision are incorrect!\n", __func__));
     // We have verified the buffer is not null and have enough size to hold Result field.
     MmSupvRequestHeader->Result = EFI_INVALID_PARAMETER;
     return EFI_SUCCESS;
@@ -92,7 +92,7 @@ MmSupvRequestHandler (
         DEBUG ((
           DEBUG_ERROR,
           "%a - Unblock param block has bad comm buffer size! %d < %d\n",
-          __FUNCTION__,
+          __func__,
           *CommBufferSize,
           ExpectedSize
           ));
@@ -118,7 +118,7 @@ MmSupvRequestHandler (
         DEBUG ((
           DEBUG_ERROR,
           "%a - Version info query has bad comm buffer size! %d < %d\n",
-          __FUNCTION__,
+          __func__,
           *CommBufferSize,
           ExpectedSize
           ));
@@ -136,7 +136,7 @@ MmSupvRequestHandler (
         DEBUG ((
           DEBUG_ERROR,
           "%a - Communication buffer update has bad buffer size! %d < %d\n",
-          __FUNCTION__,
+          __func__,
           *CommBufferSize,
           ExpectedSize
           ));
@@ -150,7 +150,7 @@ MmSupvRequestHandler (
 
     default:
       // Mark unknown requested command as EFI_UNSUPPORTED.
-      DEBUG ((DEBUG_ERROR, "%a - Invalid command requested! %d\n", __FUNCTION__, MmSupvRequestHeader->Request));
+      DEBUG ((DEBUG_ERROR, "%a - Invalid command requested! %d\n", __func__, MmSupvRequestHeader->Request));
       MmSupvRequestHeader->Result = EFI_UNSUPPORTED;
       break;
   }
@@ -158,7 +158,7 @@ MmSupvRequestHandler (
   DEBUG ((
     DEBUG_INFO,
     "%a - Request %d returning %r.\n",
-    __FUNCTION__,
+    __func__,
     MmSupvRequestHeader->Request,
     MmSupvRequestHeader->Result
     ));

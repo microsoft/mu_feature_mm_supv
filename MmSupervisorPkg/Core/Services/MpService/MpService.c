@@ -1026,7 +1026,7 @@ AllocateTokenBuffer (
   if (TokenCountPerChunk == 0) {
     DEBUG ((DEBUG_ERROR, "PcdCpuSmmMpTokenCountPerChunk should not be Zero!\n"));
     if (mSmmRebootOnException) {
-      DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __func__));
       CpuBreakpoint ();
       ResetWarm ();
     }

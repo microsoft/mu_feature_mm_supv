@@ -218,7 +218,7 @@ DiscoverSmiEntryInFvHobs (
       DEBUG ((
         DEBUG_INFO,
         "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __FUNCTION__,
+        __func__,
         (UINTN)FwVolHeader,
         FwVolHeader->FvLength
         ));
@@ -226,7 +226,7 @@ DiscoverSmiEntryInFvHobs (
       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
       if (ExtHeaderOffset != 0) {
         ExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + ExtHeaderOffset);
-        DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __FUNCTION__, &ExtHeader->FvName));
+        DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, &ExtHeader->FvName));
       }
 
       //
@@ -251,14 +251,14 @@ DiscoverSmiEntryInFvHobs (
             if (!EFI_ERROR (Status)) {
               mMmiEntryBaseAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
             } else {
-              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gMmiEntrySeaFileGuid, FileHeader, FileHeader->Size, Status));
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __func__, &gMmiEntrySeaFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
 
             DEBUG ((
               DEBUG_INFO,
               "[%a]   Discovered MMI Entry for SEA [%g] in FV at 0x%p of %x bytes.\n",
-              __FUNCTION__,
+              __func__,
               &gMmiEntrySeaFileGuid,
               mMmiEntryBaseAddress,
               mMmiEntrySize
@@ -272,7 +272,7 @@ DiscoverSmiEntryInFvHobs (
 
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawBinFileData, &SeaBinSize);
             if (EFI_ERROR (Status)) {
-              DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SEA data section [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to find SEA data section [%g] in FV at 0x%p of %x bytes - %r.\n", __func__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
               break;
             }
 
@@ -281,7 +281,7 @@ DiscoverSmiEntryInFvHobs (
             Status = LoadMonitor ((EFI_PHYSICAL_ADDRESS)(UINTN)RawBinFileData, SeaBinSize);
             // Moving the buffer like size field to our local variable
             if (EFI_ERROR (Status)) {
-              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SEA [%g] in FV at 0x%p of %x bytes - %r.\n", __FUNCTION__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
+              DEBUG ((DEBUG_ERROR, "[%a]   Failed to load SEA [%g] in FV at 0x%p of %x bytes - %r.\n", __func__, &gSeaBinFileGuid, FileHeader, FileHeader->Size, Status));
               goto Done;
             }
           }
@@ -299,7 +299,7 @@ DiscoverSmiEntryInFvHobs (
   } while (Hob.Raw != NULL);
 
   if (!MmiEntryFound || !SeaResponderFound) {
-    DEBUG ((DEBUG_ERROR, "[%a]   Required entries for SEA not found in any FV.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a]   Required entries for SEA not found in any FV.\n", __func__));
     Status = EFI_NOT_FOUND;
   } else {
     Status = EFI_SUCCESS;

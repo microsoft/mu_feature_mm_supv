@@ -158,7 +158,7 @@ VerifyUnblockRequest (
   UINT64                               Attributes;
 
   if (RequestedData == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Null pointer detected...\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Null pointer detected...\n", __func__));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -184,14 +184,14 @@ VerifyUnblockRequest (
             ) == 0)
       {
         // We can allow a pass for a completely identical unblock request
-        DEBUG ((DEBUG_INFO, "%a - Identical with the request from %g\n", __FUNCTION__, &UnblockedMemEntry.IdentifierGuid));
+        DEBUG ((DEBUG_INFO, "%a - Identical with the request from %g\n", __func__, &UnblockedMemEntry.IdentifierGuid));
         Status = EFI_ALREADY_STARTED;
       } else {
         // Otherwise, someone tries to unblock the memory under different attributes
         DEBUG ((
           DEBUG_INFO,
           "%a - Request clashed with %g Address: 0x%p Length: 0x%x (Pages)\n",
-          __FUNCTION__,
+          __func__,
           &UnblockedMemEntry.IdentifierGuid,
           UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
           UnblockedMemEntry.MemoryDescriptor.NumberOfPages
@@ -206,7 +206,7 @@ VerifyUnblockRequest (
       DEBUG ((
         DEBUG_ERROR,
         "%a - Request clashed with %g Address: 0x%p Length: 0x%x (Pages)\n",
-        __FUNCTION__,
+        __func__,
         &UnblockedMemEntry.IdentifierGuid,
         UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
         UnblockedMemEntry.MemoryDescriptor.NumberOfPages
@@ -228,7 +228,7 @@ VerifyUnblockRequest (
     DEBUG ((
       DEBUG_ERROR,
       "%a Unable to get the page attribute of targeted region Start: 0x%p - End: 0x%p: %r\n",
-      __FUNCTION__,
+      __func__,
       StartAddress,
       EndAddress,
       Status
@@ -242,7 +242,7 @@ VerifyUnblockRequest (
     DEBUG ((
       DEBUG_ERROR,
       "%a Targeted region (Start: 0x%p - End: 0x%p) has unexpected attributes: 0x%x\n",
-      __FUNCTION__,
+      __func__,
       StartAddress,
       EndAddress,
       Attributes
@@ -252,7 +252,7 @@ VerifyUnblockRequest (
   }
 
 Done:
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
   return Status;
 }
 
@@ -310,7 +310,7 @@ ProcessBlockPages (
              EFI_MEMORY_RP
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to SetMemAttr to unblock memory %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to SetMemAttr to unblock memory %r!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
@@ -356,7 +356,7 @@ ProcessUnblockPages (
     DEBUG ((
       DEBUG_ERROR,
       "%a - Unblock requested after ready to lock, will not proceed!\n",
-      __FUNCTION__
+      __func__
       ));
     return EFI_ACCESS_DENIED;
   }
@@ -365,7 +365,7 @@ ProcessUnblockPages (
   if ((UnblockMemParams == NULL) ||
       IsZeroGuid (&UnblockMemParams->IdentifierGuid))
   {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid parameter detected - %p!\n", __FUNCTION__, UnblockMemParams));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid parameter detected - %p!\n", __func__, UnblockMemParams));
     return EFI_INVALID_PARAMETER;
   }
 
@@ -378,7 +378,7 @@ ProcessUnblockPages (
     DEBUG ((
       DEBUG_ERROR,
       "%a - Invalid unblock params of address 0x%x and length %x pages!\n",
-      __FUNCTION__,
+      __func__,
       UnblockMemParams->MemoryDescriptor.PhysicalStart,
       UnblockMemParams->MemoryDescriptor.NumberOfPages
       ));
@@ -388,7 +388,7 @@ ProcessUnblockPages (
   DEBUG ((
     DEBUG_INFO,
     "%a - %g requested unblocking Address: 0x%p Length: 0x%x (Pages) Attribute 0x%x\n",
-    __FUNCTION__,
+    __func__,
     &UnblockMemParams->IdentifierGuid,
     UnblockMemParams->MemoryDescriptor.PhysicalStart,
     UnblockMemParams->MemoryDescriptor.NumberOfPages,
@@ -397,10 +397,10 @@ ProcessUnblockPages (
 
   Status = VerifyUnblockRequest (UnblockMemParams);
   if (Status == EFI_ALREADY_STARTED) {
-    DEBUG ((DEBUG_WARN, "%a - Exact match detected, will not double unblock!\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a - Exact match detected, will not double unblock!\n", __func__));
     return EFI_SUCCESS;
   } else if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Unblock request verification failed - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Unblock request verification failed - %r!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
@@ -419,7 +419,7 @@ ProcessUnblockPages (
              EFI_MEMORY_RP | EFI_MEMORY_RO | EFI_MEMORY_SP
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to ClearMemAttr to unblock memory %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to ClearMemAttr to unblock memory %r!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
@@ -430,14 +430,14 @@ ProcessUnblockPages (
              Attribute
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to SetMemAttr to unblock memory %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to SetMemAttr to unblock memory %r!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
 
   UnblockListEntry = AllocatePool (sizeof (UNBLOCKED_MEM_LIST));
   if (UnblockListEntry == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __func__));
     ASSERT (FALSE);
     return EFI_OUT_OF_RESOURCES;
   }

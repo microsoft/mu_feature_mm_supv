@@ -77,7 +77,7 @@ EvaluateRequestedRegion (
   DEBUG ((
     DEBUG_INFO,
     "%a Checking against address 0x%p - 0x%p %d\n",
-    __FUNCTION__,
+    __func__,
     UnblockAddress,
     UnblockAddress + EFI_PAGES_TO_SIZE (NumberOfPages),
     NumberOfPages
@@ -130,13 +130,13 @@ EvaluateRequestedRegion (
           (EfiMemNext->Type != EfiRuntimeServicesData) &&
           (EfiMemNext->Type != EfiACPIMemoryNVS))
       {
-        DEBUG ((DEBUG_INFO, "%a Evaluation failed due to memory type is unexpected %x\n", __FUNCTION__, EfiMemNext->Type));
+        DEBUG ((DEBUG_INFO, "%a Evaluation failed due to memory type is unexpected %x\n", __func__, EfiMemNext->Type));
         Status = EFI_ACCESS_DENIED;
         break;
       } else if (((EfiMemNext->Type == EfiRuntimeServicesCode) || (EfiMemNext->Type == EfiRuntimeServicesData)) &&
                  ((EfiMemNext->Attribute & EFI_MEMORY_RO) != 0))
       {
-        DEBUG ((DEBUG_INFO, "%a Evaluation failed due to runtime memory region is marked as read only\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a Evaluation failed due to runtime memory region is marked as read only\n", __func__));
         Status = EFI_ACCESS_DENIED;
         break;
       } else {
@@ -212,7 +212,7 @@ MmIplRequestUnblockPages (
     DEBUG ((
       DEBUG_ERROR,
       "%a Input argument of address %p or identifier GUID %p is invalid!\n",
-      __FUNCTION__,
+      __func__,
       UnblockAddress,
       IdentifierGuid
       ));
@@ -221,25 +221,25 @@ MmIplRequestUnblockPages (
 
   if (NumberOfPages == 0) {
     // This is dumb...
-    DEBUG ((DEBUG_WARN, "%a Requesting to unblock 0 pages, return here!\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Requesting to unblock 0 pages, return here!\n", __func__));
     return EFI_SUCCESS;
   }
 
   if (mReadyToLockOccurred) {
     // Someone must have done something terrible...
-    DEBUG ((DEBUG_ERROR, "%a Request is blocked after exit boot services, how did you get here?\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Request is blocked after exit boot services, how did you get here?\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
   if (mMmCommunicateProtocol == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Communicate protocol is not in place, cannot process the request\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Communicate protocol is not in place, cannot process the request\n", __func__));
     return EFI_NOT_READY;
   }
 
   Status = EvaluateRequestedRegion (UnblockAddress, NumberOfPages);
   if (EFI_ERROR (Status)) {
     // Someone must have done something terrible...
-    DEBUG ((DEBUG_ERROR, "%a Requested address did not pass evaluation %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Requested address did not pass evaluation %r\n", __func__, Status));
     return EFI_ACCESS_DENIED;
   }
 
@@ -279,13 +279,13 @@ MmIplRequestUnblockPages (
   // Step 3: Ready to signal Mmi.
   Status = mMmCommunicateProtocol->Communicate (mMmCommunicateProtocol, CommHeader, &CommBufferSize);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, Status));
     return Status;
   }
 
   // Step 4: Just print the error here
   if (EFI_ERROR (RequestBuffer->Result)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __FUNCTION__, RequestBuffer->Result));
+    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, RequestBuffer->Result));
   }
 
   return RequestBuffer->Result;
@@ -306,7 +306,7 @@ MmUnblockMemReadyToLockNotify (
   IN  VOID       *Context
   )
 {
-  DEBUG ((DEBUG_INFO, "%a: enter...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a: enter...\n", __func__));
 
   mReadyToLockOccurred = TRUE;
 }
@@ -334,7 +334,7 @@ SetupUnblockMemProtocol (
     Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&mMmCommunicateProtocol);
     if (EFI_ERROR (Status)) {
       // Should not happen
-      DEBUG ((DEBUG_ERROR, "%a Failed to locate Mm communicate protocol - %r!\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Failed to locate Mm communicate protocol - %r!\n", __func__, Status));
       goto Done;
     }
   }
@@ -346,7 +346,7 @@ SetupUnblockMemProtocol (
                   &mMmUnblockMemProtocol
                   );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to publish Mm unblock memory protocol - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to publish Mm unblock memory protocol - %r!\n", __func__, Status));
     goto Done;
   }
 
@@ -360,7 +360,7 @@ SetupUnblockMemProtocol (
                   &TempEvent
                   );
   if (EFI_ERROR (Status) != FALSE) {
-    DEBUG ((DEBUG_ERROR, "%a failed to register ready to lock for unblock memory (%r)\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a failed to register ready to lock for unblock memory (%r)\n", __func__, Status));
     goto Done;
   }
 
@@ -402,7 +402,7 @@ MmSupervisorUnblockMemProtocolInit (
                     &Event
                     );
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a failed to create event for unblock memory (%r)\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a failed to create event for unblock memory (%r)\n", __func__, Status));
       goto Done;
     }
 
@@ -415,7 +415,7 @@ MmSupervisorUnblockMemProtocolInit (
                     &UnusedRegistration
                     );
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a failed to register mm communication callback (%r)\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a failed to register mm communication callback (%r)\n", __func__, Status));
       goto Done;
     }
   } else {

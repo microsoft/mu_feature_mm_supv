@@ -56,7 +56,7 @@ ReserveSupvCommBuffer (
   MM_COMM_REGION_HOB  *CommRegionHob;
 
   if (PageSize == 0) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid input PageSize 0x%x!\n", __FUNCTION__, PageSize));
+    DEBUG ((DEBUG_ERROR, "%a Invalid input PageSize 0x%x!\n", __func__, PageSize));
     ASSERT (FALSE);
     Status = EFI_INVALID_PARAMETER;
     goto Done;
@@ -68,7 +68,7 @@ ReserveSupvCommBuffer (
 
   CommRegionHob = BuildGuidHob (&gMmCommonRegionHobGuid, sizeof (MM_COMM_REGION_HOB));
   if (CommRegionHob == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to create GUIDed HOB %g!\n", __FUNCTION__, &gMmCommonRegionHobGuid));
+    DEBUG ((DEBUG_ERROR, "%a Failed to create GUIDed HOB %g!\n", __func__, &gMmCommonRegionHobGuid));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -82,7 +82,7 @@ ReserveSupvCommBuffer (
   //
   CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr) {
-    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __FUNCTION__, PageSize));
+    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __func__, PageSize));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -128,7 +128,7 @@ ReserveUserCommBuffer (
   MM_COMM_BUFFER_STATUS  *CommRegionStatus;
 
   if (PageSize == 0) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid input PageSize 0x%x!\n", __FUNCTION__, PageSize));
+    DEBUG ((DEBUG_ERROR, "%a Invalid input PageSize 0x%x!\n", __func__, PageSize));
     ASSERT (FALSE);
     Status = EFI_INVALID_PARAMETER;
     goto Done;
@@ -140,7 +140,7 @@ ReserveUserCommBuffer (
 
   CommRegionHob = BuildGuidHob (&gMmCommBufferHobGuid, sizeof (MM_COMM_BUFFER));
   if (CommRegionHob == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to create GUIDed HOB %g!\n", __FUNCTION__, &gMmCommBufferHobGuid));
+    DEBUG ((DEBUG_ERROR, "%a Failed to create GUIDed HOB %g!\n", __func__, &gMmCommBufferHobGuid));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -153,7 +153,7 @@ ReserveUserCommBuffer (
   //
   CommRegionHob->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   if (NULL == (VOID *)(UINTN)CommRegionHob->PhysicalStart) {
-    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __FUNCTION__, PageSize));
+    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __func__, PageSize));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -163,7 +163,7 @@ ReserveUserCommBuffer (
 
   CommRegionStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
   if (NULL == (VOID *)CommRegionStatus) {
-    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
     goto Done;
@@ -211,13 +211,13 @@ MmCommunicationBufferPeiEntry (
 
   Status = ReserveSupvCommBuffer (PcdGet64 (PcdSupervisorCommBufferPages), &SupvBufferAddr);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for supervisor - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for supervisor - %r!\n", __func__, Status));
     goto Done;
   }
 
   Status = ReserveUserCommBuffer (PcdGet64 (PcdUserCommBufferPages), &UserBufferAddr);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for user - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for user - %r!\n", __func__, Status));
     goto Done;
   }
 
@@ -229,7 +229,7 @@ MmCommunicationBufferPeiEntry (
 
 Done:
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to initialize communication buffers - %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to initialize communication buffers - %r!\n", __func__, Status));
     if (NULL != (VOID *)(UINTN)SupvBufferAddr) {
       // Clean supervisor legacy if any
       FreePages ((VOID *)(UINTN)SupvBufferAddr, (UINTN)PcdGet64 (PcdSupervisorCommBufferPages));
