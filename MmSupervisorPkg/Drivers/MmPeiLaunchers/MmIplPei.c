@@ -286,8 +286,8 @@ EndOfPeiCallback (
 **/
 EFI_STATUS
 MmIplPeiFindMmCore (
-  OUT VOID  **Buffer,
-  OUT EFI_GUID *MmCoreFileName
+  OUT VOID      **Buffer,
+  OUT EFI_GUID  *MmCoreFileName
   )
 {
   EFI_STATUS           Status;
@@ -295,7 +295,7 @@ MmIplPeiFindMmCore (
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
 
-  if (Buffer == NULL || MmCoreFileName == NULL) {
+  if ((Buffer == NULL) || (MmCoreFileName == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 

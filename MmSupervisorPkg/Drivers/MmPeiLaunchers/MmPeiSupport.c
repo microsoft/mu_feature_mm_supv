@@ -235,7 +235,7 @@ MmDriverDispatchNotify (
   // Get the status returned from the MM Core Dispatcher
   //
   if (Size >= sizeof (EFI_STATUS)) {
-    Status = *(EFI_STATUS*)mCommunicateHeader->Data;
+    Status = *(EFI_STATUS *)mCommunicateHeader->Data;
   } else {
     Status = EFI_DEVICE_ERROR;
   }
@@ -266,7 +266,7 @@ MmPeiSupportEntry (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS  Status;
+  EFI_STATUS                         Status;
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
