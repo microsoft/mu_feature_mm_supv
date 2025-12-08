@@ -267,7 +267,6 @@ MmPeiSupportEntry (
   )
 {
   EFI_STATUS  Status;
-  UINTN       Size;
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
