@@ -68,7 +68,6 @@
   gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
   gEfiPeiMmAccessPpiGuid                        ## CONSUMES
   gEfiPeiMmControlPpiGuid                       ## CONSUMES
-  gPeiMmSupervisorCommunicationPpiGuid          ## PRODUCES
   gEfiPeiLoadFilePpiGuid                        ## CONSUMES
   gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
   gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
@@ -79,13 +78,11 @@
 [Guids]
   # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
   gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
-  gMmCommonRegionHobGuid                        ## PRODUCES
-  gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
+  gMmCommonRegionHobGuid                        ## CONSUMES
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
   gEfiMmPeiMmramMemoryReserveGuid               ## CONSUMES
   gEfiSmmSmramMemoryGuid                        ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
-  gMmSupervisorCoreGuid                         ## CONSUMES
 
 [Pcd]
   # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported

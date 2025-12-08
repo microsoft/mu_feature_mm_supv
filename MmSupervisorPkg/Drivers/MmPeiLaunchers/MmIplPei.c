@@ -277,7 +277,8 @@ EndOfPeiCallback (
   Searches MmCore in all published firmware Volumes and loads the first
   instance that contains MmCore.
 
-  @param[in]  Buffer    Placeholder for address of MM core located by this routine.
+  @param[out]  Buffer          Placeholder for address of MM core located by this routine.
+  @param[out]  MmCoreFileName  Placeholder for the GUID of the MM core file located by this routine.
 
   @retval EFI_SUCCESS   This function located MM core successfully.
   @retval Others        Errors returned by PeiServices routines.
@@ -285,13 +286,18 @@ EndOfPeiCallback (
 **/
 EFI_STATUS
 MmIplPeiFindMmCore (
-  OUT VOID  **Buffer
+  OUT VOID  **Buffer,
+  OUT EFI_GUID *MmCoreFileName
   )
 {
   EFI_STATUS           Status;
   UINTN                Instance;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
+
+  if (Buffer == NULL || MmCoreFileName == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Instance = 0;
   while (TRUE) {
@@ -315,17 +321,21 @@ MmIplPeiFindMmCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_MM_CORE_STANDALONE, VolumeHandle, &FileHandle);
     if (!EFI_ERROR (Status)) {
-      //
-      // Find MmCore FileHandle in this volume, then we skip other firmware volume and
-      // return the FileHandle. Search Section now.
-      //
-      Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
+      ASSERT (FileHandle != NULL);
+      if (FileHandle != NULL) {
+        CopyGuid (MmCoreFileName, &((EFI_FFS_FILE_HEADER *)FileHandle)->Name);
+        DEBUG ((DEBUG_INFO, "Mm core has file name as %g\n", MmCoreFileName));
+        //
+        // Find MmCore FileHandle in this volume, then we skip other firmware volume and
+        // return the FileHandle. Search Section now.
+        //
+        Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
+        if (EFI_ERROR (Status)) {
+          break;
+        }
 
-      return EFI_SUCCESS;
-      break;
+        return EFI_SUCCESS;
+      }
     }
 
     //
@@ -491,6 +501,7 @@ ExecuteMmCoreFromMmram (
   UINTN                                 PageCount;
   STANDALONE_MM_FOUNDATION_ENTRY_POINT  EntryPoint;
   VOID                                  *HobStart;
+  EFI_GUID                              MmCoreFileName;
 
   DEBUG ((DEBUG_INFO, "%a Enters...\n", __func__));
   //
@@ -498,7 +509,7 @@ ExecuteMmCoreFromMmram (
   //
   SourceBuffer = NULL;
   // MU_CHANGE: The MM core address found routine is updated with PEI services
-  Status = MmIplPeiFindMmCore (&SourceBuffer);
+  Status = MmIplPeiFindMmCore (&SourceBuffer, &MmCoreFileName);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __func__, Status));
     goto Exit;
@@ -572,7 +583,7 @@ ExecuteMmCoreFromMmram (
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
 
       BuildModuleHob (
-        &gMmSupervisorCoreGuid,
+        &MmCoreFileName,
         ImageContext.ImageAddress,
         (UINT64)EFI_PAGES_TO_SIZE (PageCount),
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
