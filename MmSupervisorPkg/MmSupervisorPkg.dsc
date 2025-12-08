@@ -128,9 +128,9 @@
 [Components]
   MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
   MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
-
-[Components.IA32]
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
+
+  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
 
