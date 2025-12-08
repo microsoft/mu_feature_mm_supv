@@ -118,8 +118,6 @@ STATIC EFI_PEI_PPI_DESCRIPTOR  mPeiMmIplPpiList[] =
 // SMM IPL global variables
 //
 EFI_PEI_MM_CONTROL_PPI  *mSmmControl;
-EFI_PEI_MM_ACCESS_PPI   *mSmmAccess;
-EFI_MMRAM_DESCRIPTOR    *mCurrentMmramRange;
 EFI_PHYSICAL_ADDRESS    mMmramCacheBase;
 UINT64                  mMmramCacheSize;
 
@@ -211,9 +209,9 @@ MmDriverDispatchNotify (
   mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
 
   //
-  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
-  // Clear the buffer passed into the Software SMI.  This buffer will return
-  // the status of the SMM Core Dispatcher.
+  // This is actually an empty payload command, but the EFI_MM_COMMUNICATE_HEADER structure
+  // comes with a payload of at least one byte. So we set the MessageLength to 1 and
+  // the first byte to 0.
   //
   CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
   mCommunicateHeader->MessageLength = 1;
@@ -269,11 +267,7 @@ MmPeiSupportEntry (
   )
 {
   EFI_STATUS  Status;
-  UINTN       Index;
-  UINT64      MaxSize;
   UINTN       Size;
-  UINTN       MmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
@@ -292,18 +286,6 @@ MmPeiSupportEntry (
   }
 
   //
-  // Get SMM Access PPI
-  //
-  Status = (*PeiServices)->LocatePpi (
-                             PeiServices,
-                             &gEfiPeiMmAccessPpiGuid,
-                             0,
-                             NULL,
-                             (VOID **)&mSmmAccess
-                             );
-  ASSERT_EFI_ERROR (Status);
-
-  //
   // Get SMM Control PPI
   //
   Status = (*PeiServices)->LocatePpi (
@@ -314,102 +296,6 @@ MmPeiSupportEntry (
                              (VOID **)&mSmmControl
                              );
   ASSERT_EFI_ERROR (Status);
-
-  //
-  // Open all SMRAM ranges
-  //
-  // MU_CHANGE Starts: Need to iterate through all MMRAMs to open one at a time for PPI interface
-  Size   = 0;
-  Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, NULL);
-  if (Status != EFI_BUFFER_TOO_SMALL) {
-    // This is not right...
-    ASSERT (FALSE);
-    return EFI_DEVICE_ERROR;
-  }
-
-  MmramRanges = AllocatePool (Size);
-  if (MmramRanges == NULL) {
-    ASSERT (MmramRanges != NULL);
-    return EFI_OUT_OF_RESOURCES;
-  }
-
-  Status = mSmmAccess->GetCapabilities ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, &Size, MmramRanges);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "SMM IPL failed to get SMRAM capabilities - %r\n", Status));
-    ASSERT (FALSE);
-    return Status;
-  }
-
-  MmramRangeCount = Size / sizeof (EFI_MMRAM_DESCRIPTOR);
-  // MU_CHANGE Ends
-
-  //
-  // Find the largest SMRAM range between 1MB and 4GB that is at least 256KB - 4K in size
-  //
-  mCurrentMmramRange = NULL;
-  for (Index = 0, MaxSize = SIZE_256KB - EFI_PAGE_SIZE; (UINT64)Index < MmramRangeCount; Index++) {
-    //
-    // Skip any SMRAM region that is already allocated, needs testing, or needs ECC initialization
-    //
-    if ((MmramRanges[Index].RegionState & (EFI_ALLOCATED | EFI_NEEDS_TESTING | EFI_NEEDS_ECC_INITIALIZATION)) != 0) {
-      continue;
-    }
-
-    if (MmramRanges[Index].CpuStart >= BASE_1MB) {
-      if ((MmramRanges[Index].CpuStart + MmramRanges[Index].PhysicalSize - 1) <= MAX_ADDRESS) {
-        if (MmramRanges[Index].PhysicalSize >= MaxSize) {
-          MaxSize            = MmramRanges[Index].PhysicalSize;
-          mCurrentMmramRange = &MmramRanges[Index];
-        }
-      }
-    }
-  }
-
-  //
-  // Close all SMRAM ranges
-  //
-  // MU_CHANGE: Iterate through each MMRAM for PPI instance
-  for (Index = 0; Index < MmramRangeCount; Index++) {
-    Status = mSmmAccess->Close ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "SMM IPL failed to close SMRAM windows index %d - %r\n", Index, Status));
-      ASSERT (FALSE);
-      return Status;
-    }
-
-    //
-    // Print debug message that the SMRAM window is now closed.
-    //
-    DEBUG ((DEBUG_INFO, "MM IPL closed SMRAM window index %d\n", Index));
-  }
-
-  // MU_CHANGE: MM_SUPV: Locked immediately after closing instead of waiting for ready to lock event
-  //
-  // Lock the SMRAM (Note: Locking SMRAM may not be supported on all platforms)
-  //
-  for (Index = 0; Index < MmramRangeCount; Index++) {
-    Status = mSmmAccess->Lock ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
-    if (EFI_ERROR (Status)) {
-      //
-      // Print error message that the SMRAM failed to lock...
-      //
-      DEBUG ((DEBUG_ERROR, "MM IPL could not lock MMRAM (Index %d) after executing MM Core %r\n", Index, Status));
-      ASSERT (FALSE);
-      return Status;
-    }
-
-    //
-    // Print debug message that the SMRAM window is now closed.
-    //
-    DEBUG ((DEBUG_INFO, "MM IPL locked SMRAM window index %d\n", Index));
-  }
-
-  SECURITY_LOCK_REPORT_EVENT ("Lock MMRAM", HARDWARE_LOCK); // MSCHANGE
-
-  //
-  // Print debug message that the SMRAM window is now locked.
-  //
-  DEBUG ((DEBUG_INFO, "SMM IPL locked SMRAM window\n"));
 
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail after setup.
   Status = QuerySupervisorVersion (&VersionInfo);
@@ -424,19 +310,6 @@ MmPeiSupportEntry (
   if (!EFI_ERROR (Status)) {
     Status = MmDriverDispatchNotify ();
     DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
-  }
-
-  //
-  // If the SMM Core could not be loaded then close SMRAM window, free allocated
-  // resources, and return an error so SMM IPL will be unloaded.
-  //
-  if ((mCurrentMmramRange == NULL) || EFI_ERROR (Status)) {
-    //
-    // Free all allocated resources
-    //
-    FreePool ((VOID *)MmramRanges);
-
-    return EFI_UNSUPPORTED;
   }
 
   //

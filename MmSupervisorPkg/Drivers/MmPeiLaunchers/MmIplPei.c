@@ -20,8 +20,6 @@
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/EventGroup.h>
-#include <Guid/LoadModuleAtFixedAddress.h>
-#include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
 #include <Guid/MmramMemoryReserve.h>
 
 #include <Library/BaseLib.h>
@@ -79,9 +77,6 @@ SmmCommunicationCommunicate (
   This is the callback function on end of PEI.
 
   This callback is used for call MmEndOfPeiHandler in standalone MM core.
-
-  This callback is used for call MmEndOfPeiHandler in standalone MM core.
-
 
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
@@ -1032,6 +1027,50 @@ MmIplPeiEntry (
     //
     DEBUG ((DEBUG_ERROR, "SMM IPL could not find a large enough SMRAM region to load SMM Core\n"));
   }
+
+  //
+  // Close all SMRAM ranges
+  //
+  // MU_CHANGE: Iterate through each MMRAM for PPI instance
+  for (Index = 0; Index < MmramRangeCount; Index++) {
+    Status = mSmmAccess->Close ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "SMM IPL failed to close SMRAM windows index %d - %r\n", Index, Status));
+      ASSERT (FALSE);
+    }
+
+    //
+    // Print debug message that the SMRAM window is now closed.
+    //
+    DEBUG ((DEBUG_INFO, "MM IPL closed SMRAM window index %d\n", Index));
+  }
+
+  // MU_CHANGE: MM_SUPV: Locked immediately after closing instead of waiting for ready to lock event
+  //
+  // Lock the SMRAM (Note: Locking SMRAM may not be supported on all platforms)
+  //
+  for (Index = 0; Index < MmramRangeCount; Index++) {
+    Status = mSmmAccess->Lock ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
+    if (EFI_ERROR (Status)) {
+      //
+      // Print error message that the SMRAM failed to lock...
+      //
+      DEBUG ((DEBUG_ERROR, "MM IPL could not lock MMRAM (Index %d) after executing MM Core %r\n", Index, Status));
+      ASSERT (FALSE);
+    }
+
+    //
+    // Print debug message that the SMRAM window is now closed.
+    //
+    DEBUG ((DEBUG_INFO, "MM IPL locked SMRAM window index %d\n", Index));
+  }
+
+  SECURITY_LOCK_REPORT_EVENT ("Lock MMRAM", HARDWARE_LOCK); // MSCHANGE
+
+  //
+  // Print debug message that the SMRAM window is now locked.
+  //
+  DEBUG ((DEBUG_INFO, "SMM IPL locked SMRAM window\n"));
 
   //
   // If the SMM Core could not be loaded then close SMRAM window, free allocated
