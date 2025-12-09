@@ -226,7 +226,7 @@
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
   gMmProtectedRegionHobGuid                     ## SOMETIMES_CONSUMES
-  gMmUnblockRegionHobGuid                       ## SOMETIMES_CONSUMES
+  gMmSupvUnblockRegionHobGuid                   ## SOMETIMES_CONSUMES
   gMmSupervisorCoreGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol

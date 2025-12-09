@@ -14,7 +14,7 @@
 #include <Uefi.h>
 
 #include <Guid/MmSupervisorRequestData.h>
-#include <Guid/MmUnblockRegion.h>
+#include <Guid/MmSupvUnblockRegion.h>
 #include <Ppi/MmSupervisorCommunication.h>
 
 #include <Library/HobLib.h>
@@ -65,7 +65,7 @@ MmUnblockMemoryRequest (
   }
 
   // Build the GUID'd HOB for MmCore
-  MmSupvUnblockMemoryHob = BuildGuidHob (&gMmUnblockRegionHobGuid, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
+  MmSupvUnblockMemoryHob = BuildGuidHob (&gMmSupvUnblockRegionHobGuid, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
 
   if (MmSupvUnblockMemoryHob == NULL) {
     DEBUG ((DEBUG_ERROR, "%a Failed to allocate hob for unblocked data parameter!!\n", __FUNCTION__));
