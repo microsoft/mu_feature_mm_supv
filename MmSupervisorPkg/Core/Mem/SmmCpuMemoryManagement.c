@@ -9,7 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <SmmSecurePolicy.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/MmProtectedRegion.h>
-#include <Guid/MmUnblockRegion.h>
+#include <Guid/MmSupvUnblockRegion.h>
 #include <Guid/MmSupervisorRequestData.h>
 #include <Protocol/MpService.h>
 #include <Protocol/SmmConfiguration.h>
@@ -2450,7 +2450,7 @@ SetUnblockRegionAttribute (
 
   DEBUG ((DEBUG_INFO, "%a - Entry...\n", __func__));
   Status       = EFI_SUCCESS;
-  GuidHob.Guid = GetFirstGuidHob (&gMmUnblockRegionHobGuid);
+  GuidHob.Guid = GetFirstGuidHob (&gMmSupvUnblockRegionHobGuid);
   while (GuidHob.Guid != NULL) {
     UnblockRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
     Status           = ProcessUnblockPages (UnblockRegionHob);
@@ -2460,7 +2460,7 @@ SetUnblockRegionAttribute (
     }
 
     GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmUnblockRegionHobGuid, GuidHob.Guid);
+    GuidHob.Guid = GetNextGuidHob (&gMmSupvUnblockRegionHobGuid, GuidHob.Guid);
   }
 
   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
