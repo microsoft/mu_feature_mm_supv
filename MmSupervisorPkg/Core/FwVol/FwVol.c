@@ -120,7 +120,7 @@ Returns:
              EFI_SIZE_TO_PAGES (TotalSize),
              (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
              );
-  DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __FUNCTION__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
+  DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __func__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
     goto Done;

@@ -74,7 +74,7 @@ PrepareNReportError (
       DEFAULT_SUPV_TO_USER_BUFFER_PAGE)
   {
     // Cannot fit in the pages we allocated for supervisor to fill in data
-    DEBUG ((DEBUG_INFO, "%a Cannot fit in supervisor allocated user pages:\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Cannot fit in supervisor allocated user pages:\n", __func__));
     DEBUG ((DEBUG_INFO, "\t Common data size: %x\n", sizeof (MM_SUPV_TELEMETRY_DATA)));
     DEBUG ((DEBUG_INFO, "\t Telemetry data size: %x\n", TelemtryData->TelemetrySize));
     Status = EFI_OUT_OF_RESOURCES;
@@ -91,13 +91,13 @@ PrepareNReportError (
     // Attempting to execute code outside of MMRAM, do not run driver look up routines
     DriverAddr                      = PeCoffSearchImageBase (FaultRIP);
     TelemtryData->DriverLoadAddress = DriverAddr;
-    DEBUG ((DEBUG_INFO, "%a Loaded image is calculated to be: %p from caller address: %p\n", __FUNCTION__, DriverAddr, FaultRIP));
+    DEBUG ((DEBUG_INFO, "%a Loaded image is calculated to be: %p from caller address: %p\n", __func__, DriverAddr, FaultRIP));
 
     Status = FindFileNameFromDiscoveredList (DriverAddr, &DriverGuid);
     if (!EFI_ERROR (Status)) {
       CopyMem (&TelemtryData->DriverId, &DriverGuid, sizeof (EFI_GUID));
     } else {
-      DEBUG ((DEBUG_ERROR, "%a Cannot locate the file name from loaded image address: %p... - %r\n", __FUNCTION__, DriverAddr, Status));
+      DEBUG ((DEBUG_ERROR, "%a Cannot locate the file name from loaded image address: %p... - %r\n", __func__, DriverAddr, Status));
       goto Done;
     }
   } else {
@@ -108,7 +108,7 @@ PrepareNReportError (
   // Then figure out the CpuIndex
   Status = SmmWhoAmI (&mSmmCpuService, &CpuIndex);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Cannot locate the CpuIndex, bail here... - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Cannot locate the CpuIndex, bail here... - %r\n", __func__, Status));
     goto Done;
   }
 
@@ -117,7 +117,7 @@ PrepareNReportError (
              CpuIndex,
              SupervisorToUserDataBuffer + 1
              );
-  DEBUG ((DEBUG_INFO, "%a Error report returned... - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a Error report returned... - %r\n", __func__, Status));
 
 Done:
   // This is the end of it.
@@ -144,7 +144,7 @@ SmmSupervisorMiscExceptionHandler (
 
   Status = SmmWhoAmI (NULL, &CpuIndex);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a Don't even know who I am... Can't continue...\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Don't even know who I am... Can't continue...\n", __func__));
     goto HaltOrReboot;
   }
 
@@ -178,14 +178,14 @@ SmmSupervisorMiscExceptionHandler (
 
   Status = PrepareNReportError (InterruptType, SystemContext);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a MM Supervisor error reporting failed - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_INFO, "%a MM Supervisor error reporting failed - %r!!!\n", __func__, Status));
   }
 
   ReleaseSpinLock (mCpuExceptionToken);
 
 HaltOrReboot:
   if (mSmmRebootOnException) {
-    DEBUG ((DEBUG_ERROR, "%a - Reboot here in test mode.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Reboot here in test mode.\n", __func__));
     ResetWarm ();
   }
 
@@ -251,7 +251,7 @@ CoalesceLooseExceptionHandlers (
 
   Status = InitExceptionHandlerSpinLock ();
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Initialize exception handler spin lock failed %r!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Initialize exception handler spin lock failed %r!\n", __func__, Status));
     goto Exit;
   }
 
@@ -261,11 +261,11 @@ CoalesceLooseExceptionHandlers (
     // Here is to fill in all the empty exception handlers with supervisor version
     Status = SmmRegisterExceptionHandler (&mSmmCpuService, Index, (EFI_CPU_INTERRUPT_HANDLER)SmmSupervisorMiscExceptionHandler);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Registering failed with error %r!\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Registering failed with error %r!\n", __func__, Status));
       ASSERT (FALSE);
       break;
     } else {
-      DEBUG ((DEBUG_INFO, "%a Registering returned %r.\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_INFO, "%a Registering returned %r.\n", __func__, Status));
     }
   }
 

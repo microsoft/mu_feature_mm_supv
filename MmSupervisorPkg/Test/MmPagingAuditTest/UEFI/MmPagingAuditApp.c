@@ -102,7 +102,7 @@ SmmLoadedImageTableDump (
   UINTN                                 Index;
   CHAR8                                 TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -111,7 +111,7 @@ SmmLoadedImageTableDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_MISC_DATA_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -193,7 +193,7 @@ SmmSmiEntryDump (
   UINTN                                 Index;
   CHAR8                                 TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -202,7 +202,7 @@ SmmSmiEntryDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_SMI_ENTRY_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -309,7 +309,7 @@ SmmUnblockedRegionsDump (
   UINTN                                      Index;
   CHAR8                                      TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -318,7 +318,7 @@ SmmUnblockedRegionsDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_UNBLOCK_REGION_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -408,7 +408,7 @@ SmmPageTableEntriesDump (
   PAGE_TABLE_ENTRY                        *Pte2MEntries = NULL;
   PAGE_TABLE_4K_ENTRY                     *Pte4KEntries = NULL;
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -417,7 +417,7 @@ SmmPageTableEntriesDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_TABLE_ENTRY_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -450,7 +450,7 @@ SmmPageTableEntriesDump (
                                  &BufferSize
                                  );
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - SmmCommunication errored - %r.\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a - SmmCommunication errored - %r.\n", __func__, Status));
       goto Cleanup;
     }
 
@@ -462,7 +462,7 @@ SmmPageTableEntriesDump (
       NewSize      = NewCount * sizeof (PAGE_TABLE_1G_ENTRY);
       Pte1GEntries = ReallocatePool (Pte1GCount * sizeof (PAGE_TABLE_1G_ENTRY), NewSize, Pte1GEntries);
       if (Pte1GEntries == NULL) {
-        DEBUG ((DEBUG_ERROR, "%a - 1G entries not allocated.\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - 1G entries not allocated.\n", __func__));
         goto Cleanup;
       }
 
@@ -475,7 +475,7 @@ SmmPageTableEntriesDump (
       NewSize      = NewCount * sizeof (PAGE_TABLE_ENTRY);
       Pte2MEntries = ReallocatePool (Pte2MCount * sizeof (PAGE_TABLE_ENTRY), NewSize, Pte2MEntries);
       if (Pte2MEntries == NULL) {
-        DEBUG ((DEBUG_ERROR, "%a - 2M entries not allocated.\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - 2M entries not allocated.\n", __func__));
         goto Cleanup;
       }
 
@@ -488,7 +488,7 @@ SmmPageTableEntriesDump (
       NewSize      = NewCount * sizeof (PAGE_TABLE_4K_ENTRY);
       Pte4KEntries = ReallocatePool (Pte4KCount * sizeof (PAGE_TABLE_4K_ENTRY), NewSize, Pte4KEntries);
       if (Pte4KEntries == NULL) {
-        DEBUG ((DEBUG_ERROR, "%a - 4K entries not allocated.\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - 4K entries not allocated.\n", __func__));
         goto Cleanup;
       }
 
@@ -554,7 +554,7 @@ SmmGuardPageEntriesDump (
   UINT64                                  *GuardEntries = NULL;
   CHAR8                                   TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -563,7 +563,7 @@ SmmGuardPageEntriesDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_GUARD_ENTRY_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -596,7 +596,7 @@ SmmGuardPageEntriesDump (
                                  &BufferSize
                                  );
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - SmmCommunication errored - %r.\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a - SmmCommunication errored - %r.\n", __func__, Status));
       goto Cleanup;
     }
 
@@ -608,7 +608,7 @@ SmmGuardPageEntriesDump (
       NewSize      = NewCount * sizeof (UINT64);
       GuardEntries = ReallocatePool (GuardCount * sizeof (UINT64), NewSize, GuardEntries);
       if (GuardEntries == NULL) {
-        DEBUG ((DEBUG_ERROR, "%a - Guard pages not allocated.\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - Guard pages not allocated.\n", __func__));
         goto Cleanup;
       }
 
@@ -627,7 +627,7 @@ SmmGuardPageEntriesDump (
       "GuardPage,0x%016lx\n",
       GuardEntries[i]
       );
-    DEBUG ((DEBUG_ERROR, "%a  %s\n", __FUNCTION__, TempString));
+    DEBUG ((DEBUG_ERROR, "%a  %s\n", __func__, TempString));
     AppendToMemoryInfoDatabase (TempString);
   }
 
@@ -670,7 +670,7 @@ SmmPdeEntriesDump (
   UINTN                                 Index;
   CHAR8                                 TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Check to make sure we have what we need.
@@ -679,7 +679,7 @@ SmmPdeEntriesDump (
                   sizeof (SMM_PAGE_AUDIT_COMM_HEADER) +
                   sizeof (SMM_PAGE_AUDIT_PDE_ENTRY_COMM_BUFFER);
   if ((SmmCommunication == NULL) || (CommBufferBase == NULL) || (CommBufferSize < MinBufferSize)) {
-    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Bad parameters. This shouldn't happen.\n", __func__));
     return;
   }
 
@@ -757,19 +757,19 @@ SmmMemoryProtectionsDxeToSmmCommunicate (
   UINTN                                 MinBufferSize, BufferSize;
   CHAR8                                 TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Make sure that we have access to a buffer that seems to be sufficient to do everything we need to do.
   //
   if (mPiSmmCommonCommBufferAddress == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer not found!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer not found!\n", __func__));
     return EFI_ABORTED;
   }
 
   MinBufferSize = OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data) + sizeof (SMM_PAGE_AUDIT_UNIFIED_COMM_BUFFER);
   if (MinBufferSize > mPiSmmCommonCommBufferSize) {
-    DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer is too small\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Communication mBuffer is too small\n", __func__));
     return EFI_BUFFER_TOO_SMALL;
   }
 
@@ -948,14 +948,14 @@ LocateSmmCommonCommBuffer (
   if (mPiSmmCommonCommBufferAddress == NULL) {
     Status = EfiGetSystemConfigurationTable (&gMmSupervisorCommunicationRegionTableGuid, (VOID **)&PiSmmCommunicationRegionTable);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Failed to get system configuration table %r\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Failed to get system configuration table %r\n", __func__, Status));
       return Status;
     }
 
     Status = EFI_BAD_BUFFER_SIZE;
 
     DesiredBufferSize = sizeof (SMM_PAGE_AUDIT_UNIFIED_COMM_BUFFER);
-    DEBUG ((DEBUG_ERROR, "%a desired comm buffer size %ld\n", __FUNCTION__, DesiredBufferSize));
+    DEBUG ((DEBUG_ERROR, "%a desired comm buffer size %ld\n", __func__, DesiredBufferSize));
     BufferSize       = 0;
     SmmCommMemRegion = (EFI_MEMORY_DESCRIPTOR *)(PiSmmCommunicationRegionTable + 1);
     for (Index = 0; Index < PiSmmCommunicationRegionTable->NumberOfEntries; Index++) {
@@ -1065,7 +1065,7 @@ CreateAndWriteFileSFS (
   EFI_STATUS  Status      = EFI_SUCCESS;
   EFI_FILE    *FileHandle = NULL;
 
-  DEBUG ((DEBUG_ERROR, "%a: Creating file: %s \n", __FUNCTION__, FileName));
+  DEBUG ((DEBUG_ERROR, "%a: Creating file: %s \n", __func__, FileName));
 
   // Create the file with RW permissions.
   //
@@ -1078,7 +1078,7 @@ CreateAndWriteFileSFS (
                         );
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: Failed to create file %s: %r !\n", __FUNCTION__, FileName, Status));
+    DEBUG ((DEBUG_ERROR, "%a: Failed to create file %s: %r !\n", __func__, FileName, Status));
     goto CleanUp;
   }
 
@@ -1091,7 +1091,7 @@ CreateAndWriteFileSFS (
                          );
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: Failed to write to file %s: %r !\n", __FUNCTION__, FileName, Status));
+    DEBUG ((DEBUG_ERROR, "%a: Failed to write to file %s: %r !\n", __func__, FileName, Status));
     goto CleanUp;
   }
 
@@ -1129,7 +1129,7 @@ WriteBufferToFile (
   if (mFs_Handle == NULL) {
     Status = OpenVolumeSFS (&mFs_Handle);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a error opening sfs volume - %r\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a error opening sfs volume - %r\n", __func__, Status));
       return;
     }
   }
@@ -1139,7 +1139,7 @@ WriteBufferToFile (
   UnicodeSPrint (FileNameAndExt, MAX_STRING_SIZE, L"%s.dat", FileName);
 
   Status = CreateAndWriteFileSFS (mFs_Handle, FileNameAndExt, BufferSize, Buffer);
-  DEBUG ((DEBUG_ERROR, "%a Writing file %s - %r\n", __FUNCTION__, FileNameAndExt, Status));
+  DEBUG ((DEBUG_ERROR, "%a Writing file %s - %r\n", __func__, FileNameAndExt, Status));
 }
 
 /**
@@ -1171,7 +1171,7 @@ MemoryAttributesTableDump (
   Status = EfiGetSystemConfigurationTable (&gEfiMemoryAttributesTableGuid, (VOID **)&MatMap);
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to retrieve MAT %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to retrieve MAT %r\n", __func__, Status));
     return;
   }
 
@@ -1191,7 +1191,7 @@ MemoryAttributesTableDump (
   BufferSize = (EntryCount * FormattedStringSize) + sizeof (CHAR8);
   Buffer     = AllocatePool (BufferSize);
   if (!Buffer) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for data dump!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for data dump!\n", __func__));
     return;
   }
 
@@ -1243,7 +1243,7 @@ MemoryMapDumpHandler (
   EFI_MEMORY_DESCRIPTOR  *EfiMemNext;
   CHAR8                  TempString[MAX_STRING_SIZE];
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // Get the EFI memory map.
@@ -1320,7 +1320,7 @@ LoadedImageTableDump (
   CHAR8                              TempString[MAX_STRING_SIZE];
   EFI_GUID                           FileGuid;
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // locate DebugImageInfoTable
@@ -1334,7 +1334,7 @@ LoadedImageTableDump (
   Table     = TableHeader->EfiDebugImageInfoTable;
   TableSize = TableHeader->TableSize;
 
-  DEBUG ((DEBUG_VERBOSE, "%a\n\nLength %lx Start x0x%016lx\n\n", __FUNCTION__, TableHeader->TableSize, Table));
+  DEBUG ((DEBUG_VERBOSE, "%a\n\nLength %lx Start x0x%016lx\n\n", __func__, TableHeader->TableSize, Table));
 
   for (Index = 0; Index < TableSize; Index++) {
     if (Table[Index].NormalImage == NULL) {
@@ -1421,7 +1421,7 @@ OpenVolumeSFS (
                   );
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: failed to locate all handles using the Simple FS protocol (%r)\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a: failed to locate all handles using the Simple FS protocol (%r)\n", __func__, Status));
     goto CleanUp;
   }
 
@@ -1445,7 +1445,7 @@ OpenVolumeSFS (
     // Convert the device path to a string to print it.
     //
     PathNameStr = ConvertDevicePathToText (DevicePath, TRUE, TRUE);
-    DEBUG ((DEBUG_ERROR, "%a: device path %d -> %s\n", __FUNCTION__, Index, PathNameStr));
+    DEBUG ((DEBUG_ERROR, "%a: device path %d -> %s\n", __func__, Index, PathNameStr));
 
     //
     // Check if this is a block IO device path. If it is not, keep searching.
@@ -1459,7 +1459,7 @@ OpenVolumeSFS (
                     );
 
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a: not a block IO device path\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a: not a block IO device path\n", __func__));
       continue;
     }
 
@@ -1498,7 +1498,7 @@ OpenVolumeSFS (
     // If we found a good device path, stop searching.
     //
     if (Found) {
-      DEBUG ((DEBUG_ERROR, "%a: found GPT partition Index:%d\n", __FUNCTION__, Index));
+      DEBUG ((DEBUG_ERROR, "%a: found GPT partition Index:%d\n", __func__, Index));
       break;
     }
   }
@@ -1518,7 +1518,7 @@ OpenVolumeSFS (
                   );
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: Failed to locate Simple FS protocol using the handle to fs0: %r \n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a: Failed to locate Simple FS protocol using the handle to fs0: %r \n", __func__, Status));
     goto CleanUp;
   }
 
@@ -1527,7 +1527,7 @@ OpenVolumeSFS (
   //
   Status = SfProtocol->OpenVolume (SfProtocol, Fs_Handle);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a: Failed to open Simple FS volume fs0: %r \n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a: Failed to open Simple FS volume fs0: %r \n", __func__, Status));
     goto CleanUp;
   }
 
@@ -1562,13 +1562,13 @@ MmPagingAuditAppEntryPoint (
   MemoryAttributesTableDump ();
 
   if (EFI_ERROR (LocateSmmCommonCommBuffer ())) {
-    DEBUG ((DEBUG_ERROR, "%a Comm buffer setup failed\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Comm buffer setup failed\n", __func__));
     return EFI_ABORTED;
   }
 
   SmmMemoryProtectionsDxeToSmmCommunicate ();
 
-  DEBUG ((DEBUG_INFO, "%a the app's done!\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a the app's done!\n", __func__));
 
   return EFI_SUCCESS;
 } // MmPagingAuditAppEntryPoint()

@@ -149,7 +149,7 @@ SmmLoadedImageTableDump (
 
       ImageName = PeCoffLoaderGetPdbPointer (LoadedImage->ImageBase);
       if (ImageName == NULL) {
-        DEBUG ((DEBUG_WARN, "%a The image of interest (0x%p) does not have a name.\n", __FUNCTION__, LoadedImage->ImageBase));
+        DEBUG ((DEBUG_WARN, "%a The image of interest (0x%p) does not have a name.\n", __func__, LoadedImage->ImageBase));
       }
 
       AsciiStrnCpyS (
@@ -517,7 +517,7 @@ LoadFlatPageTableData (
   EFI_STATUS  Status;
 
   // Run once to get counts.
-  DEBUG ((DEBUG_INFO, "%a - First call to determine required buffer sizes.\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - First call to determine required buffer sizes.\n", __func__));
   *Pte1GCount = 0;
   *Pte2MCount = 0;
   *Pte4KCount = 0;
@@ -541,16 +541,16 @@ LoadFlatPageTableData (
 
     // Check for errors.
     if ((*Pte1GEntries == NULL) || (*Pte2MEntries == NULL) || (*Pte4KEntries == NULL) || (*PdeEntries == NULL) || (*GuardEntries == NULL)) {
-      DEBUG ((DEBUG_ERROR, "%a - Ran out of resource during allocation.\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a - Ran out of resource during allocation.\n", __func__));
       Status = EFI_OUT_OF_RESOURCES;
     }
   } else {
-    DEBUG ((DEBUG_ERROR, "%a - Get page table data failed - %r.\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Get page table data failed - %r.\n", __func__, Status));
   }
 
   // If still good, grab the data.
   if (!EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a - Second call to grab the data.\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a - Second call to grab the data.\n", __func__));
     Status = GetFlatPageTableData (
                Pte1GCount,
                Pte2MCount,
@@ -627,13 +627,13 @@ SmmPagingAuditHandler (
   UINTN                               Index;
   UINTN                               CopyCount;
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   //
   // If input is invalid, stop processing this SMI
   //
   if ((CommBuffer == NULL) || (CommBufferSize == NULL)) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad pointers!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
@@ -641,7 +641,7 @@ SmmPagingAuditHandler (
   // Make sure that the buffer size makes sense for any of the possible calls.
   //
   if (*CommBufferSize < sizeof (SMM_PAGE_AUDIT_UNIFIED_COMM_BUFFER)) {
-    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad size!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Invalid comm buffer! Bad size!\n", __func__));
     return EFI_ACCESS_DENIED;
   }
 
@@ -653,11 +653,11 @@ SmmPagingAuditHandler (
   // This upper limit is somewhat arbitrary, currently capped at MAX_SMI_CALL_COUNT,
   // in order to prevent overflow on x86 or x64 systems during related multiplications
   if (AuditCommBuffer->Header.RequestIndex > MAX_SMI_CALL_COUNT) {
-    DEBUG ((DEBUG_ERROR, "%a - RequestIndex %d > MAX_SMI_CALL_COUNT!\n", __FUNCTION__, AuditCommBuffer->Header.RequestIndex));
+    DEBUG ((DEBUG_ERROR, "%a - RequestIndex %d > MAX_SMI_CALL_COUNT!\n", __func__, AuditCommBuffer->Header.RequestIndex));
     return EFI_INVALID_PARAMETER;
   }
 
-  DEBUG ((DEBUG_INFO, "%a - RequestIndex %d !\n", __FUNCTION__, AuditCommBuffer->Header.RequestIndex));
+  DEBUG ((DEBUG_INFO, "%a - RequestIndex %d !\n", __func__, AuditCommBuffer->Header.RequestIndex));
   //
   // If this call will need cached data, load that now.
   //
@@ -680,7 +680,7 @@ SmmPagingAuditHandler (
     }
 
     if (!mPageTableDataLoaded) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to load page table data!\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to load page table data!\n", __func__));
       return EFI_ABORTED;
     }
   }
@@ -690,7 +690,7 @@ SmmPagingAuditHandler (
   //
   switch (AuditCommBuffer->Header.RequestType) {
     case SMM_PAGE_AUDIT_TABLE_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting page tables.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Getting page tables.\n", __func__));
       // Init defaults.
       ZeroMem (&AuditCommBuffer->Data.TableEntry, sizeof (AuditCommBuffer->Data.TableEntry));
       // Copy 1G Table Entries.
@@ -735,7 +735,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_GUARD_PAGE_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting guard page entries.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Getting guard page entries.\n", __func__));
       // Init defaults.
       ZeroMem (&AuditCommBuffer->Data.GuardPages, sizeof (AuditCommBuffer->Data.GuardPages));
       // Copy Guard Page Entries.
@@ -754,7 +754,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_PDE_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting page directories.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Getting page directories.\n", __func__));
       // Init defaults.
       ZeroMem (&AuditCommBuffer->Data.PdeEntry, sizeof (AuditCommBuffer->Data.PdeEntry));
       // Copy PDE Entries.
@@ -773,7 +773,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_MISC_DATA_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting misc info run #%d\n", __FUNCTION__, AuditCommBuffer->Header.RequestIndex));
+      DEBUG ((DEBUG_INFO, "%a - Getting misc info run #%d\n", __func__, AuditCommBuffer->Header.RequestIndex));
       BitwidthDumpHandler (&AuditCommBuffer->Data.MiscData);
       IdtDumpHandler (&AuditCommBuffer->Data.MiscData);
       SmmLoadedImageTableDump (AuditCommBuffer->Header.RequestIndex, &AuditCommBuffer->Data.MiscData);
@@ -782,7 +782,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_CLEAR_DATA_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Clearing cached data.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Clearing cached data.\n", __func__));
       // Reset all of the cached data.
       FreePool (mPte1GEntries);
       mPte1GEntries = NULL;
@@ -803,7 +803,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_SMI_ENTRY_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting SMI entry information.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Getting SMI entry information.\n", __func__));
       // Init defaults.
       ZeroMem (&AuditCommBuffer->Data.SmiEntry, sizeof (AuditCommBuffer->Data.SmiEntry));
       // Populate the tile size before dispatching per core routine
@@ -832,7 +832,7 @@ SmmPagingAuditHandler (
       break;
 
     case SMM_PAGE_AUDIT_UNBLOCKED_REQUEST:
-      DEBUG ((DEBUG_INFO, "%a - Getting unblocked entries.\n", __FUNCTION__));
+      DEBUG ((DEBUG_INFO, "%a - Getting unblocked entries.\n", __func__));
       // Init defaults.
       ZeroMem (&AuditCommBuffer->Data.UnblockedRegion, sizeof (AuditCommBuffer->Data.UnblockedRegion));
       // Copy PDE Entries.
@@ -848,7 +848,7 @@ SmmPagingAuditHandler (
       break;
 
     default:
-      DEBUG ((DEBUG_ERROR, "%a - Unknown request type! 0x%02X\n", __FUNCTION__, AuditCommBuffer->Header.RequestType));
+      DEBUG ((DEBUG_ERROR, "%a - Unknown request type! 0x%02X\n", __func__, AuditCommBuffer->Header.RequestType));
       Status = EFI_ACCESS_DENIED;
       break;
   }

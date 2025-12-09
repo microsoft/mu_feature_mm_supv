@@ -1333,7 +1333,7 @@ PatchMmSupervisorCoreRegion (
   //
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
   //
   // The range should have been set to RO/XP based on image record routines
@@ -1342,7 +1342,7 @@ PatchMmSupervisorCoreRegion (
   //
   Status = SmmSetImagePageAttributes (mMmCoreDriverEntry, TRUE);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __func__, Status));
     // We should not continue with this configuration, either hang the system or reboot
     ResetCold ();
     // Should not be here
@@ -1371,7 +1371,7 @@ PatchMmSupervisorCoreRegion (
              EFI_MEMORY_RO | EFI_MEMORY_SP
              );
 
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
 
 VOID
@@ -1384,11 +1384,11 @@ PatchMmUserSpecialPurposeRegion (
   //
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
   // Patch published hob list region to be CPL3, RO and XP
   if ((mMmHobStart == NULL) || (mMmHobSize == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a - Hob is not initialized!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Hob is not initialized!\n", __func__));
     ASSERT (FALSE);
   }
 
@@ -1399,7 +1399,7 @@ PatchMmUserSpecialPurposeRegion (
              );
   ASSERT_EFI_ERROR (Status);
 
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
 
 /**
@@ -1921,7 +1921,7 @@ CoalesceHobMemory (
       DEBUG ((
         DEBUG_INFO,
         "%a - MemoryResource - Start(0x%0lx) Length(0x%0lx) Type(0x%x)\n",
-        __FUNCTION__,
+        __func__,
         ResourceDescriptor->PhysicalStart,
         ResourceDescriptor->ResourceLength,
         ResourceDescriptor->ResourceType
@@ -1950,7 +1950,7 @@ CoalesceHobMemory (
     DEBUG ((
       DEBUG_INFO,
       "%a - MMRAM - Start(0x%0lx) Length(0x%0lx)\n",
-      __FUNCTION__,
+      __func__,
       mMmramRanges[MmIndex].PhysicalStart,
       mMmramRanges[MmIndex].PhysicalSize
       ));
@@ -1990,13 +1990,13 @@ SetNonSmmMemMapAttributes (
   TempBuffer = NULL;
   Status     = CoalesceHobMemory (&TempBuffer, &MemIdx);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Coalesce hob memory overlap failed, unable to proceed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Coalesce hob memory overlap failed, unable to proceed - %r\n", __func__, Status));
     goto Exit;
   }
 
   if ((MemIdx == 0) || (MemIdx & BIT0)) {
     // Should not happen
-    DEBUG ((DEBUG_ERROR, "%a - Memory resources has odd number of ends - 0x%x\n", __FUNCTION__, MemIdx));
+    DEBUG ((DEBUG_ERROR, "%a - Memory resources has odd number of ends - 0x%x\n", __func__, MemIdx));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -2007,7 +2007,7 @@ SetNonSmmMemMapAttributes (
       (TempBuffer[0].Type == SPECIAL_RANGE_END))
   {
     Status = EFI_SECURITY_VIOLATION;
-    DEBUG ((DEBUG_ERROR, "%a - Memory resources starts with 'END' type - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Memory resources starts with 'END' type - %r\n", __func__, Status));
     goto Exit;
   }
 
@@ -2015,7 +2015,7 @@ SetNonSmmMemMapAttributes (
   if (TempBuffer[0].Address != 0) {
     Status = SmmSetMemoryAttributes (0, TempBuffer[0].Address, EFI_MEMORY_RP);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Marking memory region 0 - 0x%x failed - %r\n", __FUNCTION__, TempBuffer[0].Address, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Marking memory region 0 - 0x%x failed - %r\n", __func__, TempBuffer[0].Address, Status));
       goto Exit;
     }
   }
@@ -2036,7 +2036,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - Non-MM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Address,
             TempBuffer[Index-1].Type
@@ -2052,7 +2052,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_INFO,
             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index-1].Address,
             TempBuffer[Index].Address - TempBuffer[Index-1].Address
             ));
@@ -2075,7 +2075,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - MMRAM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Address,
             TempBuffer[Index-1].Type
@@ -2090,7 +2090,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_INFO,
             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index-1].Address,
             TempBuffer[Index].Address - TempBuffer[Index-1].Address
             ));
@@ -2110,7 +2110,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - MMRAM memory region starts with 0x%p clashes with range at index 0x%x before ending!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             Index+1
             ));
@@ -2126,7 +2126,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - MMRAM region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Address,
             TempBuffer[Index-1].Type
@@ -2144,7 +2144,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - DXE memory region ends at 0x%p after unexpected memory resource type %x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Type
             ));
@@ -2161,7 +2161,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_INFO,
             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index-1].Address,
             TempBuffer[Index].Address - TempBuffer[Index-1].Address
             ));
@@ -2188,7 +2188,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - Special region starts at 0x%p has suspicious neighbors of: 1. addr 0x%p, type 0x%x and 2. addr 0x%p, type 0x%x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Address,
             TempBuffer[Index-1].Type,
@@ -2205,7 +2205,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_INFO,
             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index-1].Address,
             TempBuffer[Index].Address - TempBuffer[Index-1].Address
             ));
@@ -2227,7 +2227,7 @@ SetNonSmmMemMapAttributes (
           DEBUG ((
             DEBUG_ERROR,
             "%a - Special region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
-            __FUNCTION__,
+            __func__,
             TempBuffer[Index].Address,
             TempBuffer[Index-1].Address,
             TempBuffer[Index-1].Type
@@ -2241,7 +2241,7 @@ SetNonSmmMemMapAttributes (
         DEBUG ((
           DEBUG_INFO,
           "%a - Mark MMIO Pages - Start(0x%0lx) Length(0x%0lx)\n",
-          __FUNCTION__,
+          __func__,
           TempBuffer[Index-1].Address,
           TempBuffer[Index].Address - TempBuffer[Index-1].Address
           ));
@@ -2260,7 +2260,7 @@ SetNonSmmMemMapAttributes (
         UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((TempBuffer[Index].Address - TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1));
         Status                                             = ProcessUnblockPages (&UnblockRegionParams);
         if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __FUNCTION__, Status));
+          DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
           ASSERT (FALSE);
         }
 
@@ -2276,10 +2276,10 @@ SetNonSmmMemMapAttributes (
   // If we get here safely, brutal force coverage extension again, this portion covers range from last entry to MaximumSupportMemAddress + 1
   MaximumSupportMemAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(LShiftU64 (1, mPhysicalAddressBits) - 1);
   if (MaximumSupportMemAddress >= TempBuffer[MemIdx - 1].Address) {
-    DEBUG ((DEBUG_INFO, "%a - Marking top of memory region 0x%lx - 0x%lx\n", __FUNCTION__, TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress + 1));
+    DEBUG ((DEBUG_INFO, "%a - Marking top of memory region 0x%lx - 0x%lx\n", __func__, TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress + 1));
     Status = SmmSetMemoryAttributes (TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress - TempBuffer[MemIdx - 1].Address + 1, EFI_MEMORY_RP);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Marking top of memory region 0x%lx - MaximumSupportMemAddress failed - %r\n", __FUNCTION__, TempBuffer[MemIdx - 1].Address, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Marking top of memory region 0x%lx - MaximumSupportMemAddress failed - %r\n", __func__, TempBuffer[MemIdx - 1].Address, Status));
       goto Exit;
     }
   }
@@ -2290,7 +2290,7 @@ Exit:
   }
 
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Some step in setting the non MMRAM memory has gone wrong - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Some step in setting the non MMRAM memory has gone wrong - %r!!!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     ResetCold ();
   }
@@ -2328,7 +2328,7 @@ SetCommonBufferRegionAttribute (
             EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
             ))
       {
-        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with mailbox buffer with IPL!\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with mailbox buffer with IPL!\n", __func__));
         ASSERT_EFI_ERROR (Status);
         Status = EFI_SECURITY_VIOLATION;
         goto Cleanup;
@@ -2338,7 +2338,7 @@ SetCommonBufferRegionAttribute (
       CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
       Status = ProcessUnblockPages (&UnblockRegionParams);
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
         ASSERT (FALSE);
         goto Cleanup;
       }
@@ -2356,7 +2356,7 @@ SetCommonBufferRegionAttribute (
   UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
   Status                                             = ProcessUnblockPages (&UnblockRegionParams);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
     ASSERT (FALSE);
   }
 
@@ -2387,7 +2387,7 @@ SetProtectedRegionAttribute (
         DEBUG ((
           DEBUG_INFO,
           "%a - IOMMU region 0x%p of 0x%x pages\n",
-          __FUNCTION__,
+          __func__,
           ProtRegionHob->MmProtectedRegionAddr,
           ProtRegionHob->MmProtectedRegionPages
           ));
@@ -2398,7 +2398,7 @@ SetProtectedRegionAttribute (
                    EFI_MEMORY_RP | EFI_MEMORY_SP
                    );
         if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to clear IOMMU region attributes - %r\n", __FUNCTION__, Status));
+          DEBUG ((DEBUG_ERROR, "%a - Failed to clear IOMMU region attributes - %r\n", __func__, Status));
           ASSERT (FALSE);
         }
 
@@ -2408,17 +2408,17 @@ SetProtectedRegionAttribute (
                    EFI_MEMORY_RO | EFI_MEMORY_XP
                    );
         if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to set IOMMU region attributes - %r\n", __FUNCTION__, Status));
+          DEBUG ((DEBUG_ERROR, "%a - Failed to set IOMMU region attributes - %r\n", __func__, Status));
           ASSERT (FALSE);
         }
 
         break;
       case MM_PROT_MMIO_SEC_BIO_T:
-        DEBUG ((DEBUG_INFO, "%a - Secure Bio region found 0x%x\n", __FUNCTION__, ProtRegionHob->MmProtectedRegionType));
+        DEBUG ((DEBUG_INFO, "%a - Secure Bio region found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
         Status = EFI_UNSUPPORTED;
         break;
       default:
-        DEBUG ((DEBUG_ERROR, "%a - Unrecognized protected region type found 0x%x\n", __FUNCTION__, ProtRegionHob->MmProtectedRegionType));
+        DEBUG ((DEBUG_ERROR, "%a - Unrecognized protected region type found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
         ASSERT (FALSE);
         Status = EFI_INVALID_PARAMETER;
         break;
@@ -2448,14 +2448,14 @@ SetUnblockRegionAttribute (
   MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockRegionHob;
   EFI_STATUS                           Status;
 
-  DEBUG ((DEBUG_INFO, "%a - Entry...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - Entry...\n", __func__));
   Status       = EFI_SUCCESS;
   GuidHob.Guid = GetFirstGuidHob (&gMmSupvUnblockRegionHobGuid);
   while (GuidHob.Guid != NULL) {
     UnblockRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
     Status           = ProcessUnblockPages (UnblockRegionHob);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Unblock region exits with error - %r\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Unblock region exits with error - %r\n", __func__, Status));
       ASSERT (FALSE);
     }
 
@@ -2463,7 +2463,7 @@ SetUnblockRegionAttribute (
     GuidHob.Guid = GetNextGuidHob (&gMmSupvUnblockRegionHobGuid, GuidHob.Guid);
   }
 
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
   return Status;
 }
 

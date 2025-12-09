@@ -47,7 +47,7 @@ MmSupvErrorReportWorker (
 {
   EFI_STATUS  Status = EFI_SUCCESS;
 
-  DEBUG ((DEBUG_INFO, "%a: Enters... CpuIndex 0x%x\n", __FUNCTION__, CpuIndex));
+  DEBUG ((DEBUG_INFO, "%a: Enters... CpuIndex 0x%x\n", __func__, CpuIndex));
 
   if ((ErrorInfoBuffer != NULL) &&
       (ErrorInfoBuffer->Signature == MM_SUPV_TELEMETRY_SIGNATURE))
@@ -63,12 +63,12 @@ MmSupvErrorReportWorker (
                  );
     } else {
       // Why are we even here?
-      DEBUG ((DEBUG_ERROR, "%a: This should not happen...\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a: This should not happen...\n", __func__));
       ASSERT (FALSE);
     }
   }
 
-  DEBUG ((DEBUG_INFO, "%a: Exits...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a: Exits...\n", __func__));
   return Status;
 }
 
@@ -92,6 +92,6 @@ SmmSupvErrorReportEntry (
   // Register with MM Core with handler jump point
   Status = SysCall (SMM_ERR_RPT_JMP, (UINTN)RegErrorReportJumpPointer, 0, 0);
 
-  DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a: exit (%r)\n", __func__, Status));
   return Status;
 }

@@ -1155,7 +1155,7 @@ MmInternalFreePagesExWithGuard (
     HeadGuardPages = EFI_SIZE_TO_PAGES (Memory - MemoryToFree);
     Status         = MmInternalFreePagesEx (MemoryToFree, HeadGuardPages, AddRegion, TRUE);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to free head guard at 0x%p - %r\n", __FUNCTION__, MemoryToFree, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to free head guard at 0x%p - %r\n", __func__, MemoryToFree, Status));
       ASSERT (FALSE);
       return Status;
     }
@@ -1170,14 +1170,14 @@ MmInternalFreePagesExWithGuard (
     // 2. Handle original target region
     if (Memory + EFI_PAGES_TO_SIZE (NumberOfPages) < MemoryToFree) {
       // Updated MemoryToFree is after the entire target region, something is whacked...
-      DEBUG ((DEBUG_ERROR, "%a - Adjusted MemoryToFree %p is outside of address 0x%p + 0x%x pages\n", __FUNCTION__, MemoryToFree, Memory, NumberOfPages));
+      DEBUG ((DEBUG_ERROR, "%a - Adjusted MemoryToFree %p is outside of address 0x%p + 0x%x pages\n", __func__, MemoryToFree, Memory, NumberOfPages));
       ASSERT (FALSE);
     }
 
     RegionPages = EFI_SIZE_TO_PAGES (Memory + EFI_PAGES_TO_SIZE (NumberOfPages) - MemoryToFree);
     Status      = MmInternalFreePagesEx (MemoryToFree, RegionPages, AddRegion, SupervisorPage);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to free target region at 0x%p - %r\n", __FUNCTION__, MemoryToFree, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to free target region at 0x%p - %r\n", __func__, MemoryToFree, Status));
       ASSERT (FALSE);
       return Status;
     }
@@ -1190,7 +1190,7 @@ MmInternalFreePagesExWithGuard (
     // 3. Handle tail guard if necessary
     Status = MmInternalFreePagesEx (MemoryToFree, PagesToFree, AddRegion, TRUE);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to free tail guard at 0x%p - %r\n", __FUNCTION__, MemoryToFree, Status));
+      DEBUG ((DEBUG_ERROR, "%a - Failed to free tail guard at 0x%p - %r\n", __func__, MemoryToFree, Status));
       ASSERT (FALSE);
       return Status;
     }
