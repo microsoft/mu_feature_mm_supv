@@ -14,7 +14,7 @@
 #include <Uefi.h>
 
 #include <Guid/MmSupervisorRequestData.h>
-#include <Guid/MmUnblockRegion.h>
+#include <Guid/MmSupvUnblockRegion.h>
 #include <Ppi/MmSupervisorCommunication.h>
 
 #include <Library/HobLib.h>
