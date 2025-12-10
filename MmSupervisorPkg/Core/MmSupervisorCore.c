@@ -108,7 +108,12 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 // Table of MMI Handlers that are registered by the MM Core when it is initialized
 //
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
-  { MmDriverDispatchHandler,  &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
+  // Note: The driver dispatch handler is registered in user handler pool, to suffice the needs
+  //       if a driver dispatch call is invoked from user space. The handler is intentionally left
+  //       to NULL. Because if the ring 3 broker is ready, supervisor will dispatch to this handler
+  //       after demotion, which will trip on #GP due to SMAP. Otherwise, if this is invoked before
+  //       ring 3 broker being dispatched, the demotion routine will directly bail with EFI_NOT_READY.
+  { NULL,                     &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
   { MmDriverDispatchHandler,  &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
   { MmReadyToLockHandler,     &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
   { MmSupvRequestHandler,     &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
@@ -346,32 +351,6 @@ Exit:
   }
 
   return Status;
-}
-
-/**
-  Software MMI handler that is called when the gEventMmDispatchGuid event is called
-  This function is a stub in the user mode that does not do anything but to pass the
-  invocation of driver dispatcher call from the IPL.
-
-  @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
-  @param  Context         Points to an optional handler context which was specified when the handler was registered.
-  @param  CommBuffer      A pointer to a collection of data in memory that will
-                          be conveyed from a non-MM environment into an MM environment.
-  @param  CommBufferSize  The size of the CommBuffer.
-
-  @return Status Code
-
-**/
-EFI_STATUS
-EFIAPI
-MmDriverDispatchHandlerNull (
-  IN     EFI_HANDLE  DispatchHandle,
-  IN     CONST VOID  *Context         OPTIONAL,
-  IN OUT VOID        *CommBuffer      OPTIONAL,
-  IN OUT UINTN       *CommBufferSize  OPTIONAL
-  )
-{
-  return EFI_SUCCESS;
 }
 
 /**
