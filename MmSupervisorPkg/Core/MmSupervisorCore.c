@@ -110,14 +110,15 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
   // Note: The driver dispatch handler is registered in user handler pool, to suffice the needs
   //       if a driver dispatch call is invoked from user space. The handler is intentionally left
-  //       to NULL. Because if the ring 3 broker is ready, supervisor will dispatch to this handler
-  //       after demotion, which will trip on #GP due to SMAP. Otherwise, if this is invoked before
-  //       ring 3 broker being dispatched, the demotion routine will directly bail with EFI_NOT_READY.
-  { NULL,                     &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
-  { MmDriverDispatchHandler,  &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
-  { MmReadyToLockHandler,     &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
-  { MmSupvRequestHandler,     &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
-  { NULL,                     NULL,                              NULL, FALSE, TRUE  },
+  //       to duplicate the real dispatcher. Because if the ring 3 broker is ready, supervisor will
+  //       dispatch to this handler after demotion, which will trip on #GP due to SMAP. Otherwise,
+  //       if this is invoked before ring 3 broker being dispatched, the demotion routine will
+  //       directly bail with EFI_NOT_READY.
+  { MmDriverDispatchHandler, &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
+  { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
+  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
+  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
+  { NULL,                    NULL,                              NULL, FALSE, TRUE  },
 };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
