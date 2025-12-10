@@ -47,23 +47,23 @@ FetchNUpdateSecurityPolicy (
 
   if (!mMmReadyToLockDone) {
     // Policy requested prior to ready to lock event, then this is the ready to lock event...
-    DEBUG ((DEBUG_WARN, "%a Policy requested prior to ready to lock, enforcing ready to lock here!\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Policy requested prior to ready to lock, enforcing ready to lock here!\n", __func__));
     Status = MmReadyToLockHandler (NULL, NULL, NULL, NULL);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Ready to lock handler returned with error %r!!!\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Ready to lock handler returned with error %r!!!\n", __func__, Status));
       goto Exit;
     }
   }
 
   if (DrtmSmmPolicyData == NULL) {
     Status = EFI_INVALID_PARAMETER;
-    DEBUG ((DEBUG_ERROR, "%a Input argument is a null pointer!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Input argument is a null pointer!!!\n", __func__));
     goto Exit;
   }
 
   Status = VerifyRequestSupvCommBuffer (DrtmSmmPolicyData, SuppliedBufferSize);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __FUNCTION__, DrtmSmmPolicyData, Status));
+    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __func__, DrtmSmmPolicyData, Status));
     goto Exit;
   }
 
@@ -72,7 +72,7 @@ FetchNUpdateSecurityPolicy (
     DEBUG ((
       DEBUG_ERROR,
       "%a Firmware policy is not initialized, cannot proceed!!!\n",
-      __FUNCTION__
+      __func__
       ));
     goto Exit;
   }
@@ -83,7 +83,7 @@ FetchNUpdateSecurityPolicy (
   MaxPolicyBufferSize = (SuppliedBufferSize < MaxPolicyBufferSize) ? SuppliedBufferSize : MaxPolicyBufferSize;
   if (MaxPolicyBufferSize < (sizeof (MM_SUPERVISOR_REQUEST_HEADER) + FirmwarePolicy->Size)) {
     Status = EFI_BUFFER_TOO_SMALL;
-    DEBUG ((DEBUG_ERROR, "%a Buffer is too small to fit even just headers: 0x%x\n", __FUNCTION__, MaxPolicyBufferSize));
+    DEBUG ((DEBUG_ERROR, "%a Buffer is too small to fit even just headers: 0x%x\n", __func__, MaxPolicyBufferSize));
     goto Exit;
   }
 
@@ -95,19 +95,19 @@ FetchNUpdateSecurityPolicy (
   // Then leave the heavy lifting job to the library
   Status = PopulateMemoryPolicyEntries (DrtmSmmPolicyData, MaxPolicyBufferSize, 0);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Fail to PopulateMemoryPolicyEntries %r\n", __func__, Status));
     goto Exit;
   }
 
   if (CompareMemoryPolicy (DrtmSmmPolicyData, MemPolicySnapshot) == FALSE) {
-    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   Status = SecurityPolicyCheck (DrtmSmmPolicyData);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Policy check failed - %r\n", __func__, Status));
     goto Exit;
   }
 

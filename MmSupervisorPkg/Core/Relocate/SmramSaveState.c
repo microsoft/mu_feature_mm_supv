@@ -342,7 +342,7 @@ ProcessUserSaveStateAccess (
         Status = EFI_SUCCESS;
         goto Exit;
       } else if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a SavestateRead Blocked by Policy - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a SavestateRead Blocked by Policy - %r\n", __func__, Status));
         goto Exit;
       }
 

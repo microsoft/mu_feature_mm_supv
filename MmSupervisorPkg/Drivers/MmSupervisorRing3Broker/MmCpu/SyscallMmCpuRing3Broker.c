@@ -40,7 +40,7 @@ SysCallMmReadSaveState (
 
   Status = SysCall (SMM_SC_SVST_READ, (UINTN)This, (UINTN)Register, CpuIndex);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a First syscall has failed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a First syscall has failed - %r\n", __func__, Status));
     ASSERT (FALSE);
     goto Done;
   }

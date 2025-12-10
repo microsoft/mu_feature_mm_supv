@@ -580,7 +580,7 @@ CollectMemoryAttributesTable (
   if ((RetMemoryMapSize == NULL) ||
       (RetDescriptorSize == NULL))
   {
-    DEBUG ((DEBUG_ERROR, "%a Invalid input parameters!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Invalid input parameters!\n", __func__));
     return NULL;
   }
 

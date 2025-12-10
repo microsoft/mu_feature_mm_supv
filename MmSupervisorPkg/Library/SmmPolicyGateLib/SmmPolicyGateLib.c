@@ -60,7 +60,7 @@ IsIoReadWriteAllowed (
   if (((AccessMask & SECURE_POLICY_RESOURCE_ATTR_READ) != SECURE_POLICY_RESOURCE_ATTR_READ) &&
       ((AccessMask & SECURE_POLICY_RESOURCE_ATTR_WRITE) != SECURE_POLICY_RESOURCE_ATTR_WRITE))
   {
-    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -75,7 +75,7 @@ IsIoReadWriteAllowed (
   } else if (IoWidth == MM_IO_UINT32) {
     IoSize = sizeof (UINT32);
   } else {
-    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -85,7 +85,7 @@ IsIoReadWriteAllowed (
   //
   Status = SafeUint32ToUint16 (IoAddress, &Dummy);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid IO address supplied - port: 0x%x.\n", __FUNCTION__, IoAddress));
+    DEBUG ((DEBUG_ERROR, "%a Invalid IO address supplied - port: 0x%x.\n", __func__, IoAddress));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -95,7 +95,7 @@ IsIoReadWriteAllowed (
   // The MAX_UINT16 + 1 is because access 1 byte at 0xFFFF is still legit, if needed
   //
   if (IoAddress + IoSize > MAX_UINT16 + 1) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid IO address range supplied - port: 0x%x, width: 0x%x.\n", __FUNCTION__, IoAddress, IoSize));
+    DEBUG ((DEBUG_ERROR, "%a Invalid IO address range supplied - port: 0x%x, width: 0x%x.\n", __func__, IoAddress, IoSize));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -109,7 +109,7 @@ IsIoReadWriteAllowed (
   }
 
   if (i >= SmmSecurityPolicy->PolicyRootCount) {
-    DEBUG ((DEBUG_WARN, "%a Could not find IO policy root, bail to be on the safe side.\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Could not find IO policy root, bail to be on the safe side.\n", __func__));
     Status = EFI_ACCESS_DENIED;
     goto Exit;
   }
@@ -131,7 +131,7 @@ IsIoReadWriteAllowed (
         //
         // Someone is trying to access something that matches policy.
         //
-        DEBUG ((DEBUG_VERBOSE, "%a Strict width access matches an entry of Security Policy.\n", __FUNCTION__));
+        DEBUG ((DEBUG_VERBOSE, "%a Strict width access matches an entry of Security Policy.\n", __func__));
         FoundMatch = TRUE;
       }
 
@@ -152,7 +152,7 @@ IsIoReadWriteAllowed (
         //
         // Someone is trying to access something that matches policy.
         //
-        DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy.\n", __FUNCTION__));
+        DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy.\n", __func__));
         FoundMatch = TRUE;
       }
 
@@ -174,7 +174,7 @@ IsIoReadWriteAllowed (
     DEBUG ((
       DEBUG_ERROR,
       "%a Rejecting IO access based on policy walk through: Index: %d, AccessAttr: 0x%x.\n",
-      __FUNCTION__,
+      __func__,
       i,
       PolicyRoot->AccessAttr
       ));
@@ -224,7 +224,7 @@ IsMsrReadWriteAllowed (
   if (((AccessMask & SECURE_POLICY_RESOURCE_ATTR_READ) != SECURE_POLICY_RESOURCE_ATTR_READ) &&
       ((AccessMask & SECURE_POLICY_RESOURCE_ATTR_WRITE) != SECURE_POLICY_RESOURCE_ATTR_WRITE))
   {
-    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Invalid Access Mask specified.\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -238,7 +238,7 @@ IsMsrReadWriteAllowed (
   }
 
   if (i >= SmmSecurityPolicy->PolicyRootCount) {
-    DEBUG ((DEBUG_WARN, "%a Could not find MSR policy root, bail to be on the safe side.\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Could not find MSR policy root, bail to be on the safe side.\n", __func__));
     Status = EFI_ACCESS_DENIED;
     goto Exit;
   }
@@ -258,7 +258,7 @@ IsMsrReadWriteAllowed (
         //
         // Someone is trying to access something that matches policy.
         //
-        DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy\n", __FUNCTION__));
+        DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy\n", __func__));
         FoundMatch = TRUE;
       }
 
@@ -280,7 +280,7 @@ IsMsrReadWriteAllowed (
     DEBUG ((
       DEBUG_ERROR,
       "%a Rejecting MSR access based on policy walk through: Index: %d, AccessAttr: 0x%x.\n",
-      __FUNCTION__,
+      __func__,
       i,
       PolicyRoot->AccessAttr
       ));
@@ -323,7 +323,7 @@ IsInstructionExecutionAllowed (
   // Check to ensure that only one of SECURE_POLICY_INSTRUCTION was requested.
   //
   if (InstructionIndex >= SECURE_POLICY_INSTRUCTION_COUNT) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid instruction index requested.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Invalid instruction index requested.\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -337,7 +337,7 @@ IsInstructionExecutionAllowed (
   }
 
   if (i >= SmmSecurityPolicy->PolicyRootCount) {
-    DEBUG ((DEBUG_WARN, "%a Could not find Instruction policy root, bail to be on the safe side.\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a Could not find Instruction policy root, bail to be on the safe side.\n", __func__));
     Status = EFI_ACCESS_DENIED;
     goto Exit;
   }
@@ -355,7 +355,7 @@ IsInstructionExecutionAllowed (
         //
         // Requested instruction found in policy execution is prohibited.
         //
-        DEBUG ((DEBUG_INFO, "%a Execution matches an entry of the Security Policy\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a Execution matches an entry of the Security Policy\n", __func__));
         FoundMatch = TRUE;
       }
 
@@ -377,7 +377,7 @@ IsInstructionExecutionAllowed (
     DEBUG ((
       DEBUG_ERROR,
       "%a Rejecting Instruction access based on policy walk through: Index: %d, AccessAttr: 0x%x.\n",
-      __FUNCTION__,
+      __func__,
       i,
       PolicyRoot->AccessAttr
       ));

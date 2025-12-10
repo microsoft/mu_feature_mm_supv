@@ -441,7 +441,7 @@ UpdateDxeCommunicateBuffer (
   //
   Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __func__, Status));
     Status = EFI_DEVICE_ERROR;
     goto Done;
   }
@@ -451,7 +451,7 @@ UpdateDxeCommunicateBuffer (
   DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommMailboxBufferStatus to new location - %p!\n", __func__, mMmCommBufferStatus));
   if ((UINTN)mMmCommBufferStatus->ReturnStatus != 0) {
     Status = mMmCommBufferStatus->ReturnStatus;
-    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM to switch core mailbox - %r!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM to switch core mailbox - %r!!\n", __func__, Status));
     Status = EFI_DEVICE_ERROR;
     goto Done;
   }
@@ -460,7 +460,7 @@ UpdateDxeCommunicateBuffer (
   RequestHeader      = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
   if ((UINTN)RequestHeader->Result != 0) {
     Status = ENCODE_ERROR ((UINTN)RequestHeader->Result);
-    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r!!\n", __func__, Status));
     Status = EFI_DEVICE_ERROR;
     goto Done;
   }
@@ -531,7 +531,7 @@ MmDxeSupportEntry (
              &mMmSupvCommunication.CommunicationRegion
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __func__, Status));
     return Status;
   }
 
@@ -547,7 +547,7 @@ MmDxeSupportEntry (
   Status = gBS->LocateProtocol (&gMmCommBufferUpdateProtocolGuid, NULL, NULL);
   if (!EFI_ERROR (Status)) {
     // MM_COMM_BUFFER_UPDATE_PROTOCOL is already installed, this can't be right
-    DEBUG ((DEBUG_ERROR, "%a MM_COMM_BUFFER_UPDATE_PROTOCOL already installed, skip update\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a MM_COMM_BUFFER_UPDATE_PROTOCOL already installed, skip update\n", __func__));
     ASSERT (FALSE);
     return EFI_ALREADY_STARTED;
   }
@@ -562,7 +562,7 @@ MmDxeSupportEntry (
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
   Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
     return Status;
   }
@@ -591,7 +591,7 @@ MmDxeSupportEntry (
                   NULL
                   );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __func__, Status));
     FreePool (MmCommBufferUpdate);
     return Status;
   }

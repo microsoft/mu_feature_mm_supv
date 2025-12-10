@@ -98,13 +98,13 @@ ProcessVersionInfoRequest (
 
   if (VersionInfoBuffer == NULL) {
     Status = EFI_INVALID_PARAMETER;
-    DEBUG ((DEBUG_ERROR, "%a Input argument is a null pointer!!!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Input argument is a null pointer!!!\n", __func__));
     goto Exit;
   }
 
   Status = VerifyRequestSupvCommBuffer (VersionInfoBuffer, sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER));
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __FUNCTION__, VersionInfoBuffer, Status));
+    DEBUG ((DEBUG_ERROR, "%a Input buffer %p is illegal - %r!!!\n", __func__, VersionInfoBuffer, Status));
     goto Exit;
   }
 
@@ -113,7 +113,7 @@ ProcessVersionInfoRequest (
   DEBUG ((
     DEBUG_ERROR,
     "%a Current supervisor maximal request level is 0x%x\n",
-    __FUNCTION__,
+    __func__,
     VersionInfoBuffer->MaxSupervisorRequestLevel
     ));
 

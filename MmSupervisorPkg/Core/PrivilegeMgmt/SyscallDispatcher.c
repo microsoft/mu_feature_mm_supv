@@ -238,7 +238,7 @@ SyscallDispatcher (
     DEBUG ((
       DEBUG_INFO,
       "%a Enter... CallIndex: %lx, Arg1: %lx, Arg2: %lx, Arg3: %lx, CallerAddr: %p, Ring3Stack %p\n",
-      __FUNCTION__,
+      __func__,
       CallIndex,
       Arg1,
       Arg2,
@@ -259,12 +259,12 @@ SyscallDispatcher (
                  SECURE_POLICY_RESOURCE_ATTR_READ_DIS
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Read MSR 0x%p blocked by policy - %r\n", __FUNCTION__, Arg1, Status));
+        DEBUG ((DEBUG_ERROR, "%a Read MSR 0x%p blocked by policy - %r\n", __func__, Arg1, Status));
         goto Exit;
       }
 
       Ret = AsmReadMsr64 ((UINT32)Arg1);
-      DEBUG ((DEBUG_VERBOSE, "%a Read MSR %x got %x\n", __FUNCTION__, Arg1, Ret));
+      DEBUG ((DEBUG_VERBOSE, "%a Read MSR %x got %x\n", __func__, Arg1, Ret));
       if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
       }
@@ -277,12 +277,12 @@ SyscallDispatcher (
                  SECURE_POLICY_RESOURCE_ATTR_WRITE_DIS
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Write MSR 0x%p blocked by policy - %r\n", __FUNCTION__, Arg1, Status));
+        DEBUG ((DEBUG_ERROR, "%a Write MSR 0x%p blocked by policy - %r\n", __func__, Arg1, Status));
         goto Exit;
       }
 
       AsmWriteMsr64 ((UINT32)Arg1, (UINT64)Arg2);
-      DEBUG ((DEBUG_VERBOSE, "%a Write MSR %x with %x\n", __FUNCTION__, Arg1, Arg2));
+      DEBUG ((DEBUG_VERBOSE, "%a Write MSR %x with %x\n", __func__, Arg1, Arg2));
       if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, TRUE);
       }
@@ -294,17 +294,17 @@ SyscallDispatcher (
                  SECURE_POLICY_INSTRUCTION_CLI
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Instruction execution CLI blocked by policy - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a Instruction execution CLI blocked by policy - %r\n", __func__, Status));
         goto Exit;
       }
 
       DisableInterrupts ();
-      DEBUG ((DEBUG_VERBOSE, "%a Disable interrupts\n", __FUNCTION__));
+      DEBUG ((DEBUG_VERBOSE, "%a Disable interrupts\n", __func__));
       break;
     case SMM_SC_IO_READ:
-      DEBUG ((DEBUG_VERBOSE, "%a Read IO type %d at %x got ", __FUNCTION__, Arg2, Arg1));
+      DEBUG ((DEBUG_VERBOSE, "%a Read IO type %d at %x got ", __func__, Arg2, Arg1));
       if ((Arg2 != MM_IO_UINT8) && (Arg2 != MM_IO_UINT16) && (Arg2 != MM_IO_UINT32)) {
-        DEBUG ((DEBUG_ERROR, "%a Read IO incompatible size - %d\n", __FUNCTION__, Arg2));
+        DEBUG ((DEBUG_ERROR, "%a Read IO incompatible size - %d\n", __func__, Arg2));
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
       }
@@ -316,7 +316,7 @@ SyscallDispatcher (
                  SECURE_POLICY_RESOURCE_ATTR_READ_DIS
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Read IO port 0x%x with width type %d blocked by policy - %r\n", __FUNCTION__, Arg1, Arg2, Status));
+        DEBUG ((DEBUG_ERROR, "%a Read IO port 0x%x with width type %d blocked by policy - %r\n", __func__, Arg1, Arg2, Status));
         goto Exit;
       }
 
@@ -340,7 +340,7 @@ SyscallDispatcher (
       break;
     case SMM_SC_IO_WRITE:
       if ((Arg2 != MM_IO_UINT8) && (Arg2 != MM_IO_UINT16) && (Arg2 != MM_IO_UINT32)) {
-        DEBUG ((DEBUG_ERROR, "%a Read IO incompatible size - %d\n", __FUNCTION__, Arg2));
+        DEBUG ((DEBUG_ERROR, "%a Read IO incompatible size - %d\n", __func__, Arg2));
         Status = EFI_INVALID_PARAMETER;
         goto Exit;
       }
@@ -352,7 +352,7 @@ SyscallDispatcher (
                  SECURE_POLICY_RESOURCE_ATTR_WRITE_DIS
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Write IO port 0x%x with width type %d blocked by policy - %r\n", __FUNCTION__, Arg1, Arg2, Status));
+        DEBUG ((DEBUG_ERROR, "%a Write IO port 0x%x with width type %d blocked by policy - %r\n", __func__, Arg1, Arg2, Status));
         goto Exit;
       }
 
@@ -368,7 +368,7 @@ SyscallDispatcher (
         goto Exit;
       }
 
-      DEBUG ((DEBUG_VERBOSE, "%a Write IO type %d at %x with %x\n", __FUNCTION__, Arg2, Arg1, Arg3));
+      DEBUG ((DEBUG_VERBOSE, "%a Write IO type %d at %x with %x\n", __func__, Arg2, Arg1, Arg3));
       if (FeaturePcdGet (PcdMmSupervisorPrintPortsEnable)) {
         AddToDict ((UINT32)Arg1, (UINT32)Arg2, FALSE);
       }
@@ -380,11 +380,11 @@ SyscallDispatcher (
                  SECURE_POLICY_INSTRUCTION_WBINVD
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Instruction execution WBINVD blocked by policy - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a Instruction execution WBINVD blocked by policy - %r\n", __func__, Status));
         goto Exit;
       }
 
-      DEBUG ((DEBUG_VERBOSE, "%a Write back and invalidate cache\n", __FUNCTION__));
+      DEBUG ((DEBUG_VERBOSE, "%a Write back and invalidate cache\n", __func__));
       AsmWbinvd ();
       break;
     case SMM_SC_HLT:
@@ -393,15 +393,15 @@ SyscallDispatcher (
                  SECURE_POLICY_INSTRUCTION_HLT
                  );
       if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a Instruction execution HLT blocked by policy - %r\n", __FUNCTION__, Status));
+        DEBUG ((DEBUG_ERROR, "%a Instruction execution HLT blocked by policy - %r\n", __func__, Status));
         goto Exit;
       }
 
-      DEBUG ((DEBUG_VERBOSE, "%a Cpu Halt\n", __FUNCTION__));
+      DEBUG ((DEBUG_VERBOSE, "%a Cpu Halt\n", __func__));
       CpuSleep ();
       break;
     case SMM_SC_SVST_READ:
-      DEBUG ((DEBUG_VERBOSE, "%a Save state read\n", __FUNCTION__));
+      DEBUG ((DEBUG_VERBOSE, "%a Save state read\n", __func__));
       Ret = 0;
       if ((Arg1 == 0) ||
           (Arg2 > EFI_MM_SAVE_STATE_REGISTER_PROCESSOR_ID) ||
@@ -418,7 +418,7 @@ SyscallDispatcher (
 
       break;
     case SMM_SC_SVST_READ_2:
-      DEBUG ((DEBUG_VERBOSE, "%a Save state read\n", __FUNCTION__));
+      DEBUG ((DEBUG_VERBOSE, "%a Save state read\n", __func__));
       Ret = 0;
       if (Arg1 == 0) {
         Status = EFI_INVALID_PARAMETER;
@@ -623,7 +623,7 @@ Exit:
     // TODO: Do buffer preparation
     ASSERT_EFI_ERROR (Status);
     if (mSmmRebootOnException) {
-      DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __func__));
       CpuBreakpoint ();
       ResetWarm ();
     }
@@ -632,7 +632,7 @@ Exit:
   }
 
   if (FeaturePcdGet (PcdEnableSyscallLogs)) {
-    DEBUG ((DEBUG_INFO, "%a Exit...\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Exit...\n", __func__));
   }
 
   return Ret;

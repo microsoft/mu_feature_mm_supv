@@ -30,6 +30,7 @@
 //
 MM_SHIM_MMI_HANDLERS  mMmShimMmiHandlers[] = {
   { MmReadyToLockHandler,     &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
+  { MmEndOfPeiHandler,        &gEfiMmEndOfPeiProtocol,           NULL, FALSE },
   { MmEndOfDxeHandler,        &gEfiEndOfDxeEventGroupGuid,       NULL, FALSE },
   { MmExitBootServiceHandler, &gEfiEventExitBootServicesGuid,    NULL, FALSE },
   { MmReadyToBootHandler,     &gEfiEventReadyToBootGuid,         NULL, FALSE },
@@ -239,6 +240,46 @@ MmReadyToLockHandler (
 
   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
 
+  return Status;
+}
+
+/**
+  Software MMI handler that is called when the EndOfPei event is signaled.
+  This function installs the MM EndOfPei Protocol so MM Drivers are informed that
+  EndOfPei event is signaled.
+
+  @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
+  @param  Context         Points to an optional handler context which was specified when the handler was registered.
+  @param  CommBuffer      A pointer to a collection of data in memory that will
+                          be conveyed from a non-MM environment into an MM environment.
+  @param  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+MmEndOfPeiHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context         OPTIONAL,
+  IN OUT VOID        *CommBuffer      OPTIONAL,
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  )
+{
+  EFI_STATUS  Status;
+  EFI_HANDLE  MmHandle;
+
+  DEBUG ((DEBUG_INFO, "MmEndOfPeiHandler\n"));
+  //
+  // Install MM EndOfDxe protocol
+  //
+  MmHandle = NULL;
+  Status   = MmInstallUserProtocolInterface (
+               &MmHandle,
+               &gEfiMmEndOfPeiProtocol,
+               EFI_NATIVE_INTERFACE,
+               NULL
+               );
   return Status;
 }
 

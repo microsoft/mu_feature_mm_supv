@@ -1081,7 +1081,7 @@ SetupSmiEntryExit (
              (EFI_PHYSICAL_ADDRESS *)&Cpl3Stacks
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate user mode stacks - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate user mode stacks - %r!!!\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
   }
 
@@ -1244,10 +1244,10 @@ FindSmramInfo (
   if (GuidHob == NULL) {
     GuidHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
     if (GuidHob == NULL) {
-      DEBUG ((DEBUG_ERROR, "[%a] - Critical HOB missing that describes MMRAM regions. Cannot load MM.\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "[%a] - Critical HOB missing that describes MMRAM regions. Cannot load MM.\n", __func__));
       ASSERT (GuidHob != NULL);
       if (mSmmRebootOnException) {
-        DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __FUNCTION__));
+        DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __func__));
         CpuBreakpoint ();
         ResetWarm ();
       }
@@ -1482,7 +1482,7 @@ EnableSmmExceptionTestMode (
 
   if (FeaturePcdGet (PcdSmmExceptionTestModeSupport)) {
     // MU_CHANGE START
-    DEBUG ((DEBUG_INFO, "%a - Test mode enabled!\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a - Test mode enabled!\n", __func__));
     // MU_CHANGE END
     mSmmRebootOnException = TRUE;
     Status                = EFI_SUCCESS;

@@ -20,7 +20,6 @@
 
 #include <Guid/MmCommBuffer.h>
 #include <Guid/MmCommonRegion.h>
-#include <Guid/MmDispatch.h>
 #include <Guid/EventGroup.h>
 #include <Guid/LoadModuleAtFixedAddress.h>
 #include <Guid/MmSupervisorRequestData.h> // MU_CHANGE: MM_SUPV: Added MM Supervisor request data structure
@@ -101,7 +100,9 @@ SupvCommunicationCommunicate (
   );
 
 /**
-  Event notification that is fired when a GUIDed Event Group is signaled.
+  This is the callback function on end of PEI.
+
+  This callback is used for call MmEndOfPeiHandler in standalone MM core.
 
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
@@ -113,7 +114,7 @@ SupvCommunicationCommunicate (
 **/
 EFI_STATUS
 EFIAPI
-SmmIplGuidedEventNotify (
+EndOfPeiCallback (
   IN EFI_PEI_SERVICES           **PeiServices,
   IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
   IN VOID                       *Ppi
@@ -176,7 +177,7 @@ STATIC EFI_PEI_NOTIFY_DESCRIPTOR  mPeiMmIplNotifyList =
   //
   (EFI_PEI_PPI_DESCRIPTOR_NOTIFY_CALLBACK | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
   &gEfiEndOfPeiSignalPpiGuid,
-  SmmIplGuidedEventNotify
+  EndOfPeiCallback
 };
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
@@ -329,7 +330,9 @@ SmmCommunicationCommunicate (
 }
 
 /**
-  Event notification that is fired when a GUIDed Event Group is signaled.
+  This is the callback function on end of PEI.
+
+  This callback is used for call MmEndOfPeiHandler in standalone MM core.
 
   @param  PeiServices      Indirect reference to the PEI Services Table.
   @param  NotifyDescriptor Address of the notification descriptor data structure.
@@ -341,7 +344,7 @@ SmmCommunicationCommunicate (
 **/
 EFI_STATUS
 EFIAPI
-SmmIplGuidedEventNotify (
+EndOfPeiCallback (
   IN EFI_PEI_SERVICES           **PeiServices,
   IN EFI_PEI_NOTIFY_DESCRIPTOR  *NotifyDescriptor,
   IN VOID                       *Ppi
@@ -352,7 +355,7 @@ SmmIplGuidedEventNotify (
   }
 
   // MU_CHANGE: Abstracted implementation to SmmIplGuidedEventNotifyWork for DXE and PEI
-  return SmmIplGuidedEventNotifyWorker (NotifyDescriptor->Guid);
+  return SmmIplGuidedEventNotifyWorker (&gEfiMmEndOfPeiProtocol);
 }
 
 // MU_CHANGE Starts: MM_SUPV: Will immediately signal MM core to dispatch MM drivers
@@ -373,40 +376,48 @@ MmDriverDispatchNotify (
   UINTN       Size;
   EFI_STATUS  Status;
 
+  // MU_CHANGE: MM_SUPV: Driver dispatcher command only deals with supervisor
+  mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+
   //
-  // Keep calling the SMM Core Dispatcher until there is no request to restart it.
+  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
+  // Clear the buffer passed into the Software SMI.  This buffer will return
+  // the status of the SMM Core Dispatcher.
   //
-  while (TRUE) {
-    // MU_CHANGE: MM_SUPV: Driver dispatcher command only deals with supervisor
-    mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+  CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
 
-    //
-    // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
-    // Clear the buffer passed into the Software SMI.  This buffer will return
-    // the status of the SMM Core Dispatcher.
-    //
-    CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
-    mCommunicateHeader->MessageLength = 1;
-    mCommunicateHeader->Data[0]       = 0;
+  //
+  // This is actually an empty payload command, but the EFI_MM_COMMUNICATE_HEADER structure
+  // comes with a payload of at least one byte. So we set the MessageLength to 1 and
+  // the first byte to 0.
+  //
+  mCommunicateHeader->MessageLength = 1;
+  mCommunicateHeader->Data[0]       = 0;
 
-    //
-    // Generate the Software SMI and return the result
-    //
-    Size   = sizeof (EFI_MM_COMMUNICATE_HEADER);
-    Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (EFI_MM_COMMUNICATE_HEADER);
+  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
 
-    //
-    // Return if there is no request to restart the SMM Core Dispatcher
-    //
-    if (mCommunicateHeader->Data[0] != COMM_BUFFER_MM_DISPATCH_RESTART) {
-      return Status;
-    } else {
-      ASSERT (FALSE);
-    }
+  //
+  // Return if there is no request to restart the MM Core Dispatcher
+  //
+  if (Status != EFI_SUCCESS) {
+    DEBUG ((DEBUG_ERROR, "MM Driver Dispatch failed (%r)\n", Status));
+    return Status;
   }
 
-  // Should not be here
-  return EFI_DEVICE_ERROR;
+  //
+  // Get the status returned from the MM Core Dispatcher
+  //
+  if (Size >= sizeof (EFI_STATUS)) {
+    Status = *(EFI_STATUS *)mCommunicateHeader->Data;
+  } else {
+    Status = EFI_DEVICE_ERROR;
+  }
+
+  return Status;
 }
 
 // MU_CHANGE Ends: MM_SUPV

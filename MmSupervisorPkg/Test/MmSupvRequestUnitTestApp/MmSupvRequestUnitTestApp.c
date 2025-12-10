@@ -184,7 +184,8 @@ VerifyMemPolicy (
 /**
   This helper function preps the shared CommBuffer for use by the test step.
 
-  @param[out] CommBuffer   Returns a pointer to the CommBuffer for the test step to use.
+  @param[out] CommBuffer      Returns a pointer to the CommBuffer for the test step to use.
+  @param[in]  AdditionalSize  Additional size needed in the CommBuffer for test-specific data.
 
   @retval     EFI_SUCCESS         CommBuffer initialized and ready to use.
   @retval     EFI_ABORTED         Some error occurred.
@@ -193,22 +194,23 @@ VerifyMemPolicy (
 STATIC
 EFI_STATUS
 MmSupvRequestGetCommBuffer (
-  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer
+  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer,
+  IN   UINT64                        AdditionalSize
   )
 {
   EFI_MM_COMMUNICATE_HEADER  *CommHeader;
   UINTN                      CommBufferSize;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
-    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __func__));
     return EFI_ABORTED;
   }
 
   // First, let's zero the comm buffer. Couldn't hurt.
   CommHeader     = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonCommBufferAddress;
-  CommBufferSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  CommBufferSize = AdditionalSize + sizeof (MM_SUPERVISOR_REQUEST_HEADER) + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
   if (CommBufferSize > mMmSupvCommonCommBufferSize) {
-    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer is too small!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer is too small!\n", __func__));
     return EFI_ABORTED;
   }
 
@@ -216,7 +218,7 @@ MmSupvRequestGetCommBuffer (
 
   // MM Communication Parameters
   CopyGuid (&CommHeader->HeaderGuid, &gMmSupervisorRequestHandlerGuid);
-  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + AdditionalSize;
 
   // Return a pointer to the CommBuffer for the test to modify.
   *CommBuffer = (MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data;
@@ -243,7 +245,7 @@ MmSupvRequestDxeToMmCommunicate (
   UINTN                      CommBufferSize;
 
   if (mMmSupvCommonCommBufferAddress == NULL) {
-    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "[%a] - Communication buffer not found!\n", __func__));
     return EFI_ABORTED;
   }
 
@@ -259,7 +261,7 @@ MmSupvRequestDxeToMmCommunicate (
   // Signal MM.
   if (!EFI_ERROR (Status)) {
     Status = SupvCommunication->Communicate (SupvCommunication, CommHeader, &CommBufferSize);
-    DEBUG ((DEBUG_VERBOSE, "[%a] - Communicate() = %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_VERBOSE, "[%a] - Communicate() = %r\n", __func__, Status));
   }
 
   return Status;
@@ -281,7 +283,7 @@ FetchSecurityPolicyFromSupv (
   SecurityPolicy = NULL;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, mMmSupvCommonCommBufferSize - sizeof (MM_SUPERVISOR_REQUEST_HEADER) - OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data));
   if (EFI_ERROR (Status)) {
     return NULL;
   }
@@ -644,7 +646,7 @@ RequestVersionInfo (
   MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -696,7 +698,7 @@ RequestUnblockRegion (
   }
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -821,7 +823,7 @@ InspectSecurityPolicy (
 
     if (EFI_ERROR (Status)) {
       // Should not happen, if so, bail the test
-      DEBUG ((DEBUG_ERROR, "%a Failed to verify %x type entries - %r\n", __FUNCTION__, PolicyRoot[Index0].Type, Status));
+      DEBUG ((DEBUG_ERROR, "%a Failed to verify %x type entries - %r\n", __func__, PolicyRoot[Index0].Type, Status));
       UT_ASSERT_NOT_EFI_ERROR (Status);
       break;
     }
@@ -884,7 +886,7 @@ RequestUpdateCommBuffer (
   MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer;
 
   // Grab the CommBuffer and fill it in for this test
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_COMM_UPDATE_BUFFER));
   UT_ASSERT_NOT_EFI_ERROR (Status);
 
   CommBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
@@ -947,14 +949,14 @@ MmSupvRequestUnitTestAppEntryPoint (
   UNIT_TEST_FRAMEWORK_HANDLE  Fw     = NULL;
   UNIT_TEST_SUITE_HANDLE      Misc   = NULL;
 
-  DEBUG ((DEBUG_ERROR, "%a enter\n", __FUNCTION__));
+  DEBUG ((DEBUG_ERROR, "%a enter\n", __func__));
 
-  DEBUG ((DEBUG_ERROR, "%a %a v%a\n", __FUNCTION__, UNIT_TEST_APP_NAME, UNIT_TEST_APP_VERSION));
+  DEBUG ((DEBUG_ERROR, "%a %a v%a\n", __func__, UNIT_TEST_APP_NAME, UNIT_TEST_APP_VERSION));
 
   // Start setting up the test framework for running the tests.
   Status = InitUnitTestFramework (&Fw, UNIT_TEST_APP_NAME, gEfiCallerBaseName, UNIT_TEST_APP_VERSION);
   if (EFI_ERROR (Status) != FALSE) {
-    DEBUG ((DEBUG_ERROR, "%a Failed in InitUnitTestFramework. Status = %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed in InitUnitTestFramework. Status = %r\n", __func__, Status));
     goto Cleanup;
   }
 
@@ -962,7 +964,7 @@ MmSupvRequestUnitTestAppEntryPoint (
   CreateUnitTestSuite (&Misc, Fw, "MM Supervisor Request Test cases", "MmSupv.Miscellaneous", NULL, NULL);
 
   if (Misc == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed in CreateUnitTestSuite for TestSuite\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a Failed in CreateUnitTestSuite for TestSuite\n", __func__));
     Status = EFI_OUT_OF_RESOURCES;
     goto Cleanup;
   }
@@ -1023,6 +1025,6 @@ Cleanup:
     FreeUnitTestFramework (Fw);
   }
 
-  DEBUG ((DEBUG_ERROR, "%a exit\n", __FUNCTION__));
+  DEBUG ((DEBUG_ERROR, "%a exit\n", __func__));
   return Status;
 } // MmSupvRequestUnitTestAppEntryPoint ()

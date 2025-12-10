@@ -123,7 +123,7 @@ VerifyRequestCommBuffer (
   EFI_PHYSICAL_ADDRESS  InternalBuffEnd;
 
   if (CommBufferType >= MM_OPEN_BUFFER_CNT) {
-    DEBUG ((DEBUG_ERROR, "%a Unrecognized buffer type requested - %x!!!\n", __FUNCTION__, CommBufferType));
+    DEBUG ((DEBUG_ERROR, "%a Unrecognized buffer type requested - %x!!!\n", __func__, CommBufferType));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -131,21 +131,21 @@ VerifyRequestCommBuffer (
   CommBuffStart = (EFI_PHYSICAL_ADDRESS)(UINTN)CommBuffer;
   Status        = SafeUint64Add (CommBuffStart, CommBufferSize, &CommBuffEnd);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Buffer end calculation failed - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Buffer end calculation failed - %r!!!\n", __func__, Status));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   Status = SafeUint64Mult (mMmSupervisorAccessBuffer[CommBufferType].NumberOfPages, EFI_PAGE_SIZE, &InternalBuffSize);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Supervisor buffer size calculation failed - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Supervisor buffer size calculation failed - %r!!!\n", __func__, Status));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
   Status = SafeUint64Add ((UINTN)mInternalCommBufferCopy[CommBufferType], InternalBuffSize, &InternalBuffEnd);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Supervisor buffer end calculation failed - %r!!!\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Supervisor buffer end calculation failed - %r!!!\n", __func__, Status));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -157,7 +157,7 @@ VerifyRequestCommBuffer (
     DEBUG ((
       DEBUG_ERROR,
       "%a Input argument %p - %p does not reside in designated communication buffer %p - %p\n",
-      __FUNCTION__,
+      __func__,
       CommBuffer,
       CommBuffEnd,
       mInternalCommBufferCopy[CommBufferType],

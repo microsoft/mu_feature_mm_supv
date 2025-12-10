@@ -97,7 +97,7 @@ InspectReadCondition (
   DEBUG ((
     DEBUG_ERROR,
     "%a MMI is triggered by this CPU, but the security policy condition (0x%x) does not allow access per its IO type (0x%x).\n",
-    __FUNCTION__,
+    __func__,
     SaveStatePolicy->AccessCondition,
     IoInfo->IoType
     ));
@@ -160,7 +160,7 @@ IsIhvSmmSaveStateReadAllowed (
   }
 
   if (i >= SmmSecurityPolicy->PolicyRootCount) {
-    DEBUG ((DEBUG_WARN, "%a No policy root found for save state, this is level 20 policy. Allow all read access!\n", __FUNCTION__));
+    DEBUG ((DEBUG_WARN, "%a No policy root found for save state, this is level 20 policy. Allow all read access!\n", __func__));
     return EFI_SUCCESS;
   }
 
@@ -194,25 +194,25 @@ IsIhvSmmSaveStateReadAllowed (
       if ((SvstDescriptor[i].Attributes & SECURE_POLICY_RESOURCE_ATTR_COND_READ) ||
           (SvstDescriptor[i].Attributes & SECURE_POLICY_RESOURCE_ATTR_READ))
       {
-        DEBUG ((DEBUG_VERBOSE, "%a Located a potentially matching policy.\n", __FUNCTION__));
+        DEBUG ((DEBUG_VERBOSE, "%a Located a potentially matching policy.\n", __func__));
         //
         // Find the current condition to see if it matches.
         //
         Status = InspectReadCondition (&SvstDescriptor[i], CpuIndex, &AllowedWidth, &IoInfo);
         if (Status == EFI_UNSUPPORTED) {
           // This is just a mismatched condition. Do not treat as error. Proceed with access attribute evaluation.
-          DEBUG ((DEBUG_WARN, "%a Mismatched condition detected, potential policy violation.\n", __FUNCTION__));
+          DEBUG ((DEBUG_WARN, "%a Mismatched condition detected, potential policy violation.\n", __func__));
           Status = EFI_SUCCESS;
           goto Exit;
         } else if (EFI_ERROR (Status)) {
           // Other real errors, bail here to propagate the error code to caller.
           goto Exit;
         } else if (Width > AllowedWidth) {
-          DEBUG ((DEBUG_ERROR, "%a Attempting to access save state region (0x%x) larger than allowed (0x%x)\n", __FUNCTION__, Width, AllowedWidth));
+          DEBUG ((DEBUG_ERROR, "%a Attempting to access save state region (0x%x) larger than allowed (0x%x)\n", __func__, Width, AllowedWidth));
           Status = EFI_ACCESS_DENIED;
           goto Exit;
         } else {
-          DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy - Field: 0x%x on CPU 0x%x\n", __FUNCTION__, TargetMapField, CpuIndex));
+          DEBUG ((DEBUG_VERBOSE, "%a Access matches an entry of the Security Policy - Field: 0x%x on CPU 0x%x\n", __func__, TargetMapField, CpuIndex));
           FoundMatch = TRUE;
         }
       }
@@ -224,7 +224,7 @@ IsIhvSmmSaveStateReadAllowed (
           // Note: The save state read routine for RAX needs to be consistent with this IoInfo.IoWidth derivation!!
           Status = IsIhvSmmSaveStateReadAllowed (SmmSecurityPolicy, CpuIndex, EFI_MM_SAVE_STATE_REGISTER_RAX, IoInfo.IoWidth, CpuSmmData);
           if (EFI_ERROR (Status)) {
-            DEBUG ((DEBUG_ERROR, "%a Accessing IO type/port/width is granted but IO data access is rejected %r\n", __FUNCTION__, Status));
+            DEBUG ((DEBUG_ERROR, "%a Accessing IO type/port/width is granted but IO data access is rejected %r\n", __func__, Status));
             goto Exit;
           }
         }
@@ -258,7 +258,7 @@ Exit:
     DEBUG ((
       DEBUG_ERROR,
       "%a Rejecting save state access (Register: 0x%x, Width: 0x%x, CPU Index: 0x%x) based on policy walk through: Index: %d, AccessAttr: 0x%x.\n",
-      __FUNCTION__,
+      __func__,
       Register,
       Width,
       CpuIndex,

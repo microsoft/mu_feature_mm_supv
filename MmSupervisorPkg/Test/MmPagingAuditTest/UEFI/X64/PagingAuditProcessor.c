@@ -108,7 +108,7 @@ LookupSmrrIntel (
     ModelId = ModelId | ((RegEax >> 12) & 0xf0);
   }
 
-  DEBUG ((DEBUG_INFO, "%a - FamilyId 0x%02x, ModelId 0x%02x\n", __FUNCTION__, FamilyId, ModelId));
+  DEBUG ((DEBUG_INFO, "%a - FamilyId 0x%02x, ModelId 0x%02x\n", __func__, FamilyId, ModelId));
 
   //
   // Check CPUID(CPUID_VERSION_INFO).EDX[12] for MTRR capability
@@ -206,7 +206,7 @@ LookupSmrrAMD (
     ModelId  = ModelId | ((RegEax >> 12) & 0xf0);
   }
 
-  DEBUG ((DEBUG_INFO, "%a - FamilyId 0x%02x, ModelId 0x%02x\n", __FUNCTION__, FamilyId, ModelId));
+  DEBUG ((DEBUG_INFO, "%a - FamilyId 0x%02x, ModelId 0x%02x\n", __func__, FamilyId, ModelId));
 
   //
   // In processors implementing the AMD64 architecture, SMBASE relocation is always supported.
@@ -244,19 +244,19 @@ TSEGDumpHandler (
   CHAR8       TempString[MAX_STRING_SIZE];
   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "%a()\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a()\n", __func__));
 
   MtrrValidBitsMask    = 0;
   MtrrValidAddressMask = 0;
 
   InitializeMtrrMask (&MtrrValidBitsMask, &MtrrValidAddressMask);
 
-  DEBUG ((DEBUG_INFO, "%a MTRR valid bits 0x%016lx, address mask: 0x%016lx\n", __FUNCTION__, MtrrValidBitsMask, MtrrValidAddressMask));
+  DEBUG ((DEBUG_INFO, "%a MTRR valid bits 0x%016lx, address mask: 0x%016lx\n", __func__, MtrrValidBitsMask, MtrrValidAddressMask));
 
   if (!StandardSignatureIsAuthenticAMD ()) {
     Status = LookupSmrrIntel (&mSmrrPhysBaseMsr, &mSmrrPhysMaskMsr);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Intel SMRR base and mask cannot be queried! Bail from here!\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a Intel SMRR base and mask cannot be queried! Bail from here!\n", __func__));
       return Status;
     }
 
@@ -266,13 +266,13 @@ TSEGDumpHandler (
     // Extend the mask to account for the reserved bits.
     SmrrMask |= 0xffffffff00000000ULL;
 
-    DEBUG ((DEBUG_VERBOSE, "%a SMRR base 0x%016lx, mask: 0x%016lx\n", __FUNCTION__, SmrrBase, SmrrMask));
+    DEBUG ((DEBUG_VERBOSE, "%a SMRR base 0x%016lx, mask: 0x%016lx\n", __func__, SmrrBase, SmrrMask));
 
     // Extend the top bits of the mask to account for the reserved
 
     Length = ((~(SmrrMask & MtrrValidAddressMask)) & MtrrValidBitsMask) + 1;
 
-    DEBUG ((DEBUG_VERBOSE, "%a Calculated length: 0x%016lx\n", __FUNCTION__, Length));
+    DEBUG ((DEBUG_VERBOSE, "%a Calculated length: 0x%016lx\n", __func__, Length));
 
     // Writing this out in the format of a Memory Map entry (Type 16 will map to TSEG)
     AsciiSPrint (
@@ -289,7 +289,7 @@ TSEGDumpHandler (
   } else {
     Status = LookupSmrrAMD (&mSmrrPhysBaseMsr, &mSmrrPhysMaskMsr);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a AMD SMRR base and mask cannot be queried! Bail from here!\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a AMD SMRR base and mask cannot be queried! Bail from here!\n", __func__));
       return Status;
     }
 
@@ -302,7 +302,7 @@ TSEGDumpHandler (
     // Phys Addr[51:17] & SMM_MASK[51:17] = SMM_ADDR[51:17] & SMM_MASK[51:17].
     SmrrBase &= (VALID_SMRR_BIT_MASK & MtrrValidAddressMask);
     SmrrMask &= (VALID_SMRR_BIT_MASK & MtrrValidAddressMask);
-    DEBUG ((DEBUG_INFO, "%a SMRR base 0x%016lx, mask: 0x%016lx\n", __FUNCTION__, SmrrBase, SmrrMask));
+    DEBUG ((DEBUG_INFO, "%a SMRR base 0x%016lx, mask: 0x%016lx\n", __func__, SmrrBase, SmrrMask));
 
     LowBitPositionMask  = LowBitSet64 (SmrrMask);
     HighBitPositionMask = HighBitSet64 (SmrrMask);
@@ -320,7 +320,7 @@ TSEGDumpHandler (
 
     // So the length for each TSEG range will be (1 << LowBitPositionMask) - 1
     Length = ((UINT64)1 << LowBitPositionMask);
-    DEBUG ((DEBUG_INFO, "%a Calculated length: 0x%016lx\n", __FUNCTION__, Length));
+    DEBUG ((DEBUG_INFO, "%a Calculated length: 0x%016lx\n", __func__, Length));
 
     // The number of ranges will be 2 ^ (number of 0 bits in the valid region)
     NumberOfTseg = 1;
