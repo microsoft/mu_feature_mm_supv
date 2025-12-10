@@ -781,29 +781,6 @@ MmDriverDispatchHandler (
   );
 
 /**
-  Software MMI handler that is called when the gEventMmDispatchGuid event is called
-  This function is a stub in the user mode that does not do anything but to pass the
-  invocation of driver dispatcher call from the IPL.
-
-  @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
-  @param  Context         Points to an optional handler context which was specified when the handler was registered.
-  @param  CommBuffer      A pointer to a collection of data in memory that will
-                          be conveyed from a non-MM environment into an MM environment.
-  @param  CommBufferSize  The size of the CommBuffer.
-
-  @return Status Code
-
-**/
-EFI_STATUS
-EFIAPI
-MmDriverDispatchHandlerNull (
-  IN     EFI_HANDLE  DispatchHandle,
-  IN     CONST VOID  *Context         OPTIONAL,
-  IN OUT VOID        *CommBuffer      OPTIONAL,
-  IN OUT UINTN       *CommBufferSize  OPTIONAL
-);
-
-/**
   This function is the main entry point for an MM handler dispatch
   or communicate-based callback.
 
