@@ -108,10 +108,11 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 // Table of MMI Handlers that are registered by the MM Core when it is initialized
 //
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
-  { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
-  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
-  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
-  { NULL,                    NULL,                              NULL, FALSE },
+  { MmDriverDispatchHandler,  &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
+  { MmDriverDispatchHandler,  &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
+  { MmReadyToLockHandler,     &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
+  { MmSupvRequestHandler,     &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
+  { NULL,                     NULL,                              NULL, FALSE, TRUE  },
 };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
@@ -348,6 +349,32 @@ Exit:
 }
 
 /**
+  Software MMI handler that is called when the gEventMmDispatchGuid event is called
+  This function is a stub in the user mode that does not do anything but to pass the
+  invocation of driver dispatcher call from the IPL.
+
+  @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
+  @param  Context         Points to an optional handler context which was specified when the handler was registered.
+  @param  CommBuffer      A pointer to a collection of data in memory that will
+                          be conveyed from a non-MM environment into an MM environment.
+  @param  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+MmDriverDispatchHandlerNull (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context         OPTIONAL,
+  IN OUT VOID        *CommBuffer      OPTIONAL,
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  )
+{
+  return EFI_SUCCESS;
+}
+
+/**
   Software MMI handler that should be triggered from non-MM environment upon DxeMmReadyToLock
   event. This function unregisters the SUPERVISOR MMIs that are not required after Ready To Lock
   event. Certain features, such as unblock memory regions, will not be available after this point.
@@ -385,13 +412,18 @@ MmReadyToLockHandler (
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
     if (mMmCoreMmiHandlers[Index].UnRegister) {
-      Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
+        Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      } else {
+        Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      }
       if (EFI_ERROR (Status)) {
         DEBUG ((
           DEBUG_ERROR,
-          "Failed to unregister supervisor handler No. %d %g - %r\n",
+          "Failed to unregister supervisor handler No. %d %g (%a) - %r\n",
           Index,
           mMmCoreMmiHandlers[Index].HandlerType,
+          mMmCoreMmiHandlers[Index].SupervisorHandler ? "S" : "U",
           Status
           ));
       }
@@ -547,7 +579,8 @@ MmEntryPoint (
 
         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
-        mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+        // Rather than typical not_found on errors, this will bubble up the not_ready error.
+        mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
       } else {
         //
         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
@@ -1156,12 +1189,21 @@ MmSupervisorMain (
   // Register all handlers in the core table
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
-    Status = MmiSupvHandlerRegister (
-               mMmCoreMmiHandlers[Index].Handler,
-               mMmCoreMmiHandlers[Index].HandlerType,
-               &mMmCoreMmiHandlers[Index].DispatchHandle
-               );
-    DEBUG ((DEBUG_INFO, "MmiHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
+      Status = MmiSupvHandlerRegister (
+                 mMmCoreMmiHandlers[Index].Handler,
+                 mMmCoreMmiHandlers[Index].HandlerType,
+                 &mMmCoreMmiHandlers[Index].DispatchHandle
+                 );
+      DEBUG ((DEBUG_INFO, "MmiSupvHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    } else {
+      Status = MmiUserHandlerRegister (
+                 mMmCoreMmiHandlers[Index].Handler,
+                 mMmCoreMmiHandlers[Index].HandlerType,
+                 &mMmCoreMmiHandlers[Index].DispatchHandle
+                 );
+      DEBUG ((DEBUG_INFO, "MmiUserHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    }
   }
 
   Status = InitializeMmSupervisorTestAgents ();
