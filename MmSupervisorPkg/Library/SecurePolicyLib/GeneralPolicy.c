@@ -100,7 +100,7 @@ SecurityPolicyCheck (
   UINTN                                               TotalScannedSize;
   BOOLEAN                                             IsOverlapping;
 
-  DEBUG ((DEBUG_INFO, "%a - Policy overlap check entry ...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - Policy overlap check entry ...\n", __func__));
 
   if (SmmSecurityPolicy == NULL) {
     Status = EFI_INVALID_PARAMETER;
@@ -111,7 +111,7 @@ SecurityPolicyCheck (
       (SmmSecurityPolicy->Flags != 0) &&
       (SmmSecurityPolicy->Capabilities != 0))
   {
-    DEBUG ((DEBUG_ERROR, "%a - Secure policy header has unrecognized bits set.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Secure policy header has unrecognized bits set.\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -124,7 +124,7 @@ SecurityPolicyCheck (
     if (PolicyRoot[Index0].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO) {
       // IO Policy Overlap Check
       if (TypeDuplicationFlag & (BIT0 << SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO)) {
-        DEBUG ((DEBUG_INFO, "%a - Duplicated IO policy root found ...\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a - Duplicated IO policy root found ...\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
         goto Exit;
       }
@@ -142,7 +142,7 @@ SecurityPolicyCheck (
             if ((TempAddress <= IoDescriptors[Index2].IoAddress) &&
                 (TempAddress + TempSize >= (UINT32)IoDescriptors[Index2].IoAddress + IoDescriptors[Index2].LengthOrWidth))
             {
-              DEBUG ((DEBUG_ERROR, "%a - IO policy strict width overlap check failed\n", __FUNCTION__));
+              DEBUG ((DEBUG_ERROR, "%a - IO policy strict width overlap check failed\n", __func__));
               Status = EFI_SECURITY_VIOLATION;
               goto Exit;
             }
@@ -156,7 +156,7 @@ SecurityPolicyCheck (
                        &IsOverlapping
                        );
             if (EFI_ERROR (Status) || IsOverlapping) {
-              DEBUG ((DEBUG_ERROR, "%a - IO policy overlap check failed - %r\n", __FUNCTION__, Status));
+              DEBUG ((DEBUG_ERROR, "%a - IO policy overlap check failed - %r\n", __func__, Status));
               Status = EFI_SECURITY_VIOLATION;
               goto Exit;
             }
@@ -164,7 +164,7 @@ SecurityPolicyCheck (
         }
 
         if (IoDescriptors[Index1].Reserved != 0) {
-          DEBUG ((DEBUG_ERROR, "%a - IO policy has non zero reserved field.\n", __FUNCTION__));
+          DEBUG ((DEBUG_ERROR, "%a - IO policy has non zero reserved field.\n", __func__));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         }
@@ -176,7 +176,7 @@ SecurityPolicyCheck (
     } else if (PolicyRoot[Index0].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM) {
       // Memory Policy Overlap Check
       if (TypeDuplicationFlag & (BIT0 << SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM)) {
-        DEBUG ((DEBUG_INFO, "%a - Duplicated Memory policy root found ...\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a - Duplicated Memory policy root found ...\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
         goto Exit;
       }
@@ -197,14 +197,14 @@ SecurityPolicyCheck (
                      &IsOverlapping
                      );
           if (EFI_ERROR (Status) || IsOverlapping) {
-            DEBUG ((DEBUG_ERROR, "%a - Memory policy overlap check failed - %r\n", __FUNCTION__, Status));
+            DEBUG ((DEBUG_ERROR, "%a - Memory policy overlap check failed - %r\n", __func__, Status));
             Status = EFI_SECURITY_VIOLATION;
             goto Exit;
           }
         }
 
         if (MemDescriptors[Index1].Reserved != 0) {
-          DEBUG ((DEBUG_ERROR, "%a - Mem policy has non zero reserved field.\n", __FUNCTION__));
+          DEBUG ((DEBUG_ERROR, "%a - Mem policy has non zero reserved field.\n", __func__));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         }
@@ -216,7 +216,7 @@ SecurityPolicyCheck (
     } else if (PolicyRoot[Index0].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR) {
       // MSR Policy Overlap Check
       if (TypeDuplicationFlag & (BIT0 << SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR)) {
-        DEBUG ((DEBUG_INFO, "%a - Duplicated MSR policy root found ...\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a - Duplicated MSR policy root found ...\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
         goto Exit;
       }
@@ -237,7 +237,7 @@ SecurityPolicyCheck (
                      &IsOverlapping
                      );
           if (EFI_ERROR (Status) || IsOverlapping) {
-            DEBUG ((DEBUG_ERROR, "%a - MSR policy overlap check failed - %r\n", __FUNCTION__, Status));
+            DEBUG ((DEBUG_ERROR, "%a - MSR policy overlap check failed - %r\n", __func__, Status));
             Status = EFI_SECURITY_VIOLATION;
             goto Exit;
           }
@@ -250,7 +250,7 @@ SecurityPolicyCheck (
     } else if (PolicyRoot[Index0].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_INSTRUCTION) {
       // Instruction Policy Duplication Check
       if (TypeDuplicationFlag & (BIT0 << SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_INSTRUCTION)) {
-        DEBUG ((DEBUG_INFO, "%a - Duplicated Instruction policy root found ...\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a - Duplicated Instruction policy root found ...\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
         goto Exit;
       }
@@ -261,14 +261,14 @@ SecurityPolicyCheck (
         for (Index2 = 0; Index2 < Index1; Index2++) {
           // Naively iterate through all entries to check duplication
           if (InstrDescriptors[Index1].InstructionIndex == InstrDescriptors[Index2].InstructionIndex) {
-            DEBUG ((DEBUG_ERROR, "%a - Instruction policy duplication check failed - %r\n", __FUNCTION__, Status));
+            DEBUG ((DEBUG_ERROR, "%a - Instruction policy duplication check failed - %r\n", __func__, Status));
             Status = EFI_SECURITY_VIOLATION;
             goto Exit;
           }
         }
 
         if (InstrDescriptors[Index1].Reserved != 0) {
-          DEBUG ((DEBUG_ERROR, "%a - Instruction policy has non zero reserved field.\n", __FUNCTION__));
+          DEBUG ((DEBUG_ERROR, "%a - Instruction policy has non zero reserved field.\n", __func__));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         }
@@ -280,7 +280,7 @@ SecurityPolicyCheck (
     } else if (PolicyRoot[Index0].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE) {
       // Save State Policy Duplication Check
       if (TypeDuplicationFlag & (BIT0 << SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE)) {
-        DEBUG ((DEBUG_INFO, "%a - Duplicated Save state policy root found ...\n", __FUNCTION__));
+        DEBUG ((DEBUG_INFO, "%a - Duplicated Save state policy root found ...\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
         goto Exit;
       }
@@ -292,7 +292,7 @@ SecurityPolicyCheck (
           // Naively iterate through all entries to check duplication
           // Two policy entries with the same map field, regardless of their attributes, will not be allowed
           if (SvstDescriptors[Index1].MapField == SvstDescriptors[Index2].MapField) {
-            DEBUG ((DEBUG_ERROR, "%a - Save state policy duplication check failed - %r\n", __FUNCTION__, Status));
+            DEBUG ((DEBUG_ERROR, "%a - Save state policy duplication check failed - %r\n", __func__, Status));
             Status = EFI_SECURITY_VIOLATION;
             goto Exit;
           }
@@ -308,7 +308,7 @@ SecurityPolicyCheck (
           DEBUG ((
             DEBUG_ERROR,
             "%a - Save state policy has unsupported attributes %x.\n",
-            __FUNCTION__,
+            __func__,
             SvstDescriptors[Index1].Attributes
             ));
           Status = EFI_SECURITY_VIOLATION;
@@ -320,13 +320,13 @@ SecurityPolicyCheck (
         if (((SvstDescriptors[Index1].Attributes & SECURE_POLICY_RESOURCE_ATTR_COND_READ) == 0) &&
             (SvstDescriptors[Index1].AccessCondition != SECURE_POLICY_SVST_UNCONDITIONAL))
         {
-          DEBUG ((DEBUG_ERROR, "%a - Save state policy has conflicting condition on attributes.\n", __FUNCTION__));
+          DEBUG ((DEBUG_ERROR, "%a - Save state policy has conflicting condition on attributes.\n", __func__));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         }
 
         if (SvstDescriptors[Index1].Reserved != 0) {
-          DEBUG ((DEBUG_ERROR, "%a - Save state policy has non zero reserved field.\n", __FUNCTION__));
+          DEBUG ((DEBUG_ERROR, "%a - Save state policy has non zero reserved field.\n", __func__));
           Status = EFI_SECURITY_VIOLATION;
           goto Exit;
         }
@@ -336,13 +336,13 @@ SecurityPolicyCheck (
 
       TotalScannedSize += sizeof (SMM_SUPV_POLICY_ROOT_V1);
     } else {
-      DEBUG ((DEBUG_ERROR, "%a - Unrecognized policy type check %x\n", __FUNCTION__, PolicyRoot[Index0].Type));
+      DEBUG ((DEBUG_ERROR, "%a - Unrecognized policy type check %x\n", __func__, PolicyRoot[Index0].Type));
       Status = EFI_SECURITY_VIOLATION;
       goto Exit;
     }
 
     if (!IsZeroBuffer (PolicyRoot[Index0].Reserved, sizeof (PolicyRoot[Index0].Reserved))) {
-      DEBUG ((DEBUG_ERROR, "%a - Policy root has non zero reserved field.\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a - Policy root has non zero reserved field.\n", __func__));
       Status = EFI_SECURITY_VIOLATION;
       goto Exit;
     }
@@ -350,7 +350,7 @@ SecurityPolicyCheck (
 
   // Legacy Memory Policy Existence Check
   if (SmmSecurityPolicy->MemoryPolicyCount != 0) {
-    DEBUG ((DEBUG_ERROR, "%a - Legacy memory policy detected, not supported!\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Legacy memory policy detected, not supported!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
@@ -359,7 +359,7 @@ SecurityPolicyCheck (
     DEBUG ((
       DEBUG_ERROR,
       "%a - Unrecognized bytes detected in the policy (expecting 0x%x, has 0x%x), not allowed!\n",
-      __FUNCTION__,
+      __func__,
       TotalScannedSize,
       SmmSecurityPolicy->Size
       ));
@@ -369,11 +369,11 @@ SecurityPolicyCheck (
 
 Exit:
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Policy overlap check failed - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Policy overlap check failed - %r\n", __func__, Status));
     ASSERT_EFI_ERROR (Status);
   }
 
-  DEBUG ((DEBUG_INFO, "%a - Policy overlap check exit ...\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a - Policy overlap check exit ...\n", __func__));
   return Status;
 }
 

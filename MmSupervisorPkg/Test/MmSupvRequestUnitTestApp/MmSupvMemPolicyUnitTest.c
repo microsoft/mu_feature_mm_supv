@@ -285,14 +285,14 @@ VerifyIommuMemoryWithPolicy (
     goto Done;
   }
 
-  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld IOMMU regions.\n", __FUNCTION__, Count));
+  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld IOMMU regions.\n", __func__, Count));
 
   for (Index1 = 0; Index1 < Count; Index1++) {
-    DEBUG ((DEBUG_INFO, "[%a] - Checking the following IOMMU region:\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "[%a] - Checking the following IOMMU region:\n", __func__));
     DEBUG ((
       DEBUG_INFO,
       "[%a] -   IOMMU Region: Base = 0x%016Lx. Size = 0x%016Lx.\n",
-      __FUNCTION__,
+      __func__,
       IommuBases[Index1],
       IommuSizes[Index1]
       ));
@@ -300,7 +300,7 @@ VerifyIommuMemoryWithPolicy (
       DEBUG ((
         DEBUG_INFO,
         "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
-        __FUNCTION__,
+        __func__,
         MemDesc[Index2].BaseAddress,
         MemDesc[Index2].Size,
         MemDesc[Index2].MemAttributes
@@ -362,14 +362,14 @@ VerifyTxtMemoryWithPolicy (
     goto Done;
   }
 
-  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld TXT regions.\n", __FUNCTION__, Count));
+  DEBUG ((DEBUG_INFO, "[%a] - Discovered %Ld TXT regions.\n", __func__, Count));
 
   for (Index1 = 0; Index1 < Count; Index1++) {
-    DEBUG ((DEBUG_INFO, "[%a] - Checking the following TXT region:\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "[%a] - Checking the following TXT region:\n", __func__));
     DEBUG ((
       DEBUG_INFO,
       "[%a] -   TXT Region: Base = 0x%016Lx. Size = 0x%016Lx.\n",
-      __FUNCTION__,
+      __func__,
       TxtBases[Index1],
       TxtSizes[Index1]
       ));
@@ -383,7 +383,7 @@ VerifyTxtMemoryWithPolicy (
       DEBUG ((
         DEBUG_INFO,
         "[%a] -     Against Memory Descriptor: Base = 0x%016Lx. Size = 0x%016Lx. Attribute = 0x%08Lx.\n",
-        __FUNCTION__,
+        __func__,
         MemDesc[Index2].BaseAddress,
         MemDesc[Index2].Size,
         MemDesc[Index2].MemAttributes
@@ -508,7 +508,7 @@ VerifyMemPolicy (
   // Write access must be denied to any MMIO or other system registers which allow configuration of any of the system IOMMUs
   Status = VerifyIommuMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against IOMMU regions - %r\n", __func__, Status));
     // This is not an error anymore, since it should at least get level 10 report
     Status = EFI_SUCCESS;
     goto Done;
@@ -521,7 +521,7 @@ VerifyMemPolicy (
     // Check overlap with TXT regions for Intel processors
     Status = VerifyTxtMemoryWithPolicy (MemPolicy, MemPolicyCount, AccessAttr);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against TXT regions - %r\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_WARN, "%a Failed to validate memory policy against TXT regions - %r\n", __func__, Status));
       // This is not an error anymore, since it should at least get level 20 report
       Status = EFI_SUCCESS;
       goto Done;

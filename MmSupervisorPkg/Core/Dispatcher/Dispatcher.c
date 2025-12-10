@@ -132,7 +132,7 @@ MmLoadImage (
   //
   Status = PeCoffLoaderGetImageInfo (ImageContext);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to read Pe/Coff loader image info %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to read Pe/Coff loader image info %r\n", __func__, Status));
     return Status;
   }
 
@@ -147,7 +147,7 @@ MmLoadImage (
              &DstBuffer
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate 0x%x pages for loading image %r\n", __FUNCTION__, PageCount, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate 0x%x pages for loading image %r\n", __func__, PageCount, Status));
     return Status;
   }
 
@@ -164,7 +164,7 @@ MmLoadImage (
   //
   Status = PeCoffLoaderLoadImage (ImageContext);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to load image into our allocated buffer %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to load image into our allocated buffer %r\n", __func__, Status));
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
@@ -176,7 +176,7 @@ MmLoadImage (
   if (EFI_ERROR (Status)) {
     // if relocate fails, we don't need to call unload image here, as the extra action that may change page attributes
     // only is called on a successful return
-    DEBUG ((DEBUG_ERROR, "%a Failed to relocate image %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to relocate image %r\n", __func__, Status));
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
@@ -201,7 +201,7 @@ MmLoadImage (
              (VOID **)&DriverEntry->LoadedImage
              );
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate pool for loaded image protocol %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to allocate pool for loaded image protocol %r\n", __func__, Status));
     PeCoffLoaderUnloadImage (ImageContext);
     MmFreePages (DstBuffer, PageCount);
     return Status;
@@ -240,7 +240,7 @@ MmLoadImage (
   //
   Status = SmmSetImagePageAttributes (DriverEntry, FALSE);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for loaded image %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for loaded image %r\n", __func__, Status));
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
@@ -837,7 +837,7 @@ MmDriverDispatchHandler (
 
   PERF_CALLBACK_BEGIN (&gMmSupervisorDriverDispatchGuid);
 
-  DEBUG ((DEBUG_INFO, "%a Entry\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a Entry\n", __func__));
 
   Hob.Raw = GetHobList ();
   if (Hob.Raw == NULL) {
@@ -864,7 +864,7 @@ PrepareCommonBuffer:
     }
   }
 
-  DEBUG ((DEBUG_INFO, "%a Exit\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a Exit\n", __func__));
 
   PERF_CALLBACK_END (&gMmSupervisorDriverDispatchGuid);
 

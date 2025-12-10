@@ -32,10 +32,10 @@ InitializeMmSupervisorTestAgents (
   EFI_STATUS  Status = EFI_SUCCESS;
   VOID        *Registration;
 
-  DEBUG ((DEBUG_INFO, "%a Entry\n", __FUNCTION__));
+  DEBUG ((DEBUG_INFO, "%a Entry\n", __func__));
 
   if (FeaturePcdGet (PcdMmSupervisorTestEnable)) {
-    DEBUG ((DEBUG_INFO, "%a Test enabled, will register handlers.\n", __FUNCTION__));
+    DEBUG ((DEBUG_INFO, "%a Test enabled, will register handlers.\n", __func__));
     //
     // Register all test related MMI Handlers if enabled through platform configuration
     //
@@ -46,10 +46,10 @@ InitializeMmSupervisorTestAgents (
                );
     ASSERT_EFI_ERROR (Status);
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Registering handler for Mm paging audit test failed - %r!!!\n", __FUNCTION__, Status));
+      DEBUG ((DEBUG_ERROR, "%a Registering handler for Mm paging audit test failed - %r!!!\n", __func__, Status));
     }
   }
 
-  DEBUG ((DEBUG_INFO, "%a Exit - %r\n", __FUNCTION__, Status));
+  DEBUG ((DEBUG_INFO, "%a Exit - %r\n", __func__, Status));
   return Status;
 }

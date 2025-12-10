@@ -315,7 +315,7 @@ SmmInitPageTable (
     //
     FreePage = (LIST_ENTRY *)AllocatePageTableMemory (PAGE_TABLE_PAGES, NULL);
     if (FreePage == NULL) {
-      DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for FreePage!!!\n", __FUNCTION__));
+      DEBUG ((DEBUG_ERROR, "%a Failed to allocate page for FreePage!!!\n", __func__));
       Status = EFI_OUT_OF_RESOURCES;
       goto Cleanup;
     }
@@ -1055,11 +1055,11 @@ HaltOrReboot:
   // Dispatch to the registered exception handlers after demotion
   Status = PrepareNReportError (InterruptType, SystemContext);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a System encountered another error during error reporting... - %r\n", __FUNCTION__, Status));
+    DEBUG ((DEBUG_ERROR, "%a System encountered another error during error reporting... - %r\n", __func__, Status));
   }
 
   if (mSmmRebootOnException) {
-    DEBUG ((DEBUG_ERROR, "%a - Reboot here in test mode.\n", __FUNCTION__));
+    DEBUG ((DEBUG_ERROR, "%a - Reboot here in test mode.\n", __func__));
     ResetWarm ();
     CpuDeadLoop ();
   } else {
