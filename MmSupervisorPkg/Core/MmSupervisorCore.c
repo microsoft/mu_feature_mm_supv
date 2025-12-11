@@ -397,6 +397,7 @@ MmReadyToLockHandler (
       } else {
         Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
       }
+
       if (EFI_ERROR (Status)) {
         DEBUG ((
           DEBUG_ERROR,
@@ -560,7 +561,7 @@ MmEntryPoint (
         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
         // Rather than typical not_found on errors, this will bubble up the not_ready error.
-        mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
+        mMmCommunicationBufferStatus.ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
       } else {
         //
         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
