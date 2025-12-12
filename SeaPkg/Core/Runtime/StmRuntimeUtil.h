@@ -86,13 +86,14 @@ IsBufferInsideMmram (
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash using TPM.
 
-  @param[in]  CpuIndex           The index of the CPU.
-  @param[in]  AuxFileBase        The base address of the auxiliary file.
-  @param[in]  AuxFileSize        The size of the auxiliary file.
-  @param[in]  MmiEntryFileSize   The size of the MMI entry file.
-  @param[in]  GoldDigestList     The digest list of the MMI entry and supervisor core.
-  @param[in]  GoldDigestListCnt  The count of the digest list.
-  @param[out] NewPolicy          The new policy populated by this routine.
+  @param[in]      CpuIndex           The index of the CPU.
+  @param[in]      AuxFileBase        The base address of the auxiliary file.
+  @param[in]      AuxFileSize        The size of the auxiliary file.
+  @param[in]      MmiEntryFileSize   The size of the MMI entry file.
+  @param[in]      GoldDigestList     The digest list of the MMI entry and supervisor core.
+  @param[in]      GoldDigestListCnt  The count of the digest list.
+  @param[in, out] PolicyBuffer       The policy buffer populated by this routine.
+  @param[in, out] PolicyBufferSize   The size of policy buffer provided by the caller.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
@@ -109,7 +110,8 @@ SeaResponderReport (
   IN  UINT64                MmiEntryFileSize,
   IN  TPML_DIGEST_VALUES    *GoldDigestList,
   IN  UINTN                 GoldDigestListCnt,
-  OUT VOID                  **NewPolicy  OPTIONAL
+  IN OUT VOID               *PolicyBuffer OPTIONAL,
+  IN OUT UINTN              *PolicyBufferSize
   );
 
 #endif

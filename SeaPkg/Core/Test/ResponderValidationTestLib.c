@@ -36,13 +36,14 @@ extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash using TPM.
 
-  @param[in]  CpuIndex           The index of the CPU.
-  @param[in]  AuxFileBase        The base address of the auxiliary file.
-  @param[in]  AuxFileSize        The size of the auxiliary file.
-  @param[in]  MmiEntryFileSize   The size of the MMI entry file.
-  @param[in]  GoldDigestList     The digest list of the MMI entry and supervisor core.
-  @param[in]  GoldDigestListCnt  The count of the digest list.
-  @param[out] NewPolicy          The new policy populated by this routine.
+  @param[in]      CpuIndex           The index of the CPU.
+  @param[in]      AuxFileBase        The base address of the auxiliary file.
+  @param[in]      AuxFileSize        The size of the auxiliary file.
+  @param[in]      MmiEntryFileSize   The size of the MMI entry file.
+  @param[in]      GoldDigestList     The digest list of the MMI entry and supervisor core.
+  @param[in]      GoldDigestListCnt  The count of the digest list.
+  @param[in, out] PolicyBuffer       The policy buffer populated by this routine.
+  @param[in]      PolicyBufferSize   The size of policy buffer provided by the caller.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
@@ -59,7 +60,8 @@ SeaResponderReport (
   IN  UINT64                MmiEntryFileSize,
   IN  TPML_DIGEST_VALUES    *GoldDigestList,
   IN  UINTN                 GoldDigestListCnt,
-  OUT VOID                  **NewPolicy  OPTIONAL
+  IN OUT VOID               *PolicyBuffer,
+  IN UINTN                  PolicyBufferSize
   );
 
 /**
@@ -180,7 +182,7 @@ SeaValidationTestHandler (
   )
 {
   EFI_STATUS                  Status        = EFI_SUCCESS;
-  VOID                        *PolicyBuffer = NULL;
+  UINTN                       PolicyBufferSize = 0;
   SEA_TEST_COMM_INPUT_REGION  *CommRegion   = (SEA_TEST_COMM_INPUT_REGION *)CommBuffer;
 
   DEBUG ((DEBUG_INFO, "%a()\n", __func__));
@@ -208,6 +210,7 @@ SeaValidationTestHandler (
     goto Done;
   }
 
+  // First call to get the size
   Status = SeaResponderReport (
              gMmst->CurrentlyExecutingCpu,
              (EFI_PHYSICAL_ADDRESS)(UINTN)CommRegion->SupervisorAuxFileBase,
@@ -215,7 +218,8 @@ SeaValidationTestHandler (
              CommRegion->MmiEntryFileSize,
              CommRegion->SupvDigestList,
              CommRegion->SupvDigestListCount,
-             &PolicyBuffer
+             NULL,
+             &PolicyBufferSize
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - SeaResponderReport failed - %r\n", __func__, Status));
@@ -223,28 +227,41 @@ SeaValidationTestHandler (
   }
 
   // Now reevaluate the communication buffer size
-  if (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy) > *CommBufferSize) {
-    DEBUG ((DEBUG_ERROR, "%a - Policy buffer is NULL!\n", __func__));
-    *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
+  if (PolicyBufferSize + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy) > *CommBufferSize) {
+    *CommBufferSize = PolicyBufferSize + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
+    DEBUG ((DEBUG_ERROR, "%a - Policy buffer is too small! Need 0x%x\n", __func__, *CommBufferSize));
     Status          = EFI_BUFFER_TOO_SMALL;
     goto Done;
   }
 
+  PolicyBufferSize = *CommBufferSize - OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
+  Status = SeaResponderReport (
+             gMmst->CurrentlyExecutingCpu,
+             (EFI_PHYSICAL_ADDRESS)(UINTN)CommRegion->SupervisorAuxFileBase,
+             CommRegion->SupervisorAuxFileSize,
+             CommRegion->MmiEntryFileSize,
+             CommRegion->SupvDigestList,
+             CommRegion->SupvDigestListCount,
+             (UINT8 *)CommBuffer + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy),
+             &PolicyBufferSize
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - SeaResponderReport failed - %r\n", __func__, Status));
+    goto Done;
+  }
+
   // Making sure the validation routine is giving us the same policy buffer output
-  if (CompareMemoryPolicy (PolicyBuffer, MemPolicySnapshot) == FALSE) {
+  if (CompareMemoryPolicy ((UINT8 *)CommBuffer + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy), MemPolicySnapshot) == FALSE) {
     DEBUG ((DEBUG_ERROR, "%a Memory policy changed since the snapshot!!!\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
 
-  *CommBufferSize = ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
-  CopyMem ((UINT8 *)CommBuffer + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy), PolicyBuffer, ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->Size);
+  *CommBufferSize = PolicyBufferSize + OFFSET_OF (SEA_TEST_COMM_OUTPUT_REGION, FirmwarePolicy);
+
+  // TODO: dispatch it to other cores...
 
 Done:
-  if (PolicyBuffer != NULL) {
-    FreePages (PolicyBuffer, EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
-  }
-
   return Status;
 }
 

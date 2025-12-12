@@ -251,6 +251,62 @@ InitBasicContext (
   mGuestContextCommonNormal.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
+EFI_STATUS
+CrossCheckSmBase (
+  UINTN CpuIndex,
+  EFI_PHYSICAL_ADDRESS  SmBase,
+  UINTN Offset,
+  UINTN Size
+) {
+  UINTN Index;
+  UINT64 Target = 0;
+  UINT64 Other = 0;
+  EFI_STATUS Status;
+
+  if (Size > sizeof (UINT64)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu == NULL) {
+    return EFI_NOT_STARTED;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
+    return EFI_NOT_READY;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Smbase != SmBase) {
+    return EFI_SECURITY_VIOLATION;
+  }
+
+  CopyMem (&Target, (VOID *)(UINTN)(SmBase + Offset), Size);
+
+  Status = EFI_SUCCESS;
+  for (Index = 0; Index < mHostContextCommon.CpuNum; Index ++) {
+    if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
+      // If this one has not run yet, we can ignore it
+      continue;
+    }
+
+    Other = 0;
+    CopyMem (&Other, (VOID *)(UINTN)(mHostContextCommon.HostContextPerCpu[Index].Smbase + Offset), Size);
+    if (Other != Target) {
+      SAFE_DEBUG ((DEBUG_ERROR, "%a Offset (0x%x) from SMBASE (0x%x) on CPU %d has value 0x%x and does not match that (0x%x) of this CPU (%d)\n",
+        __func__,
+        Offset,
+        SmBase,
+        Index,
+        Other,
+        Target,
+        CpuIndex));
+      Status = EFI_SECURITY_VIOLATION;
+      break;
+    }
+  }
+
+  return Status;
+}
+
 /**
 
   This function initialize BSP.
@@ -913,7 +969,6 @@ GetResources (
   UINT64                            BufferBase;
   UINT64                            BufferSize;
   UINTN                             CpuIndex;
-  SMM_SUPV_SECURE_POLICY_DATA_V1_0  *PolicyBuffer = NULL;
   TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
 
   if (Register == NULL) {
@@ -975,58 +1030,31 @@ GetResources (
              PcdGet64 (PcdMmiEntryBinSize),
              DigestList,
              SUPPORTED_DIGEST_COUNT,
-             (VOID **)&PolicyBuffer
+             (VOID *)(UINTN)BufferBase,
+             BufferSize
              );
-  if (EFI_ERROR (Status)) {
-    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
-    StmStatus = ERROR_STM_SECURITY_VIOLATION;
-    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
-    Status = EFI_SECURITY_VIOLATION;
-    SAFE_DEBUG ((DEBUG_ERROR, "%a Validation routine failed: %r!\n", __func__, Status));
-    goto Done;
-  } else if (BufferSize < PolicyBuffer->Size) {
-    SAFE_DEBUG ((DEBUG_ERROR, "[%a] - PolicyBuffer->Size 0x%lx.\n", __func__, PolicyBuffer->Size));
-    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+  if (!EFI_ERROR (Status)) {
+    SAFE_DEBUG ((DEBUG_ERROR, "%a Validation routine succeeded!\n", __func__));
+    StmStatus = STM_SUCCESS;
+    Status = EFI_SUCCESS;
+  } else if (Status == EFI_BUFFER_TOO_SMALL) {
+    SAFE_DEBUG ((DEBUG_ERROR, "%a Policy cannot fit into provided buffer (0x%x)!\n", __func__, BufferSize));
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
-    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     // Populate rdx with the number of pages required
-    WriteUnaligned32 ((UINT32 *)&Register->Rdx, EFI_SIZE_TO_PAGES (PolicyBuffer->Size));
+    WriteUnaligned32 ((UINT32 *)&Register->Rdx, EFI_SIZE_TO_PAGES (BufferSize));
     Status = EFI_SECURITY_VIOLATION;
-    SAFE_DEBUG ((DEBUG_ERROR, "%a Policy returned (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, PolicyBuffer->Size, BufferSize));
-    goto Done;
-  } else if (IsZeroBuffer ((VOID *)(UINTN)BufferBase, BufferSize)) {
-    // First time being here, populate the content
-    CopyMem ((VOID *)(UINTN)BufferBase, PolicyBuffer, PolicyBuffer->Size);
-    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
-    StmStatus = STM_SUCCESS;
-    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
-    Status = EFI_SUCCESS;
-  } else if (
-             (CompareMemoryPolicy (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase) == FALSE) ||
-             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO) == FALSE) ||
-             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MSR) == FALSE) ||
-             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_INSTRUCTION) == FALSE) ||
-             (ComparePolicyWithType (PolicyBuffer, (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)BufferBase, SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_SAVE_STATE) == FALSE))
-  {
-    // Not the first time, making sure the validation routine is giving us the same policy buffer output
-    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
+  } else {
+    // Some other errors
+    SAFE_DEBUG ((DEBUG_ERROR, "%a Validation routine failed with %r!!!\n", __func__, Status));
     StmStatus = ERROR_STM_SECURITY_VIOLATION;
     WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
     Status = EFI_SECURITY_VIOLATION;
-    SAFE_DEBUG ((DEBUG_ERROR, "%a Memory policy changed from one core the next!!!\n", __func__));
-    goto Done;
-  } else {
-    ReleaseSpinLock (&mHostContextCommon.ResponderLock);
-    StmStatus = STM_SUCCESS;
-    WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
-    Status = EFI_SUCCESS;
   }
+
+  WriteUnaligned32 ((UINT32 *)&Register->Rax, StmStatus);
+  ReleaseSpinLock (&mHostContextCommon.ResponderLock);
 
 Done:
-  if (PolicyBuffer != NULL) {
-    FreePages (PolicyBuffer, EFI_SIZE_TO_PAGES (PolicyBuffer->Size));
-  }
-
   return Status;
 }
 

@@ -291,13 +291,14 @@ Done:
   this core. It will then validate the supervisor core data according to the accompanying
   aux file and revert the executed code to the original state and hash using TPM.
 
-  @param[in]  CpuIndex           The index of the CPU.
-  @param[in]  AuxFileBase        The base address of the auxiliary file.
-  @param[in]  AuxFileSize        The size of the auxiliary file.
-  @param[in]  MmiEntryFileSize   The size of the MMI entry file.
-  @param[in]  GoldDigestList     The digest list of the MMI entry and supervisor core.
-  @param[in]  GoldDigestListCnt  The count of the digest list.
-  @param[out] NewPolicy          The new policy populated by this routine.
+  @param[in]      CpuIndex           The index of the CPU.
+  @param[in]      AuxFileBase        The base address of the auxiliary file.
+  @param[in]      AuxFileSize        The size of the auxiliary file.
+  @param[in]      MmiEntryFileSize   The size of the MMI entry file.
+  @param[in]      GoldDigestList     The digest list of the MMI entry and supervisor core.
+  @param[in]      GoldDigestListCnt  The count of the digest list.
+  @param[in, out] PolicyBuffer       The policy buffer populated by this routine.
+  @param[in, out] PolicyBufferSize   The size of policy buffer provided by the caller.
 
   @retval EFI_SUCCESS            The function completed successfully.
   @retval EFI_INVALID_PARAMETER  The input parameter is invalid.
@@ -314,7 +315,8 @@ SeaResponderReport (
   IN  UINT64                MmiEntryFileSize,
   IN  TPML_DIGEST_VALUES    *GoldDigestList,
   IN  UINTN                 GoldDigestListCnt,
-  OUT VOID                  **NewPolicy  OPTIONAL
+  IN OUT VOID               *PolicyBuffer OPTIONAL,
+  IN OUT UINTN              *PolicyBufferSize
   )
 {
   EFI_STATUS                        Status;
@@ -347,6 +349,24 @@ SeaResponderReport (
   // Step 1: Basic check on the validity of inputs
   if ((GoldDigestList == NULL) || (GoldDigestListCnt != SUPPORTED_DIGEST_COUNT)) {
     DEBUG ((DEBUG_ERROR, "%a Input is not supported GoldDigestList: %p and GoldDigestListCnt: %d\n", __func__, GoldDigestList, GoldDigestListCnt));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  if (PolicyBufferSize == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a PolicyBufferSize is NULL\n", __func__));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  if ((PolicyBuffer == NULL) && (*PolicyBufferSize != 0)) {
+    DEBUG ((DEBUG_ERROR, "%a PolicyBuffer is NULL and PolicyBufferSize is 0\n", __func__));
+    Status = EFI_INVALID_PARAMETER;
+    goto Exit;
+  }
+
+  if ((PolicyBuffer != NULL) && (*PolicyBufferSize < sizeof (SMM_SUPV_SECURE_POLICY_DATA_V1_0))) {
+    DEBUG ((DEBUG_ERROR, "%a PolicyBufferSize is too small to be meaningful\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
@@ -477,6 +497,14 @@ SeaResponderReport (
   // Step 3.1: Pick a few entries to verify that they are pointing inside the MM CORE or MMRAM region
   // Reverse engineer MM core region with MM rendezvous
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
+
+  // MM supervisor base should be consistent across all cores
+  Status = CrossCheckSmBase (CpuIndex, MmBase, Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmBase, sizeof (UINT64));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a CrossCheckSmBase of SMI rendezvous entry failed. - %r\n", __func__, Status));
+    goto Exit;
+  }
+
   ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
   ImageContext.ImageRead = PeCoffLoaderImageReadFromMemory;
   ImageContext.Handle    = (VOID *)MmSupervisorBase;
@@ -530,6 +558,13 @@ SeaResponderReport (
     goto Exit;
   }
 
+  // CR3 should be consistent across all cores
+  Status = CrossCheckSmBase (CpuIndex, MmBase, Fixup32Ptr + FIXUP32_CR3_OFFSET - MmBase, sizeof (UINT64));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a CrossCheckSmBase of CR3 failed. - %r\n", __func__, Status));
+    goto Exit;
+  }
+
   // Supervisor stack should be pointing inside the MMRAM region
   if (!IsBufferInsideMmram (Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0], sizeof (UINT32))) {
     DEBUG ((DEBUG_ERROR, "%a Poplated supervisor stack 0x%p does not reside inside MMRAM!!!.\n", __func__, Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0]));
@@ -568,6 +603,16 @@ SeaResponderReport (
     goto Exit;
   }
 
+  // The MMI entry stub is checked.
+  // Then if the incoming buffer is not empty, we will do nothing, assuming that BSP already did the right thing.
+  if ((PolicyBuffer != NULL) &&
+      (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->VersionMajor == 0x0001) &&
+      (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->VersionMinor == 0x0000)) {
+    DEBUG ((DEBUG_INFO, "%a The policy is already populated, skipping %d!!!.\n", __func__, CpuIndex));
+    Status = EFI_SUCCESS;
+    goto Exit;
+  }
+
   // Then also verify that the firmware policy is inside the MMRAM
   FirmwarePolicyBase = *(UINT64 *)(MmSupervisorBase + FirmwarePolicySymbol->Offset);
   if (!IsBufferInsideMmram (FirmwarePolicyBase, sizeof (UINT64))) {
@@ -603,12 +648,13 @@ SeaResponderReport (
   FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)FirmwarePolicyBase;
 
   // Step 4: Report MM Secure Policy code
-  DrtmSmmPolicyData = AllocatePages (EFI_SIZE_TO_PAGES (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE));
-  if (DrtmSmmPolicyData == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate for policy data!!!.\n", __func__));
-    Status = EFI_OUT_OF_RESOURCES;
+  if ((PolicyBuffer == NULL) || (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE > *PolicyBufferSize)) {
+    DEBUG ((DEBUG_ERROR, "%a Policy collected (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, *PolicyBufferSize));
+    Status = EFI_BUFFER_TOO_SMALL;
     goto Exit;
   }
+
+  DrtmSmmPolicyData = PolicyBuffer;
 
   ZeroMem (DrtmSmmPolicyData, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE);
 
@@ -631,10 +677,6 @@ SeaResponderReport (
   DEBUG_CODE_BEGIN ();
   DumpSmmPolicyData ((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)(UINTN)DrtmSmmPolicyData);
   DEBUG_CODE_END ();
-
-  if (NewPolicy != NULL) {
-    *NewPolicy = DrtmSmmPolicyData;
-  }
 
 Exit:
   if (LocalMmiEntryBase != NULL) {
