@@ -47,7 +47,6 @@
 
 [Guids]
   gSeaValidationTestHandlerGuid
-  gMmSupervisorCommunicationRegionTableGuid
 
 [Protocols]
   gMmSupervisorCommunicationProtocolGuid
