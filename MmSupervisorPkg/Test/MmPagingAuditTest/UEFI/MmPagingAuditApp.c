@@ -939,39 +939,20 @@ LocateSmmCommonCommBuffer (
   VOID
   )
 {
-  EDKII_PI_SMM_COMMUNICATION_REGION_TABLE  *PiSmmCommunicationRegionTable;
-  EFI_MEMORY_DESCRIPTOR                    *SmmCommMemRegion;
-  UINTN                                    Index, BufferSize;
-  EFI_STATUS                               Status = EFI_ABORTED;
-  UINTN                                    DesiredBufferSize;
+  EFI_STATUS                            Status            = EFI_ABORTED;
+  MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *SmmCommunication = NULL;
 
   if (mPiSmmCommonCommBufferAddress == NULL) {
-    Status = EfiGetSystemConfigurationTable (&gMmSupervisorCommunicationRegionTableGuid, (VOID **)&PiSmmCommunicationRegionTable);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a Failed to get system configuration table %r\n", __func__, Status));
+    // Locate the communication buffer, if not done yet.
+    Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&SmmCommunication);
+
+    if (EFI_ERROR (Status) || (SmmCommunication == NULL)) {
       return Status;
     }
 
-    Status = EFI_BAD_BUFFER_SIZE;
-
-    DesiredBufferSize = sizeof (SMM_PAGE_AUDIT_UNIFIED_COMM_BUFFER);
-    DEBUG ((DEBUG_ERROR, "%a desired comm buffer size %ld\n", __func__, DesiredBufferSize));
-    BufferSize       = 0;
-    SmmCommMemRegion = (EFI_MEMORY_DESCRIPTOR *)(PiSmmCommunicationRegionTable + 1);
-    for (Index = 0; Index < PiSmmCommunicationRegionTable->NumberOfEntries; Index++) {
-      if (SmmCommMemRegion->Type == EfiConventionalMemory) {
-        BufferSize = EFI_PAGES_TO_SIZE ((UINTN)SmmCommMemRegion->NumberOfPages);
-        if (BufferSize >= (DesiredBufferSize + OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data))) {
-          Status = EFI_SUCCESS;
-          break;
-        }
-      }
-
-      SmmCommMemRegion = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)SmmCommMemRegion + PiSmmCommunicationRegionTable->DescriptorSize);
-    }
-
-    mPiSmmCommonCommBufferAddress = (VOID *)SmmCommMemRegion->PhysicalStart;
-    mPiSmmCommonCommBufferSize    = BufferSize;
+    // Use virtual start will be identical to physical start till translate event
+    mPiSmmCommonCommBufferAddress = (VOID *)SmmCommunication->CommunicationRegion.VirtualStart;
+    mPiSmmCommonCommBufferSize    = EFI_PAGES_TO_SIZE (SmmCommunication->CommunicationRegion.NumberOfPages);
   }
 
   return Status;

@@ -54,5 +54,4 @@
   gMmSupervisorCommunicationProtocolGuid       ## CONSUMES ## MU_CHANGE: MM_SUPV: Communicate to supervisor
 
 [Guids]
-  gMmSupervisorCommunicationRegionTableGuid ## CONSUMES  ## MU_CHANGE: MM_SUPV: Communicate to supervisor
   gSmiHandlerProfileGuid                    ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
