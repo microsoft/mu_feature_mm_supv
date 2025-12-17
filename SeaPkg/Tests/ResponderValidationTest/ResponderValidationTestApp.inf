@@ -32,7 +32,6 @@
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
   SeaPkg/SeaPkg.dec
-  UefiTestingPkg/UefiTestingPkg.dec
 
 [LibraryClasses]
   BaseLib
