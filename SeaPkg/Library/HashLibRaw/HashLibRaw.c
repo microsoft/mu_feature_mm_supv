@@ -8,12 +8,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include <PiPei.h>
+#include <IndustryStandard/Tpm20.h>
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/BaseCryptLib.h>
 #include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/HashLib.h>
 #include <Library/PcdLib.h>
 
 /**

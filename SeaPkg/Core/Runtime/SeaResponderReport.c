@@ -26,7 +26,6 @@
 #include <Library/SafeIntLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/HashLib.h>
 #include <Library/HashLibRaw.h>
 #include <Library/SecurePolicyLib.h>
 #include <Library/PeCoffValidationLib.h>
