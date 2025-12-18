@@ -79,6 +79,7 @@
   X64/CpuPause.nasm| MSFT
   X64/DisableInterrupts.c| MSFT
   X64/FlushCacheLine.nasm| MSFT
+  X64/Invd.c | MSFT
   X64/Wbinvd.c| MSFT
   X64/Mwait.nasm| MSFT
   X64/Monitor.nasm| MSFT
