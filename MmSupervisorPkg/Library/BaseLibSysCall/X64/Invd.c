@@ -9,6 +9,7 @@
 
 #include    <Uefi.h>
 #include    <Library/BaseLib.h>
+#include    <Library/DebugLib.h>
 
 /**
   Executes a INVD instruction.
