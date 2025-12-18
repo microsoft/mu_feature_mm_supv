@@ -298,7 +298,7 @@ CrossCheckSmBase (
 
   Status = EFI_SUCCESS;
   for (Index = 0; Index < mHostContextCommon.CpuNum; Index++) {
-    if ((mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) &&
+    if ((mHostContextCommon.HostContextPerCpu[Index].Stack == 0) &&
         (Index != CpuIndex))
     {
       // If this one has not run yet, we can ignore it
