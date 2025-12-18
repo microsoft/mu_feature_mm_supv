@@ -7,13 +7,9 @@
 
 **/
 
-/**
-  Microsoft Visual Studio 7.1 Function Prototypes for I/O Intrinsics.
-**/
-
 #include    <Uefi.h>
 #include    <Library/BaseLib.h>
-#include    <Library/SysCallLib.h>
+#include    <Library/DebugLib.h>
 
 /**
   Executes a INVD instruction.
