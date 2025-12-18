@@ -672,9 +672,12 @@ SeaResponderReport (
   // Step 4: Report MM Secure Policy code
   if ((PolicyBuffer == NULL) || (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE > *PolicyBufferSize)) {
     DEBUG ((DEBUG_ERROR, "%a Policy collected (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, *PolicyBufferSize));
+    *PolicyBufferSize = FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE;
     Status = EFI_BUFFER_TOO_SMALL;
     goto Exit;
   }
+
+  *PolicyBufferSize = FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE;
 
   DrtmSmmPolicyData = PolicyBuffer;
 
