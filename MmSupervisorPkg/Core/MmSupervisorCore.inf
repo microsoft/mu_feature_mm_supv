@@ -236,6 +236,7 @@
   gMmSupervisorRequestHandlerGuid               ## SOMETIMES_CONSUMES   ## GUID # SmiHandlerRegister
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
+  gEventMmDispatchGuid                          ## CONSUMES
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
 

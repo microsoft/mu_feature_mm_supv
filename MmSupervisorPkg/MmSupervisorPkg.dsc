@@ -55,7 +55,7 @@
   TimerLib|MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
   MmSupervisorCoreInitLib|MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
 
-[LibraryClasses.IA32]
+[LibraryClasses.IA32.PEIM, LibraryClasses.X64.PEIM]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
   PeimEntryPoint|MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
   PeiServicesLib|MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
@@ -128,9 +128,9 @@
 [Components]
   MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
   MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
-
-[Components.IA32]
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
+
+  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
 
