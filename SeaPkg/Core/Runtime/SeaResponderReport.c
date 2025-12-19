@@ -580,7 +580,7 @@ SeaResponderReport (
   }
 
   // CR3 should be consistent across all cores
-  Status = CrossCheckSmBase (CpuIndex, MmBase, (UINTN)(Fixup32Ptr + FIXUP32_CR3_OFFSET) - (UINTN)LocalMmiEntryBase + SMM_HANDLER_OFFSET, sizeof (UINT64));
+  Status = CrossCheckSmBase (CpuIndex, MmBase, (UINTN)(Fixup32Ptr + FIXUP32_CR3_OFFSET) - (UINTN)LocalMmiEntryBase + SMM_HANDLER_OFFSET, sizeof(Fixup32Ptr[FIXUP32_CR3_OFFSET]));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a CrossCheckSmBase of CR3 failed. - %r\n", __func__, Status));
     goto Exit;
