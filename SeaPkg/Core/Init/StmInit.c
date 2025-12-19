@@ -286,6 +286,10 @@ CrossCheckSmBase (
     return EFI_NOT_STARTED;
   }
 
+  if (CpuIndex >= mHostContextCommon.CpuNum) {
+    return EFI_INVALID_PARAMETER;
+  }
+
   if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
     return EFI_NOT_READY;
   }
