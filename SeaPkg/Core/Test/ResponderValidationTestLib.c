@@ -33,10 +33,10 @@ extern CPU_HOT_PLUG_DATA                 mCpuHotPlugData;
 /**
   Helper function to cross-check SMBASE-relative data across all CPUs.
 
-  @param CpuIndex  The index of the CPU to check against all others.
-  @param SmBase    The SMBASE of the CPU.
-  @param Offset    The offset from SMBASE to read the data.
-  @param Size      The size of the data to read.
+  @param[in] CpuIndex  The index of the CPU to check against all others.
+  @param[in] SmBase    The SMBASE of the CPU.
+  @param[in] Offset    The offset from SMBASE to read the data.
+  @param[in] Size      The size of the data to read.
 
   @retval EFI_SUCCESS            The data matches across all CPUs.
   @retval EFI_UNSUPPORTED        The size is larger than UINT64.
@@ -46,10 +46,10 @@ extern CPU_HOT_PLUG_DATA                 mCpuHotPlugData;
 **/
 EFI_STATUS
 CrossCheckSmBase (
-  UINTN                 CpuIndex,
-  EFI_PHYSICAL_ADDRESS  SmBase,
-  UINTN                 Offset,
-  UINTN                 Size
+  IN UINTN                 CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS  SmBase,
+  IN UINTN                 Offset,
+  IN UINTN                 Size
   )
 {
   UINTN       Index;
