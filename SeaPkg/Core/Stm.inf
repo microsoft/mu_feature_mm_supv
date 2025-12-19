@@ -69,6 +69,7 @@
   SecurePolicyLib
   LocalApicLib
   MtrrLib
+  StackCheckLib
 
 [Pcd]
   gEfiMdePkgTokenSpaceGuid.PcdPerformanceLibraryPropertyMask  ## CONSUMES
