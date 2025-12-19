@@ -1,6 +1,12 @@
-"""Post-build plugin to scan MM Standalone modules for use of protected
-instrs."""
 
+##
+#  Post-build plugin to scan MM Standalone modules for use of protected 
+#  instructions
+#
+#
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
 import glob
 import logging
 import re
