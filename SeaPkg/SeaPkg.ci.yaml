@@ -25,7 +25,6 @@
             "MdeModulePkg/MdeModulePkg.dec",
             "StandaloneMmPkg/StandaloneMmPkg.dec",
             "UefiCpuPkg/UefiCpuPkg.dec",
-            "SecurityPkg/SecurityPkg.dec",
             "CryptoPkg/CryptoPkg.dec",
             "MmSupervisorPkg/MmSupervisorPkg.dec",
             "SeaPkg/SeaPkg.dec"
@@ -35,8 +34,7 @@
         ],
         "AcceptableDependencies-UEFI_APPLICATION": [
             "ShellPkg/ShellPkg.dec",
-            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec",
-            "UefiTestingPkg/UefiTestingPkg.dec"
+            "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"
         ],
         "IgnoreInf": []
     },

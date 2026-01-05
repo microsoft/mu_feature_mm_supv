@@ -96,7 +96,8 @@ LocateMmCommonCommBuffer (
 /**
   Prepares the comm buffer to be used for MM communication.
 
-  @param[out] CommBuffer   Pointer to the CommBuffer for the test step to use.
+  @param[out] CommBuffer      Pointer to the CommBuffer for the test step to use.
+  @param[in]  AdditionalSize  Additional size in bytes to allocate beyond the size of MM_SUPERVISOR_REQUEST_HEADER.
 
   @retval     EFI_SUCCESS             CommBuffer is initialized and ready to use.
   @retval     EFI_NOT_FOUND           The comm buffer could not be found.
@@ -105,7 +106,8 @@ LocateMmCommonCommBuffer (
 **/
 EFI_STATUS
 MmSupvRequestGetCommBuffer (
-  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer
+  OUT  MM_SUPERVISOR_REQUEST_HEADER  **CommBuffer,
+  IN   UINTN                         AdditionalSize
   )
 {
   EFI_STATUS                 Status;
@@ -129,7 +131,7 @@ MmSupvRequestGetCommBuffer (
 
   ZeroMem (CommHeader, CommBufferSize);
   CopyGuid (&CommHeader->HeaderGuid, &gMmSupervisorRequestHandlerGuid);
-  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER);
+  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + AdditionalSize;
 
   *CommBuffer = (MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data;
 
@@ -152,7 +154,7 @@ RequestSupervisorVersionInfo (
   MM_SUPERVISOR_REQUEST_HEADER       *CommBuffer;
   MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo;
 
-  Status = MmSupvRequestGetCommBuffer (&CommBuffer);
+  Status = MmSupvRequestGetCommBuffer (&CommBuffer, sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER));
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     return NULL;

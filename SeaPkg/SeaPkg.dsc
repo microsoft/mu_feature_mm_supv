@@ -63,7 +63,7 @@
   StmLib|SeaPkg/Library/StmLib/StmLib.inf
   StmPlatformLib|SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
   SynchronizationLib|SeaPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
-  HashLib|SeaPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+  HashLibRaw|SeaPkg/Library/HashLibRaw/HashLibRaw.inf
   Tpm2CommandLib|SecurityPkg/Library/Tpm2CommandLib/Tpm2CommandLib.inf
   Tpm2DeviceLib|SecurityPkg/Library/Tpm2DeviceLibDTpm/Tpm2DeviceLibDTpmStandaloneMm.inf
   MemoryAllocationLib|SeaPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf
@@ -104,5 +104,5 @@
   SeaPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
   SeaPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf
   SeaPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
-  SeaPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+  SeaPkg/Library/HashLibRaw/HashLibRaw.inf
   SeaPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf
