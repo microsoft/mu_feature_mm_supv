@@ -516,7 +516,6 @@ MmEntryPoint (
 
         // Check if MM Communicate V3 is being used
         if (CompareGuid (&(CommunicateHeader->HeaderGuid), &gEfiMmCommunicateHeaderV3Guid)) {
-          DEBUG ((DEBUG_ERROR, "V3 Comm is being used\n"));
           CommunicateHeaderV3 = (EFI_MM_COMMUNICATE_HEADER_V3 *)CommunicateHeader;
           CommGuidOffset      = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER_V3, MessageGuid);
           CommHeaderSize      = sizeof (EFI_MM_COMMUNICATE_HEADER_V3);
@@ -602,7 +601,7 @@ MmEntryPoint (
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
         //
-        BufferSize = BufferSize + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+        BufferSize = BufferSize + CommHeaderSize;
         if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
           CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
         } else {
