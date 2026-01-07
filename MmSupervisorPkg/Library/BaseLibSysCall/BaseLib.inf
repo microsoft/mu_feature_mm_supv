@@ -79,7 +79,6 @@
   X64/CpuPause.nasm| MSFT
   X64/DisableInterrupts.c| MSFT
   X64/FlushCacheLine.nasm| MSFT
-  X64/Invd.c | MSFT
   X64/Wbinvd.c| MSFT
   X64/Mwait.nasm| MSFT
   X64/Monitor.nasm| MSFT
@@ -91,6 +90,7 @@
   X64/TdVmcall.c
   X64/TdProbe.c
 
+  X64/Invd.c
   X64/Non-existing.c
   Math64.c
   Unaligned.c
@@ -133,3 +133,4 @@
 
 [BuildOptions]
 #  DEBUG_*_*_CC_FLAGS  = /FAcs
+
