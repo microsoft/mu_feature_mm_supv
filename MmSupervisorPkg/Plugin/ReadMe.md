@@ -1,7 +1,7 @@
 # MM Supervisor Post Build Scan Plugin
 
 This plugin performs post-build scanning of MM Standalone modules to detect usage of protected/privileged instructions
-that would exception when executing in the scurity model of the MM Supervisor. The plugin analyzes the build binaries
+that would exception when executing in the security model of the MM Supervisor. The plugin analyzes the build binaries
 and warns about found violations in the compiled binaries.
 
 `MmSupervisorPostBuildScan.py` -> Scans MM Standalone modules for protected instruction usage during post-build phase.
@@ -9,9 +9,9 @@ and warns about found violations in the compiled binaries.
 
 ## Usability
 
-The plugin is scoped to `mmsupvscanning` and will be invoked invoked during the post-build phase when building a project.
-It does required a valid `BUILDREPORT_FILE` to determine the MM_STANDALONE modules which need to be scanned. Any
-potentional violations will be reported as build warnings. Check the build logs for any protected instruction usage reports.
+The plugin is scoped to `mmsupvscanning` and will be invoked during the post-build phase when building a project.
+It requires a valid `BUILDREPORT_FILE` to determine the MM_STANDALONE modules which need to be scanned. Any
+potential violations will be reported as build warnings. Check the build logs for any protected instruction usage reports.
 
 ## Protected Instruction Categories
 
@@ -98,17 +98,17 @@ The plugin supports multiple toolchains and automatically adapts its disassembly
 - Command: `llvm-objdump -d -S --x86-asm-syntax=intel --show-all-symbols --debuginfod`
 
 NOTE: llvm-objdump does not have the ability to differentiate between jump tables (data) and
-executable code. The current implemntation of the utility has shown false positives
-when the jump tables are incorrectly interpereted as executable code.
+executable code. The current implementation of the utility has shown false positives
+when the jump tables are incorrectly interpreted as executable code.
 
 ### GCC
 
 - Uses standard `objdump` utility
 - Command: `objdump -d -S -M intel --show-all-symbols --debuginfod`
 
-NOTE: llvm-objdump does not have the ability to differentiate between jump tables (data) and
-executable code. The current implemntation of the utility has shown false positives
-when the jump tables are incorrectly interpereted as executable code.
+NOTE: objdump does not have the ability to differentiate between jump tables (data) and
+executable code. The current implementation of the utility has shown false positives
+when the jump tables are incorrectly interpreted as executable code.
 
 ## Scan Process
 
@@ -139,8 +139,7 @@ To add monitoring for additional protected instructions:
 The plugin automatically scans for any instructions in the `privileged_instructions` list, so no additional
 code changes are required beyond updating the list.
 
-Copyright & License
-===================
+## Copyright & License
 
 | Copyright (c) Microsoft Corporation
 | SPDX-License-Identifier: BSD-2-Clause-Patent
