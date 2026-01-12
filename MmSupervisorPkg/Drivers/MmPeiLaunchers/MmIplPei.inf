@@ -17,11 +17,10 @@
   PI_SPECIFICATION_VERSION       = 0x0001000A
   ENTRY_POINT                    = MmIplPeiEntry
 
-# dev/202502, release/202502
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 3dd4263d24d9aab1423696633b261277 | 2025-08-29T23-27-13 | ce057040b889378a53850c22545f0ae134f4ea4e
+# release/202511
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | d40c6972c8fdedf15330e1ca758447b5 | 2026-01-09T02-58-15 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 21106e057e22a548508f22875b3c2124 | 2024-08-28T17-14-15 | 0a17aa9da5ebde81bd5e2053ce4df5ff9dedf45c
-
+#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | ed9df131b59a49c5b6f12313952462ac | 2026-01-09T02-58-57 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
 #
 # The following information is for reference only and not required by the build tools.
 #
