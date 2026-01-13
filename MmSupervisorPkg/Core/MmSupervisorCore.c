@@ -591,6 +591,8 @@ MmEntryPoint (
           goto Cleanup;
         }
 
+        BufferSize -= CommHeaderSize;
+
         Status = MmiManage (
                    (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
                    NULL,
