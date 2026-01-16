@@ -32,6 +32,7 @@
   PeCoffLibNegative|Include/Library/PeCoffLibNegative.h
   PeCoffValidationLib|Include/Library/PeCoffValidationLib.h
   SeaManifestPublicationLib|Include/Library/SeaManifestPublicationLib.h
+  SmrrLib|Include/Library/SmrrLib.h
   StmLib|Include/Library/StmLib.h
   StmPlatformLib|Include/Library/StmPlatformLib.h
 

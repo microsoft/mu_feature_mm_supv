@@ -16,6 +16,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
+#include <Library/SmrrLib.h>
 
 /**
   The constructor function for the common MM library instance with STM.
