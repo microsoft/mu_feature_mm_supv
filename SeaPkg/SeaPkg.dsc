@@ -33,6 +33,7 @@
   UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
+  SmmrLib|SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
   StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
 
 [LibraryClasses.common.PEIM]
@@ -87,6 +88,7 @@
   SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
   SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
   SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
+  SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
 
 [Components.X64]
   SeaPkg/Core/Stm.inf {
