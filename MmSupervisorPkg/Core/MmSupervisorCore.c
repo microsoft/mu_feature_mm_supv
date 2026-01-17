@@ -574,6 +574,11 @@ MmEntryPoint (
         if (CompareGuid (&(CommunicateHeader->HeaderGuid), &gEfiMmCommunicateHeaderV3Guid)) {
           DEBUG ((DEBUG_ERROR, "V3 Communication for supervisor channel is not supported!\n"));
           ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_UNSUPPORTED;
+          goto Cleanup;
         } else {
           CommGuidOffset = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, HeaderGuid);
           CommHeaderSize = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
