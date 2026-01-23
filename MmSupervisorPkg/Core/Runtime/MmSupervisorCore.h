@@ -242,7 +242,6 @@ extern LIST_ENTRY                        gHandleList;
 extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
-extern EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
 extern BOOLEAN                           mMmReadyToLockDone;
 extern BOOLEAN                           mCoreInitializationComplete;
 extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
@@ -267,54 +266,54 @@ MmInitializeMemoryServices (
   IN EFI_MMRAM_DESCRIPTOR  *MmramRanges
   );
 
-/**
-  The MmInstallConfigurationTable() function is used to maintain the list
-  of configuration tables that are stored in the System Management System
-  Table.  The list is stored as an array of (GUID, Pointer) pairs.  The list
-  must be allocated from pool memory with PoolType set to EfiRuntimeServicesData.
+// /**
+//   The MmInstallConfigurationTable() function is used to maintain the list
+//   of configuration tables that are stored in the System Management System
+//   Table.  The list is stored as an array of (GUID, Pointer) pairs.  The list
+//   must be allocated from pool memory with PoolType set to EfiRuntimeServicesData.
 
-  @param  SystemTable      A pointer to the MM System Table (SMST).
-  @param  Guid             A pointer to the GUID for the entry to add, update, or remove.
-  @param  Table            A pointer to the buffer of the table to add.
-  @param  TableSize        The size of the table to install.
+//   @param  SystemTable      A pointer to the MM System Table (SMST).
+//   @param  Guid             A pointer to the GUID for the entry to add, update, or remove.
+//   @param  Table            A pointer to the buffer of the table to add.
+//   @param  TableSize        The size of the table to install.
 
-  @retval EFI_SUCCESS           The (Guid, Table) pair was added, updated, or removed.
-  @retval EFI_INVALID_PARAMETER Guid is not valid.
-  @retval EFI_NOT_FOUND         An attempt was made to delete a non-existent entry.
-  @retval EFI_OUT_OF_RESOURCES  There is not enough memory available to complete the operation.
+//   @retval EFI_SUCCESS           The (Guid, Table) pair was added, updated, or removed.
+//   @retval EFI_INVALID_PARAMETER Guid is not valid.
+//   @retval EFI_NOT_FOUND         An attempt was made to delete a non-existent entry.
+//   @retval EFI_OUT_OF_RESOURCES  There is not enough memory available to complete the operation.
 
-**/
-EFI_STATUS
-EFIAPI
-MmInstallConfigurationTable (
-  IN  CONST EFI_MM_SYSTEM_TABLE  *SystemTable,
-  IN  CONST EFI_GUID             *Guid,
-  IN  VOID                       *Table,
-  IN  UINTN                      TableSize
-  );
+// **/
+// EFI_STATUS
+// EFIAPI
+// MmInstallConfigurationTable (
+//   IN  CONST EFI_MM_SYSTEM_TABLE  *SystemTable,
+//   IN  CONST EFI_GUID             *Guid,
+//   IN  VOID                       *Table,
+//   IN  UINTN                      TableSize
+//   );
 
-/**
-  Wrapper function to MmInstallProtocolInterfaceNotify.  This is the public API which
-  Calls the private one which contains a BOOLEAN parameter for notifications
+// /**
+//   Wrapper function to MmInstallProtocolInterfaceNotify.  This is the public API which
+//   Calls the private one which contains a BOOLEAN parameter for notifications
 
-  @param  UserHandle             The handle to install the protocol handler on,
-                                 or NULL if a new handle is to be allocated
-  @param  Protocol               The protocol to add to the handle
-  @param  InterfaceType          Indicates whether Interface is supplied in
-                                 native form.
-  @param  Interface              The interface for the protocol being added
+//   @param  UserHandle             The handle to install the protocol handler on,
+//                                  or NULL if a new handle is to be allocated
+//   @param  Protocol               The protocol to add to the handle
+//   @param  InterfaceType          Indicates whether Interface is supplied in
+//                                  native form.
+//   @param  Interface              The interface for the protocol being added
 
-  @return Status code
+//   @return Status code
 
-**/
-EFI_STATUS
-EFIAPI
-MmInstallProtocolInterface (
-  IN OUT EFI_HANDLE      *UserHandle,
-  IN EFI_GUID            *Protocol,
-  IN EFI_INTERFACE_TYPE  InterfaceType,
-  IN VOID                *Interface
-  );
+// **/
+// EFI_STATUS
+// EFIAPI
+// MmInstallProtocolInterface (
+//   IN OUT EFI_HANDLE      *UserHandle,
+//   IN EFI_GUID            *Protocol,
+//   IN EFI_INTERFACE_TYPE  InterfaceType,
+//   IN VOID                *Interface
+//   );
 
 /**
   Allocates pages from the memory map.
@@ -490,31 +489,31 @@ MmFreeSupervisorPool (
   IN VOID  *Buffer
   );
 
-// /**
-//   Installs a protocol interface into the boot services environment.
+/**
+  Installs a protocol interface into the boot services environment.
 
-//   @param  UserHandle             The handle to install the protocol handler on,
-//                                  or NULL if a new handle is to be allocated
-//   @param  Protocol               The protocol to add to the handle
-//   @param  InterfaceType          Indicates whether Interface is supplied in
-//                                  native form.
-//   @param  Interface              The interface for the protocol being added
-//   @param  Notify                 indicates whether notify the notification list
-//                                  for this protocol
+  @param  UserHandle             The handle to install the protocol handler on,
+                                 or NULL if a new handle is to be allocated
+  @param  Protocol               The protocol to add to the handle
+  @param  InterfaceType          Indicates whether Interface is supplied in
+                                 native form.
+  @param  Interface              The interface for the protocol being added
+  @param  Notify                 indicates whether notify the notification list
+                                 for this protocol
 
-//   @retval EFI_INVALID_PARAMETER  Invalid parameter
-//   @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate
-//   @retval EFI_SUCCESS            Protocol interface successfully installed
+  @retval EFI_INVALID_PARAMETER  Invalid parameter
+  @retval EFI_OUT_OF_RESOURCES   No enough buffer to allocate
+  @retval EFI_SUCCESS            Protocol interface successfully installed
 
-// **/
-// EFI_STATUS
-// MmInstallProtocolInterfaceNotify (
-//   IN OUT EFI_HANDLE      *UserHandle,
-//   IN EFI_GUID            *Protocol,
-//   IN EFI_INTERFACE_TYPE  InterfaceType,
-//   IN VOID                *Interface,
-//   IN BOOLEAN             Notify
-//   );
+**/
+EFI_STATUS
+MmInstallProtocolInterfaceNotify (
+  IN OUT EFI_HANDLE      *UserHandle,
+  IN EFI_GUID            *Protocol,
+  IN EFI_INTERFACE_TYPE  InterfaceType,
+  IN VOID                *Interface,
+  IN BOOLEAN             Notify
+  );
 
 // /**
 //   Uninstalls all instances of a protocol:interfacer from a handle.
@@ -720,44 +719,44 @@ MmiHandlerUserUnRegister (
   IN  EFI_HANDLE  DispatchHandle
   );
 
+// /**
+//   Helper function that will look up the driver GUID from discovered list using loaded image address.
+
+//   @param  DriverAddr      The address of loaded image that is of interest.
+//   @param  Guid            The pointer to hold returned driver GUID.
+
+//   @return EFI_SUCCESS             FileName is found successfully.
+//   @return EFI_INVALID_PARAMETER   Incoming Guid point is null.
+//   @return EFI_NOT_FOUND           FileName is not found from internal list.
+
+// **/
+// EFI_STATUS
+// FindFileNameFromDiscoveredList (
+//   IN  EFI_PHYSICAL_ADDRESS  DriverAddress,
+//   OUT EFI_GUID              *Guid
+//   );
+
 /**
-  Helper function that will look up the driver GUID from discovered list using loaded image address.
+  Helper function to protect temporarily allocated buffer for ffs. They should not be changed before ready to lock.
 
-  @param  DriverAddr      The address of loaded image that is of interest.
-  @param  Guid            The pointer to hold returned driver GUID.
-
-  @return EFI_SUCCESS             FileName is found successfully.
-  @return EFI_INVALID_PARAMETER   Incoming Guid point is null.
-  @return EFI_NOT_FOUND           FileName is not found from internal list.
+  @retval EFI_SUCCESS       All previously allocated buffer for ffs are protected properly.
+  @retval Error             Some issue occurred during garbage collection.
 
 **/
 EFI_STATUS
-FindFileNameFromDiscoveredList (
-  IN  EFI_PHYSICAL_ADDRESS  DriverAddress,
-  OUT EFI_GUID              *Guid
+LockFfsBuffer (
+  VOID
   );
 
-// /**
-//   Helper function to protect temporarily allocated buffer for ffs. They should not be changed before ready to lock.
-
-//   @retval EFI_SUCCESS       All previously allocated buffer for ffs are protected properly.
-//   @retval Error             Some issue occurred during garbage collection.
-
-// **/
-// EFI_STATUS
-// LockFfsBuffer (
-//   VOID
-//   );
-
-// /**
-//   Helper function to recycle temporarily allocated buffer for ffs. They should not be needed anymore.
-//   @retval EFI_SUCCESS       All previously allocated buffer for ffs are recycled properly.
-//   @retval Error             Some issue occurred during garbage collection.
-// **/
-// EFI_STATUS
-// RecycleFfsBuffer (
-//   VOID
-//   );
+/**
+  Helper function to recycle temporarily allocated buffer for ffs. They should not be needed anymore.
+  @retval EFI_SUCCESS       All previously allocated buffer for ffs are recycled properly.
+  @retval Error             Some issue occurred during garbage collection.
+**/
+EFI_STATUS
+RecycleFfsBuffer (
+  VOID
+  );
 
 /**
   This function is the main entry point for an MM handler dispatch
@@ -948,8 +947,7 @@ SetupSmiEntryExit (
 VOID
 EFIAPI
 LockMmCoreBeforeExit (
-  EFI_PHYSICAL_ADDRESS  MmHobStart,
-  UINT64                *RemainingSize
+  VOID
   );
 
 EFI_STATUS

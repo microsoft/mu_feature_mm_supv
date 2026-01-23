@@ -22,11 +22,43 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt.h"
-#include "Relocate/Relocate.h"
+// #include "Relocate/Relocate.h"
+#include "Services/CpuService/CpuService.h"
 #include "Handler/Handler.h"
 #include "Mem/Mem.h"
 
 EFI_MM_SYSTEM_TABLE  *gMmUserMmst = NULL;
+
+// TODO: This should not be here
+/**
+  This function is called by SyscallDispatcher to process user request on registering
+  a child SMI handler from user space.
+
+  @param SyscallIndex         The syscall index requested by the user. Supervisor uses it
+                              to validate internal request state machine.
+  @param UserMmCpuProtocol    User MM CPU protocol instance used for basic sanity check.
+  @param Arg2                 When the SyscallIndex is SMM_SC_SVST_READ, this argument
+                              contains Register to be read. When index is SMM_SC_SVST_READ_2,
+                              this argument is width of buffer to be read in bytes.
+  @param Arg3                 When the SyscallIndex is SMM_SC_SVST_READ, this is the CpuIndex
+                              to be read from save state buffer. When SyscallIndex
+                              is SMM_SC_SVST_READ_2, this represents the user buffer to hold
+                              return data. Caller should validate the incoming buffer before
+                              invoking this interface.
+
+  @retval EFI_SUCCESS           The information is recorded.
+  @retval EFI_UNSUPPORTED       This feature is not enabled.
+  @retval EFI_INVALID_PARAMETER Unrecognized syscall index is passed in.
+  @retval EFI_NOT_STARTED       User handler holder status does not meet expected state.
+  @retval Others                Other errors returned from SmiHandlerProfileRegisterHandler.
+**/
+EFI_STATUS
+ProcessUserSaveStateAccess (
+  IN UINTN                SyscallIndex,
+  IN EFI_MM_CPU_PROTOCOL  *UserMmCpuProtocol,
+  IN UINT64               Arg2,
+  IN UINT64               Arg3
+  );
 
 // Dictionary structure saving policy id and length
 struct Dict {
@@ -226,7 +258,7 @@ SyscallDispatcher (
   )
 {
   UINT64      Ret = 0;
-  EFI_HANDLE  MmHandle;
+  // EFI_HANDLE  MmHandle;
   BOOLEAN     IsUserRange = FALSE;
   EFI_STATUS  Status      = EFI_SUCCESS;
 
@@ -451,21 +483,21 @@ SyscallDispatcher (
       }
 
       break;
-    case SMM_INST_CONF_T:
-      if ((!EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) && IsUserRange) &&
-          (!EFI_ERROR (InspectTargetRangeOwnership (Arg2, Arg3, &IsUserRange)) && IsUserRange))
-      {
-        Status = MmInstallConfigurationTable (
-                   &gMmCoreMmst,
-                   (CONST EFI_GUID *)Arg1,
-                   (VOID *)Arg2,
-                   (UINTN)Arg3
-                   );
-      } else {
-        Status = EFI_SECURITY_VIOLATION;
-      }
+    // case SMM_INST_CONF_T:
+    //   if ((!EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) && IsUserRange) &&
+    //       (!EFI_ERROR (InspectTargetRangeOwnership (Arg2, Arg3, &IsUserRange)) && IsUserRange))
+    //   {
+    //     Status = MmInstallConfigurationTable (
+    //                &gMmCoreMmst,
+    //                (CONST EFI_GUID *)Arg1,
+    //                (VOID *)Arg2,
+    //                (UINTN)Arg3
+    //                );
+    //   } else {
+    //     Status = EFI_SECURITY_VIOLATION;
+    //   }
 
-      break;
+    //   break;
     case SMM_ALOC_POOL:
     case SMM_FREE_POOL:
       // These 2 syscall interfaces are deprecated. User memory allocation is managed in user space now.
@@ -545,22 +577,22 @@ SyscallDispatcher (
       }
 
       break;
-    case SMM_INST_PROT:
-      if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
-        Status = EFI_SECURITY_VIOLATION;
-      } else if (Arg1 == 0) {
-        Status = EFI_INVALID_PARAMETER;
-      } else {
-        MmHandle = NULL;
-        Status   = MmInstallProtocolInterface (
-                     &MmHandle,
-                     (EFI_GUID *)Arg1,
-                     EFI_NATIVE_INTERFACE,
-                     NULL
-                     );
-      }
+    // case SMM_INST_PROT:
+    //   if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
+    //     Status = EFI_SECURITY_VIOLATION;
+    //   } else if (Arg1 == 0) {
+    //     Status = EFI_INVALID_PARAMETER;
+    //   } else {
+    //     MmHandle = NULL;
+    //     Status   = MmInstallProtocolInterface (
+    //                  &MmHandle,
+    //                  (EFI_GUID *)Arg1,
+    //                  EFI_NATIVE_INTERFACE,
+    //                  NULL
+    //                  );
+    //   }
 
-      break;
+    //   break;
     case SMM_QRY_HOB:
       Ret = (UINT64)QueryHobStartFromConfTable ();
       break;
@@ -622,11 +654,11 @@ Exit:
     // Prepare the content and try to engage exception handler here
     // TODO: Do buffer preparation
     ASSERT_EFI_ERROR (Status);
-    if (mSmmRebootOnException) {
-      DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __func__));
-      CpuBreakpoint ();
-      ResetWarm ();
-    }
+    // if (mSmmRebootOnException) {
+    //   DEBUG ((DEBUG_ERROR, "%a - Specifically invoke break point exception to log telemetry.\n", __func__));
+    //   CpuBreakpoint ();
+    //   ResetWarm ();
+    // }
 
     CpuDeadLoop ();
   }

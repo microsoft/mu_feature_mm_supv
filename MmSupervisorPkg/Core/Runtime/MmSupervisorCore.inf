@@ -14,12 +14,12 @@
 #Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 [Defines]
   INF_VERSION                    = 0x0001001A
-  BASE_NAME                      = MmSupervisorInit
-  FILE_GUID                      = A41AD2F6-78D4-47C9-AEF1-B623D0734D63
+  BASE_NAME                      = MmSupervisorRuntime
+  FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
   VERSION_STRING                 = 19.002
   PI_SPECIFICATION_VERSION       = 0x00010032
-  ENTRY_POINT                    = MmSupervisorMain
+  ENTRY_POINT                    = MmSupervisorMain # This does not matter...
 
   #MmSupervisor driver version definition: version = Major.Minor
   #Major: major version is one or two digits from 0 to 99
@@ -37,11 +37,11 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
-  MmSupervisorInit.c
+  MmSupervisorCore.c
   MmSupervisorCore.h
 
-  Dispatcher/Dispatcher.c
-
+  Handler/Mmi.c
+  Handler/SmiHandlerProfile.c
   Mem/Cet.nasm
   Mem/HeapGuard.c
   Mem/HeapGuard.h
@@ -51,19 +51,12 @@
   Mem/PageTbl.c
   Mem/Pool.c
   Mem/SmmCpuMemoryManagement.c
-  Mem/SmmProfile.c
-  Mem/SmmProfile.h
+  # Mem/SmmProfile.c
+  # Mem/SmmProfile.h
   Mem/SmmProfileInternal.h
   Misc/MemoryAttributesTable.c
-  Misc/SmmFuncsArch.c
-  Misc/SmmMpPerf.h
-  Misc/SmmMpPerf.c
-
-  Relocate/Relocate.c
-  Relocate/Relocate.h
-  Relocate/SmiEntry.nasm
-  Relocate/SmiException.nasm
-  Relocate/SmramSaveState.c
+  # Misc/SmmFuncsArch.c
+  Misc/SmramSaveState.c
 
   Services/CpuService/CpuService.c
   Services/CpuService/CpuService.h
@@ -72,7 +65,22 @@
 
   PrivilegeMgmt/PrivilegeMgmt.h
   PrivilegeMgmt/CallGateTransfer.c
+  PrivilegeMgmt/AsmCallGateTransfer.nasm
   PrivilegeMgmt/SyscallSetup.c
+  PrivilegeMgmt/SyscallDispatcher.c
+  PrivilegeMgmt/SysCallEntry.nasm
+
+  Request/RequestDispatcher.c
+  Request/FetchPolicy.c
+  Request/VersionInfo.c
+  Request/UpdateCommBuffer.c
+
+  Telemetry/Telemetry.c
+  Telemetry/Telemetry.h
+
+  # Test/PagingAudit.c
+  # Test/Test.c
+  # Test/Test.h
 
   ../Common/Request.h
   ../Common/UnblockMemory.c
@@ -112,7 +120,7 @@
   SmmPolicyGateLib
   ImagePropertiesRecordLib
   MmMemoryProtectionHobLib ## MU_CHANGE
-  # IhvSmmSaveStateSupervisionLib
+  IhvSmmSaveStateSupervisionLib
   SafeIntLib
   TimerLib
   PerformanceLib
@@ -122,6 +130,7 @@
   PanicLib
   SecurePolicyLib
   MmSupervisorCoreInitLib
+  HobPrintLib
 
 [Protocols]
   gEfiMmEndOfDxeProtocolGuid                   ## PRODUCES
@@ -202,7 +211,6 @@
   gMmSupvUnblockRegionHobGuid                   ## SOMETIMES_CONSUMES
   gMmSupervisorCoreGuid                         ## CONSUMES
   gMmSupervisorUserGuid                         ## CONSUMES
-  gMmSupervisorInitGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister
@@ -214,6 +222,7 @@
   gEventMmDispatchGuid                          ## CONSUMES
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
+  gMpInformation2HobGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

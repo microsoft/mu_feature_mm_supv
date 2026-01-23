@@ -289,6 +289,13 @@ SmmInitializeMemoryAttributesTable (
   IN EFI_HANDLE      Handle
   );
 
+EFI_STATUS
+EFIAPI
+PrepareMmSupervisorHobs (
+  IN  EFI_PHYSICAL_ADDRESS  MmHobStart,
+  OUT UINT64                *MmHobSize
+);
+
 /**
   SMM Ready To Lock event notification handler.
 
@@ -304,7 +311,8 @@ SmmInitializeMemoryAttributesTable (
 VOID
 EFIAPI
 LockMmCoreBeforeExit (
-  VOID
+  EFI_PHYSICAL_ADDRESS  MmHobStart,
+  UINT64                *RemainingSize
   )
 {
   // EFI_STATUS  Status;
@@ -368,6 +376,17 @@ DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
   PERF_START (NULL, "SmmCompleteReadyToLock", NULL, 0);
   SmmCpuFeaturesCompleteSmmReadyToLock ();
   PERF_END (NULL, "SmmCompleteReadyToLock", NULL, 0);
+
+  // All done, collect all allocated memory and make them into hobs here
+  UINT64 BufferSize = *RemainingSize;
+  EFI_STATUS Status = PrepareMmSupervisorHobs (MmHobStart, &BufferSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to prepare MM Supervisor hobs - Status %d\n", __func__, Status));
+    PANIC ("Failed to prepare MM Supervisor hobs, FIMD!!!\n");
+  }
+
+  // If everything goes well, update the remaining size
+  *RemainingSize = *RemainingSize - BufferSize;
 
   SetPageTableBase (0);
   PERF_FUNCTION_END ();
@@ -865,6 +884,11 @@ SetupSmiEntryExit (
     }
   }
 
+  // We will only allow 64bit processor to proceed at this point.
+  if (mSmmSaveStateRegisterLma == EFI_SMM_SAVE_STATE_REGISTER_LMA_32BIT) {
+    PANIC ("System only supports 64-bit processors");
+  }
+
   DEBUG ((DEBUG_INFO, "PcdControlFlowEnforcementPropertyMask = %d\n", PcdGet32 (PcdControlFlowEnforcementPropertyMask)));
   if (PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) {
     AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
@@ -1126,8 +1150,6 @@ SetupSmiEntryExit (
       }
     }
   }
-
-  DEBUG ((DEBUG_INFO, "mXdSupported - 0x%x\n", mXdSupported));
 
   if (mSmmInitialized == NULL) {
     mSmmInitialized = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);

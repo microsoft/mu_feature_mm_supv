@@ -12,17 +12,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Library/BaseLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/PanicLib.h>
 
 #include "MmSupervisorCore.h"
 #include "Mem.h"
 #include "SmmProfileInternal.h"
 #include "Relocate/Relocate.h"
 #include "Services/MpService/MpService.h"
-
-//
-// The flag indicates if execute-disable is supported by processor.
-//
-BOOLEAN  mXdSupported = TRUE;
 
 //
 // The flag indicates if BTS is supported by processor.
@@ -150,31 +146,27 @@ CheckFeatureSupported (
     }
   }
 
-  if (mXdSupported) {
-    AsmCpuid (CPUID_EXTENDED_FUNCTION, &RegEax, NULL, NULL, NULL);
-    if (RegEax <= CPUID_EXTENDED_FUNCTION) {
-      //
-      // Extended CPUID functions are not supported on this processor.
-      //
-      mXdSupported = FALSE;
-      PatchInstructionX86 (gPatchXdSupported, mXdSupported, 1);
-    }
+  AsmCpuid (CPUID_EXTENDED_FUNCTION, &RegEax, NULL, NULL, NULL);
+  if (RegEax <= CPUID_EXTENDED_FUNCTION) {
+    //
+    // Extended CPUID functions are not supported on this processor.
+    //
+    PANIC ("Extended CPUID functions are not supported on this processor.");
+  }
 
-    AsmCpuid (CPUID_EXTENDED_CPU_SIG, NULL, NULL, NULL, &RegEdx);
-    if ((RegEdx & CPUID1_EDX_XD_SUPPORT) == 0) {
-      //
-      // Execute Disable Bit feature is not supported on this processor.
-      //
-      mXdSupported = FALSE;
-      PatchInstructionX86 (gPatchXdSupported, mXdSupported, 1);
-    }
+  AsmCpuid (CPUID_EXTENDED_CPU_SIG, NULL, NULL, NULL, &RegEdx);
+  if ((RegEdx & CPUID1_EDX_XD_SUPPORT) == 0) {
+    //
+    // Execute Disable Bit feature is not supported on this processor.
+    //
+    PANIC ("Execute Disable Bit feature is not supported on this processor.");
+  }
 
-    if (StandardSignatureIsAuthenticAMD ()) {
-      //
-      // AMD processors do not support MSR_IA32_MISC_ENABLE
-      //
-      PatchInstructionX86 (gPatchMsrIa32MiscEnableSupported, FALSE, 1);
-    }
+  if (StandardSignatureIsAuthenticAMD ()) {
+    //
+    // AMD processors do not support MSR_IA32_MISC_ENABLE
+    //
+    PatchInstructionX86 (gPatchMsrIa32MiscEnableSupported, FALSE, 1);
   }
 
   if (mBtsSupported) {

@@ -13,6 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Guid/MmSupervisorRequestData.h>
 #include <Protocol/MpService.h>
 #include <Protocol/SmmConfiguration.h>
+#include <Protocol/MmMp.h>
 
 #include <Library/BaseLib.h>
 #include <Library/CpuLib.h>
@@ -24,8 +25,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Mem.h"
 #include "Services/CpuService/CpuService.h"
 #include "Services/MpService/MpService.h"
-#include "Relocate/Relocate.h"
-#include "Request.h"
+// #include "Relocate/Relocate.h"
+#include "Request/Request.h"
 
 //
 // attributes for reserved memory before it is promoted to system memory
@@ -108,6 +109,54 @@ PAGE_TABLE_POOL  *mPageTablePool = NULL;
 // If memory used by SMM page table has been mareked as ReadOnly.
 //
 BOOLEAN  mIsReadOnlyPageTable = FALSE;
+
+// TODO: This should not be here
+#include <CpuHotPlugData.h>
+#define CR4_CET_ENABLE  BIT23
+extern CPU_HOT_PLUG_DATA  mCpuHotPlugData;
+EFI_PHYSICAL_ADDRESS  mGdtBuffer;
+UINTN                 mGdtBufferSize;
+UINTN                 mGdtStepSize;
+UINTN  mNumberOfCpus    = 0;
+UINTN  mMaxNumberOfCpus = 1;
+/**
+  Worker function to execute a caller provided function on all enabled APs.
+
+  @param[in]     Procedure               A pointer to the function to be run on
+                                         enabled APs of the system.
+  @param[in]     TimeoutInMicroseconds   Indicates the time limit in microseconds for
+                                         APs to return from Procedure, either for
+                                         blocking or non-blocking mode.
+  @param[in,out] ProcedureArguments      The parameter passed into Procedure for
+                                         all APs.
+  @param[in,out] Token                   This is an optional parameter that allows the caller to execute the
+                                         procedure in a blocking or non-blocking fashion. If it is NULL the
+                                         call is blocking, and the call will not return until the AP has
+                                         completed the procedure. If the token is not NULL, the call will
+                                         return immediately. The caller can check whether the procedure has
+                                         completed with CheckOnProcedure or WaitForProcedure.
+  @param[in,out] CPUStatus               This optional pointer may be used to get the status code returned
+                                         by Procedure when it completes execution on the target AP, or with
+                                         EFI_TIMEOUT if the Procedure fails to complete within the optional
+                                         timeout. The implementation will update this variable with
+                                         EFI_NOT_READY prior to starting Procedure on the target AP.
+
+
+  @retval EFI_SUCCESS             In blocking mode, all APs have finished before
+                                  the timeout expired.
+  @retval EFI_SUCCESS             In non-blocking mode, function has been dispatched
+                                  to all enabled APs.
+  @retval others                  Failed to Startup all APs.
+
+**/
+EFI_STATUS
+InternalSmmStartupAllAPs (
+  IN       EFI_AP_PROCEDURE2  Procedure,
+  IN       UINTN              TimeoutInMicroseconds,
+  IN OUT   VOID               *ProcedureArguments OPTIONAL,
+  IN OUT   MM_COMPLETION      *Token,
+  IN OUT   EFI_STATUS         *CPUStatus
+  );
 
 /**
   Write unprotect read-only pages if Cr0.Bits.WP is 1.
@@ -341,7 +390,7 @@ GetPageTableEntry (
         return NULL;
       }
 
-      L4PageTable = (UINT64 *)(UINTN)(L5PageTable[Index5] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
+      L4PageTable = (UINT64 *)(UINTN)(L5PageTable[Index5] & PAGING_4K_ADDRESS_MASK_64);
     } else {
       L4PageTable = (UINT64 *)PageTableBase;
     }
@@ -351,7 +400,7 @@ GetPageTableEntry (
       return NULL;
     }
 
-    L3PageTable = (UINT64 *)(UINTN)(L4PageTable[Index4] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
+    L3PageTable = (UINT64 *)(UINTN)(L4PageTable[Index4] & PAGING_4K_ADDRESS_MASK_64);
   } else {
     L3PageTable = (UINT64 *)PageTableBase;
   }
@@ -367,7 +416,7 @@ GetPageTableEntry (
     return &L3PageTable[Index3];
   }
 
-  L2PageTable = (UINT64 *)(UINTN)(L3PageTable[Index3] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
+  L2PageTable = (UINT64 *)(UINTN)(L3PageTable[Index3] & PAGING_4K_ADDRESS_MASK_64);
   if (L2PageTable[Index2] == 0) {
     *PageAttribute = PageNone;
     return NULL;
@@ -380,7 +429,7 @@ GetPageTableEntry (
   }
 
   // 4k
-  L1PageTable = (UINT64 *)(UINTN)(L2PageTable[Index2] & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64);
+  L1PageTable = (UINT64 *)(UINTN)(L2PageTable[Index2] & PAGING_4K_ADDRESS_MASK_64);
   if ((L1PageTable[Index1] == 0) && (Address != 0)) {
     *PageAttribute = PageNone;
     return NULL;
@@ -509,7 +558,7 @@ ConvertMemoryPageAttributes (
   }
 
   PagingAttribute.Uint64 = 0;
-  PagingAttribute.Uint64 = mAddressEncMask | BaseAddress;
+  PagingAttribute.Uint64 = BaseAddress;
   PagingAttrMask.Uint64  = 0;
 
   if ((Attributes & EFI_MEMORY_RO) != 0) {
@@ -847,7 +896,7 @@ GenPageTable (
   IA32_MAP_ATTRIBUTE  MapMask;
 
   MapMask.Uint64                   = MAX_UINT64;
-  MapAttribute.Uint64              = mAddressEncMask|LinearAddress;
+  MapAttribute.Uint64              = LinearAddress;
   MapAttribute.Bits.Present        = 1;
   MapAttribute.Bits.ReadWrite      = 1;
   MapAttribute.Bits.UserSupervisor = 1;
@@ -889,83 +938,83 @@ GenPageTable (
   ASSERT (PageTableBufferSize == 0);
 }
 
-/**
-  Create page table based on input PagingMode and PhysicalAddressBits in smm.
-  @param[in]      PagingMode           The paging mode.
-  @param[in]      PhysicalAddressBits  The bits of physical address to map.
-  @retval         PageTable Address
-**/
-UINTN
-GenSmmPageTable (
-  IN PAGING_MODE  PagingMode,
-  IN UINT8        PhysicalAddressBits
-  )
-{
-  UINTN          PageTable;
-  RETURN_STATUS  Status;
-  UINTN          GuardPage;
-  UINTN          Index;
-  UINT64         Length;
-  PAGING_MODE    SmramPagingMode;
+// /**
+//   Create page table based on input PagingMode and PhysicalAddressBits in smm.
+//   @param[in]      PagingMode           The paging mode.
+//   @param[in]      PhysicalAddressBits  The bits of physical address to map.
+//   @retval         PageTable Address
+// **/
+// UINTN
+// GenSmmPageTable (
+//   IN PAGING_MODE  PagingMode,
+//   IN UINT8        PhysicalAddressBits
+//   )
+// {
+//   UINTN          PageTable;
+//   RETURN_STATUS  Status;
+//   UINTN          GuardPage;
+//   UINTN          Index;
+//   UINT64         Length;
+//   PAGING_MODE    SmramPagingMode;
 
-  PageTable = 0;
-  Length    = LShiftU64 (1, PhysicalAddressBits);
-  ASSERT (Length > mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize);
+//   PageTable = 0;
+//   Length    = LShiftU64 (1, PhysicalAddressBits);
+//   ASSERT (Length > mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize);
 
-  if (sizeof (UINTN) == sizeof (UINT64)) {
-    SmramPagingMode = m5LevelPagingNeeded ? Paging5Level4KB : Paging4Level4KB;
-  } else {
-    SmramPagingMode = PagingPae4KB;
-  }
+//   if (sizeof (UINTN) == sizeof (UINT64)) {
+//     SmramPagingMode = m5LevelPagingNeeded ? Paging5Level4KB : Paging4Level4KB;
+//   } else {
+//     SmramPagingMode = PagingPae4KB;
+//   }
 
-  ASSERT (mCpuHotPlugData.SmrrBase % SIZE_4KB == 0);
-  ASSERT (mCpuHotPlugData.SmrrSize % SIZE_4KB == 0);
-  GenPageTable (&PageTable, PagingMode, 0, mCpuHotPlugData.SmrrBase);
+//   ASSERT (mCpuHotPlugData.SmrrBase % SIZE_4KB == 0);
+//   ASSERT (mCpuHotPlugData.SmrrSize % SIZE_4KB == 0);
+//   GenPageTable (&PageTable, PagingMode, 0, mCpuHotPlugData.SmrrBase);
 
-  //
-  // Map smram range in 4K page granularity to avoid subsequent page split when smm ready to lock.
-  // If BSP are splitting the 1G/2M paging entries to 512 2M/4K paging entries, and all APs are
-  // still running in SMI at the same time, which might access the affected linear-address range
-  // between the time of modification and the time of invalidation access. That will be a potential
-  // problem leading exception happen.
-  //
-  GenPageTable (&PageTable, SmramPagingMode, mCpuHotPlugData.SmrrBase, mCpuHotPlugData.SmrrSize);
+//   //
+//   // Map smram range in 4K page granularity to avoid subsequent page split when smm ready to lock.
+//   // If BSP are splitting the 1G/2M paging entries to 512 2M/4K paging entries, and all APs are
+//   // still running in SMI at the same time, which might access the affected linear-address range
+//   // between the time of modification and the time of invalidation access. That will be a potential
+//   // problem leading exception happen.
+//   //
+//   GenPageTable (&PageTable, SmramPagingMode, mCpuHotPlugData.SmrrBase, mCpuHotPlugData.SmrrSize);
 
-  GenPageTable (&PageTable, PagingMode, mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize, Length - mCpuHotPlugData.SmrrBase - mCpuHotPlugData.SmrrSize);
+//   GenPageTable (&PageTable, PagingMode, mCpuHotPlugData.SmrrBase + mCpuHotPlugData.SmrrSize, Length - mCpuHotPlugData.SmrrBase - mCpuHotPlugData.SmrrSize);
 
-  if (mCoreInitializationComplete) {
-    DEBUG ((DEBUG_ERROR, "%a Trying to generate a new page table after initialization!!!\n", __func__));
-    ASSERT (!mCoreInitializationComplete);
-    return 0;
-  }
+//   if (mCoreInitializationComplete) {
+//     DEBUG ((DEBUG_ERROR, "%a Trying to generate a new page table after initialization!!!\n", __func__));
+//     ASSERT (!mCoreInitializationComplete);
+//     return 0;
+//   }
 
-  SetPageTableBase (PageTable);
+//   SetPageTableBase (PageTable);
 
-  if (FeaturePcdGet (PcdCpuSmmStackGuard)) {
-    //
-    // Mark the 4KB guard page between known good stack and smm stack as non-present
-    //
-    for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
-      GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
-      Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
-      ASSERT (Status == RETURN_SUCCESS);
-    }
-  }
+//   if (FeaturePcdGet (PcdCpuSmmStackGuard)) {
+//     //
+//     // Mark the 4KB guard page between known good stack and smm stack as non-present
+//     //
+//     for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
+//       GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
+//       Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
+//       ASSERT (Status == RETURN_SUCCESS);
+//     }
+//   }
 
-  // MU_CHANGE: MM_SUPV: Enable null pointer detection
-  if (TRUE) {
-    // if ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) {
-    //
-    // Mark [0, 4k] as non-present
-    //
-    Status = ConvertMemoryPageAttributes (PageTable, PagingMode, 0, SIZE_4KB, EFI_MEMORY_RP, TRUE, NULL);
-    ASSERT (Status == RETURN_SUCCESS);
-  }
+//   // MU_CHANGE: MM_SUPV: Enable null pointer detection
+//   if (TRUE) {
+//     // if ((PcdGet8 (PcdNullPointerDetectionPropertyMask) & BIT1) != 0) {
+//     //
+//     // Mark [0, 4k] as non-present
+//     //
+//     Status = ConvertMemoryPageAttributes (PageTable, PagingMode, 0, SIZE_4KB, EFI_MEMORY_RP, TRUE, NULL);
+//     ASSERT (Status == RETURN_SUCCESS);
+//   }
 
-  SetPageTableBase (0);
+//   SetPageTableBase (0);
 
-  return (UINTN)PageTable;
-}
+//   return (UINTN)PageTable;
+// }
 
 /**
   This function sets the read only attributes of GDT pages of currently executing CPU.
@@ -1156,498 +1205,422 @@ SmmGetSystemConfigurationTable (
   return EFI_NOT_FOUND;
 }
 
-/**
-  This function sets SMM save state buffer to be RW and XP.
-**/
-VOID
-PatchSmmSaveStateMap (
-  VOID
-  )
-{
-  UINTN  Index;
-  UINTN  TileCodeSize;
-  UINTN  TileDataSize;
-  UINTN  TileSize;
-  UINTN  PageTableBase;
+// /**
+//   This function sets SMM save state buffer to be RW and XP.
+// **/
+// VOID
+// PatchSmmSaveStateMap (
+//   VOID
+//   )
+// {
+//   UINTN  Index;
+//   UINTN  TileCodeSize;
+//   UINTN  TileDataSize;
+//   UINTN  TileSize;
+//   UINTN  PageTableBase;
 
-  TileCodeSize = GetSmiHandlerSize ();
-  TileCodeSize = ALIGN_VALUE (TileCodeSize, SIZE_4KB);
-  TileDataSize = (SMRAM_SAVE_STATE_MAP_OFFSET - SMM_PSD_OFFSET) + sizeof (SMRAM_SAVE_STATE_MAP);
-  TileDataSize = ALIGN_VALUE (TileDataSize, SIZE_4KB);
-  TileSize     = TileDataSize + TileCodeSize - 1;
-  TileSize     = 2 * GetPowerOfTwo32 ((UINT32)TileSize);
+//   TileCodeSize = GetSmiHandlerSize ();
+//   TileCodeSize = ALIGN_VALUE (TileCodeSize, SIZE_4KB);
+//   TileDataSize = (SMRAM_SAVE_STATE_MAP_OFFSET - SMM_PSD_OFFSET) + sizeof (SMRAM_SAVE_STATE_MAP);
+//   TileDataSize = ALIGN_VALUE (TileDataSize, SIZE_4KB);
+//   TileSize     = TileDataSize + TileCodeSize - 1;
+//   TileSize     = 2 * GetPowerOfTwo32 ((UINT32)TileSize);
 
-  GetPageTable (&PageTableBase, NULL);
-  PageTableBase = PageTableBase & PAGING_4K_ADDRESS_MASK_64;
+//   GetPageTable (&PageTableBase, NULL);
+//   PageTableBase = PageTableBase & PAGING_4K_ADDRESS_MASK_64;
 
-  DEBUG ((DEBUG_INFO, "PatchSmmSaveStateMap:\n"));
-  for (Index = 0; Index < mMaxNumberOfCpus - 1; Index++) {
-    //
-    // Code
-    //
-    ConvertMemoryPageAttributes (
-      PageTableBase,
-      mPagingMode,
-      mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
-      TileCodeSize,
-      EFI_MEMORY_RO | EFI_MEMORY_SP,
-      TRUE,
-      NULL
-      );
-    ConvertMemoryPageAttributes (
-      PageTableBase,
-      mPagingMode,
-      mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
-      TileCodeSize,
-      EFI_MEMORY_XP,
-      FALSE,
-      NULL
-      );
+//   DEBUG ((DEBUG_INFO, "PatchSmmSaveStateMap:\n"));
+//   for (Index = 0; Index < mMaxNumberOfCpus - 1; Index++) {
+//     //
+//     // Code
+//     //
+//     ConvertMemoryPageAttributes (
+//       PageTableBase,
+//       mPagingMode,
+//       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
+//       TileCodeSize,
+//       EFI_MEMORY_RO | EFI_MEMORY_SP,
+//       TRUE,
+//       NULL
+//       );
+//     ConvertMemoryPageAttributes (
+//       PageTableBase,
+//       mPagingMode,
+//       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET,
+//       TileCodeSize,
+//       EFI_MEMORY_XP,
+//       FALSE,
+//       NULL
+//       );
 
-    //
-    // Data
-    //
-    ConvertMemoryPageAttributes (
-      PageTableBase,
-      mPagingMode,
-      mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
-      TileSize - TileCodeSize,
-      EFI_MEMORY_RO,
-      FALSE,
-      NULL
-      );
-    ConvertMemoryPageAttributes (
-      PageTableBase,
-      mPagingMode,
-      mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
-      TileSize - TileCodeSize,
-      EFI_MEMORY_XP | EFI_MEMORY_SP,
-      TRUE,
-      NULL
-      );
-  }
+//     //
+//     // Data
+//     //
+//     ConvertMemoryPageAttributes (
+//       PageTableBase,
+//       mPagingMode,
+//       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
+//       TileSize - TileCodeSize,
+//       EFI_MEMORY_RO,
+//       FALSE,
+//       NULL
+//       );
+//     ConvertMemoryPageAttributes (
+//       PageTableBase,
+//       mPagingMode,
+//       mCpuHotPlugData.SmBase[Index] + SMM_HANDLER_OFFSET + TileCodeSize,
+//       TileSize - TileCodeSize,
+//       EFI_MEMORY_XP | EFI_MEMORY_SP,
+//       TRUE,
+//       NULL
+//       );
+//   }
 
-  //
-  // Code
-  //
-  ConvertMemoryPageAttributes (
-    PageTableBase,
-    mPagingMode,
-    mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
-    TileCodeSize,
-    EFI_MEMORY_RO | EFI_MEMORY_SP,
-    TRUE,
-    NULL
-    );
-  ConvertMemoryPageAttributes (
-    PageTableBase,
-    mPagingMode,
-    mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
-    TileCodeSize,
-    EFI_MEMORY_XP,
-    FALSE,
-    NULL
-    );
+//   //
+//   // Code
+//   //
+//   ConvertMemoryPageAttributes (
+//     PageTableBase,
+//     mPagingMode,
+//     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
+//     TileCodeSize,
+//     EFI_MEMORY_RO | EFI_MEMORY_SP,
+//     TRUE,
+//     NULL
+//     );
+//   ConvertMemoryPageAttributes (
+//     PageTableBase,
+//     mPagingMode,
+//     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET,
+//     TileCodeSize,
+//     EFI_MEMORY_XP,
+//     FALSE,
+//     NULL
+//     );
 
-  //
-  // Data
-  //
-  ConvertMemoryPageAttributes (
-    PageTableBase,
-    mPagingMode,
-    mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
-    SIZE_32KB - TileCodeSize,
-    EFI_MEMORY_RO,
-    FALSE,
-    NULL
-    );
-  ConvertMemoryPageAttributes (
-    PageTableBase,
-    mPagingMode,
-    mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
-    SIZE_32KB - TileCodeSize,
-    EFI_MEMORY_XP | EFI_MEMORY_SP,
-    TRUE,
-    NULL
-    );
+//   //
+//   // Data
+//   //
+//   ConvertMemoryPageAttributes (
+//     PageTableBase,
+//     mPagingMode,
+//     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
+//     SIZE_32KB - TileCodeSize,
+//     EFI_MEMORY_RO,
+//     FALSE,
+//     NULL
+//     );
+//   ConvertMemoryPageAttributes (
+//     PageTableBase,
+//     mPagingMode,
+//     mCpuHotPlugData.SmBase[mMaxNumberOfCpus - 1] + SMM_HANDLER_OFFSET + TileCodeSize,
+//     SIZE_32KB - TileCodeSize,
+//     EFI_MEMORY_XP | EFI_MEMORY_SP,
+//     TRUE,
+//     NULL
+//     );
 
-  FlushTlbForAll ();
-}
+//   FlushTlbForAll ();
+// }
 
-/**
-  This function sets GDT/IDT buffer to be RO and XP.
-**/
-VOID
-PatchGdtIdtMap (
-  VOID
-  )
-{
-  EFI_PHYSICAL_ADDRESS  BaseAddress;
-  UINTN                 Size;
+// /**
+//   This function sets GDT/IDT buffer to be RO and XP.
+// **/
+// VOID
+// PatchGdtIdtMap (
+//   VOID
+//   )
+// {
+//   EFI_PHYSICAL_ADDRESS  BaseAddress;
+//   UINTN                 Size;
 
-  //
-  // GDT
-  //
-  DEBUG ((DEBUG_INFO, "PatchGdtIdtMap - GDT:\n"));
+//   //
+//   // GDT
+//   //
+//   DEBUG ((DEBUG_INFO, "PatchGdtIdtMap - GDT:\n"));
 
-  BaseAddress = mGdtBuffer;
-  Size        = ALIGN_VALUE (mGdtBufferSize, SIZE_4KB);
-  //
-  // The range should have been set to RO
-  // if it is allocated with EfiRuntimeServicesCode.
-  //
-  SmmSetMemoryAttributes (
-    BaseAddress,
-    Size,
-    EFI_MEMORY_XP | EFI_MEMORY_SP
-    );
+//   BaseAddress = mGdtBuffer;
+//   Size        = ALIGN_VALUE (mGdtBufferSize, SIZE_4KB);
+//   //
+//   // The range should have been set to RO
+//   // if it is allocated with EfiRuntimeServicesCode.
+//   //
+//   SmmSetMemoryAttributes (
+//     BaseAddress,
+//     Size,
+//     EFI_MEMORY_XP | EFI_MEMORY_SP
+//     );
 
-  //
-  // IDT
-  //
-  DEBUG ((DEBUG_INFO, "PatchGdtIdtMap - IDT:\n"));
+//   //
+//   // IDT
+//   //
+//   DEBUG ((DEBUG_INFO, "PatchGdtIdtMap - IDT:\n"));
 
-  BaseAddress = gcSmiIdtr.Base;
-  Size        = ALIGN_VALUE (gcSmiIdtr.Limit + 1, SIZE_4KB);
-  //
-  // The range should have been set to RO
-  // if it is allocated with EfiRuntimeServicesCode.
-  //
-  SmmSetMemoryAttributes (
-    BaseAddress,
-    Size,
-    EFI_MEMORY_XP | EFI_MEMORY_SP
-    );
-}
+//   BaseAddress = gcSmiIdtr.Base;
+//   Size        = ALIGN_VALUE (gcSmiIdtr.Limit + 1, SIZE_4KB);
+//   //
+//   // The range should have been set to RO
+//   // if it is allocated with EfiRuntimeServicesCode.
+//   //
+//   SmmSetMemoryAttributes (
+//     BaseAddress,
+//     Size,
+//     EFI_MEMORY_XP | EFI_MEMORY_SP
+//     );
+// }
 
-VOID
-EFIAPI
-PatchMmSupervisorCoreRegion (
-  VOID
-  )
-{
-  //
-  // Patch MM Supervisor Core
-  //
-  EFI_STATUS  Status;
+// VOID
+// EFIAPI
+// PatchMmSupervisorCoreRegion (
+//   VOID
+//   )
+// {
+//   //
+//   // Patch MM Supervisor Core
+//   //
+//   EFI_STATUS  Status;
 
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
+//   DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
-  //
-  // The range should have been set to RO/XP based on image record routines
-  // this is the last pass that makes sure the entire region is still in
-  // supervisor realm.
-  //
-  Status = SmmSetImagePageAttributes (mMmCoreDriverEntry, TRUE);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __func__, Status));
-    // We should not continue with this configuration, either hang the system or reboot
-    ResetCold ();
-    // Should not be here
-    CpuDeadLoop ();
-  }
+//   //
+//   // The range should have been set to RO/XP based on image record routines
+//   // this is the last pass that makes sure the entire region is still in
+//   // supervisor realm.
+//   //
+//   Status = SmmSetImagePageAttributes (mMmCoreDriverEntry, TRUE);
+//   if (EFI_ERROR (Status)) {
+//     DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __func__, Status));
+//     // We should not continue with this configuration, either hang the system or reboot
+//     ResetCold ();
+//     // Should not be here
+//     CpuDeadLoop ();
+//   }
 
-  Status = SmmSetMemoryAttributes (
-             mMmCoreDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
+//   Status = SmmSetMemoryAttributes (
+//              mMmCoreDriverEntry->ImageBuffer,
+//              EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
+//              EFI_MEMORY_SP
+//              );
 
-  FreePool (mMmCoreDriverEntry);
-  mMmCoreDriverEntry = NULL;
+//   if (FirmwarePolicy == NULL) {
+//     Status = EFI_SECURITY_VIOLATION;
+//     ASSERT (FALSE);
+//     return;
+//   }
 
-  DEBUG ((DEBUG_INFO, "%a - User module - %r\n", __func__, Status));
-  //
-  // The range should have been set to RO/XP based on image record routines
-  // this is the last pass that makes sure the entire region is still in
-  // supervisor realm.
-  //
-  Status = SmmSetImagePageAttributes (mMmUserDriverEntry, FALSE);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM user %r!!!\n", __func__, Status));
-    // We should not continue with this configuration, either hang the system or reboot
-    ResetCold ();
-    // Should not be here
-    CpuDeadLoop ();
-  }
+//   //
+//   // Mark firmware policy pages as supervisor read only
+//   // EFI_MEMORY_XP should be given as they are data pages
+//   //
+//   Status = SmmSetMemoryAttributes (
+//              (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
+//              (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
+//              EFI_MEMORY_RO | EFI_MEMORY_SP
+//              );
 
-  Status = SmmClearMemoryAttributes (
-             mMmUserDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
+//   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
+// }
 
-  FreePool (mMmUserDriverEntry);
-  mMmUserDriverEntry = NULL;
+// VOID
+// PatchMmUserSpecialPurposeRegion (
+//   VOID
+//   )
+// {
+//   //
+//   // Patch MM Supervisor Prepared/Maintained user pages
+//   //
+//   EFI_STATUS  Status;
 
-  // if (FirmwarePolicy == NULL) {
-  //   Status = EFI_SECURITY_VIOLATION;
-  //   ASSERT (FALSE);
-  //   return;
-  // }
+//   DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
-  // //
-  // // Mark firmware policy pages as supervisor read only
-  // // EFI_MEMORY_XP should be given as they are data pages
-  // //
-  // Status = SmmSetMemoryAttributes (
-  //            (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
-  //            (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-  //            EFI_MEMORY_RO | EFI_MEMORY_SP
-  //            );
+//   // Patch published hob list region to be CPL3, RO and XP
+//   if ((mMmHobStart == NULL) || (mMmHobSize == 0)) {
+//     DEBUG ((DEBUG_ERROR, "%a - Hob is not initialized!\n", __func__));
+//     ASSERT (FALSE);
+//   }
 
-  // DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
-}
+//   Status = SmmSetMemoryAttributes (
+//              (EFI_PHYSICAL_ADDRESS)(UINTN)mMmHobStart,
+//              (mMmHobSize + EFI_PAGE_MASK) & ~EFI_PAGE_MASK,
+//              (EFI_MEMORY_RO | EFI_MEMORY_XP)
+//              );
+//   ASSERT_EFI_ERROR (Status);
 
-VOID
-PatchMmUserSpecialPurposeRegion (
-  VOID
-  )
-{
-  //
-  // Patch MM Supervisor Prepared/Maintained user pages
-  //
-  EFI_STATUS  Status;
+//   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
+// }
 
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
+// /**
+//   This function set [Base, Limit] to the input MemoryAttribute.
+//   @param  Base        Start address of range.
+//   @param  Limit       Limit address of range.
+//   @param  Attribute   The bit mask of attributes to modify for the memory region.
+//   @param  Map         Pointer to the array of Cr3 IA32_MAP_ENTRY.
+//   @param  Count       Count of IA32_MAP_ENTRY in Map.
+// **/
+// VOID
+// SetMemMapWithNonPresentRange (
+//   UINT64          Base,
+//   UINT64          Limit,
+//   UINT64          Attribute,
+//   IA32_MAP_ENTRY  *Map,
+//   UINTN           Count
+//   )
+// {
+//   UINTN   Index;
+//   UINT64  NonPresentRangeStart;
 
-  // Patch published hob list region to be CPL3, RO and XP
-  if ((mMmHobStart == NULL) || (mMmHobSize == 0)) {
-    DEBUG ((DEBUG_ERROR, "%a - Hob is not initialized!\n", __func__));
-    ASSERT (FALSE);
-  }
+//   NonPresentRangeStart = 0;
+//   for (Index = 0; Index < Count; Index++) {
+//     if ((Map[Index].LinearAddress > NonPresentRangeStart) &&
+//         (Base < Map[Index].LinearAddress) && (Limit > NonPresentRangeStart))
+//     {
+//       //
+//       // We should NOT set attributes for non-present range.
+//       //
+//       //
+//       // There is a non-present ( [NonPresentStart, Map[Index].LinearAddress] ) range before current Map[Index]
+//       // and it is overlapped with [Base, Limit].
+//       //
+//       if (Base < NonPresentRangeStart) {
+//         SmmSetMemoryAttributes (
+//           Base,
+//           NonPresentRangeStart - Base,
+//           Attribute
+//           );
+//       }
 
-  Status = SmmSetMemoryAttributes (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)mMmHobStart,
-             (mMmHobSize + EFI_PAGE_MASK) & ~EFI_PAGE_MASK,
-             (EFI_MEMORY_RO | EFI_MEMORY_XP)
-             );
-  ASSERT_EFI_ERROR (Status);
+//       Base = Map[Index].LinearAddress;
+//     }
 
-  // Loop through the FV hobs, we should have patched them by now.
-  EFI_PEI_HOB_POINTERS            Hob;
-  Hob.Raw = GetHobList ();
-  if (Hob.Raw == NULL) {
-    ASSERT (FALSE);
-    return;
-  }
+//     NonPresentRangeStart = Map[Index].LinearAddress + Map[Index].Length;
+//     if (NonPresentRangeStart >= Limit) {
+//       break;
+//     }
+//   }
 
-  do {
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
-    if (Hob.Raw != NULL) {
-      EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
+//   Limit = MIN (NonPresentRangeStart, Limit);
 
-      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
+//   if (Base < Limit) {
+//     //
+//     // There is no non-present range in current [Base, Limit] anymore.
+//     //
+//     SmmSetMemoryAttributes (
+//       Base,
+//       Limit - Base,
+//       Attribute
+//       );
+//   }
+// }
 
-      DEBUG ((
-        DEBUG_INFO,
-        "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __func__,
-        (UINTN)FwVolHeader,
-        FwVolHeader->FvLength
-        ));
+// /**
+//   This function sets memory attribute according to MemoryAttributesTable.
+// **/
+// VOID
+// SetMemMapAttributes (
+//   VOID
+//   )
+// {
+//   EFI_MEMORY_DESCRIPTOR  *MemoryMap;
+//   EFI_MEMORY_DESCRIPTOR  *MemoryMapStart;
+//   UINTN                  MemoryMapEntryCount;
+//   UINTN                  DescriptorSize;
+//   UINTN                  Index;
+//   UINT64                 SupervisorMarker;
+//   UINTN                  PageTable;
+//   EFI_STATUS             Status;
+//   IA32_MAP_ENTRY         *Map;
+//   UINTN                  Count;
+//   UINT64                 MemoryAttribute;
 
-      // Make sure this is inside MMRAM
-      if (!IsBufferInsideMmram ((EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader, FwVolHeader->FvLength)) {
-        DEBUG ((DEBUG_ERROR, "%a - FV HOB at 0x%x is outside of SMM MM RAM!\n", __func__, (UINTN)FwVolHeader));
-        ASSERT (FALSE);
-        continue;
-      }
+//   if ((mInitMemoryMap == NULL) ||
+//       (mInitMemoryMapSize == 0) ||
+//       (mInitDescriptorSize == 0))
+//   {
+//     DEBUG ((DEBUG_ERROR, "Initialization memory map not initialized!\n"));
+//     ASSERT (FALSE);
+//     return;
+//   }
 
-      Status = SmmSetMemoryAttributes (
-                (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
-                FwVolHeader->FvLength,
-                EFI_MEMORY_RO | EFI_MEMORY_XP
-                );
-      ASSERT_EFI_ERROR (Status);
+//   PERF_FUNCTION_BEGIN ();
 
-      Status = SmmClearMemoryAttributes (
-                (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
-                FwVolHeader->FvLength,
-                EFI_MEMORY_SP
-                );
-      ASSERT_EFI_ERROR (Status);
+//   MemoryMapEntryCount = mInitMemoryMapSize/mInitDescriptorSize;
+//   DescriptorSize      = mInitDescriptorSize;
+//   MemoryMapStart      = mInitMemoryMap;
+//   MemoryMap           = MemoryMapStart;
+//   for (Index = 0; Index < MemoryMapEntryCount; Index++) {
+//     DEBUG ((DEBUG_INFO, "Entry (0x%x)\n", MemoryMap));
+//     DEBUG ((DEBUG_INFO, "  Type              - 0x%x\n", MemoryMap->Type));
+//     DEBUG ((DEBUG_INFO, "  PhysicalStart     - 0x%016lx\n", MemoryMap->PhysicalStart));
+//     DEBUG ((DEBUG_INFO, "  VirtualStart      - 0x%016lx\n", MemoryMap->VirtualStart));
+//     DEBUG ((DEBUG_INFO, "  NumberOfPages     - 0x%016lx\n", MemoryMap->NumberOfPages));
+//     DEBUG ((DEBUG_INFO, "  Attribute         - 0x%016lx\n", MemoryMap->Attribute));
+//     MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, DescriptorSize);
+//   }
 
-      // Move to the next FV hob
-      Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
-    }
-  } while (Hob.Raw != NULL);
+//   Count = 0;
+//   Map   = NULL;
+//   // MU_CHANGE: MM_SUPV: Use GetPageTable to get the page table base instead of reading from CR3 because we could be
+//   // using a different CR3 when initializing the environment.
+//   GetPageTable (&PageTable, NULL);
+//   Status = PageTableParse (PageTable, mPagingMode, NULL, &Count);
+//   while (Status == RETURN_BUFFER_TOO_SMALL) {
+//     if (Map != NULL) {
+//       FreePool (Map);
+//     }
 
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
-}
+//     Map = AllocatePool (Count * sizeof (IA32_MAP_ENTRY));
+//     ASSERT (Map != NULL);
+//     Status = PageTableParse (PageTable, mPagingMode, Map, &Count);
+//   }
 
-/**
-  This function set [Base, Limit] to the input MemoryAttribute.
-  @param  Base        Start address of range.
-  @param  Limit       Limit address of range.
-  @param  Attribute   The bit mask of attributes to modify for the memory region.
-  @param  Map         Pointer to the array of Cr3 IA32_MAP_ENTRY.
-  @param  Count       Count of IA32_MAP_ENTRY in Map.
-**/
-VOID
-SetMemMapWithNonPresentRange (
-  UINT64          Base,
-  UINT64          Limit,
-  UINT64          Attribute,
-  IA32_MAP_ENTRY  *Map,
-  UINTN           Count
-  )
-{
-  UINTN   Index;
-  UINT64  NonPresentRangeStart;
+//   ASSERT_RETURN_ERROR (Status);
 
-  NonPresentRangeStart = 0;
-  for (Index = 0; Index < Count; Index++) {
-    if ((Map[Index].LinearAddress > NonPresentRangeStart) &&
-        (Base < Map[Index].LinearAddress) && (Limit > NonPresentRangeStart))
-    {
-      //
-      // We should NOT set attributes for non-present range.
-      //
-      //
-      // There is a non-present ( [NonPresentStart, Map[Index].LinearAddress] ) range before current Map[Index]
-      // and it is overlapped with [Base, Limit].
-      //
-      if (Base < NonPresentRangeStart) {
-        SmmSetMemoryAttributes (
-          Base,
-          NonPresentRangeStart - Base,
-          Attribute
-          );
-      }
+//   MemoryMap = MemoryMapStart;
+//   for (Index = 0; Index < MemoryMapEntryCount; Index++) {
+//     DEBUG ((DEBUG_VERBOSE, "SetAttribute: Memory Entry - 0x%lx, 0x%x\n", MemoryMap->PhysicalStart, MemoryMap->NumberOfPages));
+//     if (MemoryMap->Attribute & EFI_MEMORY_SP) {
+//       SupervisorMarker = EFI_MEMORY_SP;
+//     } else {
+//       SupervisorMarker = 0;
+//     }
 
-      Base = Map[Index].LinearAddress;
-    }
+//     MemoryAttribute = MemoryMap->Attribute & (EFI_MEMORY_ACCESS_MASK | EFI_MEMORY_SP);
+//     if (MemoryAttribute == 0) {
+//       if (MemoryMap->Type == EfiRuntimeServicesCode) {
+//         MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
+//       } else {
+//         ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
+//         //
+//         // Set other type memory as NX.
+//         //
+//         MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+//       }
+//     }
 
-    NonPresentRangeStart = Map[Index].LinearAddress + Map[Index].Length;
-    if (NonPresentRangeStart >= Limit) {
-      break;
-    }
-  }
+//     //
+//     // There may exist non-present range overlaps with the MemoryMap range.
+//     // Do not change other attributes of non-present range while still remaining it as non-present
+//     //
+//     SetMemMapWithNonPresentRange (
+//       MemoryMap->PhysicalStart,
+//       MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE ((UINTN)MemoryMap->NumberOfPages),
+//       MemoryAttribute,
+//       Map,
+//       Count
+//       );
 
-  Limit = MIN (NonPresentRangeStart, Limit);
+//     MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, DescriptorSize);
+//   }
 
-  if (Base < Limit) {
-    //
-    // There is no non-present range in current [Base, Limit] anymore.
-    //
-    SmmSetMemoryAttributes (
-      Base,
-      Limit - Base,
-      Attribute
-      );
-  }
-}
+//   FreePool (Map);
 
-/**
-  This function sets memory attribute according to MemoryAttributesTable.
-**/
-VOID
-SetMemMapAttributes (
-  VOID
-  )
-{
-  EFI_MEMORY_DESCRIPTOR  *MemoryMap;
-  EFI_MEMORY_DESCRIPTOR  *MemoryMapStart;
-  UINTN                  MemoryMapEntryCount;
-  UINTN                  DescriptorSize;
-  UINTN                  Index;
-  UINT64                 SupervisorMarker;
-  UINTN                  PageTable;
-  EFI_STATUS             Status;
-  IA32_MAP_ENTRY         *Map;
-  UINTN                  Count;
-  UINT64                 MemoryAttribute;
+//   PatchSmmSaveStateMap ();
+//   PatchGdtIdtMap ();
+//   PatchMmSupervisorCoreRegion ();
+//   PatchMmUserSpecialPurposeRegion ();
 
-  if ((mInitMemoryMap == NULL) ||
-      (mInitMemoryMapSize == 0) ||
-      (mInitDescriptorSize == 0))
-  {
-    DEBUG ((DEBUG_ERROR, "Initialization memory map not initialized!\n"));
-    ASSERT (FALSE);
-    return;
-  }
-
-  PERF_FUNCTION_BEGIN ();
-
-  MemoryMapEntryCount = mInitMemoryMapSize/mInitDescriptorSize;
-  DescriptorSize      = mInitDescriptorSize;
-  MemoryMapStart      = mInitMemoryMap;
-  MemoryMap           = MemoryMapStart;
-  for (Index = 0; Index < MemoryMapEntryCount; Index++) {
-    DEBUG ((DEBUG_INFO, "Entry (0x%x)\n", MemoryMap));
-    DEBUG ((DEBUG_INFO, "  Type              - 0x%x\n", MemoryMap->Type));
-    DEBUG ((DEBUG_INFO, "  PhysicalStart     - 0x%016lx\n", MemoryMap->PhysicalStart));
-    DEBUG ((DEBUG_INFO, "  VirtualStart      - 0x%016lx\n", MemoryMap->VirtualStart));
-    DEBUG ((DEBUG_INFO, "  NumberOfPages     - 0x%016lx\n", MemoryMap->NumberOfPages));
-    DEBUG ((DEBUG_INFO, "  Attribute         - 0x%016lx\n", MemoryMap->Attribute));
-    MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, DescriptorSize);
-  }
-
-  Count = 0;
-  Map   = NULL;
-  // MU_CHANGE: MM_SUPV: Use GetPageTable to get the page table base instead of reading from CR3 because we could be
-  // using a different CR3 when initializing the environment.
-  GetPageTable (&PageTable, NULL);
-  Status = PageTableParse (PageTable, mPagingMode, NULL, &Count);
-  while (Status == RETURN_BUFFER_TOO_SMALL) {
-    if (Map != NULL) {
-      FreePool (Map);
-    }
-
-    Map = AllocatePool (Count * sizeof (IA32_MAP_ENTRY));
-    ASSERT (Map != NULL);
-    Status = PageTableParse (PageTable, mPagingMode, Map, &Count);
-  }
-
-  ASSERT_RETURN_ERROR (Status);
-
-  MemoryMap = MemoryMapStart;
-  for (Index = 0; Index < MemoryMapEntryCount; Index++) {
-    DEBUG ((DEBUG_VERBOSE, "SetAttribute: Memory Entry - 0x%lx, 0x%x\n", MemoryMap->PhysicalStart, MemoryMap->NumberOfPages));
-    if (MemoryMap->Attribute & EFI_MEMORY_SP) {
-      SupervisorMarker = EFI_MEMORY_SP;
-    } else {
-      SupervisorMarker = 0;
-    }
-
-    MemoryAttribute = MemoryMap->Attribute & (EFI_MEMORY_ACCESS_MASK | EFI_MEMORY_SP);
-    if (MemoryAttribute == 0) {
-      if (MemoryMap->Type == EfiRuntimeServicesCode) {
-        MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
-      } else {
-        ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
-        //
-        // Set other type memory as NX.
-        //
-        MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
-      }
-    }
-
-    //
-    // There may exist non-present range overlaps with the MemoryMap range.
-    // Do not change other attributes of non-present range while still remaining it as non-present
-    //
-    SetMemMapWithNonPresentRange (
-      MemoryMap->PhysicalStart,
-      MemoryMap->PhysicalStart + EFI_PAGES_TO_SIZE ((UINTN)MemoryMap->NumberOfPages),
-      MemoryAttribute,
-      Map,
-      Count
-      );
-
-    MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, DescriptorSize);
-  }
-
-  FreePool (Map);
-
-  PatchSmmSaveStateMap ();
-  PatchGdtIdtMap ();
-  PatchMmSupervisorCoreRegion ();
-  PatchMmUserSpecialPurposeRegion ();
-
-  PERF_FUNCTION_END ();
-}
+//   PERF_FUNCTION_END ();
+// }
 
 /**
   Return if a UEFI memory page should be marked as not present in SMM page table.
@@ -1787,19 +1760,19 @@ SmmGetMemoryAttributes (
 
     switch (PageAttr) {
       case Page4K:
-        Address      = *PageEntry & ~mAddressEncMask & PAGING_4K_ADDRESS_MASK_64;
+        Address      = *PageEntry & PAGING_4K_ADDRESS_MASK_64;
         Size        -= (SIZE_4KB - (BaseAddress - Address));
         BaseAddress += (SIZE_4KB - (BaseAddress - Address));
         break;
 
       case Page2M:
-        Address      = *PageEntry & ~mAddressEncMask & PAGING_2M_ADDRESS_MASK_64;
+        Address      = *PageEntry & PAGING_2M_ADDRESS_MASK_64;
         Size        -= SIZE_2MB - (BaseAddress - Address);
         BaseAddress += SIZE_2MB - (BaseAddress - Address);
         break;
 
       case Page1G:
-        Address      = *PageEntry & ~mAddressEncMask & PAGING_1G_ADDRESS_MASK_64;
+        Address      = *PageEntry & PAGING_1G_ADDRESS_MASK_64;
         Size        -= SIZE_1GB - (BaseAddress - Address);
         BaseAddress += SIZE_1GB - (BaseAddress - Address);
         break;
@@ -2580,48 +2553,48 @@ EnablePageTableProtection (
   } while (Pool != HeadPool);
 }
 
-/**
-  Return whether memory used by SMM page table need to be set as Read Only.
+// /**
+//   Return whether memory used by SMM page table need to be set as Read Only.
 
-  @retval TRUE  Need to set SMM page table as Read Only.
-  @retval FALSE Do not set SMM page table as Read Only.
-**/
-BOOLEAN
-IfReadOnlyPageTableNeeded (
-  VOID
-  )
-{
-  //
-  // Don't mark page table memory as read-only if
-  //  - no restriction on access to non-SMRAM memory; or
-  //  - SMM heap guard feature enabled; or
-  //      BIT2: SMM page guard enabled
-  //      BIT3: SMM pool guard enabled
-  //  - SMM profile feature enabled
-  //
-  if (!IsRestrictedMemoryAccess ()) {
-    if (sizeof (UINTN) == sizeof (UINT64)) {
-      //
-      // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
-      //
-      // MU_CHANGE START
+//   @retval TRUE  Need to set SMM page table as Read Only.
+//   @retval FALSE Do not set SMM page table as Read Only.
+// **/
+// BOOLEAN
+// IfReadOnlyPageTableNeeded (
+//   VOID
+//   )
+// {
+//   //
+//   // Don't mark page table memory as read-only if
+//   //  - no restriction on access to non-SMRAM memory; or
+//   //  - SMM heap guard feature enabled; or
+//   //      BIT2: SMM page guard enabled
+//   //      BIT3: SMM pool guard enabled
+//   //  - SMM profile feature enabled
+//   //
+//   if (!IsRestrictedMemoryAccess ()) {
+//     if (sizeof (UINTN) == sizeof (UINT64)) {
+//       //
+//       // Restriction on access to non-SMRAM memory and heap guard could not be enabled at the same time.
+//       //
+//       // MU_CHANGE START
 
-      /*ASSERT (
-        !(IsRestrictedMemoryAccess () &&
-          (PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0)
-        ); */
-      ASSERT (
-        !(IsRestrictedMemoryAccess () &&
-          (gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0)
-        );
-      // MU_CHANGE END
-    }
+//       /*ASSERT (
+//         !(IsRestrictedMemoryAccess () &&
+//           (PcdGet8 (PcdHeapGuardPropertyMask) & (BIT3 | BIT2)) != 0)
+//         ); */
+//       ASSERT (
+//         !(IsRestrictedMemoryAccess () &&
+//           (gMmMps.HeapGuardPolicy.Fields.MmPageGuard | gMmMps.HeapGuardPolicy.Fields.MmPoolGuard) != 0)
+//         );
+//       // MU_CHANGE END
+//     }
 
-    return FALSE;
-  }
+//     return FALSE;
+//   }
 
-  return TRUE;
-}
+//   return TRUE;
+// }
 
 /**
   This function sets memory attribute for page table.
@@ -2631,9 +2604,9 @@ SetPageTableAttributes (
   VOID
   )
 {
-  if (!IfReadOnlyPageTableNeeded ()) {
-    return;
-  }
+  // if (!IfReadOnlyPageTableNeeded ()) {
+  //   return;
+  // }
 
   PERF_FUNCTION_BEGIN ();
   DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));

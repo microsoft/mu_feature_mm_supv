@@ -621,7 +621,8 @@ MmInternalAllocatePagesEx (
   UINTN  RequestedAddress;
 
   if ((MemoryType != EfiRuntimeServicesCode) &&
-      (MemoryType != EfiRuntimeServicesData))
+      (MemoryType != EfiRuntimeServicesData) &&
+      (MemoryType != EfiReservedMemoryType)) // Newly added to support reserved memory type
   {
     return EFI_INVALID_PARAMETER;
   }
@@ -666,6 +667,9 @@ MmInternalAllocatePagesEx (
 
       break;
     case AllocateAddress:
+      DEBUG ((DEBUG_INFO, "%a: AllocateAddress 0x%lx\n", __func__, RequestedAddress));
+      DEBUG ((DEBUG_INFO, "%a: mMmMemoryMap 0x%lx\n", __func__, (UINTN)&mMmMemoryMap));
+      DEBUG ((DEBUG_INFO, "%a: Memory 0x%lx\n", __func__, (UINTN)Memory));
       *Memory = InternalAllocAddress (
                   &mMmMemoryMap,
                   NumberOfPages,
@@ -1238,83 +1242,6 @@ MmCoreGetMemoryMap (
     MemoryMap->Attribute     = Entry->IsSupervisorPage ? EFI_MEMORY_SP : 0;
 
     MemoryMap = NEXT_MEMORY_DESCRIPTOR (MemoryMap, Size);
-  }
-
-  return EFI_SUCCESS;
-}
-
-EFI_STATUS
-EFIAPI
-PrepareMmSupervisorHobs (
-  IN  EFI_PHYSICAL_ADDRESS  MmHobStart  OPTIONAL,
-  OUT UINT64                *MmHobSize
-) {
-  // Loop through all the allocated pages
-  // convert them into memory allocation hobs
-  LIST_ENTRY            *Link;
-  MEMORY_MAP            *Entry;
-
-  UINTN                 TotalHobSize;
-  EFI_HOB_MEMORY_ALLOCATION  *MemAllocHob;
-
-  if (MmHobSize == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  TotalHobSize = 0;
-  Link = gMemoryMap.ForwardLink;
-  while (Link != &gMemoryMap) {
-    Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
-    Link  = Link->ForwardLink;
-
-    if ((Entry->Type == EfiRuntimeServicesCode) || (Entry->Type == EfiRuntimeServicesData)) {
-      TotalHobSize += sizeof (EFI_HOB_MEMORY_ALLOCATION);
-    }
-  }
-
-  if (TotalHobSize == 0) {
-    *MmHobSize  = 0;
-    return EFI_SUCCESS;
-  }
-
-  if ((MmHobStart == 0) || (*MmHobSize < TotalHobSize)) {
-    *MmHobSize = TotalHobSize;
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  *MmHobSize = TotalHobSize;
-  MemAllocHob = (EFI_HOB_MEMORY_ALLOCATION *)(UINTN)(MmHobStart);
-
-  Link = gMemoryMap.ForwardLink;
-  while (Link != &gMemoryMap) {
-    Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
-    Link  = Link->ForwardLink;
-
-    if ((Entry->Type == EfiRuntimeServicesCode) || (Entry->Type == EfiRuntimeServicesData)) {
-      DEBUG ((DEBUG_INFO, "%a - Entry Start: 0x%lx, End: 0x%lx, Type: 0x%x, IsSupervisorPage: %d, written to %p\n",
-        __func__,
-        Entry->Start,
-        Entry->End,
-        Entry->Type,
-        Entry->IsSupervisorPage,
-      MemAllocHob));
-
-      MemAllocHob->Header.HobType = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-      MemAllocHob->Header.HobLength = sizeof (EFI_HOB_MEMORY_ALLOCATION);
-      MemAllocHob->AllocDescriptor.MemoryBaseAddress = Entry->Start;
-      MemAllocHob->AllocDescriptor.MemoryLength = (Entry->End - Entry->Start + 1);
-      // Data will be R/W, Code will be R/X
-      MemAllocHob->AllocDescriptor.MemoryType = Entry->Type;
-      if (Entry->IsSupervisorPage) {
-        // Supervisor page
-        CopyGuid (&MemAllocHob->AllocDescriptor.Name, &gMmSupervisorCoreGuid);
-      } else {
-        // User page
-        CopyGuid (&MemAllocHob->AllocDescriptor.Name, &gMmSupervisorInitGuid);
-      }
-
-      MemAllocHob = (EFI_HOB_MEMORY_ALLOCATION *)((UINTN)MemAllocHob + ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION), 8));
-    }
   }
 
   return EFI_SUCCESS;

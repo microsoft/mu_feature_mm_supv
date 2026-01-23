@@ -47,13 +47,9 @@
 %define TSS_SEGMENT 0x70
 %define GDT_SIZE 0x80
 
-extern ASM_PFX(SmiRendezvous)
 extern ASM_PFX(gSmiHandlerIdtr)
-extern ASM_PFX(CpuSmmDebugEntry)
-extern ASM_PFX(CpuSmmDebugExit)
 
 global ASM_PFX(gPatchSmbase)
-extern ASM_PFX(mXdSupported)
 global ASM_PFX(gPatchXdSupported)
 global ASM_PFX(gPatchMsrIa32MiscEnableSupported)
 global ASM_PFX(gPatchSmiStack)
@@ -61,6 +57,9 @@ global ASM_PFX(gPatchSmiCr3)
 global ASM_PFX(gPatch5LevelPagingNeeded)
 global ASM_PFX(gcSmiHandlerTemplate)
 global ASM_PFX(gcSmiHandlerSize)
+global ASM_PFX(mSmiHandlerIdtr)
+global ASM_PFX(gSmiRendezvous)
+global ASM_PFX(gMmSupvHobStart)
 
 extern ASM_PFX(mCetSupported)
 global ASM_PFX(mPatchCetSupported)
@@ -110,7 +109,6 @@ ASM_PFX(gPatchSmiStack):
 
 BITS 64
 ProtFlatMode:
-    jmp $
     mov eax, strict dword 0               ; source operand will be patched
 ASM_PFX(gPatchSmiCr3):
     mov     cr3, rax
@@ -197,7 +195,7 @@ Base:
     retf
 @LongMode:                              ; long mode (64-bit code) starts here
     mov     rax, strict qword 0         ;  mov     rax, ASM_PFX(gSmiHandlerIdtr)
-SmiHandlerIdtrAbsAddr:
+ASM_PFX(mSmiHandlerIdtr):
     lidt    [rax]
     lea     ebx, [rdi + DSC_OFFSET]
     mov     ax, [rbx + DSC_DS]
@@ -299,20 +297,23 @@ CetDone:
 
     add     rsp, -0x20
 
-    mov     rcx, rbx
-    mov     rax, strict qword 0         ;   call    ASM_PFX(CpuSmmDebugEntry)
-CpuSmmDebugEntryAbsAddr:
-    call    rax
+;     mov     rcx, rbx
+;     mov     rax, strict qword 0         ;   call    ASM_PFX(CpuSmmDebugEntry)
+; CpuSmmDebugEntryAbsAddr:
+;     call    rax
 
+    ; jmp $
     mov     rcx, rbx
+    mov     rdx, strict qword 0         ;   call    ASM_PFX(MmSupvHobStart)
+gMmSupvHobStart:
     mov     rax, strict qword 0         ;   call    ASM_PFX(SmiRendezvous)
-SmiRendezvousAbsAddr:
+gSmiRendezvous:
     call    rax
 
-    mov     rcx, rbx
-    mov     rax, strict qword 0         ;   call    ASM_PFX(CpuSmmDebugExit)
-CpuSmmDebugExitAbsAddr:
-    call    rax
+;     mov     rcx, rbx
+;     mov     rax, strict qword 0         ;   call    ASM_PFX(CpuSmmDebugExit)
+; CpuSmmDebugExitAbsAddr:
+;     call    rax
 
     add     rsp, 0x20
 
@@ -355,11 +356,6 @@ mCetSupportedAbsAddr:
     wrmsr
 CetDone2:
 
-    mov     rax, strict qword 0         ;       lea     rax, [ASM_PFX(mXdSupported)]
-mXdSupportedAbsAddr:
-    mov     al, [rax]
-    cmp     al, 0
-    jz      .1
     pop     rdx                       ; get saved MSR_IA32_MISC_ENABLE[63-32]
     test    edx, BIT2
     jz      .1
@@ -385,26 +381,6 @@ ASM_PFX(gcSmiHandlerSize)    DW      $ - _SmiEntryPoint
 ;
 global ASM_PFX(PiSmmCpuSmiEntryFixupAddress)
 ASM_PFX(PiSmmCpuSmiEntryFixupAddress):
-    lea    rax, [ASM_PFX(gSmiHandlerIdtr)]
-    lea    rcx, [SmiHandlerIdtrAbsAddr]
-    mov    qword [rcx - 8], rax
-
-    lea    rax, [ASM_PFX(CpuSmmDebugEntry)]
-    lea    rcx, [CpuSmmDebugEntryAbsAddr]
-    mov    qword [rcx - 8], rax
-
-    lea    rax, [ASM_PFX(SmiRendezvous)]
-    lea    rcx, [SmiRendezvousAbsAddr]
-    mov    qword [rcx - 8], rax
-
-    lea    rax, [ASM_PFX(CpuSmmDebugExit)]
-    lea    rcx, [CpuSmmDebugExitAbsAddr]
-    mov    qword [rcx - 8], rax
-
-    lea    rax, [ASM_PFX(mXdSupported)]
-    lea    rcx, [mXdSupportedAbsAddr]
-    mov    qword [rcx - 8], rax
-
     lea    rax, [ASM_PFX(mCetSupported)]
     lea    rcx, [mCetSupportedAbsAddr]
     mov    qword [rcx - 8], rax

@@ -15,7 +15,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt.h"
-#include "Relocate/Relocate.h"
+// #include "Relocate/Relocate.h"
 #include "Services/MpService/MpService.h"
 
 // This needs to be in consistency with SmiException.nasm
@@ -24,6 +24,11 @@ UINT64                 *mMsrStar64Store = NULL;
 UINT64                 *mMsrEferStore   = NULL;
 MM_SUPV_SYSCALL_CACHE  *mMmSupvGsStore  = NULL;
 SPIN_LOCK              *mCpuToken       = NULL;
+
+// TODO: This should not be here
+extern UINTN  mNumberOfCpus;
+UINTN  mSmmStackSize;
+UINTN  mSmmCpl3StackArrayBase;
 
 // Function to set up syscall MSR for just one thread/core
 EFI_STATUS

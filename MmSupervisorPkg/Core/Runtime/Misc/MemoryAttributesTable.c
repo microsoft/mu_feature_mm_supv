@@ -561,105 +561,105 @@ SmmSetImagePageAttributes (
   return Status;
 }
 
-/**
-  Collect MemoryAttributesTable to SMM configuration table.
-**/
-EFI_MEMORY_DESCRIPTOR *
-CollectMemoryAttributesTable (
-  OUT UINTN  *RetMemoryMapSize,
-  OUT UINTN  *RetDescriptorSize
-  )
-{
-  UINTN                  MemoryMapSize;
-  EFI_MEMORY_DESCRIPTOR  *MemoryMap;
-  UINTN                  MapKey;
-  UINTN                  DescriptorSize;
-  UINT32                 DescriptorVersion;
-  EFI_STATUS             Status;
+// /**
+//   Collect MemoryAttributesTable to SMM configuration table.
+// **/
+// EFI_MEMORY_DESCRIPTOR *
+// CollectMemoryAttributesTable (
+//   OUT UINTN  *RetMemoryMapSize,
+//   OUT UINTN  *RetDescriptorSize
+//   )
+// {
+//   UINTN                  MemoryMapSize;
+//   EFI_MEMORY_DESCRIPTOR  *MemoryMap;
+//   UINTN                  MapKey;
+//   UINTN                  DescriptorSize;
+//   UINT32                 DescriptorVersion;
+//   EFI_STATUS             Status;
 
-  if ((RetMemoryMapSize == NULL) ||
-      (RetDescriptorSize == NULL))
-  {
-    DEBUG ((DEBUG_ERROR, "%a Invalid input parameters!\n", __func__));
-    return NULL;
-  }
+//   if ((RetMemoryMapSize == NULL) ||
+//       (RetDescriptorSize == NULL))
+//   {
+//     DEBUG ((DEBUG_ERROR, "%a Invalid input parameters!\n", __func__));
+//     return NULL;
+//   }
 
-  MemoryMapSize = 0;
-  MemoryMap     = NULL;
-  Status        = SmmCoreGetMemoryMapMemoryAttributesTable (
-                    &MemoryMapSize,
-                    MemoryMap,
-                    &MapKey,
-                    &DescriptorSize,
-                    &DescriptorVersion
-                    );
-  ASSERT (Status == EFI_BUFFER_TOO_SMALL);
+//   MemoryMapSize = 0;
+//   MemoryMap     = NULL;
+//   Status        = SmmCoreGetMemoryMapMemoryAttributesTable (
+//                     &MemoryMapSize,
+//                     MemoryMap,
+//                     &MapKey,
+//                     &DescriptorSize,
+//                     &DescriptorVersion
+//                     );
+//   ASSERT (Status == EFI_BUFFER_TOO_SMALL);
 
-  do {
-    DEBUG ((DEBUG_VERBOSE, "MemoryMapSize - 0x%x\n", MemoryMapSize));
-    MemoryMap = AllocatePool (MemoryMapSize);
-    if (MemoryMap == NULL) {
-      DEBUG ((DEBUG_ERROR, "Failed to allocate memory for memory map (0x%x bytes)\n", MemoryMapSize));
-      Status = EFI_OUT_OF_RESOURCES;
-      break;
-    }
+//   do {
+//     DEBUG ((DEBUG_VERBOSE, "MemoryMapSize - 0x%x\n", MemoryMapSize));
+//     MemoryMap = AllocatePool (MemoryMapSize);
+//     if (MemoryMap == NULL) {
+//       DEBUG ((DEBUG_ERROR, "Failed to allocate memory for memory map (0x%x bytes)\n", MemoryMapSize));
+//       Status = EFI_OUT_OF_RESOURCES;
+//       break;
+//     }
 
-    DEBUG ((DEBUG_VERBOSE, "MemoryMap - 0x%x\n", MemoryMap));
+//     DEBUG ((DEBUG_VERBOSE, "MemoryMap - 0x%x\n", MemoryMap));
 
-    Status = SmmCoreGetMemoryMapMemoryAttributesTable (
-               &MemoryMapSize,
-               MemoryMap,
-               &MapKey,
-               &DescriptorSize,
-               &DescriptorVersion
-               );
-    if (EFI_ERROR (Status)) {
-      FreePool (MemoryMap);
-    }
-  } while (Status == EFI_BUFFER_TOO_SMALL);
+//     Status = SmmCoreGetMemoryMapMemoryAttributesTable (
+//                &MemoryMapSize,
+//                MemoryMap,
+//                &MapKey,
+//                &DescriptorSize,
+//                &DescriptorVersion
+//                );
+//     if (EFI_ERROR (Status)) {
+//       FreePool (MemoryMap);
+//     }
+//   } while (Status == EFI_BUFFER_TOO_SMALL);
 
-  if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return NULL;
-  } else {
-    *RetMemoryMapSize  = MemoryMapSize;
-    *RetDescriptorSize = DescriptorSize;
-    return MemoryMap;
-  }
-}
+//   if (EFI_ERROR (Status)) {
+//     ASSERT_EFI_ERROR (Status);
+//     return NULL;
+//   } else {
+//     *RetMemoryMapSize  = MemoryMapSize;
+//     *RetDescriptorSize = DescriptorSize;
+//     return MemoryMap;
+//   }
+// }
 
-/**
-  Initialize MemoryAttributesTable.
+// /**
+//   Initialize MemoryAttributesTable.
 
-  @param[in] Protocol   Points to the protocol's unique identifier.
-  @param[in] Interface  Points to the interface instance.
-  @param[in] Handle     The handle on which the interface was installed.
+//   @param[in] Protocol   Points to the protocol's unique identifier.
+//   @param[in] Interface  Points to the interface instance.
+//   @param[in] Handle     The handle on which the interface was installed.
 
-  @retval EFI_SUCCESS   Notification runs successfully.
-**/
-EFI_STATUS
-EFIAPI
-SmmInitializeMemoryAttributesTable (
-  IN CONST EFI_GUID  *Protocol,
-  IN VOID            *Interface,
-  IN EFI_HANDLE      Handle
-  )
-{
-  DEBUG ((DEBUG_VERBOSE, "SMM MemoryProtectionAttribute - 0x%016lx\n", mMemoryProtectionAttribute));
-  if ((mMemoryProtectionAttribute & EFI_MEMORY_ATTRIBUTES_RUNTIME_MEMORY_PROTECTION_NON_EXECUTABLE_PE_DATA) == 0) {
-    return EFI_SUCCESS;
-  }
+//   @retval EFI_SUCCESS   Notification runs successfully.
+// **/
+// EFI_STATUS
+// EFIAPI
+// SmmInitializeMemoryAttributesTable (
+//   IN CONST EFI_GUID  *Protocol,
+//   IN VOID            *Interface,
+//   IN EFI_HANDLE      Handle
+//   )
+// {
+//   DEBUG ((DEBUG_VERBOSE, "SMM MemoryProtectionAttribute - 0x%016lx\n", mMemoryProtectionAttribute));
+//   if ((mMemoryProtectionAttribute & EFI_MEMORY_ATTRIBUTES_RUNTIME_MEMORY_PROTECTION_NON_EXECUTABLE_PE_DATA) == 0) {
+//     return EFI_SUCCESS;
+//   }
 
-  DEBUG_CODE_BEGIN ();
-  if ( mImagePropertiesPrivateData.ImageRecordCount > 0) {
-    DEBUG ((DEBUG_INFO, "SMM - Total Runtime Image Count - 0x%x\n", mImagePropertiesPrivateData.ImageRecordCount));
-    DEBUG ((DEBUG_INFO, "SMM - Dump Runtime Image Records:\n"));
-    DumpImageRecords (&mImagePropertiesPrivateData.ImageRecordList);
-  }
+//   DEBUG_CODE_BEGIN ();
+//   if ( mImagePropertiesPrivateData.ImageRecordCount > 0) {
+//     DEBUG ((DEBUG_INFO, "SMM - Total Runtime Image Count - 0x%x\n", mImagePropertiesPrivateData.ImageRecordCount));
+//     DEBUG ((DEBUG_INFO, "SMM - Dump Runtime Image Records:\n"));
+//     DumpImageRecords (&mImagePropertiesPrivateData.ImageRecordList);
+//   }
 
-  DEBUG_CODE_END ();
+//   DEBUG_CODE_END ();
 
-  mInitMemoryMap = CollectMemoryAttributesTable (&mInitMemoryMapSize, &mInitDescriptorSize);
+//   mInitMemoryMap = CollectMemoryAttributesTable (&mInitMemoryMapSize, &mInitDescriptorSize);
 
-  return EFI_SUCCESS;
-}
+//   return EFI_SUCCESS;
+// }

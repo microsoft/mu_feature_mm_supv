@@ -33,6 +33,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define   CPUID1_EDX_BTS_AVAILABLE  0x200000
 
 extern UINTN              gSmiExceptionHandlers[];
+// extern BOOLEAN            mXdSupported;
 X86_ASSEMBLY_PATCH_LABEL  gPatchXdSupported;
 X86_ASSEMBLY_PATCH_LABEL  gPatchMsrIa32MiscEnableSupported;
 

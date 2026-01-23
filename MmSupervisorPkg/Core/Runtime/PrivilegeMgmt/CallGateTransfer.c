@@ -18,7 +18,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt.h"
-#include "Relocate/Relocate.h"
+// #include "Relocate/Relocate.h"
+#include "Services/CpuService/CpuService.h"
 #include "Services/MpService/MpService.h"
 #include "Mem/Mem.h"
 
@@ -179,38 +180,38 @@ SetupTssDescriptor (
 Exit:
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
-    if (mSmmRebootOnException) {
-      ResetCold ();
-    }
+    // if (mSmmRebootOnException) {
+    //   ResetCold ();
+    // }
   }
 }
 
-// Setup ring transition for AP procedure
-VOID
-EFIAPI
-CallgateInit (
-  IN UINTN  NumberOfCpus
-  )
-{
-  UINTN                 CpuIndex;
-  EFI_PHYSICAL_ADDRESS  GdtrBaseAddr;
+// // Setup ring transition for AP procedure
+// VOID
+// EFIAPI
+// CallgateInit (
+//   IN UINTN  NumberOfCpus
+//   )
+// {
+//   UINTN                 CpuIndex;
+//   EFI_PHYSICAL_ADDRESS  GdtrBaseAddr;
 
-  for (CpuIndex = 0; CpuIndex < NumberOfCpus; CpuIndex++) {
-    if (CpuIndex == mSmmMpSyncData->BspIndex) {
-      // BSP call gate will change, patch at runtime
-      continue;
-    }
+//   for (CpuIndex = 0; CpuIndex < NumberOfCpus; CpuIndex++) {
+//     if (CpuIndex == mSmmMpSyncData->BspIndex) {
+//       // BSP call gate will change, patch at runtime
+//       continue;
+//     }
 
-    // Patch AP handlers call gate here, they can still change during later usage
-    GdtrBaseAddr = mGdtBuffer + mGdtStepSize * CpuIndex;
-    PatchCallGatePtr ((IA32_IDT_GATE_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + CALL_GATE_OFFSET), (VOID *)NULL);
-    PatchTssDescriptor (
-      (IA32_TSS_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + TSS_SEL_OFFSET),
-      (IA32_TASK_STATE_SEGMENT *)(UINTN)(GdtrBaseAddr + TSS_DESC_OFFSET),
-      (VOID *)GetThisCpl3Stack (CpuIndex)
-      );
-  }
-}
+//     // Patch AP handlers call gate here, they can still change during later usage
+//     GdtrBaseAddr = mGdtBuffer + mGdtStepSize * CpuIndex;
+//     PatchCallGatePtr ((IA32_IDT_GATE_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + CALL_GATE_OFFSET), (VOID *)NULL);
+//     PatchTssDescriptor (
+//       (IA32_TSS_DESCRIPTOR *)(UINTN)(GdtrBaseAddr + TSS_SEL_OFFSET),
+//       (IA32_TASK_STATE_SEGMENT *)(UINTN)(GdtrBaseAddr + TSS_DESC_OFFSET),
+//       (VOID *)GetThisCpl3Stack (CpuIndex)
+//       );
+//   }
+// }
 
 /**
   Invoke MM driver in CPL 3.
