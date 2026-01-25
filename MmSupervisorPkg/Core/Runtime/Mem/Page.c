@@ -667,9 +667,6 @@ MmInternalAllocatePagesEx (
 
       break;
     case AllocateAddress:
-      DEBUG ((DEBUG_INFO, "%a: AllocateAddress 0x%lx\n", __func__, RequestedAddress));
-      DEBUG ((DEBUG_INFO, "%a: mMmMemoryMap 0x%lx\n", __func__, (UINTN)&mMmMemoryMap));
-      DEBUG ((DEBUG_INFO, "%a: Memory 0x%lx\n", __func__, (UINTN)Memory));
       *Memory = InternalAllocAddress (
                   &mMmMemoryMap,
                   NumberOfPages,

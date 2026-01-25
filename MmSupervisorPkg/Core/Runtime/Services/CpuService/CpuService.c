@@ -14,11 +14,13 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "MmSupervisorCore.h"
 #include "CpuService.h"
 // #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
 
 // TODO: This should not be here.
 extern UINTN               mMaxNumberOfCpus;
+extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
+extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
 
 //
 // SMM CPU Service Protocol instance

@@ -12,10 +12,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "Services/CpuService/CpuService.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 // #include "Relocate/Relocate.h"
 #include "Mem/Mem.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
+#include "../../Common/PassDown.h"
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
 #include <Library/MtrrLib.h>
@@ -30,6 +31,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // TODO: This should not be here.
 extern UINTN  mMaxNumberOfCpus;
 extern UINTN  mNumberOfCpus;
+extern UINT64  mTimeoutTicker;
+extern UINT64  mTimeoutTicker2;
 volatile BOOLEAN  *mSmmInitialized = NULL;
 volatile BOOLEAN  mIsBspInitialized;
 VOID  *gHobList = NULL;
@@ -88,10 +91,10 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
     NULL                                        // SmmCoreEntryContext.CpuSaveState
   },
   NULL,                                         // SmmCoreEntry
-  {
-    mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
-    // RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
-  },
+  // {
+  //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
+  //   // RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
+  // },
   NULL,                                         // pointer to Ap Wrapper Func array
   { NULL, NULL },                               // List_Entry for Tokens.
 };
@@ -137,7 +140,7 @@ UINTN                        mSmmMpSyncDataSize;
 SMM_CPU_SEMAPHORES           mSmmCpuSemaphores;
 UINTN                        mSemaphoreSize;
 SPIN_LOCK                    *mPFLock = NULL;
-SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
+// SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
 BOOLEAN                      mMachineCheckSupported = FALSE;
 MM_COMPLETION                mSmmStartupThisApToken;
 
@@ -577,16 +580,16 @@ ResetTokens (
 **/
 VOID
 BSPHandler (
-  IN      UINTN              CpuIndex,
-  IN      SMM_CPU_SYNC_MODE  SyncMode
+  IN      UINTN              CpuIndex
+  // IN      SMM_CPU_SYNC_MODE  SyncMode
   )
 {
   UINTN          CpuCount;
-  UINTN          Index;
+  // UINTN          Index;
   MTRR_SETTINGS  Mtrrs;
   UINTN          ApCount;
   BOOLEAN        ClearTopLevelSmiResult;
-  UINTN          PresentCount;
+  // UINTN          PresentCount;
 
   ASSERT (CpuIndex == mSmmMpSyncData->BspIndex);
   CpuCount = 0;
@@ -625,7 +628,7 @@ BSPHandler (
   //
   // If Traditional Sync Mode or need to configure MTRRs: gather all available APs.
   //
-  if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  // if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
     //
     // Wait for APs to arrive
     //
@@ -645,45 +648,45 @@ BSPHandler (
     //
     SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-      //
-      // Signal all APs it's time for backup MTRRs
-      //
-      ReleaseAllAPs ();
+    // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+    //   //
+    //   // Signal all APs it's time for backup MTRRs
+    //   //
+    //   ReleaseAllAPs ();
 
-      //
-      // SmmCpuSyncWaitForAPs may wait for ever if an AP happens to enter SMM at
-      // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
-      // to a large enough value to avoid this situation.
-      // Note: For HT capable CPUs, threads within a core share the same set of MTRRs.
-      // We do the backup first and then set MTRR to avoid race condition for threads
-      // in the same core.
-      //
-      MtrrGetAllMtrrs (&Mtrrs);
+    //   //
+    //   // SmmCpuSyncWaitForAPs may wait for ever if an AP happens to enter SMM at
+    //   // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
+    //   // to a large enough value to avoid this situation.
+    //   // Note: For HT capable CPUs, threads within a core share the same set of MTRRs.
+    //   // We do the backup first and then set MTRR to avoid race condition for threads
+    //   // in the same core.
+    //   //
+    //   MtrrGetAllMtrrs (&Mtrrs);
 
-      //
-      // Wait for all APs to complete their MTRR saving
-      //
-      SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+    //   //
+    //   // Wait for all APs to complete their MTRR saving
+    //   //
+    //   SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-      //
-      // Let all processors program SMM MTRRs together
-      //
-      ReleaseAllAPs ();
+    //   //
+    //   // Let all processors program SMM MTRRs together
+    //   //
+    //   ReleaseAllAPs ();
 
-      //
-      // SmmCpuSyncWaitForAPs() may wait for ever if an AP happens to enter SMM at
-      // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
-      // to a large enough value to avoid this situation.
-      //
-      ReplaceOSMtrrs (CpuIndex);
+    //   //
+    //   // SmmCpuSyncWaitForAPs() may wait for ever if an AP happens to enter SMM at
+    //   // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
+    //   // to a large enough value to avoid this situation.
+    //   //
+    //   ReplaceOSMtrrs (CpuIndex);
 
-      //
-      // Wait for all APs to complete their MTRR programming
-      //
-      SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
-    }
-  }
+    //   //
+    //   // Wait for all APs to complete their MTRR programming
+    //   //
+    //   SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+    // }
+  // }
 
   //
   // The BUSY lock is initialized to Acquired state
@@ -700,37 +703,37 @@ BSPHandler (
   //
   WaitForAllAPsNotBusy (TRUE);
 
-  //
-  // If Relaxed-AP Sync Mode: gather all available APs after BSP SMM handlers are done, and
-  // make those APs to exit SMI synchronously. APs which arrive later will be excluded and
-  // will run through freely.
-  //
-  if ((SyncMode != SmmCpuSyncModeTradition) && !SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
-    //
-    *mSmmMpSyncData->AllCpusInSync = TRUE;
+  // //
+  // // If Relaxed-AP Sync Mode: gather all available APs after BSP SMM handlers are done, and
+  // // make those APs to exit SMI synchronously. APs which arrive later will be excluded and
+  // // will run through freely.
+  // //
+  // if ((SyncMode != SmmCpuSyncModeTradition) && !SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
+  //   //
+  //   *mSmmMpSyncData->AllCpusInSync = TRUE;
 
-    SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
+  //   SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
 
-    ApCount = CpuCount - 1;
+  //   ApCount = CpuCount - 1;
 
-    //
-    // Make sure all APs have their Present flag set
-    //
-    while (TRUE) {
-      PresentCount = 0;
-      for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-        if (*(mSmmMpSyncData->CpuData[Index].Present)) {
-          PresentCount++;
-        }
-      }
+  //   //
+  //   // Make sure all APs have their Present flag set
+  //   //
+  //   while (TRUE) {
+  //     PresentCount = 0;
+  //     for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
+  //       if (*(mSmmMpSyncData->CpuData[Index].Present)) {
+  //         PresentCount++;
+  //       }
+  //     }
 
-      if (PresentCount > ApCount) {
-        break;
-      }
-    }
-  }
+  //     if (PresentCount > ApCount) {
+  //       break;
+  //     }
+  //   }
+  // }
 
   //
   // Notify all APs to exit
@@ -832,8 +835,8 @@ BSPHandler (
 VOID
 APHandler (
   IN      UINTN              CpuIndex,
-  IN      BOOLEAN            ValidSmi,
-  IN      SMM_CPU_SYNC_MODE  SyncMode
+  IN      BOOLEAN            ValidSmi
+  // IN      SMM_CPU_SYNC_MODE  SyncMode
   )
 {
   UINT64         Timer;
@@ -910,12 +913,12 @@ APHandler (
   //
   *(mSmmMpSyncData->CpuData[CpuIndex].Present) = TRUE;
 
-  if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  // if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
     //
     // Notify BSP of arrival at this point
     //
     SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
-  }
+  // }
 
   if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
     //
@@ -1261,9 +1264,9 @@ InternalSmmStartupThisAp (
   }
 
   if (!(*(mSmmMpSyncData->CpuData[CpuIndex].Present))) {
-    if (mSmmMpSyncData->EffectiveSyncMode == SmmCpuSyncModeTradition) {
+    // if (mSmmMpSyncData->EffectiveSyncMode == SmmCpuSyncModeTradition) {
       DEBUG ((DEBUG_ERROR, "!mSmmMpSyncData->CpuData[%d].Present\n", CpuIndex));
-    }
+    // }
 
     return EFI_INVALID_PARAMETER;
   }
@@ -1783,6 +1786,11 @@ BspInit (
   mMemoryAllocationMmst = &gMmCoreMmst; // TODO: We would not need this later
 
 
+  //////////////////////////////////////////////////////////////
+  // TODO: need to loop through the existing page table to make sure we are still sane
+  // after inspecting the MMRAM ranges and allocated hobs.
+
+
 
   ////////////////////////////////////////////////////////////////////
   //
@@ -1856,6 +1864,32 @@ BspInit (
   mMaxNumberOfCpus = MpInformation2HobData->NumberOfProcessors;
 
   DEBUG ((DEBUG_INFO, "%a - NumberOfCpus: %d, MaxNumberOfCpus: %d\n", __func__, mNumberOfCpus, mMaxNumberOfCpus));
+
+  //
+  // TODO: This is a dirty hack to pass the number of cpus to SmmCpuFeaturesLib
+  //
+  GuidHob = GetFirstGuidHob (&gMmSupervisorPassDownHobGuid);
+  ASSERT (GuidHob != NULL);
+  MM_SUPV_PASS_DOWN_HOB_DATA *MmSupervisorPassDownHob = GET_GUID_HOB_DATA (GuidHob);
+
+  mSmmMpSyncData = (SMM_DISPATCHER_MP_SYNC_DATA *)MmSupervisorPassDownHob->MmSupvMpSyncData;
+  ASSERT (mSmmMpSyncData != NULL);
+
+  mSmmMpSyncDataSize = MmSupervisorPassDownHob->MmSupvMpSyncDataSize;
+  ASSERT (mSmmMpSyncDataSize >= sizeof (SMM_DISPATCHER_MP_SYNC_DATA) +
+                        (sizeof (SMM_CPU_DATA_BLOCK) + sizeof (BOOLEAN)) * mNumberOfCpus);
+
+  DEBUG ((DEBUG_INFO, "%a - mSmmMpSyncData: 0x%p, mSmmMpSyncDataSize: 0x%x\n", __func__, mSmmMpSyncData, mSmmMpSyncDataSize));
+
+  gSmmCpuPrivate = (SMM_CPU_PRIVATE_DATA *)MmSupervisorPassDownHob->MmSupvCpuPrivate;
+  ASSERT (gSmmCpuPrivate != NULL);
+
+  ASSERT (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus == mNumberOfCpus);
+  ASSERT (MmSupervisorPassDownHob->MmSupvCpuPrivateSize == sizeof (SMM_CPU_PRIVATE_DATA));
+
+  DEBUG ((DEBUG_INFO, "%a - gSmmCpuPrivate: 0x%p\n", __func__, gSmmCpuPrivate));
+
+  InitPackageFirstThreadIndexInfo ();
 
   ////////////////////////////////////////////////////////////////////
   //
@@ -1964,12 +1998,12 @@ SmiRendezvous (
     return;
   }
 
-  //
-  // Call the user register Startup function first.
-  //
-  if (mSmmMpSyncData->StartupProcedure != NULL) {
-    mSmmMpSyncData->StartupProcedure (mSmmMpSyncData->StartupProcArgs);
-  }
+  // //
+  // // Call the user register Startup function first.
+  // //
+  // if (mSmmMpSyncData->StartupProcedure != NULL) {
+  //   mSmmMpSyncData->StartupProcedure (mSmmMpSyncData->StartupProcArgs);
+  // }
 
   //
   // Perform CPU specific entry hooks
@@ -2044,7 +2078,7 @@ SmiRendezvous (
       // BSP has been elected. Follow AP path, regardless of ValidSmi flag
       // as BSP may have cleared the SMI status
       //
-      APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+      APHandler (CpuIndex, ValidSmi);
     } else {
       //
       // We have a valid SMI
@@ -2099,9 +2133,9 @@ SmiRendezvous (
         //
         // BSP Handler is always called with a ValidSmi == TRUE
         //
-        BSPHandler (CpuIndex, mSmmMpSyncData->EffectiveSyncMode);
+        BSPHandler (CpuIndex);
       } else {
-        APHandler (CpuIndex, ValidSmi, mSmmMpSyncData->EffectiveSyncMode);
+        APHandler (CpuIndex, ValidSmi);
       }
     }
 
@@ -2294,7 +2328,7 @@ InitializeMpSyncData (
       }
     }
 
-    mSmmMpSyncData->EffectiveSyncMode = mCpuSmmSyncMode;
+    // mSmmMpSyncData->EffectiveSyncMode = mCpuSmmSyncMode;
 
     Status = SmmCpuSyncContextInit (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus, &mSmmMpSyncData->SyncContext);
     if (EFI_ERROR (Status)) {
@@ -2450,43 +2484,43 @@ InitializeMpSyncData (
 //   return EFI_SUCCESS;
 // }
 
-/**
+// /**
 
-  Register the SMM Foundation entry point.
+//   Register the SMM Foundation entry point.
 
-  @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
-                                       of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
-                                       with the related definitions of
-                                       EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
-                                       If caller may pass a value of NULL to deregister any existing
-                                       startup procedure.
-  @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
-                                       run by the AP. It is an optional common mailbox between APs and
-                                       the caller to share information
+//   @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
+//                                        of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
+//                                        with the related definitions of
+//                                        EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
+//                                        If caller may pass a value of NULL to deregister any existing
+//                                        startup procedure.
+//   @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
+//                                        run by the AP. It is an optional common mailbox between APs and
+//                                        the caller to share information
 
-  @retval EFI_SUCCESS                  The Procedure has been set successfully.
-  @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
+//   @retval EFI_SUCCESS                  The Procedure has been set successfully.
+//   @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
 
-**/
-EFI_STATUS
-RegisterStartupProcedure (
-  IN     EFI_AP_PROCEDURE  Procedure,
-  IN OUT VOID              *ProcedureArguments OPTIONAL
-  )
-{
-  if ((Procedure == NULL) && (ProcedureArguments != NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
+// **/
+// EFI_STATUS
+// RegisterStartupProcedure (
+//   IN     EFI_AP_PROCEDURE  Procedure,
+//   IN OUT VOID              *ProcedureArguments OPTIONAL
+//   )
+// {
+//   if ((Procedure == NULL) && (ProcedureArguments != NULL)) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (mSmmMpSyncData == NULL) {
-    return EFI_NOT_READY;
-  }
+//   if (mSmmMpSyncData == NULL) {
+//     return EFI_NOT_READY;
+//   }
 
-  mSmmMpSyncData->StartupProcedure = Procedure;
-  mSmmMpSyncData->StartupProcArgs  = ProcedureArguments;
+//   mSmmMpSyncData->StartupProcedure = Procedure;
+//   mSmmMpSyncData->StartupProcArgs  = ProcedureArguments;
 
-  return EFI_SUCCESS;
-}
+//   return EFI_SUCCESS;
+// }
 
 VOID
 EFIAPI

@@ -26,7 +26,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Mem/Mem.h"
 #include "Mem/HeapGuard.h"
 // #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 
 #define IndexToAddress(a, b, c, d)  ((UINT64) (a << 39) + (b << 30) + (c <<  21) + (d << 12))
 

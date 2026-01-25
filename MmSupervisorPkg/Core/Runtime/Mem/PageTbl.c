@@ -23,7 +23,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "SmmProfileInternal.h"
 // #include "Relocate/Relocate.h"
 #include "Services/CpuService/CpuService.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "Telemetry/Telemetry.h"
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
@@ -54,6 +54,7 @@ CPU_HOT_PLUG_DATA  mCpuHotPlugData = {
 UINTN  mSmmStackArrayBase;
 UINTN  mSmmStackSize;
 extern SPIN_LOCK  *mPFLock;
+extern UINT64                       gPhyMask;
 
 /**
   Check if 1-GByte pages is supported by processor or not.

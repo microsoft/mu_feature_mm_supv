@@ -21,7 +21,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/MmSaveStateLib.h>
 
 // #include "Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "MmSupervisorCore.h"
 
 //
@@ -31,6 +31,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 // TODO: This should not be here
 extern UINTN mNumberOfCpus;
+extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
+extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
 
 typedef struct {
   EFI_MM_CPU_PROTOCOL           *UserMmCpuProtocol;

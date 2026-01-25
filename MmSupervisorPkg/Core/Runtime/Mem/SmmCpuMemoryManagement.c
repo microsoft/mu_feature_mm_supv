@@ -24,7 +24,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "MmSupervisorCore.h"
 #include "Mem.h"
 #include "Services/CpuService/CpuService.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 // #include "Relocate/Relocate.h"
 #include "Request/Request.h"
 
