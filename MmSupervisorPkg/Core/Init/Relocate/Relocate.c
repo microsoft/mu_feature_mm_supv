@@ -11,8 +11,26 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate.h"
 #include "Mem/Mem.h"
 #include "Mem/HeapGuard.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "MmSupervisorCore.h"
+
+// TODO: This should not be here.
+extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
+extern SMM_CPU_PRIVATE_DATA        *gSmmCpuPrivate;
+/**
+  Initialize global data for MP synchronization.
+
+  @param Stacks             Base address of SMI stack buffer for all processors.
+  @param StackSize          Stack size for each processor in SMM.
+  @param ShadowStackSize    Shadow Stack size for each processor in SMM.
+
+**/
+UINT32
+InitializeMpServiceData (
+  IN VOID   *Stacks,
+  IN UINTN  StackSize,
+  IN UINTN  ShadowStackSize
+  );
 
 CPU_HOT_PLUG_DATA  mCpuHotPlugData = {
   CPU_HOT_PLUG_DATA_REVISION_1,                 // Revision
@@ -723,7 +741,7 @@ SetupSmiEntryExit (
 
   // If a feature lib has its own entry code we shouldn't fixup the addresses.
   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-    PiSmmCpuSmiEntryFixupAddress ();
+    // PiSmmCpuSmiEntryFixupAddress ();
   }
 
   //
@@ -891,6 +909,7 @@ SetupSmiEntryExit (
 
   DEBUG ((DEBUG_INFO, "PcdControlFlowEnforcementPropertyMask = %d\n", PcdGet32 (PcdControlFlowEnforcementPropertyMask)));
   if (PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) {
+    PANIC ("CET is not supported in StMM mode");
     AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
     if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
       AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, &RegEdx);
@@ -975,11 +994,11 @@ SetupSmiEntryExit (
   //
   ASSERT (mCpuHotPlugData.SmBase != NULL);
 
-  //
-  // Allocate buffer for pointers to array in  SMM_CPU_PRIVATE_DATA.
-  //
-  gSmmCpuPrivate->Operation = (SMM_CPU_OPERATION *)AllocatePool (sizeof (SMM_CPU_OPERATION) * mMaxNumberOfCpus);
-  ASSERT (gSmmCpuPrivate->Operation != NULL);
+  // //
+  // // Allocate buffer for pointers to array in  SMM_CPU_PRIVATE_DATA.
+  // //
+  // gSmmCpuPrivate->Operation = (SMM_CPU_OPERATION *)AllocatePool (sizeof (SMM_CPU_OPERATION) * mMaxNumberOfCpus);
+  // ASSERT (gSmmCpuPrivate->Operation != NULL);
 
   gSmmCpuPrivate->CpuSaveStateSize = (UINTN *)AllocatePool (sizeof (UINTN) * mMaxNumberOfCpus);
   ASSERT (gSmmCpuPrivate->CpuSaveStateSize != NULL);
@@ -1005,7 +1024,7 @@ SetupSmiEntryExit (
   for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
     gSmmCpuPrivate->CpuSaveStateSize[Index] = sizeof (SMRAM_SAVE_STATE_MAP);
     gSmmCpuPrivate->CpuSaveState[Index]     = (VOID *)(mCpuHotPlugData.SmBase[Index] + SMRAM_SAVE_STATE_MAP_OFFSET);
-    gSmmCpuPrivate->Operation[Index]        = SmmCpuNone;
+    // gSmmCpuPrivate->Operation[Index]        = SmmCpuNone;
 
     if (Index < mNumberOfCpus) {
       mCpuHotPlugData.ApicId[Index] = gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId;
@@ -1198,10 +1217,10 @@ DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
   //
   InitializeDataForMmMp ();
 
-  //
-  // Initialize Package First Thread Index Info.
-  //
-  InitPackageFirstThreadIndexInfo ();
+  // //
+  // // Initialize Package First Thread Index Info.
+  // //
+  // InitPackageFirstThreadIndexInfo ();
 
   //
   // Initialize SMM Profile feature

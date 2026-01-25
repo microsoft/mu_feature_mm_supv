@@ -324,11 +324,13 @@ gSmiRendezvous:
 
     add     rsp, 0x200
 
-    mov     rax, strict qword 0        ;    mov     rax, ASM_PFX(mCetSupported)
-mCetSupportedAbsAddr:
-    mov     al, [rax]
-    cmp     al, 0
-    jz      CetDone2
+; TODO: here we gutted the support of CET disablement via mCetSupported variable
+;     mov     rax, strict qword 0        ;    mov     rax, ASM_PFX(mCetSupported)
+; mCetSupportedAbsAddr:
+;     mov     al, [rax]
+;     cmp     al, 0
+
+    jmp     CetDone2
 
     ; clear CR4.CET bit for disable CET
     mov     rax, 0x100E68
@@ -371,17 +373,17 @@ CetDone2:
 
 ASM_PFX(gcSmiHandlerSize)    DW      $ - _SmiEntryPoint
 
-;
-; Retrieve the address and fill it into mov opcode.
-;
-; It is called in the driver entry point first.
-; It is used to fix up the real address in mov opcode.
-; Then, after the code logic is copied to the different location,
-; the code can also run.
-;
-global ASM_PFX(PiSmmCpuSmiEntryFixupAddress)
-ASM_PFX(PiSmmCpuSmiEntryFixupAddress):
-    lea    rax, [ASM_PFX(mCetSupported)]
-    lea    rcx, [mCetSupportedAbsAddr]
-    mov    qword [rcx - 8], rax
-    ret
+; ;
+; ; Retrieve the address and fill it into mov opcode.
+; ;
+; ; It is called in the driver entry point first.
+; ; It is used to fix up the real address in mov opcode.
+; ; Then, after the code logic is copied to the different location,
+; ; the code can also run.
+; ;
+; global ASM_PFX(PiSmmCpuSmiEntryFixupAddress)
+; ASM_PFX(PiSmmCpuSmiEntryFixupAddress):
+;     lea    rax, [ASM_PFX(mCetSupported)]
+;     lea    rcx, [mCetSupportedAbsAddr]
+;     mov    qword [rcx - 8], rax
+;     ret

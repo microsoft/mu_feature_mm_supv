@@ -296,22 +296,22 @@ InitGdt (
   OUT UINTN  *GdtStepSize
   );
 
-/**
+// /**
 
-  Register the SMM Foundation entry point.
+//   Register the SMM Foundation entry point.
 
-  @param          This              Pointer to EFI_SMM_CONFIGURATION_PROTOCOL instance
-  @param          SmmEntryPoint     SMM Foundation EntryPoint
+//   @param          This              Pointer to EFI_SMM_CONFIGURATION_PROTOCOL instance
+//   @param          SmmEntryPoint     SMM Foundation EntryPoint
 
-  @retval         EFI_SUCCESS       Successfully to register SMM foundation entry point
+//   @retval         EFI_SUCCESS       Successfully to register SMM foundation entry point
 
-**/
-EFI_STATUS
-EFIAPI
-RegisterSmmEntry (
-  IN CONST EFI_SMM_CONFIGURATION_PROTOCOL  *This,
-  IN EFI_SMM_ENTRY_POINT                   SmmEntryPoint
-  );
+// **/
+// EFI_STATUS
+// EFIAPI
+// RegisterSmmEntry (
+//   IN CONST EFI_SMM_CONFIGURATION_PROTOCOL  *This,
+//   IN EFI_SMM_ENTRY_POINT                   SmmEntryPoint
+//   );
 
 /**
   Create PageTable for SMM use.
@@ -628,29 +628,29 @@ InternalSmmStartupAllAPs (
   IN OUT   EFI_STATUS         *CPUStatus
   );
 
-/**
+// /**
 
-  Register the SMM Foundation entry point.
+//   Register the SMM Foundation entry point.
 
-  @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
-                                       of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
-                                       with the related definitions of
-                                       EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
-                                       If caller may pass a value of NULL to deregister any existing
-                                       startup procedure.
-  @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
-                                       run by the AP. It is an optional common mailbox between APs and
-                                       the caller to share information
+//   @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
+//                                        of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
+//                                        with the related definitions of
+//                                        EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
+//                                        If caller may pass a value of NULL to deregister any existing
+//                                        startup procedure.
+//   @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
+//                                        run by the AP. It is an optional common mailbox between APs and
+//                                        the caller to share information
 
-  @retval EFI_SUCCESS                  The Procedure has been set successfully.
-  @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
+//   @retval EFI_SUCCESS                  The Procedure has been set successfully.
+//   @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
 
-**/
-EFI_STATUS
-RegisterStartupProcedure (
-  IN     EFI_AP_PROCEDURE  Procedure,
-  IN OUT VOID              *ProcedureArguments OPTIONAL
-  );
+// **/
+// EFI_STATUS
+// RegisterStartupProcedure (
+//   IN     EFI_AP_PROCEDURE  Procedure,
+//   IN OUT VOID              *ProcedureArguments OPTIONAL
+//   );
 
 /**
   Return whether access to non-SMRAM is restricted.

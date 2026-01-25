@@ -243,7 +243,7 @@ extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 extern EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
-extern BOOLEAN                           mMmReadyToLockDone;
+// extern BOOLEAN                           mMmReadyToLockDone;
 extern BOOLEAN                           mCoreInitializationComplete;
 extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 extern LIST_ENTRY                        mFfsDriverCacheList;

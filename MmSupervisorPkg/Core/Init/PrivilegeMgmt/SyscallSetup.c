@@ -16,7 +16,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt.h"
 #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 
 // This needs to be in consistency with SmiException.nasm
 UINT64                 *mMsrStarStore   = NULL;

@@ -21,7 +21,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "Relocate.h"
 #include "Mem/Mem.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "MmSupervisorCore.h"
 
 typedef struct {

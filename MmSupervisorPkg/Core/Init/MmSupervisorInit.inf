@@ -215,6 +215,8 @@
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
 
+  gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything
+
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
   #Image version will be used as MmSupervisor security patch level(SPL) value

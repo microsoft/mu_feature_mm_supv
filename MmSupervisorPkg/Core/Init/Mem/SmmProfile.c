@@ -18,8 +18,10 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Mem.h"
 #include "SmmProfileInternal.h"
 #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 
+// TODO: This should not be here.
+extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
 //
 // The flag indicates if BTS is supported by processor.
 //

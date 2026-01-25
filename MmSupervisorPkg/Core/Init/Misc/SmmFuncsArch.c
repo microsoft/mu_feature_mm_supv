@@ -13,7 +13,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "Mem/Mem.h"
 #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 
 EFI_PHYSICAL_ADDRESS  mGdtBuffer;
 UINTN                 mGdtBufferSize;
@@ -29,6 +29,9 @@ UINT32                    mCetInterruptSsp;
 UINT32                    mCetInterruptSspTable;
 
 UINTN  mSmmInterruptSspTables;
+
+// TODO: This should not be here.
+extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
 
 /**
   Initialize IDT IST Field.

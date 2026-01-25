@@ -23,7 +23,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "SmmProfileInternal.h"
 #include "Relocate/Relocate.h"
 #include "Services/CpuService/CpuService.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 // #include "Telemetry/Telemetry.h"
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
@@ -36,6 +36,9 @@ BOOLEAN                   m1GPageTableSupport = FALSE;
 BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
 X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
 UINT8                     mPhysicalAddressBits;
+
+// TODO: this should not be here
+extern UINT64                       gPhyMask;
 
 /**
   Check if 1-GByte pages is supported by processor or not.

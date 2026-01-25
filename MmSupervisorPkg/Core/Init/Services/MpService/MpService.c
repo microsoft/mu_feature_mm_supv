@@ -12,7 +12,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "Services/CpuService/CpuService.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "Relocate/Relocate.h"
 #include "Mem/Mem.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
@@ -27,7 +27,7 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
   SMM_CPU_PRIVATE_DATA_SIGNATURE,               // Signature
   NULL,                                         // SmmCpuHandle
   NULL,                                         // Pointer to ProcessorInfo array
-  NULL,                                         // Pointer to Operation array
+  // NULL,                                         // Pointer to Operation array
   NULL,                                         // Pointer to CpuSaveStateSize array
   NULL,                                         // Pointer to CpuSaveState array
   {
@@ -42,10 +42,10 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
     NULL                                        // SmmCoreEntryContext.CpuSaveState
   },
   NULL,                                         // SmmCoreEntry
-  {
-    mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
-    RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
-  },
+  // {
+  //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
+  //   RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
+  // },
   NULL,                                         // pointer to Ap Wrapper Func array
   { NULL, NULL },                               // List_Entry for Tokens.
 };
@@ -65,7 +65,7 @@ UINTN                        mSmmMpSyncDataSize;
 SMM_CPU_SEMAPHORES           mSmmCpuSemaphores;
 UINTN                        mSemaphoreSize;
 SPIN_LOCK                    *mPFLock = NULL;
-SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
+// SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
 BOOLEAN                      mMachineCheckSupported = FALSE;
 MM_COMPLETION                mSmmStartupThisApToken;
 
@@ -273,115 +273,115 @@ IsLmceSignaled (
   return (BOOLEAN)(McgStatus.Bits.LMCE_S == 1);
 }
 
-/**
-  Given timeout constraint, wait for all APs to arrive, and insure when this function returns, no AP will execute normal mode code before
-  entering SMM, except SMI disabled APs.
+// /**
+//   Given timeout constraint, wait for all APs to arrive, and insure when this function returns, no AP will execute normal mode code before
+//   entering SMM, except SMI disabled APs.
 
-**/
-VOID
-SmmWaitForApArrival (
-  VOID
-  )
-{
-  UINT64   Timer;
-  UINTN    Index;
-  BOOLEAN  LmceEn;
-  BOOLEAN  LmceSignal;
-  UINT32   DelayedCount;
-  UINT32   BlockedCount;
+// **/
+// VOID
+// SmmWaitForApArrival (
+//   VOID
+//   )
+// {
+//   UINT64   Timer;
+//   UINTN    Index;
+//   BOOLEAN  LmceEn;
+//   BOOLEAN  LmceSignal;
+//   UINT32   DelayedCount;
+//   UINT32   BlockedCount;
 
-  PERF_FUNCTION_BEGIN ();
+//   PERF_FUNCTION_BEGIN ();
 
-  DelayedCount = 0;
-  BlockedCount = 0;
+//   DelayedCount = 0;
+//   BlockedCount = 0;
 
-  ASSERT (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) <= mNumberOfCpus);
+//   ASSERT (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) <= mNumberOfCpus);
 
-  LmceEn     = FALSE;
-  LmceSignal = FALSE;
-  if (mMachineCheckSupported) {
-    LmceEn     = IsLmceOsEnabled ();
-    LmceSignal = IsLmceSignaled ();
-  }
+//   LmceEn     = FALSE;
+//   LmceSignal = FALSE;
+//   if (mMachineCheckSupported) {
+//     LmceEn     = IsLmceOsEnabled ();
+//     LmceSignal = IsLmceSignaled ();
+//   }
 
-  //
-  // Platform implementor should choose a timeout value appropriately:
-  // - The timeout value should balance the SMM time constrains and the likelihood that delayed CPUs are excluded in the SMM run. Note
-  //   the SMI Handlers must ALWAYS take into account the cases that not all APs are available in an SMI run.
-  // - The timeout value must, in the case of 2nd timeout, be at least long enough to give time for all APs to receive the SMI IPI
-  //   and either enter SMM or buffer the SMI, to insure there is no CPU running normal mode code when SMI handling starts. This will
-  //   be TRUE even if a blocked CPU is brought out of the blocked state by a normal mode CPU (before the normal mode CPU received the
-  //   SMI IPI), because with a buffered SMI, and CPU will enter SMM immediately after it is brought out of the blocked state.
-  // - The timeout value must be longer than longest possible IO operation in the system
-  //
+//   //
+//   // Platform implementor should choose a timeout value appropriately:
+//   // - The timeout value should balance the SMM time constrains and the likelihood that delayed CPUs are excluded in the SMM run. Note
+//   //   the SMI Handlers must ALWAYS take into account the cases that not all APs are available in an SMI run.
+//   // - The timeout value must, in the case of 2nd timeout, be at least long enough to give time for all APs to receive the SMI IPI
+//   //   and either enter SMM or buffer the SMI, to insure there is no CPU running normal mode code when SMI handling starts. This will
+//   //   be TRUE even if a blocked CPU is brought out of the blocked state by a normal mode CPU (before the normal mode CPU received the
+//   //   SMI IPI), because with a buffered SMI, and CPU will enter SMM immediately after it is brought out of the blocked state.
+//   // - The timeout value must be longer than longest possible IO operation in the system
+//   //
 
-  //
-  // Sync with APs 1st timeout
-  //
-  for (Timer = StartSyncTimer ();
-       !IsSyncTimerTimeout (Timer, mTimeoutTicker) && !(LmceEn && LmceSignal);
-       )
-  {
-    mSmmMpSyncData->AllApArrivedWithException = AllCpusInSmmExceptBlockedDisabled ();
-    if (mSmmMpSyncData->AllApArrivedWithException) {
-      break;
-    }
+//   //
+//   // Sync with APs 1st timeout
+//   //
+//   for (Timer = StartSyncTimer ();
+//        !IsSyncTimerTimeout (Timer, mTimeoutTicker) && !(LmceEn && LmceSignal);
+//        )
+//   {
+//     mSmmMpSyncData->AllApArrivedWithException = AllCpusInSmmExceptBlockedDisabled ();
+//     if (mSmmMpSyncData->AllApArrivedWithException) {
+//       break;
+//     }
 
-    CpuPause ();
-  }
+//     CpuPause ();
+//   }
 
-  //
-  // Not all APs have arrived, so we need 2nd round of timeout. IPIs should be sent to ALL none present APs,
-  // because:
-  // a) Delayed AP may have just come out of the delayed state. Blocked AP may have just been brought out of blocked state by some AP running
-  //    normal mode code. These APs need to be guaranteed to have an SMI pending to insure that once they are out of delayed / blocked state, they
-  //    enter SMI immediately without executing instructions in normal mode. Note traditional flow requires there are no APs doing normal mode
-  //    work while SMI handling is on-going.
-  // b) As a consequence of SMI IPI sending, (spurious) SMI may occur after this SMM run.
-  // c) ** NOTE **: Use SMI disabling feature VERY CAREFULLY (if at all) for traditional flow, because a processor in SMI-disabled state
-  //    will execute normal mode code, which breaks the traditional SMI handlers' assumption that no APs are doing normal
-  //    mode work while SMI handling is on-going.
-  // d) We don't add code to check SMI disabling status to skip sending IPI to SMI disabled APs, because:
-  //    - In traditional flow, SMI disabling is discouraged.
-  //    - In relaxed flow, CheckApArrival() will check SMI disabling status before calling this function.
-  //    In both cases, adding SMI-disabling checking code increases overhead.
-  //
-  if (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) < mNumberOfCpus) {
-    //
-    // Send SMI IPIs to bring outside processors in
-    //
-    for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-      if (!(*(mSmmMpSyncData->CpuData[Index].Present)) && (gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId != INVALID_APIC_ID)) {
-        SendSmiIpi ((UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId);
-      }
-    }
+//   //
+//   // Not all APs have arrived, so we need 2nd round of timeout. IPIs should be sent to ALL none present APs,
+//   // because:
+//   // a) Delayed AP may have just come out of the delayed state. Blocked AP may have just been brought out of blocked state by some AP running
+//   //    normal mode code. These APs need to be guaranteed to have an SMI pending to insure that once they are out of delayed / blocked state, they
+//   //    enter SMI immediately without executing instructions in normal mode. Note traditional flow requires there are no APs doing normal mode
+//   //    work while SMI handling is on-going.
+//   // b) As a consequence of SMI IPI sending, (spurious) SMI may occur after this SMM run.
+//   // c) ** NOTE **: Use SMI disabling feature VERY CAREFULLY (if at all) for traditional flow, because a processor in SMI-disabled state
+//   //    will execute normal mode code, which breaks the traditional SMI handlers' assumption that no APs are doing normal
+//   //    mode work while SMI handling is on-going.
+//   // d) We don't add code to check SMI disabling status to skip sending IPI to SMI disabled APs, because:
+//   //    - In traditional flow, SMI disabling is discouraged.
+//   //    - In relaxed flow, CheckApArrival() will check SMI disabling status before calling this function.
+//   //    In both cases, adding SMI-disabling checking code increases overhead.
+//   //
+//   if (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) < mNumberOfCpus) {
+//     //
+//     // Send SMI IPIs to bring outside processors in
+//     //
+//     for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
+//       if (!(*(mSmmMpSyncData->CpuData[Index].Present)) && (gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId != INVALID_APIC_ID)) {
+//         SendSmiIpi ((UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId);
+//       }
+//     }
 
-    //
-    // Sync with APs 2nd timeout.
-    //
-    for (Timer = StartSyncTimer ();
-         !IsSyncTimerTimeout (Timer, mTimeoutTicker2);
-         )
-    {
-      mSmmMpSyncData->AllApArrivedWithException = AllCpusInSmmExceptBlockedDisabled ();
-      if (mSmmMpSyncData->AllApArrivedWithException) {
-        break;
-      }
+//     //
+//     // Sync with APs 2nd timeout.
+//     //
+//     for (Timer = StartSyncTimer ();
+//          !IsSyncTimerTimeout (Timer, mTimeoutTicker2);
+//          )
+//     {
+//       mSmmMpSyncData->AllApArrivedWithException = AllCpusInSmmExceptBlockedDisabled ();
+//       if (mSmmMpSyncData->AllApArrivedWithException) {
+//         break;
+//       }
 
-      CpuPause ();
-    }
-  }
+//       CpuPause ();
+//     }
+//   }
 
-  if (!mSmmMpSyncData->AllApArrivedWithException) {
-    //
-    // Check for the Blocked & Delayed Case.
-    //
-    GetSmmDelayedBlockedDisabledCount (&DelayedCount, &BlockedCount, NULL);
-    DEBUG ((DEBUG_INFO, "SmmWaitForApArrival: Delayed AP Count = %d, Blocked AP Count = %d\n", DelayedCount, BlockedCount));
-  }
+//   if (!mSmmMpSyncData->AllApArrivedWithException) {
+//     //
+//     // Check for the Blocked & Delayed Case.
+//     //
+//     GetSmmDelayedBlockedDisabledCount (&DelayedCount, &BlockedCount, NULL);
+//     DEBUG ((DEBUG_INFO, "SmmWaitForApArrival: Delayed AP Count = %d, Blocked AP Count = %d\n", DelayedCount, BlockedCount));
+//   }
 
-  PERF_FUNCTION_END ();
-}
+//   PERF_FUNCTION_END ();
+// }
 
 /**
   Replace OS MTRR's with SMI MTRR's.
@@ -496,258 +496,258 @@ ResetTokens (
   gSmmCpuPrivate->FirstFreeToken = GetFirstNode (&gSmmCpuPrivate->TokenList);
 }
 
-/**
-  SMI handler for BSP.
+// /**
+//   SMI handler for BSP.
 
-  @param     CpuIndex         BSP processor Index
-  @param     SyncMode         SMM MP sync mode
+//   @param     CpuIndex         BSP processor Index
+//   @param     SyncMode         SMM MP sync mode
 
-**/
-VOID
-BSPHandler (
-  IN      UINTN              CpuIndex,
-  IN      SMM_CPU_SYNC_MODE  SyncMode
-  )
-{
-  UINTN          CpuCount;
-  UINTN          Index;
-  MTRR_SETTINGS  Mtrrs;
-  UINTN          ApCount;
-  BOOLEAN        ClearTopLevelSmiResult;
-  UINTN          PresentCount;
+// **/
+// VOID
+// BSPHandler (
+//   IN      UINTN              CpuIndex,
+//   IN      SMM_CPU_SYNC_MODE  SyncMode
+//   )
+// {
+//   UINTN          CpuCount;
+//   UINTN          Index;
+//   MTRR_SETTINGS  Mtrrs;
+//   UINTN          ApCount;
+//   BOOLEAN        ClearTopLevelSmiResult;
+//   UINTN          PresentCount;
 
-  ASSERT (CpuIndex == mSmmMpSyncData->BspIndex);
-  CpuCount = 0;
-  ApCount  = 0;
+//   ASSERT (CpuIndex == mSmmMpSyncData->BspIndex);
+//   CpuCount = 0;
+//   ApCount  = 0;
 
-  PERF_FUNCTION_BEGIN ();
+//   PERF_FUNCTION_BEGIN ();
 
-  //
-  // Flag BSP's presence
-  //
-  *mSmmMpSyncData->InsideSmm = TRUE;
+//   //
+//   // Flag BSP's presence
+//   //
+//   *mSmmMpSyncData->InsideSmm = TRUE;
 
-  //
-  // Initialize Debug Agent to start source level debug in BSP handler
-  //
-  InitializeDebugAgent (DEBUG_AGENT_INIT_ENTER_SMI, NULL, NULL);
+//   //
+//   // Initialize Debug Agent to start source level debug in BSP handler
+//   //
+//   InitializeDebugAgent (DEBUG_AGENT_INIT_ENTER_SMI, NULL, NULL);
 
-  //
-  // Mark this processor's presence
-  //
-  *(mSmmMpSyncData->CpuData[CpuIndex].Present) = TRUE;
+//   //
+//   // Mark this processor's presence
+//   //
+//   *(mSmmMpSyncData->CpuData[CpuIndex].Present) = TRUE;
 
-  //
-  // Clear platform top level SMI status bit before calling SMI handlers. If
-  // we cleared it after SMI handlers are run, we would miss the SMI that
-  // occurs after SMI handlers are done and before SMI status bit is cleared.
-  //
-  ClearTopLevelSmiResult = ClearTopLevelSmiStatus ();
-  ASSERT (ClearTopLevelSmiResult == TRUE);
+//   //
+//   // Clear platform top level SMI status bit before calling SMI handlers. If
+//   // we cleared it after SMI handlers are run, we would miss the SMI that
+//   // occurs after SMI handlers are done and before SMI status bit is cleared.
+//   //
+//   ClearTopLevelSmiResult = ClearTopLevelSmiStatus ();
+//   ASSERT (ClearTopLevelSmiResult == TRUE);
 
-  //
-  // Set running processor index
-  //
-  gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu = CpuIndex;
+//   //
+//   // Set running processor index
+//   //
+//   gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu = CpuIndex;
 
-  //
-  // If Traditional Sync Mode or need to configure MTRRs: gather all available APs.
-  //
-  if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for APs to arrive
-    //
-    SmmWaitForApArrival ();
+//   //
+//   // If Traditional Sync Mode or need to configure MTRRs: gather all available APs.
+//   //
+//   if ((SyncMode == SmmCpuSyncModeTradition) || SmmCpuFeaturesNeedConfigureMtrrs ()) {
+//     //
+//     // Wait for APs to arrive
+//     //
+//     SmmWaitForApArrival ();
 
-    //
-    // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
-    //
-    *mSmmMpSyncData->AllCpusInSync = TRUE;
+//     //
+//     // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
+//     //
+//     *mSmmMpSyncData->AllCpusInSync = TRUE;
 
-    SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
+//     SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
 
-    ApCount = CpuCount - 1;
+//     ApCount = CpuCount - 1;
 
-    //
-    // Wait for all APs to get ready for programming MTRRs
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//     //
+//     // Wait for all APs to get ready for programming MTRRs
+//     //
+//     SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-      //
-      // Signal all APs it's time for backup MTRRs
-      //
-      ReleaseAllAPs ();
+//     if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+//       //
+//       // Signal all APs it's time for backup MTRRs
+//       //
+//       ReleaseAllAPs ();
 
-      //
-      // SmmCpuSyncWaitForAPs may wait for ever if an AP happens to enter SMM at
-      // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
-      // to a large enough value to avoid this situation.
-      // Note: For HT capable CPUs, threads within a core share the same set of MTRRs.
-      // We do the backup first and then set MTRR to avoid race condition for threads
-      // in the same core.
-      //
-      MtrrGetAllMtrrs (&Mtrrs);
+//       //
+//       // SmmCpuSyncWaitForAPs may wait for ever if an AP happens to enter SMM at
+//       // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
+//       // to a large enough value to avoid this situation.
+//       // Note: For HT capable CPUs, threads within a core share the same set of MTRRs.
+//       // We do the backup first and then set MTRR to avoid race condition for threads
+//       // in the same core.
+//       //
+//       MtrrGetAllMtrrs (&Mtrrs);
 
-      //
-      // Wait for all APs to complete their MTRR saving
-      //
-      SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//       //
+//       // Wait for all APs to complete their MTRR saving
+//       //
+//       SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-      //
-      // Let all processors program SMM MTRRs together
-      //
-      ReleaseAllAPs ();
+//       //
+//       // Let all processors program SMM MTRRs together
+//       //
+//       ReleaseAllAPs ();
 
-      //
-      // SmmCpuSyncWaitForAPs() may wait for ever if an AP happens to enter SMM at
-      // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
-      // to a large enough value to avoid this situation.
-      //
-      ReplaceOSMtrrs (CpuIndex);
+//       //
+//       // SmmCpuSyncWaitForAPs() may wait for ever if an AP happens to enter SMM at
+//       // exactly this point. Please make sure PcdCpuSmmMaxSyncLoops has been set
+//       // to a large enough value to avoid this situation.
+//       //
+//       ReplaceOSMtrrs (CpuIndex);
 
-      //
-      // Wait for all APs to complete their MTRR programming
-      //
-      SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
-    }
-  }
+//       //
+//       // Wait for all APs to complete their MTRR programming
+//       //
+//       SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//     }
+//   }
 
-  //
-  // The BUSY lock is initialized to Acquired state
-  //
-  AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
+//   //
+//   // The BUSY lock is initialized to Acquired state
+//   //
+//   AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
 
-  //
-  // Invoke SMM Foundation EntryPoint with the processor information context.
-  //
-  gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
+//   //
+//   // Invoke SMM Foundation EntryPoint with the processor information context.
+//   //
+//   gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
 
-  //
-  // Make sure all APs have completed their pending none-block tasks
-  //
-  WaitForAllAPsNotBusy (TRUE);
+//   //
+//   // Make sure all APs have completed their pending none-block tasks
+//   //
+//   WaitForAllAPsNotBusy (TRUE);
 
-  //
-  // If Relaxed-AP Sync Mode: gather all available APs after BSP SMM handlers are done, and
-  // make those APs to exit SMI synchronously. APs which arrive later will be excluded and
-  // will run through freely.
-  //
-  if ((SyncMode != SmmCpuSyncModeTradition) && !SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
-    //
-    *mSmmMpSyncData->AllCpusInSync = TRUE;
+//   //
+//   // If Relaxed-AP Sync Mode: gather all available APs after BSP SMM handlers are done, and
+//   // make those APs to exit SMI synchronously. APs which arrive later will be excluded and
+//   // will run through freely.
+//   //
+//   if ((SyncMode != SmmCpuSyncModeTradition) && !SmmCpuFeaturesNeedConfigureMtrrs ()) {
+//     //
+//     // Lock door for late coming CPU checkin and retrieve the Arrived number of APs
+//     //
+//     *mSmmMpSyncData->AllCpusInSync = TRUE;
 
-    SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
+//     SmmCpuSyncLockDoor (mSmmMpSyncData->SyncContext, CpuIndex, &CpuCount);
 
-    ApCount = CpuCount - 1;
+//     ApCount = CpuCount - 1;
 
-    //
-    // Make sure all APs have their Present flag set
-    //
-    while (TRUE) {
-      PresentCount = 0;
-      for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-        if (*(mSmmMpSyncData->CpuData[Index].Present)) {
-          PresentCount++;
-        }
-      }
+//     //
+//     // Make sure all APs have their Present flag set
+//     //
+//     while (TRUE) {
+//       PresentCount = 0;
+//       for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
+//         if (*(mSmmMpSyncData->CpuData[Index].Present)) {
+//           PresentCount++;
+//         }
+//       }
 
-      if (PresentCount > ApCount) {
-        break;
-      }
-    }
-  }
+//       if (PresentCount > ApCount) {
+//         break;
+//       }
+//     }
+//   }
 
-  //
-  // Notify all APs to exit
-  //
-  *mSmmMpSyncData->InsideSmm = FALSE;
-  ReleaseAllAPs ();
+//   //
+//   // Notify all APs to exit
+//   //
+//   *mSmmMpSyncData->InsideSmm = FALSE;
+//   ReleaseAllAPs ();
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for all APs the readiness to program MTRRs
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//   if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+//     //
+//     // Wait for all APs the readiness to program MTRRs
+//     //
+//     SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    //
-    // Signal APs to restore MTRRs
-    //
-    ReleaseAllAPs ();
+//     //
+//     // Signal APs to restore MTRRs
+//     //
+//     ReleaseAllAPs ();
 
-    //
-    // Restore OS MTRRs
-    //
-    SmmCpuFeaturesReenableSmrr ();
-    MtrrSetAllMtrrs (&Mtrrs);
-  }
+//     //
+//     // Restore OS MTRRs
+//     //
+//     SmmCpuFeaturesReenableSmrr ();
+//     MtrrSetAllMtrrs (&Mtrrs);
+//   }
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for all APs to complete their pending tasks including MTRR programming if needed.
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//   if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+//     //
+//     // Wait for all APs to complete their pending tasks including MTRR programming if needed.
+//     //
+//     SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    //
-    // Signal APs to Reset states/semaphore for this processor
-    //
-    ReleaseAllAPs ();
-  }
+//     //
+//     // Signal APs to Reset states/semaphore for this processor
+//     //
+//     ReleaseAllAPs ();
+//   }
 
-  //
-  // Stop source level debug in BSP handler, the code below will not be
-  // debugged.
-  //
-  InitializeDebugAgent (DEBUG_AGENT_INIT_EXIT_SMI, NULL, NULL);
+//   //
+//   // Stop source level debug in BSP handler, the code below will not be
+//   // debugged.
+//   //
+//   InitializeDebugAgent (DEBUG_AGENT_INIT_EXIT_SMI, NULL, NULL);
 
-  //
-  // Perform pending operations for hot-plug
-  //
-  SmmCpuUpdate ();
+//   //
+//   // Perform pending operations for hot-plug
+//   //
+//   SmmCpuUpdate ();
 
-  //
-  // Clear the Present flag of BSP
-  //
-  *(mSmmMpSyncData->CpuData[CpuIndex].Present) = FALSE;
+//   //
+//   // Clear the Present flag of BSP
+//   //
+//   *(mSmmMpSyncData->CpuData[CpuIndex].Present) = FALSE;
 
-  //
-  // Gather APs to exit SMM synchronously. Note the Present flag is cleared by now but
-  // WaitForAllAps does not depend on the Present flag.
-  //
-  SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+//   //
+//   // Gather APs to exit SMM synchronously. Note the Present flag is cleared by now but
+//   // WaitForAllAps does not depend on the Present flag.
+//   //
+//   SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-  //
-  // At this point, all APs should have exited from APHandler().
-  // Migrate the SMM MP performance logging to standard SMM performance logging.
-  // Any SMM MP performance logging after this point will be migrated in next SMI.
-  //
-  PERF_CODE (
-    MigrateMpPerf (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus, CpuIndex);
-    );
+//   //
+//   // At this point, all APs should have exited from APHandler().
+//   // Migrate the SMM MP performance logging to standard SMM performance logging.
+//   // Any SMM MP performance logging after this point will be migrated in next SMI.
+//   //
+//   PERF_CODE (
+//     MigrateMpPerf (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus, CpuIndex);
+//     );
 
-  //
-  // Reset the tokens buffer.
-  //
-  ResetTokens ();
+//   //
+//   // Reset the tokens buffer.
+//   //
+//   ResetTokens ();
 
-  //
-  // Reset BspIndex to MAX_UINT32, meaning BSP has not been elected.
-  //
-  if (FeaturePcdGet (PcdCpuSmmEnableBspElection)) {
-    mSmmMpSyncData->BspIndex = MAX_UINT32;
-  }
+//   //
+//   // Reset BspIndex to MAX_UINT32, meaning BSP has not been elected.
+//   //
+//   if (FeaturePcdGet (PcdCpuSmmEnableBspElection)) {
+//     mSmmMpSyncData->BspIndex = MAX_UINT32;
+//   }
 
-  //
-  // Allow APs to check in from this point on
-  //
-  SmmCpuSyncContextReset (mSmmMpSyncData->SyncContext);
-  *mSmmMpSyncData->AllCpusInSync            = FALSE;
-  mSmmMpSyncData->AllApArrivedWithException = FALSE;
+//   //
+//   // Allow APs to check in from this point on
+//   //
+//   SmmCpuSyncContextReset (mSmmMpSyncData->SyncContext);
+//   *mSmmMpSyncData->AllCpusInSync            = FALSE;
+//   mSmmMpSyncData->AllApArrivedWithException = FALSE;
 
-  PERF_FUNCTION_END ();
-}
+//   PERF_FUNCTION_END ();
+// }
 
 // /**
 //   SMI handler for AP.
@@ -1127,133 +1127,133 @@ IsApReady (
   return EFI_NOT_READY;
 }
 
-/**
-  Schedule a procedure to run on the specified CPU.
+// /**
+//   Schedule a procedure to run on the specified CPU.
 
-  @param[in]       Procedure                The address of the procedure to run
-  @param[in]       CpuIndex                 Target CPU Index
-  @param[in,out]   ProcArguments            The parameter to pass to the procedure
-  @param[in]       Token                    This is an optional parameter that allows the caller to execute the
-                                            procedure in a blocking or non-blocking fashion. If it is NULL the
-                                            call is blocking, and the call will not return until the AP has
-                                            completed the procedure. If the token is not NULL, the call will
-                                            return immediately. The caller can check whether the procedure has
-                                            completed with CheckOnProcedure or WaitForProcedure.
-  @param[in]       TimeoutInMicroseconds    Indicates the time limit in microseconds for the APs to finish
-                                            execution of Procedure, either for blocking or non-blocking mode.
-                                            Zero means infinity. If the timeout expires before all APs return
-                                            from Procedure, then Procedure on the failed APs is terminated. If
-                                            the timeout expires in blocking mode, the call returns EFI_TIMEOUT.
-                                            If the timeout expires in non-blocking mode, the timeout determined
-                                            can be through CheckOnProcedure or WaitForProcedure.
-                                            Note that timeout support is optional. Whether an implementation
-                                            supports this feature can be determined via the Attributes data
-                                            member.
-  @param[in,out]   CpuStatus                This optional pointer may be used to get the status code returned
-                                            by Procedure when it completes execution on the target AP, or with
-                                            EFI_TIMEOUT if the Procedure fails to complete within the optional
-                                            timeout. The implementation will update this variable with
-                                            EFI_NOT_READY prior to starting Procedure on the target AP.
+//   @param[in]       Procedure                The address of the procedure to run
+//   @param[in]       CpuIndex                 Target CPU Index
+//   @param[in,out]   ProcArguments            The parameter to pass to the procedure
+//   @param[in]       Token                    This is an optional parameter that allows the caller to execute the
+//                                             procedure in a blocking or non-blocking fashion. If it is NULL the
+//                                             call is blocking, and the call will not return until the AP has
+//                                             completed the procedure. If the token is not NULL, the call will
+//                                             return immediately. The caller can check whether the procedure has
+//                                             completed with CheckOnProcedure or WaitForProcedure.
+//   @param[in]       TimeoutInMicroseconds    Indicates the time limit in microseconds for the APs to finish
+//                                             execution of Procedure, either for blocking or non-blocking mode.
+//                                             Zero means infinity. If the timeout expires before all APs return
+//                                             from Procedure, then Procedure on the failed APs is terminated. If
+//                                             the timeout expires in blocking mode, the call returns EFI_TIMEOUT.
+//                                             If the timeout expires in non-blocking mode, the timeout determined
+//                                             can be through CheckOnProcedure or WaitForProcedure.
+//                                             Note that timeout support is optional. Whether an implementation
+//                                             supports this feature can be determined via the Attributes data
+//                                             member.
+//   @param[in,out]   CpuStatus                This optional pointer may be used to get the status code returned
+//                                             by Procedure when it completes execution on the target AP, or with
+//                                             EFI_TIMEOUT if the Procedure fails to complete within the optional
+//                                             timeout. The implementation will update this variable with
+//                                             EFI_NOT_READY prior to starting Procedure on the target AP.
 
-  @retval EFI_INVALID_PARAMETER    CpuNumber not valid
-  @retval EFI_INVALID_PARAMETER    CpuNumber specifying BSP
-  @retval EFI_INVALID_PARAMETER    The AP specified by CpuNumber did not enter SMM
-  @retval EFI_INVALID_PARAMETER    The AP specified by CpuNumber is busy
-  @retval EFI_SUCCESS              The procedure has been successfully scheduled
+//   @retval EFI_INVALID_PARAMETER    CpuNumber not valid
+//   @retval EFI_INVALID_PARAMETER    CpuNumber specifying BSP
+//   @retval EFI_INVALID_PARAMETER    The AP specified by CpuNumber did not enter SMM
+//   @retval EFI_INVALID_PARAMETER    The AP specified by CpuNumber is busy
+//   @retval EFI_SUCCESS              The procedure has been successfully scheduled
 
-**/
-EFI_STATUS
-InternalSmmStartupThisAp (
-  IN      EFI_AP_PROCEDURE2  Procedure,
-  IN      UINTN              CpuIndex,
-  IN OUT  VOID               *ProcArguments OPTIONAL,
-  IN      MM_COMPLETION      *Token,
-  IN      UINTN              TimeoutInMicroseconds,
-  IN OUT  EFI_STATUS         *CpuStatus
-  )
-{
-  PROCEDURE_TOKEN  *ProcToken;
+// **/
+// EFI_STATUS
+// InternalSmmStartupThisAp (
+//   IN      EFI_AP_PROCEDURE2  Procedure,
+//   IN      UINTN              CpuIndex,
+//   IN OUT  VOID               *ProcArguments OPTIONAL,
+//   IN      MM_COMPLETION      *Token,
+//   IN      UINTN              TimeoutInMicroseconds,
+//   IN OUT  EFI_STATUS         *CpuStatus
+//   )
+// {
+//   PROCEDURE_TOKEN  *ProcToken;
 
-  if (CpuIndex >= gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus) {
-    DEBUG ((DEBUG_ERROR, "CpuIndex(%d) >= gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus(%d)\n", CpuIndex, gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus));
-    return EFI_INVALID_PARAMETER;
-  }
+//   if (CpuIndex >= gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus) {
+//     DEBUG ((DEBUG_ERROR, "CpuIndex(%d) >= gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus(%d)\n", CpuIndex, gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus));
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (CpuIndex == gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu) {
-    DEBUG ((DEBUG_ERROR, "CpuIndex(%d) == gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu\n", CpuIndex));
-    return EFI_INVALID_PARAMETER;
-  }
+//   if (CpuIndex == gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu) {
+//     DEBUG ((DEBUG_ERROR, "CpuIndex(%d) == gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu\n", CpuIndex));
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (gSmmCpuPrivate->ProcessorInfo[CpuIndex].ProcessorId == INVALID_APIC_ID) {
-    return EFI_INVALID_PARAMETER;
-  }
+//   if (gSmmCpuPrivate->ProcessorInfo[CpuIndex].ProcessorId == INVALID_APIC_ID) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (!(*(mSmmMpSyncData->CpuData[CpuIndex].Present))) {
-    if (mSmmMpSyncData->EffectiveSyncMode == SmmCpuSyncModeTradition) {
-      DEBUG ((DEBUG_ERROR, "!mSmmMpSyncData->CpuData[%d].Present\n", CpuIndex));
-    }
+//   if (!(*(mSmmMpSyncData->CpuData[CpuIndex].Present))) {
+//     if (mSmmMpSyncData->EffectiveSyncMode == SmmCpuSyncModeTradition) {
+//       DEBUG ((DEBUG_ERROR, "!mSmmMpSyncData->CpuData[%d].Present\n", CpuIndex));
+//     }
 
-    return EFI_INVALID_PARAMETER;
-  }
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (gSmmCpuPrivate->Operation[CpuIndex] == SmmCpuRemove) {
-    if (!FeaturePcdGet (PcdCpuHotPlugSupport)) {
-      DEBUG ((DEBUG_ERROR, "gSmmCpuPrivate->Operation[%d] == SmmCpuRemove\n", CpuIndex));
-    }
+//   if (gSmmCpuPrivate->Operation[CpuIndex] == SmmCpuRemove) {
+//     if (!FeaturePcdGet (PcdCpuHotPlugSupport)) {
+//       DEBUG ((DEBUG_ERROR, "gSmmCpuPrivate->Operation[%d] == SmmCpuRemove\n", CpuIndex));
+//     }
 
-    return EFI_INVALID_PARAMETER;
-  }
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if ((TimeoutInMicroseconds != 0)) {
-    // && ((mSmmMp.Attributes & EFI_MM_MP_TIMEOUT_SUPPORTED) == 0)) {
-    return EFI_INVALID_PARAMETER;
-  }
+//   if ((TimeoutInMicroseconds != 0)) {
+//     // && ((mSmmMp.Attributes & EFI_MM_MP_TIMEOUT_SUPPORTED) == 0)) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (Procedure == NULL) {
-    return EFI_INVALID_PARAMETER;
-  }
+//   if (Procedure == NULL) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
+//   AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
 
-  mSmmMpSyncData->CpuData[CpuIndex].Procedure = Procedure;
-  mSmmMpSyncData->CpuData[CpuIndex].Parameter = ProcArguments;
-  if (Token != NULL) {
-    if (Token != &mSmmStartupThisApToken) {
-      //
-      // When Token points to mSmmStartupThisApToken, this routine is called
-      // from SmmStartupThisAp() in non-blocking mode (PcdCpuSmmBlockStartupThisAp == FALSE).
-      //
-      // In this case, caller wants to startup AP procedure in non-blocking
-      // mode and cannot get the completion status from the Token because there
-      // is no way to return the Token to caller from SmmStartupThisAp().
-      // Caller needs to use its implementation specific way to query the completion status.
-      //
-      // There is no need to allocate a token for such case so the 3 overheads
-      // can be avoided:
-      // 1. Call AllocateTokenBuffer() when there is no free token.
-      // 2. Get a free token from the token buffer.
-      // 3. Call ReleaseToken() in APHandler().
-      //
-      ProcToken                               = GetFreeToken (1);
-      mSmmMpSyncData->CpuData[CpuIndex].Token = ProcToken;
-      *Token                                  = (MM_COMPLETION)ProcToken->SpinLock;
-    }
-  }
+//   mSmmMpSyncData->CpuData[CpuIndex].Procedure = Procedure;
+//   mSmmMpSyncData->CpuData[CpuIndex].Parameter = ProcArguments;
+//   if (Token != NULL) {
+//     if (Token != &mSmmStartupThisApToken) {
+//       //
+//       // When Token points to mSmmStartupThisApToken, this routine is called
+//       // from SmmStartupThisAp() in non-blocking mode (PcdCpuSmmBlockStartupThisAp == FALSE).
+//       //
+//       // In this case, caller wants to startup AP procedure in non-blocking
+//       // mode and cannot get the completion status from the Token because there
+//       // is no way to return the Token to caller from SmmStartupThisAp().
+//       // Caller needs to use its implementation specific way to query the completion status.
+//       //
+//       // There is no need to allocate a token for such case so the 3 overheads
+//       // can be avoided:
+//       // 1. Call AllocateTokenBuffer() when there is no free token.
+//       // 2. Get a free token from the token buffer.
+//       // 3. Call ReleaseToken() in APHandler().
+//       //
+//       ProcToken                               = GetFreeToken (1);
+//       mSmmMpSyncData->CpuData[CpuIndex].Token = ProcToken;
+//       *Token                                  = (MM_COMPLETION)ProcToken->SpinLock;
+//     }
+//   }
 
-  mSmmMpSyncData->CpuData[CpuIndex].Status = CpuStatus;
-  if (mSmmMpSyncData->CpuData[CpuIndex].Status != NULL) {
-    *mSmmMpSyncData->CpuData[CpuIndex].Status = EFI_NOT_READY;
-  }
+//   mSmmMpSyncData->CpuData[CpuIndex].Status = CpuStatus;
+//   if (mSmmMpSyncData->CpuData[CpuIndex].Status != NULL) {
+//     *mSmmMpSyncData->CpuData[CpuIndex].Status = EFI_NOT_READY;
+//   }
 
-  SmmCpuSyncReleaseOneAp (mSmmMpSyncData->SyncContext, CpuIndex, gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu);
+//   SmmCpuSyncReleaseOneAp (mSmmMpSyncData->SyncContext, CpuIndex, gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu);
 
-  if (Token == NULL) {
-    AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
-    ReleaseSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
-  }
+//   if (Token == NULL) {
+//     AcquireSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
+//     ReleaseSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
+//   }
 
-  return EFI_SUCCESS;
-}
+//   return EFI_SUCCESS;
+// }
 
 /**
   Worker function to execute a caller provided function on all enabled APs.
@@ -1312,9 +1312,9 @@ InternalSmmStartupAllAPs (
     if (IsPresentAp (Index)) {
       CpuCount++;
 
-      if (gSmmCpuPrivate->Operation[Index] == SmmCpuRemove) {
-        return EFI_INVALID_PARAMETER;
-      }
+      // if (gSmmCpuPrivate->Operation[Index] == SmmCpuRemove) {
+      //   return EFI_INVALID_PARAMETER;
+      // }
 
       if (!AcquireSpinLockOrFail (mSmmMpSyncData->CpuData[Index].Busy)) {
         return EFI_NOT_READY;
@@ -1959,7 +1959,7 @@ InitializeMpSyncData (
       }
     }
 
-    mSmmMpSyncData->EffectiveSyncMode = mCpuSmmSyncMode;
+    // mSmmMpSyncData->EffectiveSyncMode = mCpuSmmSyncMode;
 
     Status = SmmCpuSyncContextInit (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus, &mSmmMpSyncData->SyncContext);
     if (EFI_ERROR (Status)) {
@@ -2033,7 +2033,7 @@ InitializeMpServiceData (
                        (sizeof (SMM_CPU_DATA_BLOCK) + sizeof (BOOLEAN)) * gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus;
   mSmmMpSyncData = (SMM_DISPATCHER_MP_SYNC_DATA *)AllocatePages (EFI_SIZE_TO_PAGES (mSmmMpSyncDataSize));
   ASSERT (mSmmMpSyncData != NULL);
-  mCpuSmmSyncMode = (SMM_CPU_SYNC_MODE)PcdGet8 (PcdCpuSmmSyncMode);
+  // mCpuSmmSyncMode = (SMM_CPU_SYNC_MODE)PcdGet8 (PcdCpuSmmSyncMode);
   InitializeMpSyncData ();
 
   //
@@ -2091,64 +2091,64 @@ InitializeMpServiceData (
   return Cr3;
 }
 
-/**
+// /**
 
-  Register the SMM Foundation entry point.
+//   Register the SMM Foundation entry point.
 
-  @param          This              Pointer to EFI_SMM_CONFIGURATION_PROTOCOL instance
-  @param          SmmEntryPoint     SMM Foundation EntryPoint
+//   @param          This              Pointer to EFI_SMM_CONFIGURATION_PROTOCOL instance
+//   @param          SmmEntryPoint     SMM Foundation EntryPoint
 
-  @retval         EFI_SUCCESS       Successfully to register SMM foundation entry point
+//   @retval         EFI_SUCCESS       Successfully to register SMM foundation entry point
 
-**/
-EFI_STATUS
-EFIAPI
-RegisterSmmEntry (
-  IN CONST EFI_SMM_CONFIGURATION_PROTOCOL  *This,
-  IN EFI_SMM_ENTRY_POINT                   SmmEntryPoint
-  )
-{
-  //
-  // Record SMM Foundation EntryPoint, later invoke it on SMI entry vector.
-  //
-  gSmmCpuPrivate->SmmCoreEntry = SmmEntryPoint;
-  return EFI_SUCCESS;
-}
+// **/
+// EFI_STATUS
+// EFIAPI
+// RegisterSmmEntry (
+//   IN CONST EFI_SMM_CONFIGURATION_PROTOCOL  *This,
+//   IN EFI_SMM_ENTRY_POINT                   SmmEntryPoint
+//   )
+// {
+//   //
+//   // Record SMM Foundation EntryPoint, later invoke it on SMI entry vector.
+//   //
+//   gSmmCpuPrivate->SmmCoreEntry = SmmEntryPoint;
+//   return EFI_SUCCESS;
+// }
 
-/**
+// /**
 
-  Register the SMM Foundation entry point.
+//   Register the SMM Foundation entry point.
 
-  @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
-                                       of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
-                                       with the related definitions of
-                                       EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
-                                       If caller may pass a value of NULL to deregister any existing
-                                       startup procedure.
-  @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
-                                       run by the AP. It is an optional common mailbox between APs and
-                                       the caller to share information
+//   @param[in]      Procedure            A pointer to the code stream to be run on the designated target AP
+//                                        of the system. Type EFI_AP_PROCEDURE is defined below in Volume 2
+//                                        with the related definitions of
+//                                        EFI_MP_SERVICES_PROTOCOL.StartupAllAPs.
+//                                        If caller may pass a value of NULL to deregister any existing
+//                                        startup procedure.
+//   @param[in,out]  ProcedureArguments   Allows the caller to pass a list of parameters to the code that is
+//                                        run by the AP. It is an optional common mailbox between APs and
+//                                        the caller to share information
 
-  @retval EFI_SUCCESS                  The Procedure has been set successfully.
-  @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
+//   @retval EFI_SUCCESS                  The Procedure has been set successfully.
+//   @retval EFI_INVALID_PARAMETER        The Procedure is NULL but ProcedureArguments not NULL.
 
-**/
-EFI_STATUS
-RegisterStartupProcedure (
-  IN     EFI_AP_PROCEDURE  Procedure,
-  IN OUT VOID              *ProcedureArguments OPTIONAL
-  )
-{
-  if ((Procedure == NULL) && (ProcedureArguments != NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
+// **/
+// EFI_STATUS
+// RegisterStartupProcedure (
+//   IN     EFI_AP_PROCEDURE  Procedure,
+//   IN OUT VOID              *ProcedureArguments OPTIONAL
+//   )
+// {
+//   if ((Procedure == NULL) && (ProcedureArguments != NULL)) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  if (mSmmMpSyncData == NULL) {
-    return EFI_NOT_READY;
-  }
+//   if (mSmmMpSyncData == NULL) {
+//     return EFI_NOT_READY;
+//   }
 
-  mSmmMpSyncData->StartupProcedure = Procedure;
-  mSmmMpSyncData->StartupProcArgs  = ProcedureArguments;
+//   mSmmMpSyncData->StartupProcedure = Procedure;
+//   mSmmMpSyncData->StartupProcArgs  = ProcedureArguments;
 
-  return EFI_SUCCESS;
-}
+//   return EFI_SUCCESS;
+// }

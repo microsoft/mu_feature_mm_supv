@@ -19,8 +19,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt.h"
 #include "Relocate/Relocate.h"
-#include "Services/MpService/MpService.h"
+#include "../../Common/MpService.h"
 #include "Mem/Mem.h"
+
+// TODO: This should not be here
+extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
 
 // Function pointer to jump to for handler demotion
 UINTN  RegisteredRing3JumpPointer = 0;

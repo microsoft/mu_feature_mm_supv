@@ -11,12 +11,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Protocol/SmmCpuService.h>
 
-typedef enum {
-  SmmCpuNone,
-  SmmCpuAdd,
-  SmmCpuRemove,
-  SmmCpuSwitchBsp
-} SMM_CPU_OPERATION;
+// typedef enum {
+//   SmmCpuNone,
+//   SmmCpuAdd,
+//   SmmCpuRemove,
+//   SmmCpuSwitchBsp
+// } SMM_CPU_OPERATION;
 
 extern EFI_SMM_CPU_SERVICE_PROTOCOL  mSmmCpuService;
 
@@ -94,14 +94,14 @@ SmmRegisterExceptionHandler (
 // Internal function prototypes
 //
 
-/**
-  Update the SMM CPU list per the pending operation.
+// /**
+//   Update the SMM CPU list per the pending operation.
 
-  This function is called after return from SMI handlers.
-**/
-VOID
-SmmCpuUpdate (
-  VOID
-  );
+//   This function is called after return from SMI handlers.
+// **/
+// VOID
+// SmmCpuUpdate (
+//   VOID
+//   );
 
 #endif

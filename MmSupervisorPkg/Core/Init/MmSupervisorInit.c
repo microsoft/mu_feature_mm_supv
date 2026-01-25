@@ -13,6 +13,7 @@
 #include "Mem/HeapGuard.h"
 // #include "PrivilegeMgmt/PrivilegeMgmt.h"
 // #include "Telemetry/Telemetry.h"
+#include "../Common/PassDown.h"
 
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
@@ -26,25 +27,31 @@
 PE_COFF_LOADER_IMAGE_CONTEXT  RuntimeSupvImageContext;
 VOID *SmiRendezvous;
 
-EFI_STATUS
-MmCoreFfsFindMmDriver (
-  IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
-  );
+// EFI_STATUS
+// MmCoreFfsFindMmDriver (
+//   IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
+//   );
 
 // EFI_STATUS
 // MmDispatcher (
 //   VOID
 //   );
 
-EFI_MM_DRIVER_ENTRY*
-MmInitDriverEntry (
-  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
-  IN VOID                        *Pe32Data,
-  IN UINTN                       Pe32DataSize,
-  IN VOID                        *Depex,
-  IN UINTN                       DepexSize,
-  IN EFI_GUID                    *DriverName
-  );
+// EFI_MM_DRIVER_ENTRY*
+// MmInitDriverEntry (
+//   IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
+//   IN VOID                        *Pe32Data,
+//   IN UINTN                       Pe32DataSize,
+//   IN VOID                        *Depex,
+//   IN UINTN                       DepexSize,
+//   IN EFI_GUID                    *DriverName
+//   );
+
+// TODO: This should not be here.
+#include "../Common/MpService.h"
+extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
+extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
+extern UINTN mSmmMpSyncDataSize;
 
 EFI_STATUS
 EFIAPI
@@ -53,10 +60,10 @@ MmLoadImage (
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
   );
 
-//
-// Globals used to initialize the protocol
-//
-EFI_HANDLE  mMmCpuHandle = NULL;
+// //
+// // Globals used to initialize the protocol
+// //
+// EFI_HANDLE  mMmCpuHandle = NULL;
 
 //
 // Physical pointer to MM_COMM_BUFFER structure shared between MM IPL and the MM Core
@@ -137,7 +144,7 @@ EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
 EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
 MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
-BOOLEAN                           mMmReadyToLockDone          = FALSE;
+// BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
 VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = NULL;
@@ -1108,6 +1115,47 @@ CreateMemoryAllocationModuleHob (
   return EFI_SUCCESS;
 }
 
+EFI_STATUS
+CreateArbitraryHob (
+  IN EFI_PHYSICAL_ADDRESS  BaseAddress,
+  IN OUT UINT64            *Length
+  )
+{
+  UINTN                             NewLength;
+  EFI_HOB_GUID_TYPE                 *GuidedHob;
+  MM_SUPV_PASS_DOWN_HOB_DATA  *PassDownData;
+
+  if (BaseAddress == 0 || Length == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  NewLength = ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_PASS_DOWN_HOB_DATA), 8);
+
+  if (*Length < NewLength) {
+    *Length = NewLength;
+    return EFI_BUFFER_TOO_SMALL;
+  }
+
+  // First Module Hob for MM Core
+  GuidedHob = (EFI_HOB_GUID_TYPE *)(UINTN)BaseAddress;
+  CopyGuid (&GuidedHob->Name, &gMmSupervisorPassDownHobGuid);
+  GuidedHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_PASS_DOWN_HOB_DATA), 8);
+  GuidedHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
+  GuidedHob->Header.Reserved  = 0;
+
+  PassDownData = (MM_SUPV_PASS_DOWN_HOB_DATA *)(GuidedHob + 1);
+  PassDownData->Revision = MM_SUPV_PASS_DOWN_HOB_REVISION;
+  PassDownData->Reserved = 0;
+  PassDownData->MmSupvCpuPrivate = (EFI_PHYSICAL_ADDRESS)AllocateCopyPool (sizeof (*gSmmCpuPrivate), (VOID *)gSmmCpuPrivate);
+  PassDownData->MmSupvCpuPrivateSize = sizeof (*gSmmCpuPrivate);
+  PassDownData->MmSupvMpSyncData = (EFI_PHYSICAL_ADDRESS)mSmmMpSyncData;
+  PassDownData->MmSupvMpSyncDataSize = mSmmMpSyncDataSize;
+
+  *Length      = *Length - NewLength;
+
+  return EFI_SUCCESS;
+}
+
 // /**
 //   Routine for initializing policy data provided by firmware.
 
@@ -1482,6 +1530,8 @@ MmSupervisorMain (
   //   ASSERT (FALSE);
   //   goto Exit;
   // }
+
+  CreateArbitraryHob ((EFI_PHYSICAL_ADDRESS)(MmSupervisorHobStart + ALIGN_VALUE (mMmHobSize - RemainingSize, 8)), &RemainingSize);
 
   Status = PrepareCommonBuffers ();
   if (EFI_ERROR (Status)) {
