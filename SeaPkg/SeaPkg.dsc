@@ -33,7 +33,7 @@
   UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
-  SmmrLib|SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
+  SmrrLib|SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
   StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
 
 [LibraryClasses.common.PEIM]
