@@ -158,7 +158,7 @@ SmmCpuFeaturesNeedConfigureMtrrs (
   VOID
   )
 {
-  return TRUE;
+  return SmrrLibNeedConfigureMtrrs ();
 }
 
 /**
@@ -171,7 +171,7 @@ SmmCpuFeaturesDisableSmrr (
   VOID
   )
 {
-  SmmrLibSmmrDisable ();
+  SmrrLibSmrrDisable ();
 }
 
 /**
@@ -184,7 +184,7 @@ SmmCpuFeaturesReenableSmrr (
   VOID
   )
 {
-  SmmrLibSmmrReenable ();
+  SmrrLibSmrrReenable ();
 }
 
 /**

@@ -15,7 +15,7 @@
 **/
 VOID
 EFIAPI
-SmmrLibSmmrDisable (
+SmrrLibSmrrDisable (
   VOID
   );
 
@@ -25,7 +25,7 @@ SmmrLibSmmrDisable (
 **/
 VOID
 EFIAPI
-SmmrLibSmmrReenable (
+SmrrLibSmrrReenable (
   VOID
   );
 
