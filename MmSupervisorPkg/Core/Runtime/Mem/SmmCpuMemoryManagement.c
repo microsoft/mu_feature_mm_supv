@@ -95,7 +95,7 @@ typedef struct {
 UINTN                  mInternalCr3;
 BOOLEAN                mIsShadowStack      = FALSE;
 BOOLEAN                m5LevelPagingNeeded = FALSE;
-PAGING_MODE            mPagingMode         = PagingModeMax;
+// PAGING_MODE            mPagingMode         = PagingModeMax;
 EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
@@ -832,7 +832,7 @@ SmmSetMemoryAttributes (
   // MU_CHANGE: MM_SUPV: Use GetPageTable to get the page table base instead of reading from CR3 because we could be
   // using a different CR3 when initializing the environment.
   GetPageTable (&PageTableBase, NULL);
-  return SmmSetMemoryAttributesEx (PageTableBase, mPagingMode, BaseAddress, Length, Attributes);
+  return SmmSetMemoryAttributesEx (PageTableBase, Paging4Level, BaseAddress, Length, Attributes);
 }
 
 /**
@@ -869,74 +869,74 @@ SmmClearMemoryAttributes (
   // MU_CHANGE: MM_SUPV: Use GetPageTable to get the page table base instead of reading from CR3 because we could be
   // using a different CR3 when initializing the environment.
   GetPageTable (&PageTableBase, NULL);
-  return SmmClearMemoryAttributesEx (PageTableBase, mPagingMode, BaseAddress, Length, Attributes);
+  return SmmClearMemoryAttributesEx (PageTableBase, Paging4Level, BaseAddress, Length, Attributes);
 }
 
-/**
-  Create page table based on input PagingMode, LinearAddress and Length.
+// /**
+//   Create page table based on input PagingMode, LinearAddress and Length.
 
-  @param[in, out]  PageTable           The pointer to the page table.
-  @param[in]       PagingMode          The paging mode.
-  @param[in]       LinearAddress       The start of the linear address range.
-  @param[in]       Length              The length of the linear address range.
+//   @param[in, out]  PageTable           The pointer to the page table.
+//   @param[in]       PagingMode          The paging mode.
+//   @param[in]       LinearAddress       The start of the linear address range.
+//   @param[in]       Length              The length of the linear address range.
 
-**/
-VOID
-GenPageTable (
-  IN OUT UINTN        *PageTable,
-  IN     PAGING_MODE  PagingMode,
-  IN     UINT64       LinearAddress,
-  IN     UINT64       Length
-  )
-{
-  RETURN_STATUS       Status;
-  UINTN               PageTableBufferSize;
-  VOID                *PageTableBuffer;
-  IA32_MAP_ATTRIBUTE  MapAttribute;
-  IA32_MAP_ATTRIBUTE  MapMask;
+// **/
+// VOID
+// GenPageTable (
+//   IN OUT UINTN        *PageTable,
+//   IN     PAGING_MODE  PagingMode,
+//   IN     UINT64       LinearAddress,
+//   IN     UINT64       Length
+//   )
+// {
+//   RETURN_STATUS       Status;
+//   UINTN               PageTableBufferSize;
+//   VOID                *PageTableBuffer;
+//   IA32_MAP_ATTRIBUTE  MapAttribute;
+//   IA32_MAP_ATTRIBUTE  MapMask;
 
-  MapMask.Uint64                   = MAX_UINT64;
-  MapAttribute.Uint64              = LinearAddress;
-  MapAttribute.Bits.Present        = 1;
-  MapAttribute.Bits.ReadWrite      = 1;
-  MapAttribute.Bits.UserSupervisor = 1;
-  MapAttribute.Bits.Accessed       = 1;
-  MapAttribute.Bits.Dirty          = 1;
-  PageTableBufferSize              = 0;
-  // MU_CHANGE: MM_SUPV: Change default to NX
-  MapAttribute.Bits.Nx = 1;
+//   MapMask.Uint64                   = MAX_UINT64;
+//   MapAttribute.Uint64              = LinearAddress;
+//   MapAttribute.Bits.Present        = 1;
+//   MapAttribute.Bits.ReadWrite      = 1;
+//   MapAttribute.Bits.UserSupervisor = 1;
+//   MapAttribute.Bits.Accessed       = 1;
+//   MapAttribute.Bits.Dirty          = 1;
+//   PageTableBufferSize              = 0;
+//   // MU_CHANGE: MM_SUPV: Change default to NX
+//   MapAttribute.Bits.Nx = 1;
 
-  Status = PageTableMap (
-             PageTable,
-             PagingMode,
-             NULL,
-             &PageTableBufferSize,
-             LinearAddress,
-             Length,
-             &MapAttribute,
-             &MapMask,
-             NULL
-             );
-  if (Status == RETURN_BUFFER_TOO_SMALL) {
-    DEBUG ((DEBUG_INFO, "GenSMMPageTable: 0x%x bytes needed for initial SMM page table\n", PageTableBufferSize));
-    PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), NULL);
-    ASSERT (PageTableBuffer != NULL);
-    Status = PageTableMap (
-               PageTable,
-               PagingMode,
-               PageTableBuffer,
-               &PageTableBufferSize,
-               LinearAddress,
-               Length,
-               &MapAttribute,
-               &MapMask,
-               NULL
-               );
-  }
+//   Status = PageTableMap (
+//              PageTable,
+//              PagingMode,
+//              NULL,
+//              &PageTableBufferSize,
+//              LinearAddress,
+//              Length,
+//              &MapAttribute,
+//              &MapMask,
+//              NULL
+//              );
+//   if (Status == RETURN_BUFFER_TOO_SMALL) {
+//     DEBUG ((DEBUG_INFO, "GenSMMPageTable: 0x%x bytes needed for initial SMM page table\n", PageTableBufferSize));
+//     PageTableBuffer = AllocatePageTableMemory (EFI_SIZE_TO_PAGES (PageTableBufferSize), NULL);
+//     ASSERT (PageTableBuffer != NULL);
+//     Status = PageTableMap (
+//                PageTable,
+//                PagingMode,
+//                PageTableBuffer,
+//                &PageTableBufferSize,
+//                LinearAddress,
+//                Length,
+//                &MapAttribute,
+//                &MapMask,
+//                NULL
+//                );
+//   }
 
-  ASSERT (Status == RETURN_SUCCESS);
-  ASSERT (PageTableBufferSize == 0);
-}
+//   ASSERT (Status == RETURN_SUCCESS);
+//   ASSERT (PageTableBufferSize == 0);
+// }
 
 // /**
 //   Create page table based on input PagingMode and PhysicalAddressBits in smm.
@@ -1061,7 +1061,7 @@ SmmSetGdtReadOnlyForThisProcessor (
 
   Status = ConvertMemoryPageAttributes (
              PageTableBase,
-             mPagingMode,
+             Paging4Level,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO | EFI_MEMORY_SP,
@@ -1125,7 +1125,7 @@ SmmClearGdtReadOnlyForThisProcessor (
   GetPageTable (&PageTableBase, NULL);
   Status = ConvertMemoryPageAttributes (
              PageTableBase,
-             mPagingMode,
+             Paging4Level,
              mGdtBuffer + CpuIndex * mGdtStepSize,
              mGdtStepSize,
              EFI_MEMORY_RO,
@@ -1146,64 +1146,64 @@ SmmClearGdtReadOnlyForThisProcessor (
   return Status;
 }
 
-/**
-  Set ShadowStack memory.
+// /**
+//   Set ShadowStack memory.
 
-  @param[in]  Cr3              The page table base address.
-  @param[in]  BaseAddress      The physical address that is the start address of a memory region.
-  @param[in]  Length           The size in bytes of the memory region.
+//   @param[in]  Cr3              The page table base address.
+//   @param[in]  BaseAddress      The physical address that is the start address of a memory region.
+//   @param[in]  Length           The size in bytes of the memory region.
 
-  @retval EFI_SUCCESS           The shadow stack memory is set.
-**/
-EFI_STATUS
-SetShadowStack (
-  IN  UINTN                 Cr3,
-  IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN  UINT64                Length
-  )
-{
-  EFI_STATUS  Status;
+//   @retval EFI_SUCCESS           The shadow stack memory is set.
+// **/
+// EFI_STATUS
+// SetShadowStack (
+//   IN  UINTN                 Cr3,
+//   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
+//   IN  UINT64                Length
+//   )
+// {
+//   EFI_STATUS  Status;
 
-  mIsShadowStack = TRUE;
-  Status         = SmmSetMemoryAttributesEx (Cr3, mPagingMode, BaseAddress, Length, EFI_MEMORY_RO);
-  mIsShadowStack = FALSE;
+//   mIsShadowStack = TRUE;
+//   Status         = SmmSetMemoryAttributesEx (Cr3, Paging4Level, BaseAddress, Length, EFI_MEMORY_RO);
+//   mIsShadowStack = FALSE;
 
-  return Status;
-}
+//   return Status;
+// }
 
-/**
-  Retrieves a pointer to the system configuration table from the SMM System Table
-  based on a specified GUID.
+// /**
+//   Retrieves a pointer to the system configuration table from the SMM System Table
+//   based on a specified GUID.
 
-  @param[in]   TableGuid       The pointer to table's GUID type.
-  @param[out]  Table           The pointer to the table associated with TableGuid in the EFI System Table.
+//   @param[in]   TableGuid       The pointer to table's GUID type.
+//   @param[out]  Table           The pointer to the table associated with TableGuid in the EFI System Table.
 
-  @retval EFI_SUCCESS     A configuration table matching TableGuid was found.
-  @retval EFI_NOT_FOUND   A configuration table matching TableGuid could not be found.
+//   @retval EFI_SUCCESS     A configuration table matching TableGuid was found.
+//   @retval EFI_NOT_FOUND   A configuration table matching TableGuid could not be found.
 
-**/
-EFI_STATUS
-EFIAPI
-SmmGetSystemConfigurationTable (
-  IN  EFI_GUID  *TableGuid,
-  OUT VOID      **Table
-  )
-{
-  UINTN  Index;
+// **/
+// EFI_STATUS
+// EFIAPI
+// SmmGetSystemConfigurationTable (
+//   IN  EFI_GUID  *TableGuid,
+//   OUT VOID      **Table
+//   )
+// {
+//   UINTN  Index;
 
-  ASSERT (TableGuid != NULL);
-  ASSERT (Table != NULL);
+//   ASSERT (TableGuid != NULL);
+//   ASSERT (Table != NULL);
 
-  *Table = NULL;
-  for (Index = 0; Index < gMmCoreMmst.NumberOfTableEntries; Index++) {
-    if (CompareGuid (TableGuid, &(gMmCoreMmst.MmConfigurationTable[Index].VendorGuid))) {
-      *Table = gMmCoreMmst.MmConfigurationTable[Index].VendorTable;
-      return EFI_SUCCESS;
-    }
-  }
+//   *Table = NULL;
+//   for (Index = 0; Index < gMmCoreMmst.NumberOfTableEntries; Index++) {
+//     if (CompareGuid (TableGuid, &(gMmCoreMmst.MmConfigurationTable[Index].VendorGuid))) {
+//       *Table = gMmCoreMmst.MmConfigurationTable[Index].VendorTable;
+//       return EFI_SUCCESS;
+//     }
+//   }
 
-  return EFI_NOT_FOUND;
-}
+//   return EFI_NOT_FOUND;
+// }
 
 // /**
 //   This function sets SMM save state buffer to be RW and XP.
@@ -1622,36 +1622,36 @@ SmmGetSystemConfigurationTable (
 //   PERF_FUNCTION_END ();
 // }
 
-/**
-  Return if a UEFI memory page should be marked as not present in SMM page table.
-  If the memory map entries type is
-  EfiLoaderCode/Data, EfiBootServicesCode/Data, EfiConventionalMemory,
-  EfiUnusableMemory, EfiACPIReclaimMemory, return TRUE.
-  Or return FALSE.
+// /**
+//   Return if a UEFI memory page should be marked as not present in SMM page table.
+//   If the memory map entries type is
+//   EfiLoaderCode/Data, EfiBootServicesCode/Data, EfiConventionalMemory,
+//   EfiUnusableMemory, EfiACPIReclaimMemory, return TRUE.
+//   Or return FALSE.
 
-  @param[in]  MemoryMap              A pointer to the memory descriptor.
+//   @param[in]  MemoryMap              A pointer to the memory descriptor.
 
-  @return TRUE  The memory described will be marked as not present in SMM page table.
-  @return FALSE The memory described will not be marked as not present in SMM page table.
-**/
-BOOLEAN
-IsUefiPageNotPresent (
-  IN EFI_MEMORY_DESCRIPTOR  *MemoryMap
-  )
-{
-  switch (MemoryMap->Type) {
-    case EfiLoaderCode:
-    case EfiLoaderData:
-    case EfiBootServicesCode:
-    case EfiBootServicesData:
-    case EfiConventionalMemory:
-    case EfiUnusableMemory:
-    case EfiACPIReclaimMemory:
-      return TRUE;
-    default:
-      return FALSE;
-  }
-}
+//   @return TRUE  The memory described will be marked as not present in SMM page table.
+//   @return FALSE The memory described will not be marked as not present in SMM page table.
+// **/
+// BOOLEAN
+// IsUefiPageNotPresent (
+//   IN EFI_MEMORY_DESCRIPTOR  *MemoryMap
+//   )
+// {
+//   switch (MemoryMap->Type) {
+//     case EfiLoaderCode:
+//     case EfiLoaderData:
+//     case EfiBootServicesCode:
+//     case EfiBootServicesData:
+//     case EfiConventionalMemory:
+//     case EfiUnusableMemory:
+//     case EfiACPIReclaimMemory:
+//       return TRUE;
+//     default:
+//       return FALSE;
+//   }
+// }
 
 /**
   Return if the Address is forbidden as SMM communication buffer.
@@ -1787,76 +1787,76 @@ SmmGetMemoryAttributes (
   return EFI_SUCCESS;
 }
 
-/**
-  Prototype for comparison function for any two element types.
+// /**
+//   Prototype for comparison function for any two element types.
 
-  @param[in] Buffer1                  The pointer to first buffer.
-  @param[in] Buffer2                  The pointer to second buffer.
+//   @param[in] Buffer1                  The pointer to first buffer.
+//   @param[in] Buffer2                  The pointer to second buffer.
 
-  @retval 0                           Buffer1 equal to Buffer2.
-  @return <0                          Buffer1 is less than Buffer2.
-  @return >0                          Buffer1 is greater than Buffer2.
-**/
-STATIC
-INTN
-EFIAPI
-CompareAddressPoint (
-  IN CONST VOID  *Buffer1,
-  IN CONST VOID  *Buffer2
-  )
-{
-  if ((Buffer1 == NULL) || (Buffer2 == NULL)) {
-    ASSERT (FALSE);
-    // Cannot do much other than that...
-    return 0;
-  }
+//   @retval 0                           Buffer1 equal to Buffer2.
+//   @return <0                          Buffer1 is less than Buffer2.
+//   @return >0                          Buffer1 is greater than Buffer2.
+// **/
+// STATIC
+// INTN
+// EFIAPI
+// CompareAddressPoint (
+//   IN CONST VOID  *Buffer1,
+//   IN CONST VOID  *Buffer2
+//   )
+// {
+//   if ((Buffer1 == NULL) || (Buffer2 == NULL)) {
+//     ASSERT (FALSE);
+//     // Cannot do much other than that...
+//     return 0;
+//   }
 
-  // Address as the first order criteria
-  if (((MEMORY_ADDRESS_POINT *)Buffer1)->Address !=
-      ((MEMORY_ADDRESS_POINT *)Buffer2)->Address)
-  {
-    return (INTN)((MEMORY_ADDRESS_POINT *)Buffer1)->Address -
-           ((MEMORY_ADDRESS_POINT *)Buffer2)->Address;
-  }
+//   // Address as the first order criteria
+//   if (((MEMORY_ADDRESS_POINT *)Buffer1)->Address !=
+//       ((MEMORY_ADDRESS_POINT *)Buffer2)->Address)
+//   {
+//     return (INTN)((MEMORY_ADDRESS_POINT *)Buffer1)->Address -
+//            ((MEMORY_ADDRESS_POINT *)Buffer2)->Address;
+//   }
 
-  // Type as second order tiebreaker
-  if (((MEMORY_ADDRESS_POINT *)Buffer1)->Type !=
-      ((MEMORY_ADDRESS_POINT *)Buffer2)->Type)
-  {
-    return (INTN)((MEMORY_ADDRESS_POINT *)Buffer1)->Type -
-           ((MEMORY_ADDRESS_POINT *)Buffer2)->Type;
-  }
+//   // Type as second order tiebreaker
+//   if (((MEMORY_ADDRESS_POINT *)Buffer1)->Type !=
+//       ((MEMORY_ADDRESS_POINT *)Buffer2)->Type)
+//   {
+//     return (INTN)((MEMORY_ADDRESS_POINT *)Buffer1)->Type -
+//            ((MEMORY_ADDRESS_POINT *)Buffer2)->Type;
+//   }
 
-  DEBUG ((DEBUG_ERROR, "%a - Identical Address Point Detected!!!\n", __func__));
-  DEBUG ((DEBUG_ERROR, "Address(0x%0lx) Type(0x%x)\n", ((MEMORY_ADDRESS_POINT *)Buffer1)->Address, ((MEMORY_ADDRESS_POINT *)Buffer1)->Type));
+//   DEBUG ((DEBUG_ERROR, "%a - Identical Address Point Detected!!!\n", __func__));
+//   DEBUG ((DEBUG_ERROR, "Address(0x%0lx) Type(0x%x)\n", ((MEMORY_ADDRESS_POINT *)Buffer1)->Address, ((MEMORY_ADDRESS_POINT *)Buffer1)->Type));
 
-  // This should not happen that resource hob has 2 identical address points
-  ASSERT (FALSE);
-  return 0;
-}
+//   // This should not happen that resource hob has 2 identical address points
+//   ASSERT (FALSE);
+//   return 0;
+// }
 
-/**
-  Helper function to determine if this descriptor needs to be part of overlap check routine.
+// /**
+//   Helper function to determine if this descriptor needs to be part of overlap check routine.
 
-  @param[out] ResourceDesc             Pointer to target resource descriptor.
+//   @param[out] ResourceDesc             Pointer to target resource descriptor.
 
-  @retval TRUE                        This type will be ignored for memory management purpose.
-  @retval FALSE                       This resource descriptor will be added to memory management list during scanning.
-**/
-BOOLEAN
-SkipResourceDescriptor (
-  EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDesc
-  )
-{
-  if ((ResourceDesc == NULL) ||
-      (ResourceDesc->ResourceType == EFI_RESOURCE_IO) ||
-      (ResourceDesc->ResourceType == EFI_RESOURCE_IO_RESERVED))
-  {
-    return TRUE;
-  }
+//   @retval TRUE                        This type will be ignored for memory management purpose.
+//   @retval FALSE                       This resource descriptor will be added to memory management list during scanning.
+// **/
+// BOOLEAN
+// SkipResourceDescriptor (
+//   EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDesc
+//   )
+// {
+//   if ((ResourceDesc == NULL) ||
+//       (ResourceDesc->ResourceType == EFI_RESOURCE_IO) ||
+//       (ResourceDesc->ResourceType == EFI_RESOURCE_IO_RESERVED))
+//   {
+//     return TRUE;
+//   }
 
-  return FALSE;
-}
+//   return FALSE;
+// }
 
 /**
   This function check if the buffer is fully inside MMRAM.
@@ -1903,616 +1903,616 @@ IsBufferInsideMmram (
   return FALSE;
 }
 
-/**
-  Helper function to coalesce memory and MMRAM resources from hob.
+// /**
+//   Helper function to coalesce memory and MMRAM resources from hob.
 
-  @param[out] MemAddrBuffer           Pointer to hold returned memory address point buffer, caller is
-                                      responsible for freeing the memory after use.
-  @param[out] Count                   Pointer to hold count of address points from returned buffer.
+//   @param[out] MemAddrBuffer           Pointer to hold returned memory address point buffer, caller is
+//                                       responsible for freeing the memory after use.
+//   @param[out] Count                   Pointer to hold count of address points from returned buffer.
 
-  @retval EFI_SUCCESS                 The hob overcheck passed without errors.
-  @retval EFI_INVALID_PARAMETER       Input argument contains null pointer.
-  @retval EFI_OUT_OF_RESOURCES        Cannot allocate enough resource to hold coalesced memory data.
-**/
-EFI_STATUS
-CoalesceHobMemory (
-  OUT MEMORY_ADDRESS_POINT  **MemAddrBuffer,
-  OUT UINTN                 *Count
-  )
-{
-  EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDescriptor;
-  EFI_PEI_HOB_POINTERS         Hob;
-  UINTN                        Index;
-  UINTN                        MmIndex;
-  MEMORY_ADDRESS_POINT         *TempBuffer;
+//   @retval EFI_SUCCESS                 The hob overcheck passed without errors.
+//   @retval EFI_INVALID_PARAMETER       Input argument contains null pointer.
+//   @retval EFI_OUT_OF_RESOURCES        Cannot allocate enough resource to hold coalesced memory data.
+// **/
+// EFI_STATUS
+// CoalesceHobMemory (
+//   OUT MEMORY_ADDRESS_POINT  **MemAddrBuffer,
+//   OUT UINTN                 *Count
+//   )
+// {
+//   EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDescriptor;
+//   EFI_PEI_HOB_POINTERS         Hob;
+//   UINTN                        Index;
+//   UINTN                        MmIndex;
+//   MEMORY_ADDRESS_POINT         *TempBuffer;
 
-  if ((Count == NULL) || (MemAddrBuffer == NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
+//   if ((Count == NULL) || (MemAddrBuffer == NULL)) {
+//     return EFI_INVALID_PARAMETER;
+//   }
 
-  Index              = mMmramRangeCount;
-  Hob.Raw            = GetHobList ();
-  ResourceDescriptor = NULL;
+//   Index              = mMmramRangeCount;
+//   Hob.Raw            = GetHobList ();
+//   ResourceDescriptor = NULL;
 
-  while (!END_OF_HOB_LIST (Hob)) {
-    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
-      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
-    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
-      ResourceDescriptor = Hob.ResourceDescriptor;
-    }
+//   while (!END_OF_HOB_LIST (Hob)) {
+//     if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
+//       ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
+//     } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
+//       ResourceDescriptor = Hob.ResourceDescriptor;
+//     }
 
-    if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
-      Index++;
-    }
+//     if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
+//       Index++;
+//     }
 
-    ResourceDescriptor = NULL;
-    Hob.Raw            = GET_NEXT_HOB (Hob);
-  }
+//     ResourceDescriptor = NULL;
+//     Hob.Raw            = GET_NEXT_HOB (Hob);
+//   }
 
-  TempBuffer = AllocateZeroPool (sizeof (MEMORY_ADDRESS_POINT) * Index * 2);
-  if (TempBuffer == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
+//   TempBuffer = AllocateZeroPool (sizeof (MEMORY_ADDRESS_POINT) * Index * 2);
+//   if (TempBuffer == NULL) {
+//     return EFI_OUT_OF_RESOURCES;
+//   }
 
-  // This is dumb, let me know if you have better ways...
-  Index   = 0;
-  Hob.Raw = GetHobList ();
-  while (!END_OF_HOB_LIST (Hob)) {
-    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
-      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
-    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
-      ResourceDescriptor = Hob.ResourceDescriptor;
-    }
+//   // This is dumb, let me know if you have better ways...
+//   Index   = 0;
+//   Hob.Raw = GetHobList ();
+//   while (!END_OF_HOB_LIST (Hob)) {
+//     if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
+//       ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
+//     } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
+//       ResourceDescriptor = Hob.ResourceDescriptor;
+//     }
 
-    if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
-      DEBUG ((
-        DEBUG_INFO,
-        "%a - MemoryResource - Start(0x%0lx) Length(0x%0lx) Type(0x%x)\n",
-        __func__,
-        ResourceDescriptor->PhysicalStart,
-        ResourceDescriptor->ResourceLength,
-        ResourceDescriptor->ResourceType
-        ));
-      TempBuffer[Index].Address     = ResourceDescriptor->PhysicalStart;
-      TempBuffer[Index + 1].Address = ResourceDescriptor->PhysicalStart + ResourceDescriptor->ResourceLength;
-      if ((ResourceDescriptor->ResourceType == EFI_RESOURCE_MEMORY_MAPPED_IO) ||
-          (ResourceDescriptor->ResourceType == EFI_RESOURCE_FIRMWARE_DEVICE))
-      {
-        TempBuffer[Index].Type     = SPECIAL_RANGE_START;
-        TempBuffer[Index + 1].Type = SPECIAL_RANGE_END;
-      } else {
-        TempBuffer[Index].Type     = DXE_RANGE_START;
-        TempBuffer[Index + 1].Type = DXE_RANGE_END;
-      }
+//     if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
+//       DEBUG ((
+//         DEBUG_INFO,
+//         "%a - MemoryResource - Start(0x%0lx) Length(0x%0lx) Type(0x%x)\n",
+//         __func__,
+//         ResourceDescriptor->PhysicalStart,
+//         ResourceDescriptor->ResourceLength,
+//         ResourceDescriptor->ResourceType
+//         ));
+//       TempBuffer[Index].Address     = ResourceDescriptor->PhysicalStart;
+//       TempBuffer[Index + 1].Address = ResourceDescriptor->PhysicalStart + ResourceDescriptor->ResourceLength;
+//       if ((ResourceDescriptor->ResourceType == EFI_RESOURCE_MEMORY_MAPPED_IO) ||
+//           (ResourceDescriptor->ResourceType == EFI_RESOURCE_FIRMWARE_DEVICE))
+//       {
+//         TempBuffer[Index].Type     = SPECIAL_RANGE_START;
+//         TempBuffer[Index + 1].Type = SPECIAL_RANGE_END;
+//       } else {
+//         TempBuffer[Index].Type     = DXE_RANGE_START;
+//         TempBuffer[Index + 1].Type = DXE_RANGE_END;
+//       }
 
-      Index += 2;
-    }
+//       Index += 2;
+//     }
 
-    ResourceDescriptor = NULL;
-    Hob.Raw            = GET_NEXT_HOB (Hob);
-  }
+//     ResourceDescriptor = NULL;
+//     Hob.Raw            = GET_NEXT_HOB (Hob);
+//   }
 
-  ASSERT (mMmramRanges != NULL);
-  for (MmIndex = 0; MmIndex < mMmramRangeCount; MmIndex++) {
-    DEBUG ((
-      DEBUG_INFO,
-      "%a - MMRAM - Start(0x%0lx) Length(0x%0lx)\n",
-      __func__,
-      mMmramRanges[MmIndex].PhysicalStart,
-      mMmramRanges[MmIndex].PhysicalSize
-      ));
-    TempBuffer[Index].Address = mMmramRanges[MmIndex].PhysicalStart;
-    TempBuffer[Index].Type    = SMM_RANGE_START;
-    Index++;
-    TempBuffer[Index].Address = mMmramRanges[MmIndex].PhysicalStart + mMmramRanges[MmIndex].PhysicalSize;
-    TempBuffer[Index].Type    = SMM_RANGE_END;
-    Index++;
-  }
+//   ASSERT (mMmramRanges != NULL);
+//   for (MmIndex = 0; MmIndex < mMmramRangeCount; MmIndex++) {
+//     DEBUG ((
+//       DEBUG_INFO,
+//       "%a - MMRAM - Start(0x%0lx) Length(0x%0lx)\n",
+//       __func__,
+//       mMmramRanges[MmIndex].PhysicalStart,
+//       mMmramRanges[MmIndex].PhysicalSize
+//       ));
+//     TempBuffer[Index].Address = mMmramRanges[MmIndex].PhysicalStart;
+//     TempBuffer[Index].Type    = SMM_RANGE_START;
+//     Index++;
+//     TempBuffer[Index].Address = mMmramRanges[MmIndex].PhysicalStart + mMmramRanges[MmIndex].PhysicalSize;
+//     TempBuffer[Index].Type    = SMM_RANGE_END;
+//     Index++;
+//   }
 
-  // Sort all the address points we have found
-  PerformQuickSort (TempBuffer, Index, sizeof (MEMORY_ADDRESS_POINT), CompareAddressPoint);
+//   // Sort all the address points we have found
+//   PerformQuickSort (TempBuffer, Index, sizeof (MEMORY_ADDRESS_POINT), CompareAddressPoint);
 
-  *Count         = Index;
-  *MemAddrBuffer = TempBuffer;
+//   *Count         = Index;
+//   *MemAddrBuffer = TempBuffer;
 
-  return EFI_SUCCESS;
-}
+//   return EFI_SUCCESS;
+// }
 
-/*
-Helper function to mark all non SMM memory ranges reported through hobs as non present
-*/
-VOID
-EFIAPI
-SetNonSmmMemMapAttributes (
-  VOID
-  )
-{
-  UINTN                                MemIdx;
-  UINTN                                Index;
-  MEMORY_ADDRESS_POINT                 *TempBuffer;
-  EFI_STATUS                           Status;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockRegionParams;
-  EFI_PHYSICAL_ADDRESS                 MaximumSupportMemAddress;
+// /*
+// Helper function to mark all non SMM memory ranges reported through hobs as non present
+// */
+// VOID
+// EFIAPI
+// SetNonSmmMemMapAttributes (
+//   VOID
+//   )
+// {
+//   UINTN                                MemIdx;
+//   UINTN                                Index;
+//   MEMORY_ADDRESS_POINT                 *TempBuffer;
+//   EFI_STATUS                           Status;
+//   MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockRegionParams;
+//   EFI_PHYSICAL_ADDRESS                 MaximumSupportMemAddress;
 
-  TempBuffer = NULL;
-  Status     = CoalesceHobMemory (&TempBuffer, &MemIdx);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Coalesce hob memory overlap failed, unable to proceed - %r\n", __func__, Status));
-    goto Exit;
-  }
+//   TempBuffer = NULL;
+//   Status     = CoalesceHobMemory (&TempBuffer, &MemIdx);
+//   if (EFI_ERROR (Status)) {
+//     DEBUG ((DEBUG_ERROR, "%a - Coalesce hob memory overlap failed, unable to proceed - %r\n", __func__, Status));
+//     goto Exit;
+//   }
 
-  if ((MemIdx == 0) || (MemIdx & BIT0)) {
-    // Should not happen
-    DEBUG ((DEBUG_ERROR, "%a - Memory resources has odd number of ends - 0x%x\n", __func__, MemIdx));
-    Status = EFI_SECURITY_VIOLATION;
-    goto Exit;
-  }
+//   if ((MemIdx == 0) || (MemIdx & BIT0)) {
+//     // Should not happen
+//     DEBUG ((DEBUG_ERROR, "%a - Memory resources has odd number of ends - 0x%x\n", __func__, MemIdx));
+//     Status = EFI_SECURITY_VIOLATION;
+//     goto Exit;
+//   }
 
-  // Initialize the starting instance of memory address point
-  if ((TempBuffer[0].Type == DXE_RANGE_END) ||
-      (TempBuffer[0].Type == SMM_RANGE_END) ||
-      (TempBuffer[0].Type == SPECIAL_RANGE_END))
-  {
-    Status = EFI_SECURITY_VIOLATION;
-    DEBUG ((DEBUG_ERROR, "%a - Memory resources starts with 'END' type - %r\n", __func__, Status));
-    goto Exit;
-  }
+//   // Initialize the starting instance of memory address point
+//   if ((TempBuffer[0].Type == DXE_RANGE_END) ||
+//       (TempBuffer[0].Type == SMM_RANGE_END) ||
+//       (TempBuffer[0].Type == SPECIAL_RANGE_END))
+//   {
+//     Status = EFI_SECURITY_VIOLATION;
+//     DEBUG ((DEBUG_ERROR, "%a - Memory resources starts with 'END' type - %r\n", __func__, Status));
+//     goto Exit;
+//   }
 
-  // Brute force coverage extension, this portion covers range from 0 to first published hob
-  if (TempBuffer[0].Address != 0) {
-    Status = SmmSetMemoryAttributes (0, TempBuffer[0].Address, EFI_MEMORY_RP);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Marking memory region 0 - 0x%x failed - %r\n", __func__, TempBuffer[0].Address, Status));
-      goto Exit;
-    }
-  }
+//   // Brute force coverage extension, this portion covers range from 0 to first published hob
+//   if (TempBuffer[0].Address != 0) {
+//     Status = SmmSetMemoryAttributes (0, TempBuffer[0].Address, EFI_MEMORY_RP);
+//     if (EFI_ERROR (Status)) {
+//       DEBUG ((DEBUG_ERROR, "%a - Marking memory region 0 - 0x%x failed - %r\n", __func__, TempBuffer[0].Address, Status));
+//       goto Exit;
+//     }
+//   }
 
-  // Interate through the TempBuffer now
-  // The rules to pass the scanning:
-  // 1. Non-MM region should not overlap with another non-MM region
-  // 2. MM region should not overlap with another MM region
-  // 3. Each MM range should belong to one and only one dxe range
-  // 4. Lengths for all ranges should be EFI_PAGE_SIZE aligned
-  for (Index = 1; Index < MemIdx; Index++) {
-    switch (TempBuffer[Index].Type) {
-      case DXE_RANGE_START:
-        if ((TempBuffer[Index-1].Type != DXE_RANGE_END) &&
-            (TempBuffer[Index-1].Type != SPECIAL_RANGE_END))
-        {
-          // A non-MM region starts after MMRAM or inside another region, should not happen...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - Non-MM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index-1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//   // Interate through the TempBuffer now
+//   // The rules to pass the scanning:
+//   // 1. Non-MM region should not overlap with another non-MM region
+//   // 2. MM region should not overlap with another MM region
+//   // 3. Each MM range should belong to one and only one dxe range
+//   // 4. Lengths for all ranges should be EFI_PAGE_SIZE aligned
+//   for (Index = 1; Index < MemIdx; Index++) {
+//     switch (TempBuffer[Index].Type) {
+//       case DXE_RANGE_START:
+//         if ((TempBuffer[Index-1].Type != DXE_RANGE_END) &&
+//             (TempBuffer[Index-1].Type != SPECIAL_RANGE_END))
+//         {
+//           // A non-MM region starts after MMRAM or inside another region, should not happen...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - Non-MM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index-1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // Otherwise, new start from previous non MMRAM ends, mark the gap not present
-        // because paging initialization might page everything as RW...
-        if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
-          // No need to set RP if reported memory resources are not contiguous
-          DEBUG ((
-            DEBUG_INFO,
-            "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __func__,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index].Address - TempBuffer[Index-1].Address
-            ));
-          Status = SmmSetMemoryAttributes (
-                     TempBuffer[Index-1].Address,
-                     TempBuffer[Index].Address - TempBuffer[Index-1].Address,
-                     EFI_MEMORY_RP
-                     );
-          if (EFI_ERROR (Status)) {
-            goto Exit;
-          }
-        }
+//         // Otherwise, new start from previous non MMRAM ends, mark the gap not present
+//         // because paging initialization might page everything as RW...
+//         if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
+//           // No need to set RP if reported memory resources are not contiguous
+//           DEBUG ((
+//             DEBUG_INFO,
+//             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
+//             __func__,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index].Address - TempBuffer[Index-1].Address
+//             ));
+//           Status = SmmSetMemoryAttributes (
+//                      TempBuffer[Index-1].Address,
+//                      TempBuffer[Index].Address - TempBuffer[Index-1].Address,
+//                      EFI_MEMORY_RP
+//                      );
+//           if (EFI_ERROR (Status)) {
+//             goto Exit;
+//           }
+//         }
 
-        break;
-      case SMM_RANGE_START:
-        if ((TempBuffer[Index-1].Type != DXE_RANGE_START) &&
-            (TempBuffer[Index-1].Type != SMM_RANGE_END))
-        {
-          // Either SMM not starting inside a DXE region, or overlaps with over MMRAM, should not happen...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - MMRAM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index-1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         break;
+//       case SMM_RANGE_START:
+//         if ((TempBuffer[Index-1].Type != DXE_RANGE_START) &&
+//             (TempBuffer[Index-1].Type != SMM_RANGE_END))
+//         {
+//           // Either SMM not starting inside a DXE region, or overlaps with over MMRAM, should not happen...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - MMRAM memory region starts with 0x%p clashes with range 0x%p of type %x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index-1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // Either normal DXE range needs to end here or gap between MMRAMs, mark it not present
-        if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
-          // No need to set RP if this MMRAM is at the beginning of DXE range or end of previous MMRAM
-          DEBUG ((
-            DEBUG_INFO,
-            "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __func__,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index].Address - TempBuffer[Index-1].Address
-            ));
-          Status = SmmSetMemoryAttributes (
-                     TempBuffer[Index-1].Address,
-                     TempBuffer[Index].Address - TempBuffer[Index-1].Address,
-                     EFI_MEMORY_RP
-                     );
-          if (EFI_ERROR (Status)) {
-            goto Exit;
-          }
-        }
+//         // Either normal DXE range needs to end here or gap between MMRAMs, mark it not present
+//         if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
+//           // No need to set RP if this MMRAM is at the beginning of DXE range or end of previous MMRAM
+//           DEBUG ((
+//             DEBUG_INFO,
+//             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
+//             __func__,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index].Address - TempBuffer[Index-1].Address
+//             ));
+//           Status = SmmSetMemoryAttributes (
+//                      TempBuffer[Index-1].Address,
+//                      TempBuffer[Index].Address - TempBuffer[Index-1].Address,
+//                      EFI_MEMORY_RP
+//                      );
+//           if (EFI_ERROR (Status)) {
+//             goto Exit;
+//           }
+//         }
 
-        // Check the following entry as well
-        if ((Index + 1 >= MemIdx) || (TempBuffer[Index+1].Type != SMM_RANGE_END)) {
-          // A single MMRAM region is not consistent in resource type
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - MMRAM memory region starts with 0x%p clashes with range at index 0x%x before ending!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            Index+1
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         // Check the following entry as well
+//         if ((Index + 1 >= MemIdx) || (TempBuffer[Index+1].Type != SMM_RANGE_END)) {
+//           // A single MMRAM region is not consistent in resource type
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - MMRAM memory region starts with 0x%p clashes with range at index 0x%x before ending!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             Index+1
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // Then we can fall through into SMM_RANGE_END case
-        Index++;
-      case SMM_RANGE_END:
-        if (TempBuffer[Index-1].Type != SMM_RANGE_START) {
-          // Special region has suspicious start...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - MMRAM region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index-1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         // Then we can fall through into SMM_RANGE_END case
+//         Index++;
+//       case SMM_RANGE_END:
+//         if (TempBuffer[Index-1].Type != SMM_RANGE_START) {
+//           // Special region has suspicious start...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - MMRAM region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index-1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        break;
-      case DXE_RANGE_END:
-        if ((TempBuffer[Index-1].Type != DXE_RANGE_START) &&
-            (TempBuffer[Index-1].Type != SMM_RANGE_END))
-        {
-          // DXE region ends after unexpected memory resource type, should not happen...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - DXE memory region ends at 0x%p after unexpected memory resource type %x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         break;
+//       case DXE_RANGE_END:
+//         if ((TempBuffer[Index-1].Type != DXE_RANGE_START) &&
+//             (TempBuffer[Index-1].Type != SMM_RANGE_END))
+//         {
+//           // DXE region ends after unexpected memory resource type, should not happen...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - DXE memory region ends at 0x%p after unexpected memory resource type %x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // DXE range ends here, mark it not present from the previous point
-        // It could be SMM end or DXE start.
-        if ((TempBuffer[Index].Address > TempBuffer[Index-1].Address) ||
-            (TempBuffer[Index-1].Type == DXE_RANGE_START))
-        {
-          // No need to set RP if MMRAM is at the end of this DXE range
-          DEBUG ((
-            DEBUG_INFO,
-            "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __func__,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index].Address - TempBuffer[Index-1].Address
-            ));
-          Status = SmmSetMemoryAttributes (
-                     TempBuffer[Index-1].Address,
-                     TempBuffer[Index].Address - TempBuffer[Index-1].Address,
-                     EFI_MEMORY_RP
-                     );
-        }
+//         // DXE range ends here, mark it not present from the previous point
+//         // It could be SMM end or DXE start.
+//         if ((TempBuffer[Index].Address > TempBuffer[Index-1].Address) ||
+//             (TempBuffer[Index-1].Type == DXE_RANGE_START))
+//         {
+//           // No need to set RP if MMRAM is at the end of this DXE range
+//           DEBUG ((
+//             DEBUG_INFO,
+//             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
+//             __func__,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index].Address - TempBuffer[Index-1].Address
+//             ));
+//           Status = SmmSetMemoryAttributes (
+//                      TempBuffer[Index-1].Address,
+//                      TempBuffer[Index].Address - TempBuffer[Index-1].Address,
+//                      EFI_MEMORY_RP
+//                      );
+//         }
 
-        if (EFI_ERROR (Status)) {
-          goto Exit;
-        }
+//         if (EFI_ERROR (Status)) {
+//           goto Exit;
+//         }
 
-        break;
-      case SPECIAL_RANGE_START:
-        // Special range has to start after a non-MM end and followed by a special range end
-        if (((TempBuffer[Index-1].Type != DXE_RANGE_END) &&
-             (TempBuffer[Index-1].Type != SPECIAL_RANGE_END)) ||
-            (Index+1 >= MemIdx) ||
-            (TempBuffer[Index+1].Type != SPECIAL_RANGE_END))
-        {
-          // Special region has suspicious neighbors...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - Special region starts at 0x%p has suspicious neighbors of: 1. addr 0x%p, type 0x%x and 2. addr 0x%p, type 0x%x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index-1].Type,
-            TempBuffer[Index+1].Address,
-            TempBuffer[Index+1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         break;
+//       case SPECIAL_RANGE_START:
+//         // Special range has to start after a non-MM end and followed by a special range end
+//         if (((TempBuffer[Index-1].Type != DXE_RANGE_END) &&
+//              (TempBuffer[Index-1].Type != SPECIAL_RANGE_END)) ||
+//             (Index+1 >= MemIdx) ||
+//             (TempBuffer[Index+1].Type != SPECIAL_RANGE_END))
+//         {
+//           // Special region has suspicious neighbors...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - Special region starts at 0x%p has suspicious neighbors of: 1. addr 0x%p, type 0x%x and 2. addr 0x%p, type 0x%x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index-1].Type,
+//             TempBuffer[Index+1].Address,
+//             TempBuffer[Index+1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // There is a gap between a previous NON-MM range and this special range, mark it not present
-        if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
-          // For the gap region following MMIO range, we round up the start and stick to the original end to align to EFI_PAGE_SIZE
-          DEBUG ((
-            DEBUG_INFO,
-            "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
-            __func__,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index].Address - TempBuffer[Index-1].Address
-            ));
-          Status = SmmSetMemoryAttributes (
-                     (TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-                     TempBuffer[Index].Address - ((TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1)),
-                     EFI_MEMORY_RP
-                     );
-          if (EFI_ERROR (Status)) {
-            goto Exit;
-          }
-        }
+//         // There is a gap between a previous NON-MM range and this special range, mark it not present
+//         if (TempBuffer[Index].Address > TempBuffer[Index-1].Address) {
+//           // For the gap region following MMIO range, we round up the start and stick to the original end to align to EFI_PAGE_SIZE
+//           DEBUG ((
+//             DEBUG_INFO,
+//             "%a - Mark Non-SMM Pages - Start(0x%0lx) Length(0x%0lx)\n",
+//             __func__,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index].Address - TempBuffer[Index-1].Address
+//             ));
+//           Status = SmmSetMemoryAttributes (
+//                      (TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
+//                      TempBuffer[Index].Address - ((TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1)),
+//                      EFI_MEMORY_RP
+//                      );
+//           if (EFI_ERROR (Status)) {
+//             goto Exit;
+//           }
+//         }
 
-        Index++;
-      // Fall through to SPECIAL_RANGE_END
-      case SPECIAL_RANGE_END:
-        if (TempBuffer[Index-1].Type != SPECIAL_RANGE_START) {
-          // Special region has suspicious start...
-          DEBUG ((
-            DEBUG_ERROR,
-            "%a - Special region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
-            __func__,
-            TempBuffer[Index].Address,
-            TempBuffer[Index-1].Address,
-            TempBuffer[Index-1].Type
-            ));
-          Status = EFI_SECURITY_VIOLATION;
-          goto Exit;
-        }
+//         Index++;
+//       // Fall through to SPECIAL_RANGE_END
+//       case SPECIAL_RANGE_END:
+//         if (TempBuffer[Index-1].Type != SPECIAL_RANGE_START) {
+//           // Special region has suspicious start...
+//           DEBUG ((
+//             DEBUG_ERROR,
+//             "%a - Special region ends at 0x%p has suspicious start addr 0x%p, type 0x%x!!!\n",
+//             __func__,
+//             TempBuffer[Index].Address,
+//             TempBuffer[Index-1].Address,
+//             TempBuffer[Index-1].Type
+//             ));
+//           Status = EFI_SECURITY_VIOLATION;
+//           goto Exit;
+//         }
 
-        // MMIO range ends here, mark it not present first, since ProcessUnblockPages will only unblock blocked pages..
-        // For the MMIO region, we stick to original start and round up the length to align to EFI_PAGE_SIZE
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - Mark MMIO Pages - Start(0x%0lx) Length(0x%0lx)\n",
-          __func__,
-          TempBuffer[Index-1].Address,
-          TempBuffer[Index].Address - TempBuffer[Index-1].Address
-          ));
-        Status = SmmSetMemoryAttributes (
-                   TempBuffer[Index-1].Address,
-                   (TempBuffer[Index].Address - TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-                   EFI_MEMORY_RP
-                   );
-        if (EFI_ERROR (Status)) {
-          goto Exit;
-        }
+//         // MMIO range ends here, mark it not present first, since ProcessUnblockPages will only unblock blocked pages..
+//         // For the MMIO region, we stick to original start and round up the length to align to EFI_PAGE_SIZE
+//         DEBUG ((
+//           DEBUG_INFO,
+//           "%a - Mark MMIO Pages - Start(0x%0lx) Length(0x%0lx)\n",
+//           __func__,
+//           TempBuffer[Index-1].Address,
+//           TempBuffer[Index].Address - TempBuffer[Index-1].Address
+//           ));
+//         Status = SmmSetMemoryAttributes (
+//                    TempBuffer[Index-1].Address,
+//                    (TempBuffer[Index].Address - TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
+//                    EFI_MEMORY_RP
+//                    );
+//         if (EFI_ERROR (Status)) {
+//           goto Exit;
+//         }
 
-        ZeroMem (&UnblockRegionParams, sizeof (UnblockRegionParams));
-        CopyMem (&UnblockRegionParams.IdentifierGuid, &gEfiCallerIdGuid, sizeof (EFI_GUID));
-        UnblockRegionParams.MemoryDescriptor.PhysicalStart = TempBuffer[Index-1].Address;
-        UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((TempBuffer[Index].Address - TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1));
-        Status                                             = ProcessUnblockPages (&UnblockRegionParams);
-        if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-          ASSERT (FALSE);
-        }
+//         ZeroMem (&UnblockRegionParams, sizeof (UnblockRegionParams));
+//         CopyMem (&UnblockRegionParams.IdentifierGuid, &gEfiCallerIdGuid, sizeof (EFI_GUID));
+//         UnblockRegionParams.MemoryDescriptor.PhysicalStart = TempBuffer[Index-1].Address;
+//         UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((TempBuffer[Index].Address - TempBuffer[Index-1].Address + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1));
+//         Status                                             = ProcessUnblockPages (&UnblockRegionParams);
+//         if (EFI_ERROR (Status)) {
+//           DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
+//           ASSERT (FALSE);
+//         }
 
-        break;
-      default:
-        // Should not happen...
-        Status = EFI_SECURITY_VIOLATION;
-        ASSERT (FALSE);
-        goto Exit;
-    }
-  }
+//         break;
+//       default:
+//         // Should not happen...
+//         Status = EFI_SECURITY_VIOLATION;
+//         ASSERT (FALSE);
+//         goto Exit;
+//     }
+//   }
 
-  // If we get here safely, brutal force coverage extension again, this portion covers range from last entry to MaximumSupportMemAddress + 1
-  MaximumSupportMemAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(LShiftU64 (1, mPhysicalAddressBits) - 1);
-  if (MaximumSupportMemAddress >= TempBuffer[MemIdx - 1].Address) {
-    DEBUG ((DEBUG_INFO, "%a - Marking top of memory region 0x%lx - 0x%lx\n", __func__, TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress + 1));
-    Status = SmmSetMemoryAttributes (TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress - TempBuffer[MemIdx - 1].Address + 1, EFI_MEMORY_RP);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Marking top of memory region 0x%lx - MaximumSupportMemAddress failed - %r\n", __func__, TempBuffer[MemIdx - 1].Address, Status));
-      goto Exit;
-    }
-  }
+//   // If we get here safely, brutal force coverage extension again, this portion covers range from last entry to MaximumSupportMemAddress + 1
+//   MaximumSupportMemAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(LShiftU64 (1, mPhysicalAddressBits) - 1);
+//   if (MaximumSupportMemAddress >= TempBuffer[MemIdx - 1].Address) {
+//     DEBUG ((DEBUG_INFO, "%a - Marking top of memory region 0x%lx - 0x%lx\n", __func__, TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress + 1));
+//     Status = SmmSetMemoryAttributes (TempBuffer[MemIdx - 1].Address, MaximumSupportMemAddress - TempBuffer[MemIdx - 1].Address + 1, EFI_MEMORY_RP);
+//     if (EFI_ERROR (Status)) {
+//       DEBUG ((DEBUG_ERROR, "%a - Marking top of memory region 0x%lx - MaximumSupportMemAddress failed - %r\n", __func__, TempBuffer[MemIdx - 1].Address, Status));
+//       goto Exit;
+//     }
+//   }
 
-Exit:
-  if (TempBuffer != NULL) {
-    FreePool (TempBuffer);
-  }
+// Exit:
+//   if (TempBuffer != NULL) {
+//     FreePool (TempBuffer);
+//   }
 
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Some step in setting the non MMRAM memory has gone wrong - %r!!!\n", __func__, Status));
-    ASSERT_EFI_ERROR (Status);
-    ResetCold ();
-  }
-}
+//   if (EFI_ERROR (Status)) {
+//     DEBUG ((DEBUG_ERROR, "%a - Some step in setting the non MMRAM memory has gone wrong - %r!!!\n", __func__, Status));
+//     ASSERT_EFI_ERROR (Status);
+//     ResetCold ();
+//   }
+// }
 
-/*
-Helper function to mark common buffer range as accessible from inside MM
-*/
-EFI_STATUS
-EFIAPI
-SetCommonBufferRegionAttribute (
-  VOID
-  )
-{
-  EFI_STATUS                           Status;
-  UINTN                                Index;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockRegionParams;
+// /*
+// Helper function to mark common buffer range as accessible from inside MM
+// */
+// EFI_STATUS
+// EFIAPI
+// SetCommonBufferRegionAttribute (
+//   VOID
+//   )
+// {
+//   EFI_STATUS                           Status;
+//   UINTN                                Index;
+//   MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockRegionParams;
 
-  ZeroMem (&UnblockRegionParams, sizeof (UnblockRegionParams));
-  CopyMem (&UnblockRegionParams.IdentifierGuid, &gEfiCallerIdGuid, sizeof (EFI_GUID));
+//   ZeroMem (&UnblockRegionParams, sizeof (UnblockRegionParams));
+//   CopyMem (&UnblockRegionParams.IdentifierGuid, &gEfiCallerIdGuid, sizeof (EFI_GUID));
 
-  for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
-    // For the supervisor buffer communication buffer space
-    if (mMmSupervisorAccessBuffer[Index].PhysicalStart == 0) {
-      // For the supervisor communication buffer space
-      ASSERT (mMmSupervisorAccessBuffer[Index].PhysicalStart != 0);
-      Status = EFI_NOT_AVAILABLE_YET;
-      goto Cleanup;
-    } else {
-      // Sanity check on the comm buffers and the mailbox data region
-      if (InternalIsBufferOverlapped (
-            (UINT8 *)mMmCommMailboxBufferStatus,
-            sizeof (*mMmCommMailboxBufferStatus),
-            (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
-            EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
-            ))
-      {
-        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with mailbox buffer with IPL!\n", __func__));
-        ASSERT_EFI_ERROR (Status);
-        Status = EFI_SECURITY_VIOLATION;
-        goto Cleanup;
-      }
+//   for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
+//     // For the supervisor buffer communication buffer space
+//     if (mMmSupervisorAccessBuffer[Index].PhysicalStart == 0) {
+//       // For the supervisor communication buffer space
+//       ASSERT (mMmSupervisorAccessBuffer[Index].PhysicalStart != 0);
+//       Status = EFI_NOT_AVAILABLE_YET;
+//       goto Cleanup;
+//     } else {
+//       // Sanity check on the comm buffers and the mailbox data region
+//       if (InternalIsBufferOverlapped (
+//             (UINT8 *)mMmCommMailboxBufferStatus,
+//             sizeof (*mMmCommMailboxBufferStatus),
+//             (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
+//             EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
+//             ))
+//       {
+//         DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with mailbox buffer with IPL!\n", __func__));
+//         ASSERT_EFI_ERROR (Status);
+//         Status = EFI_SECURITY_VIOLATION;
+//         goto Cleanup;
+//       }
 
-      // Remove RX set above
-      CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
-      Status = ProcessUnblockPages (&UnblockRegionParams);
-      if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-        ASSERT (FALSE);
-        goto Cleanup;
-      }
-    }
-  }
+//       // Remove RX set above
+//       CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
+//       Status = ProcessUnblockPages (&UnblockRegionParams);
+//       if (EFI_ERROR (Status)) {
+//         DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
+//         ASSERT (FALSE);
+//         goto Cleanup;
+//       }
+//     }
+//   }
 
-  // For the supervisor core private data that is shared with the IPL
-  // TODO: really do not want this region to be accessible by the IPL, but what
-  // is the difference if you will need it for common buffer anyway?
-  // Remove RX set above
-  ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
-  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
-  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  Status                                             = ProcessUnblockPages (&UnblockRegionParams);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-    ASSERT (FALSE);
-  }
+//   // For the supervisor core private data that is shared with the IPL
+//   // TODO: really do not want this region to be accessible by the IPL, but what
+//   // is the difference if you will need it for common buffer anyway?
+//   // Remove RX set above
+//   ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
+//   UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
+//   UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+//   UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+//   UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
+//   Status                                             = ProcessUnblockPages (&UnblockRegionParams);
+//   if (EFI_ERROR (Status)) {
+//     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
+//     ASSERT (FALSE);
+//   }
 
-Cleanup:
-  return Status;
-}
+// Cleanup:
+//   return Status;
+// }
 
-/*
-  Helper function to mark regions needs protection to be certain attributes, the implementation here will
-  only impact platform measurement security level, so do it as non-blocking operation.
-*/
-EFI_STATUS
-EFIAPI
-SetProtectedRegionAttribute (
-  VOID
-  )
-{
-  EFI_PEI_HOB_POINTERS  GuidHob;
-  MM_PROT_REGION_HOB    *ProtRegionHob;
-  EFI_STATUS            Status;
+// /*
+//   Helper function to mark regions needs protection to be certain attributes, the implementation here will
+//   only impact platform measurement security level, so do it as non-blocking operation.
+// */
+// EFI_STATUS
+// EFIAPI
+// SetProtectedRegionAttribute (
+//   VOID
+//   )
+// {
+//   EFI_PEI_HOB_POINTERS  GuidHob;
+//   MM_PROT_REGION_HOB    *ProtRegionHob;
+//   EFI_STATUS            Status;
 
-  GuidHob.Guid = GetFirstGuidHob (&gMmProtectedRegionHobGuid);
-  while (GuidHob.Guid != NULL) {
-    ProtRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
+//   GuidHob.Guid = GetFirstGuidHob (&gMmProtectedRegionHobGuid);
+//   while (GuidHob.Guid != NULL) {
+//     ProtRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
 
-    switch (ProtRegionHob->MmProtectedRegionType) {
-      case MM_PROT_MMIO_IOMMU_T:
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - IOMMU region 0x%p of 0x%x pages\n",
-          __func__,
-          ProtRegionHob->MmProtectedRegionAddr,
-          ProtRegionHob->MmProtectedRegionPages
-          ));
+//     switch (ProtRegionHob->MmProtectedRegionType) {
+//       case MM_PROT_MMIO_IOMMU_T:
+//         DEBUG ((
+//           DEBUG_INFO,
+//           "%a - IOMMU region 0x%p of 0x%x pages\n",
+//           __func__,
+//           ProtRegionHob->MmProtectedRegionAddr,
+//           ProtRegionHob->MmProtectedRegionPages
+//           ));
 
-        Status = SmmClearMemoryAttributes (
-                   ProtRegionHob->MmProtectedRegionAddr,
-                   EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
-                   EFI_MEMORY_RP | EFI_MEMORY_SP
-                   );
-        if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to clear IOMMU region attributes - %r\n", __func__, Status));
-          ASSERT (FALSE);
-        }
+//         Status = SmmClearMemoryAttributes (
+//                    ProtRegionHob->MmProtectedRegionAddr,
+//                    EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
+//                    EFI_MEMORY_RP | EFI_MEMORY_SP
+//                    );
+//         if (EFI_ERROR (Status)) {
+//           DEBUG ((DEBUG_ERROR, "%a - Failed to clear IOMMU region attributes - %r\n", __func__, Status));
+//           ASSERT (FALSE);
+//         }
 
-        Status = SmmSetMemoryAttributes (
-                   ProtRegionHob->MmProtectedRegionAddr,
-                   EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
-                   EFI_MEMORY_RO | EFI_MEMORY_XP
-                   );
-        if (EFI_ERROR (Status)) {
-          DEBUG ((DEBUG_ERROR, "%a - Failed to set IOMMU region attributes - %r\n", __func__, Status));
-          ASSERT (FALSE);
-        }
+//         Status = SmmSetMemoryAttributes (
+//                    ProtRegionHob->MmProtectedRegionAddr,
+//                    EFI_PAGES_TO_SIZE (ProtRegionHob->MmProtectedRegionPages),
+//                    EFI_MEMORY_RO | EFI_MEMORY_XP
+//                    );
+//         if (EFI_ERROR (Status)) {
+//           DEBUG ((DEBUG_ERROR, "%a - Failed to set IOMMU region attributes - %r\n", __func__, Status));
+//           ASSERT (FALSE);
+//         }
 
-        break;
-      case MM_PROT_MMIO_SEC_BIO_T:
-        DEBUG ((DEBUG_INFO, "%a - Secure Bio region found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
-        Status = EFI_UNSUPPORTED;
-        break;
-      default:
-        DEBUG ((DEBUG_ERROR, "%a - Unrecognized protected region type found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
-        ASSERT (FALSE);
-        Status = EFI_INVALID_PARAMETER;
-        break;
-    }
+//         break;
+//       case MM_PROT_MMIO_SEC_BIO_T:
+//         DEBUG ((DEBUG_INFO, "%a - Secure Bio region found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
+//         Status = EFI_UNSUPPORTED;
+//         break;
+//       default:
+//         DEBUG ((DEBUG_ERROR, "%a - Unrecognized protected region type found 0x%x\n", __func__, ProtRegionHob->MmProtectedRegionType));
+//         ASSERT (FALSE);
+//         Status = EFI_INVALID_PARAMETER;
+//         break;
+//     }
 
-    if (EFI_ERROR (Status)) {
-      break;
-    }
+//     if (EFI_ERROR (Status)) {
+//       break;
+//     }
 
-    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmProtectedRegionHobGuid, GuidHob.Guid);
-  }
+//     GuidHob.Guid = GET_NEXT_HOB (GuidHob);
+//     GuidHob.Guid = GetNextGuidHob (&gMmProtectedRegionHobGuid, GuidHob.Guid);
+//   }
 
-  return Status;
-}
+//   return Status;
+// }
 
-/*
-  Helper function to mark regions needs unblocking to corresponding attributes.
-*/
-EFI_STATUS
-EFIAPI
-SetUnblockRegionAttribute (
-  VOID
-  )
-{
-  EFI_PEI_HOB_POINTERS                 GuidHob;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockRegionHob;
-  EFI_STATUS                           Status;
+// /*
+//   Helper function to mark regions needs unblocking to corresponding attributes.
+// */
+// EFI_STATUS
+// EFIAPI
+// SetUnblockRegionAttribute (
+//   VOID
+//   )
+// {
+//   EFI_PEI_HOB_POINTERS                 GuidHob;
+//   MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockRegionHob;
+//   EFI_STATUS                           Status;
 
-  DEBUG ((DEBUG_INFO, "%a - Entry...\n", __func__));
-  Status       = EFI_SUCCESS;
-  GuidHob.Guid = GetFirstGuidHob (&gMmSupvUnblockRegionHobGuid);
-  while (GuidHob.Guid != NULL) {
-    UnblockRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
-    Status           = ProcessUnblockPages (UnblockRegionHob);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Unblock region exits with error - %r\n", __func__, Status));
-      ASSERT (FALSE);
-    }
+//   DEBUG ((DEBUG_INFO, "%a - Entry...\n", __func__));
+//   Status       = EFI_SUCCESS;
+//   GuidHob.Guid = GetFirstGuidHob (&gMmSupvUnblockRegionHobGuid);
+//   while (GuidHob.Guid != NULL) {
+//     UnblockRegionHob = GET_GUID_HOB_DATA (GuidHob.Guid);
+//     Status           = ProcessUnblockPages (UnblockRegionHob);
+//     if (EFI_ERROR (Status)) {
+//       DEBUG ((DEBUG_ERROR, "%a - Unblock region exits with error - %r\n", __func__, Status));
+//       ASSERT (FALSE);
+//     }
 
-    GuidHob.Guid = GET_NEXT_HOB (GuidHob);
-    GuidHob.Guid = GetNextGuidHob (&gMmSupvUnblockRegionHobGuid, GuidHob.Guid);
-  }
+//     GuidHob.Guid = GET_NEXT_HOB (GuidHob);
+//     GuidHob.Guid = GetNextGuidHob (&gMmSupvUnblockRegionHobGuid, GuidHob.Guid);
+//   }
 
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
-  return Status;
-}
+//   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
+//   return Status;
+// }
 
 /**
   Prevent the memory pages used for SMM page table from being overwritten.
@@ -2548,7 +2548,7 @@ EnablePageTableProtection (
     //
     // Set entire pool including header, used-memory and left free-memory as ReadOnly in SMM page table.
     //
-    ConvertMemoryPageAttributes (PageTableBase, mPagingMode, Address, PoolSize, EFI_MEMORY_RO | EFI_MEMORY_SP, TRUE, NULL);
+    ConvertMemoryPageAttributes (PageTableBase, Paging4Level, Address, PoolSize, EFI_MEMORY_RO | EFI_MEMORY_SP, TRUE, NULL);
     Pool = Pool->NextPool;
   } while (Pool != HeadPool);
 }
@@ -2596,40 +2596,40 @@ EnablePageTableProtection (
 //   return TRUE;
 // }
 
-/**
-  This function sets memory attribute for page table.
-**/
-VOID
-SetPageTableAttributes (
-  VOID
-  )
-{
-  // if (!IfReadOnlyPageTableNeeded ()) {
-  //   return;
-  // }
+// /**
+//   This function sets memory attribute for page table.
+// **/
+// VOID
+// SetPageTableAttributes (
+//   VOID
+//   )
+// {
+//   // if (!IfReadOnlyPageTableNeeded ()) {
+//   //   return;
+//   // }
 
-  PERF_FUNCTION_BEGIN ();
-  DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
+//   PERF_FUNCTION_BEGIN ();
+//   DEBUG ((DEBUG_INFO, "SetPageTableAttributes\n"));
 
-  // Set memory used by page table as Read Only.
-  DEBUG ((DEBUG_INFO, "Start...\n"));
-  EnablePageTableProtection ();
+//   // Set memory used by page table as Read Only.
+//   DEBUG ((DEBUG_INFO, "Start...\n"));
+//   EnablePageTableProtection ();
 
-  //
-  // Enable write protection, after page table attribute updated.
-  //
-  // MU_CHANGE: MM_SUPV Starts: Need to restore CR0 when this routine is executed before
-  // initialization complete.
-  if (mCoreInitializationComplete) {
-    //
-    // Flush TLB after mark all page table pool as read only.
-    //
-    FlushTlbForAll ();
-  }
+//   //
+//   // Enable write protection, after page table attribute updated.
+//   //
+//   // MU_CHANGE: MM_SUPV Starts: Need to restore CR0 when this routine is executed before
+//   // initialization complete.
+//   if (mCoreInitializationComplete) {
+//     //
+//     // Flush TLB after mark all page table pool as read only.
+//     //
+//     FlushTlbForAll ();
+//   }
 
-  // MU_CHANGE: MM_SUPV Ends
+//   // MU_CHANGE: MM_SUPV Ends
 
-  mIsReadOnlyPageTable = TRUE;
+//   mIsReadOnlyPageTable = TRUE;
 
-  PERF_FUNCTION_END ();
-}
+//   PERF_FUNCTION_END ();
+// }

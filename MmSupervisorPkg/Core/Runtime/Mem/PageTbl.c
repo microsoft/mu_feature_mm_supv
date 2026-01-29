@@ -32,9 +32,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define ACC_MAX_BIT       BIT3
 
 LIST_ENTRY                mPagePool           = INITIALIZE_LIST_HEAD_VARIABLE (mPagePool);
-BOOLEAN                   m1GPageTableSupport = FALSE;
-BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
-X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
+// BOOLEAN                   m1GPageTableSupport = FALSE;
+// BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
+// X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
 UINT8                     mPhysicalAddressBits;
 
 // TODO: This should not be here
@@ -56,31 +56,31 @@ UINTN  mSmmStackSize;
 extern SPIN_LOCK  *mPFLock;
 extern UINT64                       gPhyMask;
 
-/**
-  Check if 1-GByte pages is supported by processor or not.
+// /**
+//   Check if 1-GByte pages is supported by processor or not.
 
-  @retval TRUE   1-GByte pages is supported.
-  @retval FALSE  1-GByte pages is not supported.
+//   @retval TRUE   1-GByte pages is supported.
+//   @retval FALSE  1-GByte pages is not supported.
 
-**/
-BOOLEAN
-Is1GPageSupport (
-  VOID
-  )
-{
-  UINT32  RegEax;
-  UINT32  RegEdx;
+// **/
+// BOOLEAN
+// Is1GPageSupport (
+//   VOID
+//   )
+// {
+//   UINT32  RegEax;
+//   UINT32  RegEdx;
 
-  AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
-  if (RegEax >= 0x80000001) {
-    AsmCpuid (0x80000001, NULL, NULL, NULL, &RegEdx);
-    if ((RegEdx & BIT26) != 0) {
-      return TRUE;
-    }
-  }
+//   AsmCpuid (0x80000000, &RegEax, NULL, NULL, NULL);
+//   if (RegEax >= 0x80000001) {
+//     AsmCpuid (0x80000001, NULL, NULL, NULL, &RegEdx);
+//     if ((RegEdx & BIT26) != 0) {
+//       return TRUE;
+//     }
+//   }
 
-  return FALSE;
-}
+//   return FALSE;
+// }
 
 /**
   The routine returns TRUE when CPU supports it (CPUID[7,0].ECX.BIT[16] is set) and
@@ -847,10 +847,10 @@ SmiDefaultPFHandler (
       PageAttribute |= (UINTN)IA32_PG_PS;
       break;
     case SmmPageSize1G:
-      if (!m1GPageTableSupport) {
-        DEBUG ((DEBUG_ERROR, "1-GByte pages is not supported!"));
-        ASSERT (FALSE);
-      }
+      // if (!m1GPageTableSupport) {
+      //   DEBUG ((DEBUG_ERROR, "1-GByte pages is not supported!"));
+      //   ASSERT (FALSE);
+      // }
 
       //
       // BIT30 to BIT38 is Page Directory Pointer Table index
@@ -1101,12 +1101,12 @@ SaveCr2 (
   OUT UINTN  *Cr2
   )
 {
-  if (!mCpuSmmRestrictedMemoryAccess) {
-    //
-    // On-demand paging is enabled when access to non-SMRAM is not restricted.
-    //
-    *Cr2 = AsmReadCr2 ();
-  }
+  // if (!mCpuSmmRestrictedMemoryAccess) {
+  //   //
+  //   // On-demand paging is enabled when access to non-SMRAM is not restricted.
+  //   //
+  //   *Cr2 = AsmReadCr2 ();
+  // }
 }
 
 /**
@@ -1119,12 +1119,12 @@ RestoreCr2 (
   IN UINTN  Cr2
   )
 {
-  if (!mCpuSmmRestrictedMemoryAccess) {
-    //
-    // On-demand paging is enabled when access to non-SMRAM is not restricted.
-    //
-    AsmWriteCr2 (Cr2);
-  }
+  // if (!mCpuSmmRestrictedMemoryAccess) {
+  //   //
+  //   // On-demand paging is enabled when access to non-SMRAM is not restricted.
+  //   //
+  //   AsmWriteCr2 (Cr2);
+  // }
 }
 
 /**
@@ -1138,5 +1138,5 @@ IsRestrictedMemoryAccess (
   VOID
   )
 {
-  return mCpuSmmRestrictedMemoryAccess;
+  return TRUE;
 }

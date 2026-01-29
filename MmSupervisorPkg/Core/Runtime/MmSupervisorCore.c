@@ -97,9 +97,9 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
   NULL,                          // MmRegisterProtocolNotify,
   NULL,                          // MmLocateHandle,
   NULL,                          // MmLocateProtocol,
-  MmiManage,
-  MmiSupvHandlerRegister,
-  MmiHandlerSupvUnRegister
+  NULL,                          // MmiManage,
+  NULL,                          // MmiHandlerRegister,
+  NULL,                          // MmiHandlerUnRegister,
 };
 
 EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
@@ -116,9 +116,9 @@ MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
   //       directly bail with EFI_NOT_READY.
   // { MmDriverDispatchHandler, &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
   // { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
-  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
-  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
-  { NULL,                    NULL,                              NULL, FALSE, TRUE  },
+  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE   },
+  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE  },
+  { NULL,                    NULL,                              NULL, FALSE  },
 };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
@@ -391,23 +391,25 @@ MmReadyToLockHandler (
   // Unregister MMI Handlers that are no longer required after the MM driver dispatch is stopped
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
-    if (mMmCoreMmiHandlers[Index].UnRegister) {
-      if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
-        Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
-      } else {
-        Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
-      }
-      if (EFI_ERROR (Status)) {
-        DEBUG ((
-          DEBUG_ERROR,
-          "Failed to unregister supervisor handler No. %d %g (%a) - %r\n",
-          Index,
-          mMmCoreMmiHandlers[Index].HandlerType,
-          mMmCoreMmiHandlers[Index].SupervisorHandler ? "S" : "U",
-          Status
-          ));
-      }
-    }
+    ZeroMem (&mMmCoreMmiHandlers[Index], sizeof (MM_CORE_MMI_HANDLERS));
+    // if (mMmCoreMmiHandlers[Index].UnRegister) {
+    //   if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
+    //     Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+    //   } else {
+    //     Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+    //   }
+    //   if (EFI_ERROR (Status)) {
+    //     DEBUG ((
+    //       DEBUG_ERROR,
+    //       "Failed to unregister supervisor handler No. %d %g (%a) - %r\n",
+    //       Index,
+    //       mMmCoreMmiHandlers[Index].HandlerType,
+    //       mMmCoreMmiHandlers[Index].SupervisorHandler ? "S" : "U",
+    //       Status
+    //       ));
+    //   }
+    // }
+    // 
   }
 
   // // All drivers has been dispatched, recycle all the buffers allocated for ffs driver caching
@@ -496,7 +498,7 @@ MmEntryPoint (
 
   PERF_FUNCTION_BEGIN ();
 
-  DEBUG ((DEBUG_VERBOSE, "MmEntryPoint ...\n"));
+  DEBUG ((DEBUG_VERBOSE, "Supv MmEntryPoint ...\n"));
 
   //
   // Update MMST using the context
@@ -515,52 +517,53 @@ MmEntryPoint (
       // Synchronous MMI for MM Core or request from Communicate protocol
       //
       if (!mMmCommunicationBufferStatus.TalkToSupervisor) {
-        //
-        // This should be user communicate channel, follow normal user channel iterations, but use ring 3 buffer to hold BufferSize changes
-        //
-        CommunicationBuffer = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
-        ZeroMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
-        CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
-        CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_USER_BUFFER_T];
+        // //
+        // // This should be user communicate channel, follow normal user channel iterations, but use ring 3 buffer to hold BufferSize changes
+        // //
+        // CommunicationBuffer = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
+        // ZeroMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
+        // CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
+        // CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_USER_BUFFER_T];
 
-        //
-        // Now we operate on the copy
-        //
-        SupervisorToUserDataBuffer->UserBufferSize = CommunicateHeader->MessageLength;
-        if (SupervisorToUserDataBuffer->UserBufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-          // The input buffer size is larger than the maximal allowed size, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
-          ASSERT (FALSE);
-          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
-          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
-          goto Cleanup;
-        }
+        // //
+        // // Now we operate on the copy
+        // //
+        // SupervisorToUserDataBuffer->UserBufferSize = CommunicateHeader->MessageLength;
+        // if (SupervisorToUserDataBuffer->UserBufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
+        //   // The input buffer size is larger than the maximal allowed size, need to panic here.
+        //   DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
+        //   ASSERT (FALSE);
+        //   mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+        //   mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+        //   mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+        //   goto Cleanup;
+        // }
 
-        Status = MmiManage (
-                   &CommunicateHeader->HeaderGuid,
-                   NULL,
-                   CommunicateHeader->Data,
-                   (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
-                   );
-        //
-        // Update CommunicationBuffer, BufferSize and ReturnStatus
-        // Communicate service finished, reset the pointer to CommBuffer to NULL
-        //
-        BufferSize = SupervisorToUserDataBuffer->UserBufferSize +
-                     OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
-        if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-          CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
-        } else {
-          // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-          DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
-          ASSERT (FALSE);
-        }
+        // Status = MmiManage (
+        //            &CommunicateHeader->HeaderGuid,
+        //            NULL,
+        //            CommunicateHeader->Data,
+        //            (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
+        //            );
+        // //
+        // // Update CommunicationBuffer, BufferSize and ReturnStatus
+        // // Communicate service finished, reset the pointer to CommBuffer to NULL
+        // //
+        // BufferSize = SupervisorToUserDataBuffer->UserBufferSize +
+        //              OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+        // if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
+        //   CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
+        // } else {
+        //   // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
+        //   DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
+        //   ASSERT (FALSE);
+        // }
+        PANIC ("Not supported in this model!\n");
 
         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-        mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
+        mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
         // Rather than typical not_found on errors, this will bubble up the not_ready error.
-        mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
+        mMmCommunicationBufferStatus.ReturnStatus      = EFI_ACCESS_DENIED;
       } else {
         //
         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
@@ -585,12 +588,26 @@ MmEntryPoint (
           goto Cleanup;
         }
 
-        Status = MmiManage (
-                   &CommunicateHeader->HeaderGuid,
-                   NULL,
-                   CommunicateHeader->Data,
-                   (UINTN *)&BufferSize
-                   );
+        // Loop through the mMmCoreMmiHandlers to find a matching handler
+        Status = EFI_NOT_FOUND;
+        for (UINTN Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
+          if (CompareGuid (&CommunicateHeader->HeaderGuid, mMmCoreMmiHandlers[Index].HandlerType)) {
+            Status = mMmCoreMmiHandlers[Index].Handler (
+                       mMmCoreMmiHandlers[Index].DispatchHandle,
+                       NULL,
+                       CommunicateHeader->Data,
+                       (UINTN *)&BufferSize
+                       );
+            break;
+          }
+        }
+
+        // Status = MmiManage (
+        //            &CommunicateHeader->HeaderGuid,
+        //            NULL,
+        //            CommunicateHeader->Data,
+        //            (UINTN *)&BufferSize
+        //            );
         //
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
@@ -618,14 +635,14 @@ MmEntryPoint (
     DEBUG ((DEBUG_INFO, "No valid communication buffer, no Synchronous MMI will be processed\n"));
   }
 
-  //
-  // Process Asynchronous MMI sources
-  //
-  MmiManage (NULL, NULL, NULL, NULL);
+  // //
+  // // Process Asynchronous MMI sources
+  // //
+  // MmiManage (NULL, NULL, NULL, NULL);
 
-  //
-  // TBD: Do not use private data structure ?
-  //
+  // //
+  // // TBD: Do not use private data structure ?
+  // //
 
 Cleanup:
   //
@@ -640,33 +657,33 @@ Cleanup:
   PERF_FUNCTION_END ();
 }
 
-EFI_STATUS
-EFIAPI
-MmConfigurationMmNotify (
-  IN CONST EFI_GUID  *Protocol,
-  IN VOID            *Interface,
-  IN EFI_HANDLE      Handle
-  )
-{
-  EFI_STATUS                     Status;
-  EFI_MM_CONFIGURATION_PROTOCOL  *MmConfiguration;
+// EFI_STATUS
+// EFIAPI
+// MmConfigurationMmNotify (
+//   IN CONST EFI_GUID  *Protocol,
+//   IN VOID            *Interface,
+//   IN EFI_HANDLE      Handle
+//   )
+// {
+//   EFI_STATUS                     Status;
+//   EFI_MM_CONFIGURATION_PROTOCOL  *MmConfiguration;
 
-  DEBUG ((DEBUG_INFO, "MmConfigurationMmNotify(%g) - %x\n", Protocol, Interface));
+//   DEBUG ((DEBUG_INFO, "MmConfigurationMmNotify(%g) - %x\n", Protocol, Interface));
 
-  MmConfiguration = Interface;
+//   MmConfiguration = Interface;
 
-  //
-  // Register the MM Entry Point provided by the MM Core with the MM COnfiguration protocol
-  //
-  Status = MmConfiguration->RegisterMmEntry (MmConfiguration, (EFI_MM_ENTRY_POINT)MmEntryPoint);
-  ASSERT_EFI_ERROR (Status);
+//   //
+//   // Register the MM Entry Point provided by the MM Core with the MM COnfiguration protocol
+//   //
+//   Status = MmConfiguration->RegisterMmEntry (MmConfiguration, (EFI_MM_ENTRY_POINT)MmEntryPoint);
+//   ASSERT_EFI_ERROR (Status);
 
-  //
-  // Print debug message showing MM Core entry point address.
-  //
-  DEBUG ((DEBUG_INFO, "MM Core registered MM Entry Point address %p\n", (VOID *)(UINTN)MmEntryPoint));
-  return EFI_SUCCESS;
-}
+//   //
+//   // Print debug message showing MM Core entry point address.
+//   //
+//   DEBUG ((DEBUG_INFO, "MM Core registered MM Entry Point address %p\n", (VOID *)(UINTN)MmEntryPoint));
+//   return EFI_SUCCESS;
+// }
 
 UINTN
 GetHobListSize (

@@ -21,6 +21,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include "Relocate/Relocate.h"
 #include "Services/CpuService/CpuService.h"
 #include "../../Common/MpService.h"
+#include "../../Common/UserDefinitions.h"
 #include "Mem/Mem.h"
 
 // TODO: This should not be here
@@ -327,5 +328,35 @@ InvokeDemotedErrorReport (
            2,
            CpuIndex,
            ErrorInfoBuffer
+           );
+}
+
+/**
+  Invoke demoted MM user entry point.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedMmEntrypoint (
+  IN EFI_PHYSICAL_ADDRESS  EntryPoint,
+  IN MM_USER_REQUEST_TYPE  EntryPointOpCode,
+  IN VOID                  *Context  OPTIONAL,
+  IN UINTN                 ContextSize
+  )
+{
+  if (EntryPoint == 0) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if ((Context == NULL) && (ContextSize != 0)) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  return InvokeDemotedRoutine (
+           mSmmMpSyncData->BspIndex,
+           (EFI_PHYSICAL_ADDRESS)EntryPoint,
+           3,
+           EntryPointOpCode,
+           Context,
+           ContextSize
            );
 }

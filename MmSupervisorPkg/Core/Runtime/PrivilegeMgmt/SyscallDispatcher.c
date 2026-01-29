@@ -262,7 +262,7 @@ SyscallDispatcher (
   BOOLEAN     IsUserRange = FALSE;
   EFI_STATUS  Status      = EFI_SUCCESS;
 
-  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
+  if (FeaturePcdGet (PcdEnableSyscallLogs) && (CallIndex != SMM_SC_IO_READ) && (CallIndex != SMM_SC_IO_WRITE)) {
     while (!AcquireSpinLockOrFail (mCpuToken)) {
       CpuPause ();
     }
@@ -498,11 +498,11 @@ SyscallDispatcher (
     //   }
 
     //   break;
-    case SMM_ALOC_POOL:
-    case SMM_FREE_POOL:
-      // These 2 syscall interfaces are deprecated. User memory allocation is managed in user space now.
-      Status = EFI_UNSUPPORTED;
-      break;
+    // case SMM_ALOC_POOL:
+    // case SMM_FREE_POOL:
+    //   // These 2 syscall interfaces are deprecated. User memory allocation is managed in user space now.
+    //   Status = EFI_UNSUPPORTED;
+    //   break;
     case SMM_ALOC_PAGE:
       if (!AmIBsp ()) {
         // AP allocating pages will involve updating page tables, which is a rabbit hole we should not drill...
@@ -549,23 +549,23 @@ SyscallDispatcher (
       }
 
       break;
-    case SMM_REG_HNDL:
-      if ((!EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (Arg1), &IsUserRange)) && IsUserRange) &&
-          ((Arg2 == 0) || (!EFI_ERROR (InspectTargetRangeOwnership (Arg2, sizeof (EFI_GUID), &IsUserRange)) && IsUserRange)))
-      {
-        Status = MmiUserHandlerRegister (
-                   (EFI_MM_HANDLER_ENTRY_POINT)Arg1,
-                   (CONST EFI_GUID *)Arg2,
-                   (EFI_HANDLE)&Ret
-                   );
-      } else {
-        Status = EFI_SECURITY_VIOLATION;
-      }
+    // case SMM_REG_HNDL:
+    //   if ((!EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (Arg1), &IsUserRange)) && IsUserRange) &&
+    //       ((Arg2 == 0) || (!EFI_ERROR (InspectTargetRangeOwnership (Arg2, sizeof (EFI_GUID), &IsUserRange)) && IsUserRange)))
+    //   {
+    //     Status = MmiUserHandlerRegister (
+    //                (EFI_MM_HANDLER_ENTRY_POINT)Arg1,
+    //                (CONST EFI_GUID *)Arg2,
+    //                (EFI_HANDLE)&Ret
+    //                );
+    //   } else {
+    //     Status = EFI_SECURITY_VIOLATION;
+    //   }
 
-      break;
-    case SMM_UNREG_HNDL:
-      Status = MmiHandlerUserUnRegister ((EFI_HANDLE)Arg1);
-      break;
+    //   break;
+    // case SMM_UNREG_HNDL:
+    //   Status = MmiHandlerUserUnRegister ((EFI_HANDLE)Arg1);
+    //   break;
     case SMM_SET_CPL3_TBL:
       if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_MM_SYSTEM_TABLE), &IsUserRange)) || !IsUserRange) {
         Status = EFI_SECURITY_VIOLATION;
@@ -593,9 +593,9 @@ SyscallDispatcher (
     //   }
 
     //   break;
-    case SMM_QRY_HOB:
-      Ret = (UINT64)QueryHobStartFromConfTable ();
-      break;
+    // case SMM_QRY_HOB:
+    //   Ret = (UINT64)QueryHobStartFromConfTable ();
+    //   break;
     case SMM_ERR_RPT_JMP:
       if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (Arg1), &IsUserRange)) || !IsUserRange) {
         Status = EFI_SECURITY_VIOLATION;
@@ -606,29 +606,30 @@ SyscallDispatcher (
       }
 
       break;
-    case SMM_MM_HDL_REG_1:
-    case SMM_MM_HDL_REG_2:
-      if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
-        Status = EFI_SECURITY_VIOLATION;
-      } else {
-        Status = ProcessUserHandlerReg (CallIndex, (EFI_GUID *)Arg1, Arg2, Arg3);
-      }
+    // case SMM_MM_HDL_REG_1:
+    // case SMM_MM_HDL_REG_2:
+    //   if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
+    //     Status = EFI_SECURITY_VIOLATION;
+    //   } else {
+    //     Status = ProcessUserHandlerReg (CallIndex, (EFI_GUID *)Arg1, Arg2, Arg3);
+    //   }
 
-      break;
-    case SMM_MM_HDL_UNREG_1:
-    case SMM_MM_HDL_UNREG_2:
-      if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
-        Status = EFI_SECURITY_VIOLATION;
-      } else {
-        Status = ProcessUserHandlerUnreg (CallIndex, (EFI_GUID *)Arg1, Arg2, Arg3);
-      }
+    //   break;
+    // case SMM_MM_HDL_UNREG_1:
+    // case SMM_MM_HDL_UNREG_2:
+    //   if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
+    //     Status = EFI_SECURITY_VIOLATION;
+    //   } else {
+    //     Status = ProcessUserHandlerUnreg (CallIndex, (EFI_GUID *)Arg1, Arg2, Arg3);
+    //   }
 
-      break;
+    //   break;
     case SMM_MM_UNBLOCKED:
       Ret = (UINT64)MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)Arg1, Arg2);
       if (Ret != FALSE) {
         // Add another check to see if the buffer is in the user space.
-        if (EFI_ERROR (InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange)) || !IsUserRange) {
+        Status = InspectTargetRangeOwnership (Arg1, sizeof (EFI_GUID), &IsUserRange);
+        if (EFI_ERROR (Status) || !IsUserRange) {
           // If cannot determine the ownership, or the buffer is not in the user space, then return FALSE.
           // Note, we will not fail on the Status code here.
           Ret = FALSE;
@@ -663,7 +664,7 @@ Exit:
     CpuDeadLoop ();
   }
 
-  if (FeaturePcdGet (PcdEnableSyscallLogs)) {
+  if (FeaturePcdGet (PcdEnableSyscallLogs) && (CallIndex != SMM_SC_IO_READ) && (CallIndex != SMM_SC_IO_WRITE)) {
     DEBUG ((DEBUG_INFO, "%a Exit...\n", __func__));
   }
 

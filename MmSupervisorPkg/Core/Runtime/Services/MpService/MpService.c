@@ -17,6 +17,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Mem/Mem.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
 #include "../../Common/PassDown.h"
+#include "../../Common/UserDefinitions.h"
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
 #include <Library/MtrrLib.h>
@@ -27,6 +28,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/HobPrintLib.h>
 #include <Protocol/MmMp.h>
 #include <Guid/MpInformation2.h>
+#include <Library/SecurePolicyLib.h>
 
 // TODO: This should not be here.
 extern UINTN  mMaxNumberOfCpus;
@@ -36,6 +38,36 @@ extern UINT64  mTimeoutTicker2;
 volatile BOOLEAN  *mSmmInitialized = NULL;
 volatile BOOLEAN  mIsBspInitialized;
 VOID  *gHobList = NULL;
+extern MM_COMM_BUFFER_STATUS  mMmCommunicationBufferStatus;
+EFI_PHYSICAL_ADDRESS  mGdtBuffer;
+UINTN                 mGdtBufferSize;
+UINTN                 mGdtStepSize;
+UINTN                 mSmmCpl3StackArrayBase;
+UINTN                 mSmmStackSize;
+/**
+  Calculate the maximum support address.
+
+  @param[in] Is5LevelPagingNeeded    If 5-level paging enabling is needed.
+
+  @return the maximum support address.
+**/
+UINT8
+CalculateMaximumSupportAddress (
+  BOOLEAN  Is5LevelPagingNeeded
+  );
+/**
+  The routine returns TRUE when CPU supports it (CPUID[7,0].ECX.BIT[16] is set) and
+  the max physical address bits is bigger than 48. Because 4-level paging can support
+  to address physical address up to 2^48 - 1, there is no need to enable 5-level paging
+  with max physical address bits <= 48.
+
+  @retval TRUE  5-level paging enabling is needed.
+  @retval FALSE 5-level paging enabling is not needed.
+**/
+BOOLEAN
+Is5LevelPagingNeeded (
+  VOID
+  );
 
 /**
   Check whether it is an present AP.
@@ -69,40 +101,41 @@ RestoreCr2 (
   IN UINTN  Cr2
   );
 
-//
-// SMM CPU Private Data structure that contains SMM Configuration Protocol
-// along its supporting fields.
-//
-SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
-  SMM_CPU_PRIVATE_DATA_SIGNATURE,               // Signature
-  NULL,                                         // SmmCpuHandle
-  NULL,                                         // Pointer to ProcessorInfo array
-  // NULL,                                         // Pointer to Operation array
-  NULL,                                         // Pointer to CpuSaveStateSize array
-  NULL,                                         // Pointer to CpuSaveState array
-  {
-    { 0    }
-  },                                            // SmmReservedSmramRegion
-  {
-    SmmStartupThisAp,                           // SmmCoreEntryContext.SmmStartupThisAp
-    0,                                          // SmmCoreEntryContext.CurrentlyExecutingCpu
-    0,                                          // SmmCoreEntryContext.NumberOfCpus
-    NULL,                                       // SmmCoreEntryContext.CpuSaveStateSize
-    NULL                                        // SmmCoreEntryContext.CpuSaveState
-  },
-  NULL,                                         // SmmCoreEntry
-  // {
-  //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
-  //   // RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
-  // },
-  NULL,                                         // pointer to Ap Wrapper Func array
-  { NULL, NULL },                               // List_Entry for Tokens.
-};
+// //
+// // SMM CPU Private Data structure that contains SMM Configuration Protocol
+// // along its supporting fields.
+// //
+// SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
+//   SMM_CPU_PRIVATE_DATA_SIGNATURE,               // Signature
+//   NULL,                                         // SmmCpuHandle
+//   NULL,                                         // Pointer to ProcessorInfo array
+//   // NULL,                                         // Pointer to Operation array
+//   NULL,                                         // Pointer to CpuSaveStateSize array
+//   NULL,                                         // Pointer to CpuSaveState array
+//   {
+//     { 0    }
+//   },                                            // SmmReservedSmramRegion
+//   {
+//     SmmStartupThisAp,                           // SmmCoreEntryContext.SmmStartupThisAp
+//     0,                                          // SmmCoreEntryContext.CurrentlyExecutingCpu
+//     0,                                          // SmmCoreEntryContext.NumberOfCpus
+//     NULL,                                       // SmmCoreEntryContext.CpuSaveStateSize
+//     NULL                                        // SmmCoreEntryContext.CpuSaveState
+//   },
+//   NULL,                                         // SmmCoreEntry
+//   NULL,                                         // SmmUserEntry
+//   // {
+//   //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
+//   //   // RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
+//   // },
+//   NULL,                                         // pointer to Ap Wrapper Func array
+//   NULL,                               // List_Entry for Tokens.
+// };
 
 //
 // Global pointer used to access mSmmCpuPrivateData from outside and inside SMM
 //
-SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate = &mSmmCpuPrivateData;
+SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate = NULL;
 
 //TODO: Should not be here
 ///
@@ -129,6 +162,20 @@ typedef struct {
   SMM_CPU_SEMAPHORE_GLOBAL    SemaphoreGlobal;
   SMM_CPU_SEMAPHORE_CPU       SemaphoreCpu;
 } SMM_CPU_SEMAPHORES;
+/**
+  The main entry point to MM Foundation.
+
+  Note: This function is only used by MMRAM invocation.  It is never used by DXE invocation.
+
+  @param  MmEntryContext           Processor information and functionality
+                                    needed by MM Foundation.
+
+**/
+VOID
+EFIAPI
+MmEntryPoint (
+  IN CONST EFI_MM_ENTRY_CONTEXT  *MmEntryContext
+  );
 
 //
 // Slots for all MTRR( FIXED MTRR + VARIABLE MTRR + MTRR_LIB_IA32_MTRR_DEF_TYPE)
@@ -568,7 +615,7 @@ ResetTokens (
   //
   // Reset the FirstFreeToken to the beginning of token list upon exiting SMI.
   //
-  gSmmCpuPrivate->FirstFreeToken = GetFirstNode (&gSmmCpuPrivate->TokenList);
+  gSmmCpuPrivate->FirstFreeToken = GetFirstNode (gSmmCpuPrivate->TokenList);
 }
 
 /**
@@ -580,13 +627,15 @@ ResetTokens (
 **/
 VOID
 BSPHandler (
-  IN      UINTN              CpuIndex
+  IN      UINTN              CpuIndex,
+  IN      BOOLEAN            TalkToSupervisor,
+  IN      BOOLEAN            SyncMmi
   // IN      SMM_CPU_SYNC_MODE  SyncMode
   )
 {
   UINTN          CpuCount;
   // UINTN          Index;
-  MTRR_SETTINGS  Mtrrs;
+  // MTRR_SETTINGS  Mtrrs;
   UINTN          ApCount;
   BOOLEAN        ClearTopLevelSmiResult;
   // UINTN          PresentCount;
@@ -696,7 +745,27 @@ BSPHandler (
   //
   // Invoke SMM Foundation EntryPoint with the processor information context.
   //
-  gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
+  if (TalkToSupervisor) {
+    gSmmCpuPrivate->SmmCoreEntry (&gSmmCpuPrivate->SmmCoreEntryContext);
+  } else {
+    CopyMem (SupervisorToUserDataBuffer, &gSmmCpuPrivate->SmmCoreEntryContext, sizeof (EFI_SMM_ENTRY_CONTEXT));
+    CopyMem ((UINT8*)SupervisorToUserDataBuffer + sizeof (EFI_SMM_ENTRY_CONTEXT), &mMmCommunicationBufferStatus, sizeof (MM_COMM_BUFFER_STATUS));
+    if (SyncMmi) {
+      CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID*)mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
+    }
+
+    // The content up above will be patched by the SmmUserEntry, because it cannot
+    // access the save states and supervisor routine directly.
+    InvokeDemotedMmEntrypoint ((EFI_PHYSICAL_ADDRESS)gSmmCpuPrivate->SmmUserEntry,
+                               MmUserRequestTypeHandlerDispatch,
+                               SupervisorToUserDataBuffer,
+                               sizeof (EFI_SMM_ENTRY_CONTEXT));
+
+    if (SyncMmi) {
+      CopyMem ((VOID*)mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart, mInternalCommBufferCopy[MM_USER_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
+    }
+    CopyMem (&mMmCommunicationBufferStatus, (UINT8*)SupervisorToUserDataBuffer + sizeof (EFI_SMM_ENTRY_CONTEXT), sizeof (MM_COMM_BUFFER_STATUS));
+  }
 
   //
   // Make sure all APs have completed their pending none-block tasks
@@ -741,35 +810,35 @@ BSPHandler (
   *mSmmMpSyncData->InsideSmm = FALSE;
   ReleaseAllAPs ();
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for all APs the readiness to program MTRRs
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+  // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Wait for all APs the readiness to program MTRRs
+  //   //
+  //   SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    //
-    // Signal APs to restore MTRRs
-    //
-    ReleaseAllAPs ();
+  //   //
+  //   // Signal APs to restore MTRRs
+  //   //
+  //   ReleaseAllAPs ();
 
-    //
-    // Restore OS MTRRs
-    //
-    SmmCpuFeaturesReenableSmrr ();
-    MtrrSetAllMtrrs (&Mtrrs);
-  }
+  //   //
+  //   // Restore OS MTRRs
+  //   //
+  //   SmmCpuFeaturesReenableSmrr ();
+  //   MtrrSetAllMtrrs (&Mtrrs);
+  // }
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for all APs to complete their pending tasks including MTRR programming if needed.
-    //
-    SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
+  // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Wait for all APs to complete their pending tasks including MTRR programming if needed.
+  //   //
+  //   SmmCpuSyncWaitForAPs (mSmmMpSyncData->SyncContext, ApCount, CpuIndex);
 
-    //
-    // Signal APs to Reset states/semaphore for this processor
-    //
-    ReleaseAllAPs ();
-  }
+  //   //
+  //   // Signal APs to Reset states/semaphore for this processor
+  //   //
+  //   ReleaseAllAPs ();
+  // }
 
   //
   // Stop source level debug in BSP handler, the code below will not be
@@ -841,7 +910,7 @@ APHandler (
 {
   UINT64         Timer;
   UINTN          BspIndex;
-  MTRR_SETTINGS  Mtrrs;
+  // MTRR_SETTINGS  Mtrrs;
   EFI_STATUS     ProcedureStatus;
 
   //
@@ -920,37 +989,37 @@ APHandler (
     SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
   // }
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Wait for the signal from BSP to backup MTRRs
-    //
-    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Wait for the signal from BSP to backup MTRRs
+  //   //
+  //   SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Backup OS MTRRs
-    //
-    MtrrGetAllMtrrs (&Mtrrs);
+  //   //
+  //   // Backup OS MTRRs
+  //   //
+  //   MtrrGetAllMtrrs (&Mtrrs);
 
-    //
-    // Signal BSP the completion of this AP
-    //
-    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  //   //
+  //   // Signal BSP the completion of this AP
+  //   //
+  //   SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Wait for BSP's signal to program MTRRs
-    //
-    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  //   //
+  //   // Wait for BSP's signal to program MTRRs
+  //   //
+  //   SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Replace OS MTRRs with SMI MTRRs
-    //
-    ReplaceOSMtrrs (CpuIndex);
+  //   //
+  //   // Replace OS MTRRs with SMI MTRRs
+  //   //
+  //   ReplaceOSMtrrs (CpuIndex);
 
-    //
-    // Signal BSP the completion of this AP
-    //
-    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
-  }
+  //   //
+  //   // Signal BSP the completion of this AP
+  //   //
+  //   SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  // }
 
   while (TRUE) {
     //
@@ -999,35 +1068,35 @@ APHandler (
     ReleaseSpinLock (mSmmMpSyncData->CpuData[CpuIndex].Busy);
   }
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Notify BSP the readiness of this AP to program MTRRs
-    //
-    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Notify BSP the readiness of this AP to program MTRRs
+  //   //
+  //   SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Wait for the signal from BSP to program MTRRs
-    //
-    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  //   //
+  //   // Wait for the signal from BSP to program MTRRs
+  //   //
+  //   SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Restore OS MTRRs
-    //
-    SmmCpuFeaturesReenableSmrr ();
-    MtrrSetAllMtrrs (&Mtrrs);
-  }
+  //   //
+  //   // Restore OS MTRRs
+  //   //
+  //   SmmCpuFeaturesReenableSmrr ();
+  //   MtrrSetAllMtrrs (&Mtrrs);
+  // }
 
-  if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
-    //
-    // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
-    //
-    SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  // if (SmmCpuFeaturesNeedConfigureMtrrs ()) {
+  //   //
+  //   // Notify BSP the readiness of this AP to Reset states/semaphore for this processor
+  //   //
+  //   SmmCpuSyncReleaseBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
 
-    //
-    // Wait for the signal from BSP to Reset states/semaphore for this processor
-    //
-    SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
-  }
+  //   //
+  //   // Wait for the signal from BSP to Reset states/semaphore for this processor
+  //   //
+  //   SmmCpuSyncWaitForBsp (mSmmMpSyncData->SyncContext, CpuIndex, BspIndex);
+  // }
 
   //
   // Reset states/semaphore for this processor
@@ -1061,7 +1130,7 @@ IsTokenInUse (
     return FALSE;
   }
 
-  Link = GetFirstNode (&gSmmCpuPrivate->TokenList);
+  Link = GetFirstNode (gSmmCpuPrivate->TokenList);
   //
   // Only search used tokens.
   //
@@ -1072,7 +1141,7 @@ IsTokenInUse (
       return TRUE;
     }
 
-    Link = GetNextNode (&gSmmCpuPrivate->TokenList, Link);
+    Link = GetNextNode (gSmmCpuPrivate->TokenList, Link);
   }
 
   return FALSE;
@@ -1137,7 +1206,7 @@ AllocateTokenBuffer (
     ProcTokens[Index].SpinLock       = SpinLock;
     ProcTokens[Index].RunningApCount = 0;
 
-    InsertTailList (&gSmmCpuPrivate->TokenList, &ProcTokens[Index].Link);
+    InsertTailList (gSmmCpuPrivate->TokenList, &ProcTokens[Index].Link);
   }
 
   return &ProcTokens[0].Link;
@@ -1164,12 +1233,12 @@ GetFreeToken (
   // If FirstFreeToken meets the end of token list, enlarge the token list.
   // Set FirstFreeToken to the first free token.
   //
-  if (gSmmCpuPrivate->FirstFreeToken == &gSmmCpuPrivate->TokenList) {
+  if (gSmmCpuPrivate->FirstFreeToken == gSmmCpuPrivate->TokenList) {
     gSmmCpuPrivate->FirstFreeToken = AllocateTokenBuffer ();
   }
 
   NewToken                       = PROCEDURE_TOKEN_FROM_LINK (gSmmCpuPrivate->FirstFreeToken);
-  gSmmCpuPrivate->FirstFreeToken = GetNextNode (&gSmmCpuPrivate->TokenList, gSmmCpuPrivate->FirstFreeToken);
+  gSmmCpuPrivate->FirstFreeToken = GetNextNode (gSmmCpuPrivate->TokenList, gSmmCpuPrivate->FirstFreeToken);
 
   NewToken->RunningApCount = RunningApsCount;
   AcquireSpinLock (NewToken->SpinLock);
@@ -1658,10 +1727,16 @@ CpuSmmDebugExit (
 //////////////////////////////////////////////////////////////////
 //
 // New contrsuction
+#include <Guid/MmSupervisorRequestData.h>
 #include <Library/CpuExceptionHandlerLib.h>
 
 volatile BOOLEAN loop = TRUE;
-
+EFI_STATUS
+EFIAPI
+MemLibConstructor (
+  IN EFI_HANDLE           ImageHandle,
+  IN EFI_MM_SYSTEM_TABLE  *MmSystemTable
+  );
 /**
   Write unprotect read-only pages if Cr0.Bits.WP is 1.
   @param[out]  WriteProtect      If Cr0.Bits.WP is enabled.
@@ -1678,7 +1753,12 @@ VOID
 SmmWriteProtectReadOnlyPage (
   IN  BOOLEAN  WriteProtect
   );
-
+EFI_STATUS
+EFIAPI
+MmAddUnblckedMemoryList (
+  IN MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockMemParams
+);
+extern volatile BOOLEAN loop;
 #define IA32_APIC_BASE_MSR_INDEX          0x1B
 #define   IA32_APIC_BSP                   (1u << 8)
 #define   IA32_APIC_X2_MODE               (1u << 10)
@@ -1778,6 +1858,9 @@ BspInit (
       ));
   }
 
+  mMmramRangeCount = MmramRangeCount;
+  mMmramRanges     = MmramRanges;
+
   //
   // Initialize memory service using free MMRAM
   //
@@ -1785,6 +1868,7 @@ BspInit (
   MmInitializeMemoryServices (MmramRangeCount, MmramRanges);
   mMemoryAllocationMmst = &gMmCoreMmst; // TODO: We would not need this later
 
+  MemLibConstructor (NULL, NULL);
 
   //////////////////////////////////////////////////////////////
   // TODO: need to loop through the existing page table to make sure we are still sane
@@ -1846,8 +1930,6 @@ BspInit (
   // 1. stacks for both user and supervisor
   // 2. Count of CPUs in the platform
   //
-  mSmmInitialized = AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
-
   EFI_HOB_GUID_TYPE       *GuidHob;
 
   //
@@ -1889,13 +1971,136 @@ BspInit (
 
   DEBUG ((DEBUG_INFO, "%a - gSmmCpuPrivate: 0x%p\n", __func__, gSmmCpuPrivate));
 
+  mSmmInitialized = (BOOLEAN *)MmSupervisorPassDownHob->MmInitializedBuffer;
+  ASSERT (mSmmInitialized != NULL);
+
+  // GLOBALS: Initialize the first thread index info
   InitPackageFirstThreadIndexInfo ();
+
+  // GLOBALS: Initialize syscall interface
+  SyscallInterfaceInit (mNumberOfCpus);
+
+  //
+  // Communication buffers
+  //
+  mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart =
+    MmSupervisorPassDownHob->MmSupvCommBuffer;
+  mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T] = (VOID *)MmSupervisorPassDownHob->MmSupvCommBufferInternal;
+  mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages =
+    MmSupervisorPassDownHob->MmSupvCommBufferSize / EFI_PAGE_SIZE;
+
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart =
+    MmSupervisorPassDownHob->MmUserCommBuffer;
+  mInternalCommBufferCopy[MM_USER_BUFFER_T] = (VOID *)MmSupervisorPassDownHob->MmUserCommBufferInternal;
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages =
+    MmSupervisorPassDownHob->MmUserCommBufferSize / EFI_PAGE_SIZE;
+
+  mGdtBuffer = MmSupervisorPassDownHob->MmSupvGdtBuffer;
+  mGdtBufferSize = MmSupervisorPassDownHob->MmSupvGdtBufferSize;
+  mGdtStepSize = MmSupervisorPassDownHob->MmSupvGdtStepSize;
+
+  mSmmCpl3StackArrayBase = MmSupervisorPassDownHob->MmSupervisorCpl3StackBase;
+  mSmmStackSize = MmSupervisorPassDownHob->MmSupervisorCpl3PerCoreStackSize;
+
+  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)MmSupervisorPassDownHob->MmSupvStatusBuffer;
+
+  DEBUG ((DEBUG_INFO, "%a - mMmCommMailboxBufferStatus : 0x%p\n", __func__, mMmCommMailboxBufferStatus));
+
+  SupervisorToUserDataBuffer = (MM_SUPV_USER_COMMON_BUFFER *)MmSupervisorPassDownHob->MmSupvToUserBuffer;
+
+  FirmwarePolicy = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)MmSupervisorPassDownHob->MmSupvFirmwarePolicyBuffer;
+  // DumpSmmPolicyData (FirmwarePolicy);
+
+  MemPolicySnapshot = (SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)MmSupervisorPassDownHob->MmSupvMemoryPolicyBuffer;
+  // Use this to go through the page table and figure out what are all unblocked
+  Status = PrepareMemPolicySnapshot (MemPolicySnapshot);
+
+  DEBUG ((DEBUG_INFO, "%a - Applying Memory Policies\n", __func__));
+
+  SMM_SUPV_POLICY_ROOT_V1 *PolicyRoot;
+  SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0  *MemoryPolicy;
+  UINTN                  i, j;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockMemParams;
+
+  PolicyRoot = (SMM_SUPV_POLICY_ROOT_V1 *)((UINTN)MemPolicySnapshot + MemPolicySnapshot->PolicyRootOffset);
+  // Iterate through each policy root
+  for (i = 0; i < MemPolicySnapshot->PolicyRootCount; i++) {
+    DEBUG ((DEBUG_INFO, "Policy Root:\n"));
+    DEBUG ((DEBUG_INFO, "  Version: %x\n", PolicyRoot[i].Version));
+    DEBUG ((DEBUG_INFO, "  PolicyRootSize: %x\n", PolicyRoot[i].PolicyRootSize));
+    DEBUG ((DEBUG_INFO, "  Type: %x\n", PolicyRoot[i].Type));
+    DEBUG ((DEBUG_INFO, "  Offset: %x\n", PolicyRoot[i].Offset));
+    DEBUG ((DEBUG_INFO, "  Count: %x\n", PolicyRoot[i].Count));
+    DEBUG ((DEBUG_INFO, "  AccessAttr: %a\n", (PolicyRoot[i].AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW) ? "ALLOW" : "DENY"));
+    // Iterate through each policy descriptor described by this policy root
+    for (j = 0; j < PolicyRoot[i].Count; j++) {
+      if (PolicyRoot[i].Type == SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM) {
+        // Dump Memory Policy
+        MemoryPolicy = (SMM_SUPV_SECURE_POLICY_MEM_DESCRIPTOR_V1_0 *)((UINTN)MemPolicySnapshot + PolicyRoot[i].Offset);
+        DumpMemPolicyEntry (&MemoryPolicy[j]);
+
+        ASSERT (PolicyRoot[i].AccessAttr == SMM_SUPV_ACCESS_ATTR_ALLOW);
+
+        CopyGuid (&UnblockMemParams.IdentifierGuid, &gEfiCallerIdGuid);
+        UnblockMemParams.MemoryDescriptor.PhysicalStart = MemoryPolicy[j].BaseAddress;
+        UnblockMemParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES (MemoryPolicy[j].Size);
+        if (!(MemoryPolicy[j].MemAttributes & SECURE_POLICY_RESOURCE_ATTR_READ)) {
+          UnblockMemParams.MemoryDescriptor.Attribute |= EFI_MEMORY_RP;
+        }
+        if (!(MemoryPolicy[j].MemAttributes & SECURE_POLICY_RESOURCE_ATTR_WRITE)) {
+          UnblockMemParams.MemoryDescriptor.Attribute |= EFI_MEMORY_RO;
+        }
+        if (!(MemoryPolicy[j].MemAttributes & SECURE_POLICY_RESOURCE_ATTR_EXECUTE)) {
+          UnblockMemParams.MemoryDescriptor.Attribute |= EFI_MEMORY_XP;
+        }
+        UnblockMemParams.MemoryDescriptor.Attribute = MemoryPolicy[j].MemAttributes; // Not used for unblocking
+        UnblockMemParams.MemoryDescriptor.Type = EfiRuntimeServicesData; // Not used for unblocking
+
+        Status = MmAddUnblckedMemoryList (&UnblockMemParams);
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////
+  //
+  // Repopulate the entrypoint to the one in this module by looping through the hobs and searching for EFI_HOB_MEMORY_ALLOCATION_MODULE
+  //
+  Hob.Raw = HobStart;
+  while ((Hob.Raw = GetNextHob (EFI_HOB_TYPE_MEMORY_ALLOCATION, Hob.Raw)) != NULL) {
+    if (CompareGuid (&Hob.MemoryAllocationModule->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid)) {
+      //
+      // Find Runtime Core HOB
+      //
+      if (CompareGuid (&Hob.MemoryAllocationModule->ModuleName, &gMmSupervisorCoreGuid)) {
+        gSmmCpuPrivate->SmmCoreEntry = (EFI_SMM_ENTRY_POINT)MmEntryPoint;
+      } else if (CompareGuid (&Hob.MemoryAllocationModule->ModuleName, &gMmSupervisorUserGuid)) {
+        gSmmCpuPrivate->SmmUserEntry = (EFI_SMM_ENTRY_POINT)Hob.MemoryAllocationModule->EntryPoint;
+      }
+    }
+
+    Hob.Raw = GET_NEXT_HOB (Hob);
+  }
 
   ////////////////////////////////////////////////////////////////////
   //
   // Reinstall the refreshed page table
   //
 
+  mPhysicalAddressBits = CalculateMaximumSupportAddress (Is5LevelPagingNeeded ());
+
+
+  ////////////////////////////////////////////////////////////////////
+  //
+  // Discover user level entry (questionable, maybe just leave it to loader?)
+  //
+  // Since this is the BSP init, we will just set the BspIndex here.
+  for (UINTN IdIndex = 0; IdIndex < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; IdIndex++) {
+    if (GetApicId () == gSmmCpuPrivate->ProcessorInfo[IdIndex].ProcessorId) {
+      mSmmMpSyncData->BspIndex = (UINT32)IdIndex;
+      gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu = IdIndex;
+      break;
+    }
+  }
 
 
   ////////////////////////////////////////////////////////////////////
@@ -1903,11 +2108,7 @@ BspInit (
   // Carve out HOB list for user level, save it to read only (questionable, maybe just leave it to loader and verify the attributes?)
   //
 
-
-  ////////////////////////////////////////////////////////////////////
-  //
-  // Discover user level entry (questionable, maybe just leave it to loader?)
-  //
+  mCoreInitializationComplete = TRUE;
 
   return  EFI_SUCCESS;
 }
@@ -1936,6 +2137,8 @@ InitializeSmm (
   // CpuDeadLoop ();
 }
 
+extern volatile BOOLEAN loop;
+
 /**
   C function for SMI entry, each processor comes here upon SMI trigger.
 
@@ -1955,6 +2158,8 @@ SmiRendezvous (
   UINTN       Index;
   UINTN       Cr2;
   BOOLEAN     IsFirstEntryOnBsp;
+  BOOLEAN     TalkToSupervisor;
+  BOOLEAN     SyncMmi;
 
   // ASSERT (CpuIndex < mMaxNumberOfCpus);
 
@@ -1964,6 +2169,11 @@ SmiRendezvous (
   if (IsFirstEntryOnBsp) {
     // Perform BSP specific SMM initialization
     BspInit (gHobList);
+
+    InvokeDemotedMmEntrypoint ((EFI_PHYSICAL_ADDRESS)gSmmCpuPrivate->SmmUserEntry,
+                                MmUserRequestTypeInit,
+                                gHobList,
+                                0); // TODO: the size does not matter, but this looks bad...
 
     mIsBspInitialized = TRUE;
   } else {
@@ -2130,11 +2340,29 @@ SmiRendezvous (
           }
         }
 
+        CopyMem (&mMmCommunicationBufferStatus, (MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
+
+        SyncMmi = mMmCommunicationBufferStatus.IsCommBufferValid;
+        if (SyncMmi) {
+          //
+          // Synchronous MMI for MM Core or request from Communicate protocol
+          //
+          TalkToSupervisor = mMmCommunicationBufferStatus.TalkToSupervisor;
+        } else {
+          //
+          // Normal SMI
+          //
+          TalkToSupervisor = FALSE;
+        }
+
         //
         // BSP Handler is always called with a ValidSmi == TRUE
         //
-        BSPHandler (CpuIndex);
+        BSPHandler (CpuIndex, TalkToSupervisor, SyncMmi);
+
+        CopyMem ((MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommMailboxBufferStatus, &mMmCommunicationBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
       } else {
+        // AP Handler always will be kept in the supervisor level holding pen till indicated by BSP to proceed.
         APHandler (CpuIndex, ValidSmi);
       }
     }
@@ -2210,28 +2438,28 @@ InitPackageFirstThreadIndexInfo (
   SetMem32 (mPackageFirstThreadIndex, sizeof (UINT32) * PackageCount, (UINT32)-1);
 }
 
-/**
-  Allocate buffer for SpinLock and Wrapper function buffer.
+// /**
+//   Allocate buffer for SpinLock and Wrapper function buffer.
 
-**/
-VOID
-InitializeDataForMmMp (
-  VOID
-  )
-{
-  UINTN  Index;
+// **/
+// VOID
+// InitializeDataForMmMp (
+//   VOID
+//   )
+// {
+//   UINTN  Index;
 
-  gSmmCpuPrivate->ApWrapperFunc = AllocatePool (sizeof (PROCEDURE_WRAPPER) * gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
-  ASSERT (gSmmCpuPrivate->ApWrapperFunc != NULL);
+//   gSmmCpuPrivate->ApWrapperFunc = AllocatePool (sizeof (PROCEDURE_WRAPPER) * gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus);
+//   ASSERT (gSmmCpuPrivate->ApWrapperFunc != NULL);
 
-  for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
-    gSmmCpuPrivate->ApWrapperFunc[Index].CpuIndex = Index;
-  }
+//   for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
+//     gSmmCpuPrivate->ApWrapperFunc[Index].CpuIndex = Index;
+//   }
 
-  InitializeListHead (&gSmmCpuPrivate->TokenList);
+//   InitializeListHead (&gSmmCpuPrivate->TokenList);
 
-  gSmmCpuPrivate->FirstFreeToken = AllocateTokenBuffer ();
-}
+//   gSmmCpuPrivate->FirstFreeToken = AllocateTokenBuffer ();
+// }
 
 // /**
 //   Allocate buffer for all semaphores and spin locks.

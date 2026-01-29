@@ -40,8 +40,9 @@
   MmSupervisorCore.c
   MmSupervisorCore.h
 
-  Handler/Mmi.c
-  Handler/SmiHandlerProfile.c
+  # Handler/Mmi.c
+  # Handler/SmiHandlerProfile.c
+
   Mem/Cet.nasm
   Mem/HeapGuard.c
   Mem/HeapGuard.h
@@ -220,7 +221,7 @@
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gEventMmDispatchGuid                          ## CONSUMES
-  gEfiHobMemoryAllocModuleGuid
+  gMmSupervisorHobMemoryAllocModuleGuid         ## CONSUMES
   gEfiMmPeiMmramMemoryReserveGuid
   gMpInformation2HobGuid
 

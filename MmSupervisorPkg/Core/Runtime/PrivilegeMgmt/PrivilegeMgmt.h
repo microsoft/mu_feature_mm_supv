@@ -15,6 +15,7 @@
 #define _MM_PRIVILEGE_MGMT_H_
 
 #include <Library/SynchronizationLib.h>
+#include "../../Core/Common/UserDefinitions.h"
 
 // This needs to be in consistency with SmiException.nasm
 #define PROTECTED_DS      0x20
@@ -209,6 +210,18 @@ EFIAPI
 UpdateCpl0StackPtrForGs (
   IN UINTN                 CpuIndex,
   IN EFI_PHYSICAL_ADDRESS  Cpl0StackPtr
+  );
+
+/**
+  Invoke demoted MM user entry point.
+**/
+EFI_STATUS
+EFIAPI
+InvokeDemotedMmEntrypoint (
+  IN EFI_PHYSICAL_ADDRESS  EntryPoint,
+  IN MM_USER_REQUEST_TYPE  EntryPointOpCode,
+  IN VOID                  *Context  OPTIONAL,
+  IN UINTN                 ContextSize
   );
 
 #endif
