@@ -57,6 +57,7 @@ IsWithinUnblockedRegion (
 
   if ((Length == 0) || (MAX_UINT64 - Length + 1 < Length)) {
     // Zero-length query or incoming out of 64-bit limitation
+    DEBUG ((DEBUG_ERROR, "%a - Invalid length 0x%lx\n", __func__, Length));
     return FALSE;
   }
 
@@ -68,12 +69,25 @@ IsWithinUnblockedRegion (
     // EndAddress cannot exceed 64-bit boundary due to paging limitation
     EndAddress = StartAddress + EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages);
 
+    DEBUG ((
+      DEBUG_INFO,
+      "%a - Checking unblocked region 0x%lx - 0x%lx against query 0x%lx - 0x%lx\n",
+      __func__,
+      StartAddress,
+      EndAddress,
+      Buffer,
+      Buffer + Length
+      ));
+
     if ((StartAddress <= Buffer) && (Buffer + Length <= EndAddress)) {
+      DEBUG ((DEBUG_INFO, "%a - Found within unblocked region.\n", __func__));
       return TRUE;
     }
 
     Node = Node->ForwardLink;
   }
+
+  DEBUG ((DEBUG_INFO, "%a - Not within unblocked region.\n", __func__));
 
   return FALSE;
 }
@@ -323,6 +337,26 @@ ProcessBlockPages (
   return EFI_SUCCESS;
 }
 
+EFI_STATUS
+EFIAPI
+MmAddUnblckedMemoryList (
+  IN MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockMemParams
+) {
+  UNBLOCKED_MEM_LIST  *UnblockListEntry;
+
+  UnblockListEntry = AllocatePool (sizeof (UNBLOCKED_MEM_LIST));
+  if (UnblockListEntry == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __func__));
+    ASSERT (FALSE);
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  CopyMem (&UnblockListEntry->UnblockMemData, UnblockMemParams, sizeof (*UnblockMemParams));
+  InsertTailList (&mUnblockedMemoryList, &UnblockListEntry->Link);
+
+  return EFI_SUCCESS;
+}
+
 /**
   Routine used to validate and unblock requested region to be accessible in MM
   environment. Given this routine could received untrusted data, the requested
@@ -348,18 +382,17 @@ ProcessUnblockPages (
   )
 {
   EFI_STATUS          Status = EFI_SUCCESS;
-  UNBLOCKED_MEM_LIST  *UnblockListEntry;
   UINT64              Attribute;
 
-  if (mMmReadyToLockDone) {
-    // Note that this flag will be set once the policy is requested
-    DEBUG ((
-      DEBUG_ERROR,
-      "%a - Unblock requested after ready to lock, will not proceed!\n",
-      __func__
-      ));
-    return EFI_ACCESS_DENIED;
-  }
+  // if (mMmReadyToLockDone) {
+  //   // Note that this flag will be set once the policy is requested
+  //   DEBUG ((
+  //     DEBUG_ERROR,
+  //     "%a - Unblock requested after ready to lock, will not proceed!\n",
+  //     __func__
+  //     ));
+  //   return EFI_ACCESS_DENIED;
+  // }
 
   // Some more sanity checks here
   if ((UnblockMemParams == NULL) ||
@@ -435,15 +468,11 @@ ProcessUnblockPages (
     return Status;
   }
 
-  UnblockListEntry = AllocatePool (sizeof (UNBLOCKED_MEM_LIST));
-  if (UnblockListEntry == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __func__));
-    ASSERT (FALSE);
-    return EFI_OUT_OF_RESOURCES;
+  Status = MmAddUnblckedMemoryList (UnblockMemParams);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to add unblock memory to list %r!\n", __func__, Status));
+    ASSERT_EFI_ERROR (Status);
   }
-
-  CopyMem (&UnblockListEntry->UnblockMemData, UnblockMemParams, sizeof (*UnblockMemParams));
-  InsertTailList (&mUnblockedMemoryList, &UnblockListEntry->Link);
 
   return Status;
 } // ProcessUnblockPages()

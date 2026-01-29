@@ -22,12 +22,29 @@ typedef struct {
   UINT32                    Reserved;
   // EFI_PHYSICAL_ADDRESS      MmSupervisorCoreStackBase;
   // UINT64                    MmSupervisorCoreStackSize;
-  // EFI_PHYSICAL_ADDRESS      MmSupervisorCpl3StackBase;
-  // UINT64                    MmSupervisorCpl3StackSize;
+  EFI_PHYSICAL_ADDRESS      MmSupervisorCpl3StackBase;
+  UINT64                    MmSupervisorCpl3PerCoreStackSize;
   EFI_PHYSICAL_ADDRESS      MmSupvCpuPrivate;
   UINT64                    MmSupvCpuPrivateSize;
   EFI_PHYSICAL_ADDRESS      MmSupvMpSyncData;
   UINT64                    MmSupvMpSyncDataSize;
+  EFI_PHYSICAL_ADDRESS      MmSupvCommBuffer;
+  EFI_PHYSICAL_ADDRESS      MmSupvCommBufferInternal;
+  UINT64                    MmSupvCommBufferSize;
+  EFI_PHYSICAL_ADDRESS      MmUserCommBuffer;
+  EFI_PHYSICAL_ADDRESS      MmUserCommBufferInternal;
+  UINT64                    MmUserCommBufferSize;
+  EFI_PHYSICAL_ADDRESS      MmSupvStatusBuffer;
+  EFI_PHYSICAL_ADDRESS      MmSupvToUserBuffer;
+  UINT64                    MmSupvToUserBufferSize;
+  EFI_PHYSICAL_ADDRESS      MmSupvGdtBuffer;
+  UINT64                    MmSupvGdtBufferSize;
+  UINT64                    MmSupvGdtStepSize;
+  EFI_PHYSICAL_ADDRESS      MmInitializedBuffer;
+  EFI_PHYSICAL_ADDRESS      MmSupvFirmwarePolicyBuffer;
+  UINT64                    MmSupvFirmwarePolicyBufferSize;
+  EFI_PHYSICAL_ADDRESS      MmSupvMemoryPolicyBuffer;
+  UINT64                    MmSupvMemoryPolicyBufferSize;
 } MM_SUPV_PASS_DOWN_HOB_DATA;
 
 #pragma pack ()

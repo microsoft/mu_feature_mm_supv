@@ -60,11 +60,12 @@ typedef struct {
   EFI_SMM_RESERVED_SMRAM_REGION     SmmReservedSmramRegion[1];
   EFI_SMM_ENTRY_CONTEXT             SmmCoreEntryContext;
   EFI_SMM_ENTRY_POINT               SmmCoreEntry;
+  EFI_SMM_ENTRY_POINT               SmmUserEntry;
 
   // EFI_SMM_CONFIGURATION_PROTOCOL    SmmConfiguration;
 
   PROCEDURE_WRAPPER                 *ApWrapperFunc;
-  LIST_ENTRY                        TokenList;
+  LIST_ENTRY                        *TokenList;
   LIST_ENTRY                        *FirstFreeToken;
 } SMM_CPU_PRIVATE_DATA;
 
@@ -226,14 +227,14 @@ InitPackageFirstThreadIndexInfo (
   VOID
   );
 
-/**
-  Allocate buffer for SpinLock and Wrapper function buffer.
+// /**
+//   Allocate buffer for SpinLock and Wrapper function buffer.
 
-**/
-VOID
-InitializeDataForMmMp (
-  VOID
-  );
+// **/
+// VOID
+// InitializeDataForMmMp (
+//   VOID
+//   );
 
 // /**
 //   Insure when this function returns, no AP will execute normal mode code before entering SMM, except SMI disabled APs.
