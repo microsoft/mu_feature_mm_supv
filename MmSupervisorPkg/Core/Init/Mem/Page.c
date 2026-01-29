@@ -708,6 +708,17 @@ ApplyPageAttributes:
     }
   }
 
+  DEBUG ((
+    DEBUG_INFO,
+    "MmInternalAllocatePagesEx: Type=%d, MemType=%d, Pages=0x%lx, Addr=0x%lx, NeedGuard=%d, SupervisorPage=%d\n",
+    Type,
+    MemoryType,
+    NumberOfPages,
+    *Memory,
+    NeedGuard,
+    SupervisorPage
+    ));
+
   return EFI_SUCCESS;
 }
 
@@ -976,6 +987,15 @@ MmInternalFreePagesEx (
     // Below line normally would not work due to using Memory to contain free page node.
     SmmClearMemoryAttributes (Memory, EFI_PAGES_TO_SIZE (NumberOfPages), EFI_MEMORY_RO);
   }
+
+  DEBUG ((
+    DEBUG_INFO,
+    "MmInternalFreePagesEx: Mem=0x%lx, Pages=0x%lx, AddRegion=%d, SupervisorPage=%d\n",
+    Memory,
+    NumberOfPages,
+    AddRegion,
+    SupervisorPage
+    ));
 
   return EFI_SUCCESS;
 }

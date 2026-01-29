@@ -31,6 +31,14 @@ InitializeMpServiceData (
   IN UINTN  StackSize,
   IN UINTN  ShadowStackSize
   );
+/**
+  Allocate buffer for SpinLock and Wrapper function buffer.
+
+**/
+VOID
+InitializeDataForMmMp (
+  VOID
+  );
 
 CPU_HOT_PLUG_DATA  mCpuHotPlugData = {
   CPU_HOT_PLUG_DATA_REVISION_1,                 // Revision

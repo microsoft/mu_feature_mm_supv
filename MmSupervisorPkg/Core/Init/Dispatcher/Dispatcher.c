@@ -169,15 +169,15 @@ MmLoadImage (
   // Get information about the image being loaded
   //
   Status = PeCoffLoaderGetImageInfo (ImageContext);
-  DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to read Pe/Coff loader image info %r\n", __func__, Status));
     return Status;
   }
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   PageCount = (UINTN)EFI_SIZE_TO_PAGES ((UINTN)ImageContext->ImageSize + ImageContext->SectionAlignment);
   DstBuffer = (UINTN)(-1);
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   // Note that the buffer will be protected after analyzing the PE/Coff data.
   Status = MmAllocatePages (
              AllocateMaxAddress,
@@ -185,12 +185,12 @@ DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
              PageCount,
              &DstBuffer
              );
-             DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to allocate 0x%x pages for loading image %r\n", __func__, PageCount, Status));
     return Status;
   }
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   ImageContext->ImageAddress = (EFI_PHYSICAL_ADDRESS)DstBuffer;
 
   //
@@ -198,18 +198,18 @@ DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
   //
   ImageContext->ImageAddress += ImageContext->SectionAlignment - 1;
   ImageContext->ImageAddress &= ~((EFI_PHYSICAL_ADDRESS)(ImageContext->SectionAlignment - 1));
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   //
   // Load the image to our new buffer
   //
   Status = PeCoffLoaderLoadImage (ImageContext);
-  DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to load image into our allocated buffer %r\n", __func__, Status));
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   //
   // Relocate the image in our new buffer
   //
@@ -221,50 +221,50 @@ DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
     MmFreePages (DstBuffer, PageCount);
     return Status;
   }
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   //
   // Flush the instruction cache so the image data are written before we execute it
   //
   InvalidateInstructionCacheRange ((VOID *)(UINTN)ImageContext->ImageAddress, (UINTN)ImageContext->ImageSize);
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+
   //
   // Save Image EntryPoint in DriverEntry
   //
   DriverEntry->ImageEntryPoint = ImageContext->EntryPoint;
   DriverEntry->ImageBuffer     = DstBuffer;
   DriverEntry->NumberOfPage    = PageCount;
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
-  // if (mEfiSystemTable != NULL) {
-  // TODO: This is throw away memory but need to use until it is locked down...
-  Status = MmAllocateSupervisorPool (
-             EfiRuntimeServicesData,
-             sizeof (EFI_LOADED_IMAGE_PROTOCOL),
-             (VOID **)&DriverEntry->LoadedImage
-             );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate pool for loaded image protocol %r\n", __func__, Status));
-    PeCoffLoaderUnloadImage (ImageContext);
-    MmFreePages (DstBuffer, PageCount);
-    return Status;
-  }
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
-  ZeroMem (DriverEntry->LoadedImage, sizeof (EFI_LOADED_IMAGE_PROTOCOL));
-  DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
-  //
-  // Fill in the remaining fields of the Loaded Image Protocol instance.
-  // Note: ImageBase is an SMRAM address that can not be accessed outside of SMRAM if SMRAM window is closed.
-  //
-  DriverEntry->LoadedImage->Revision     = EFI_LOADED_IMAGE_PROTOCOL_REVISION;
-  DriverEntry->LoadedImage->ParentHandle = NULL;
-  DriverEntry->LoadedImage->SystemTable  = mEfiSystemTable;
-  DriverEntry->LoadedImage->DeviceHandle = NULL;
-  DriverEntry->LoadedImage->FilePath     = NULL;
 
-  DriverEntry->LoadedImage->ImageBase     = (VOID *)(UINTN)DriverEntry->ImageBuffer;
-  DriverEntry->LoadedImage->ImageSize     = ImageContext->ImageSize;
-  DriverEntry->LoadedImage->ImageCodeType = EfiRuntimeServicesCode;
-  DriverEntry->LoadedImage->ImageDataType = EfiRuntimeServicesData;
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+  // // if (mEfiSystemTable != NULL) {
+  // // TODO: This is throw away memory but need to use until it is locked down...
+  // Status = MmAllocateSupervisorPool (
+  //            EfiRuntimeServicesData,
+  //            sizeof (EFI_LOADED_IMAGE_PROTOCOL),
+  //            (VOID **)&DriverEntry->LoadedImage
+  //            );
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to allocate pool for loaded image protocol %r\n", __func__, Status));
+  //   PeCoffLoaderUnloadImage (ImageContext);
+  //   MmFreePages (DstBuffer, PageCount);
+  //   return Status;
+  // }
+
+  // ZeroMem (DriverEntry->LoadedImage, sizeof (EFI_LOADED_IMAGE_PROTOCOL));
+
+  // //
+  // // Fill in the remaining fields of the Loaded Image Protocol instance.
+  // // Note: ImageBase is an SMRAM address that can not be accessed outside of SMRAM if SMRAM window is closed.
+  // //
+  // DriverEntry->LoadedImage->Revision     = EFI_LOADED_IMAGE_PROTOCOL_REVISION;
+  // DriverEntry->LoadedImage->ParentHandle = NULL;
+  // DriverEntry->LoadedImage->SystemTable  = mEfiSystemTable;
+  // DriverEntry->LoadedImage->DeviceHandle = NULL;
+  // DriverEntry->LoadedImage->FilePath     = NULL;
+
+  // DriverEntry->LoadedImage->ImageBase     = (VOID *)(UINTN)DriverEntry->ImageBuffer;
+  // DriverEntry->LoadedImage->ImageSize     = ImageContext->ImageSize;
+  // DriverEntry->LoadedImage->ImageCodeType = EfiRuntimeServicesCode;
+  // DriverEntry->LoadedImage->ImageDataType = EfiRuntimeServicesData;
+
   //
   // Create a new image handle in the UEFI handle database for the MM Driver
   //
@@ -277,7 +277,16 @@ DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
   //                                          );
   // }
 
-DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
+  // //
+  // // After loading, (hopefully before executing) we apply necessary code/data pages to this image
+  // //
+  // Status = SmmSetImagePageAttributes (DriverEntry, CompareGuid (&DriverEntry->FileName, &gMmSupervisorCoreGuid));
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for loaded image %r\n", __func__, Status));
+  //   MmFreePages (DstBuffer, PageCount);
+  //   return Status;
+  // }
+
   //
   // Print the load address and the PDB file name if it is available
   //
@@ -338,4 +347,222 @@ DEBUG ((DEBUG_ERROR, "%a here %d\n", __func__, __LINE__));
   DEBUG_CODE_END ();
 
   return Status;
+}
+
+/**
+  This is the main Dispatcher for MM and it exits when there are no more
+  drivers to run. Drain the mScheduledQueue and load and start a PE
+  image for each driver. Search the mDiscoveredList to see if any driver can
+  be placed on the mScheduledQueue. If no drivers are placed on the
+  mScheduledQueue exit the function.
+
+  @retval EFI_SUCCESS           All of the MM Drivers that could be dispatched
+                                have been run and the MM Entry Point has been
+                                registered.
+  @retval EFI_NOT_READY         The MM Driver that registered the MM Entry Point
+                                was just dispatched.
+  @retval EFI_NOT_FOUND         There are no MM Drivers available to be dispatched.
+  @retval EFI_ALREADY_STARTED   The MM Dispatcher is already running
+
+**/
+EFI_STATUS
+MmLoadButNotDispatch (
+  VOID
+  )
+{
+  EFI_STATUS                    Status;
+  LIST_ENTRY                    *Link;
+  EFI_MM_DRIVER_ENTRY           *DriverEntry;
+  PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+
+  DEBUG ((DEBUG_INFO, "%a\n", __func__));
+
+  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
+    DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
+    DEBUG ((DEBUG_DISPATCH, "  DriverEntry (Discovered) - %g\n", &DriverEntry->FileName));
+
+    ZeroMem (&ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
+
+    Status = MmLoadImage (DriverEntry, &ImageContext);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a MmLoadImage failed for %g: %r\n", __func__, &DriverEntry->FileName, Status));
+      PANIC ("Failed to load MM driver image");
+    }
+  }
+
+  return EFI_SUCCESS;
+}
+
+/**
+  Return TRUE if the firmware volume has been processed, FALSE if not.
+
+  @param  FwVolHeader           The header of the firmware volume that's being
+                                tested.
+
+  @retval TRUE                  The firmware volume denoted by FwVolHeader has
+                                been processed
+  @retval FALSE                 The firmware volume denoted by FwVolHeader has
+                                not yet been processed
+
+**/
+BOOLEAN
+FvHasBeenProcessed (
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
+  )
+{
+  LIST_ENTRY   *Link;
+  KNOWN_FWVOL  *KnownFwVol;
+
+  for (Link = mFwVolList.ForwardLink;
+       Link != &mFwVolList;
+       Link = Link->ForwardLink)
+  {
+    KnownFwVol = CR (Link, KNOWN_FWVOL, Link, KNOWN_FWVOL_SIGNATURE);
+    if (KnownFwVol->FwVolHeader == FwVolHeader) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+  Verify checksum of the firmware volume header.
+
+  @param  FvHeader       Points to the firmware volume header to be checked
+
+  @retval TRUE           Checksum verification passed
+  @retval FALSE          Checksum verification failed
+
+**/
+BOOLEAN
+VerifyFvHeaderChecksum (
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FvHeader
+  )
+{
+  UINT16  Checksum;
+
+  Checksum = CalculateSum16 ((UINT16 *)FvHeader, FvHeader->HeaderLength);
+
+  if (Checksum == 0) {
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+/**
+  Remember that the firmware volume denoted by FwVolHeader has had its drivers
+  placed on mDiscoveredList. This function adds entries to mFwVolList. Items
+  are never removed/freed from mFwVolList.
+
+  @param  FwVolHeader           The header of the firmware volume that's being
+                                processed.
+
+**/
+KNOWN_FWVOL *
+FvIsBeingProcessed (
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
+  )
+{
+  KNOWN_FWVOL  *KnownFwVol;
+  EFI_GUID     FvNameGuid;
+  BOOLEAN      FvNameGuidIsFound = FALSE;
+  LIST_ENTRY   *Link;
+
+  DEBUG ((DEBUG_INFO, "FvIsBeingProcessed - 0x%08x\n", FwVolHeader));
+
+  ASSERT (FwVolHeader != NULL);
+
+  if (VerifyFvHeaderChecksum (FwVolHeader) && (FwVolHeader->ExtHeaderOffset != 0)) {
+    CopyGuid (&FvNameGuid, &((EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + FwVolHeader->ExtHeaderOffset))->FvName);
+    FvNameGuidIsFound = TRUE;
+  }
+
+  if (FvNameGuidIsFound) {
+    //
+    // Check whether the FV image with the found FvNameGuid has been processed.
+    //
+    for (Link = mFwVolList.ForwardLink; Link != &mFwVolList; Link = Link->ForwardLink) {
+      KnownFwVol = CR (Link, KNOWN_FWVOL, Link, KNOWN_FWVOL_SIGNATURE);
+      if (CompareGuid (&FvNameGuid, &KnownFwVol->FvNameGuid)) {
+        DEBUG ((DEBUG_INFO, "FvImage on FvHandle %p and %p has the same FvNameGuid %g.\n", FwVolHeader, KnownFwVol->FwVolHeader, &FvNameGuid));
+        return NULL;
+      }
+    }
+  }
+
+  KnownFwVol = AllocatePool (sizeof (KNOWN_FWVOL));
+  if (KnownFwVol == NULL) {
+    ASSERT (FALSE);
+    return NULL;
+  }
+
+  KnownFwVol->Signature   = KNOWN_FWVOL_SIGNATURE;
+  KnownFwVol->FwVolHeader = FwVolHeader;
+  if (FvNameGuidIsFound) {
+    CopyGuid (&KnownFwVol->FvNameGuid, &FvNameGuid);
+  }
+
+  InsertTailList (&mFwVolList, &KnownFwVol->Link);
+  return KnownFwVol;
+}
+
+/**
+  Add an entry to the mDiscoveredList. Allocate memory to store the DriverEntry,
+  and initialize any state variables. Read the Depex from the FV and store it
+  in DriverEntry. Pre-process the Depex to set the Before and After state.
+  The Discovered list is never freed and contains booleans that represent the
+  other possible MM driver states.
+
+  @param  Fv                    Fv protocol, needed to read Depex info out of
+                                FLASH.
+  @param  FvHandle              Handle for Fv, needed in the
+                                EFI_MM_DRIVER_ENTRY so that the PE image can be
+                                read out of the FV at a later time.
+  @param  DriverName            Name of driver to add to mDiscoveredList.
+
+  @retval EFI_SUCCESS           If driver was added to the mDiscoveredList.
+  @retval EFI_ALREADY_STARTED   The driver has already been started. Only one
+                                DriverName may be active in the system at any one
+                                time.
+
+**/
+EFI_STATUS
+MmAddToDriverList (
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
+  IN VOID                        *Pe32Data,
+  IN UINTN                       Pe32DataSize,
+  IN VOID                        *Depex,
+  IN UINTN                       DepexSize,
+  IN EFI_GUID                    *DriverName
+  )
+{
+  EFI_MM_DRIVER_ENTRY  *DriverEntry;
+
+  DEBUG ((DEBUG_INFO, "MmAddToDriverList - %g (0x%08x)\n", DriverName, Pe32Data));
+
+  //
+  // Create the Driver Entry for the list. ZeroPool initializes lots of variables to
+  // NULL or FALSE.
+  //
+  DriverEntry = AllocateZeroPool (sizeof (EFI_MM_DRIVER_ENTRY));
+  ASSERT (DriverEntry != NULL);
+
+  DriverEntry->Signature = EFI_MM_DRIVER_ENTRY_SIGNATURE;
+  CopyGuid (&DriverEntry->FileName, DriverName);
+  DriverEntry->FwVolHeader  = FwVolHeader;
+  DriverEntry->Pe32Data     = Pe32Data;
+  DriverEntry->Pe32DataSize = Pe32DataSize;
+  DriverEntry->DepexSize    = DepexSize;
+
+  DriverEntry->Depex = AllocateCopyPool (DepexSize, Depex);
+  ASSERT (DriverEntry->Depex != NULL);
+
+  // MmGetDepexSectionAndPreProccess (DriverEntry);
+
+  InsertTailList (&mDiscoveredList, &DriverEntry->Link);
+  gRequestDispatch = TRUE;
+
+  return EFI_SUCCESS;
 }

@@ -27,6 +27,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate/Relocate.h"
 #include "Request.h"
 
+// TODO: This should not be here.
+extern LIST_ENTRY  mDiscoveredList;
+
 //
 // attributes for reserved memory before it is promoted to system memory
 //
@@ -1329,7 +1332,10 @@ PatchMmSupervisorCoreRegion (
   //
   // Patch MM Supervisor Core
   //
-  EFI_STATUS  Status;
+  EFI_STATUS                    Status;
+  LIST_ENTRY                    *Link;
+  EFI_MM_DRIVER_ENTRY           *DriverEntry;
+
 
   DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
@@ -1347,11 +1353,11 @@ PatchMmSupervisorCoreRegion (
     CpuDeadLoop ();
   }
 
-  Status = SmmSetMemoryAttributes (
-             mMmCoreDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
+  // Status = SmmSetMemoryAttributes (
+  //            mMmCoreDriverEntry->ImageBuffer,
+  //            EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
+  //            EFI_MEMORY_SP
+  //            );
 
   FreePool (mMmCoreDriverEntry);
   mMmCoreDriverEntry = NULL;
@@ -1371,32 +1377,45 @@ PatchMmSupervisorCoreRegion (
     CpuDeadLoop ();
   }
 
-  Status = SmmClearMemoryAttributes (
-             mMmUserDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
+  // Status = SmmClearMemoryAttributes (
+  //            mMmUserDriverEntry->ImageBuffer,
+  //            EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage),
+  //            EFI_MEMORY_SP
+  //            );
 
   FreePool (mMmUserDriverEntry);
   mMmUserDriverEntry = NULL;
 
-  // if (FirmwarePolicy == NULL) {
-  //   Status = EFI_SECURITY_VIOLATION;
-  //   ASSERT (FALSE);
-  //   return;
-  // }
+  
+  // Now handle the rest of discovered MM drivers
+  while (!IsListEmpty (&mDiscoveredList)) {
+    Link = mDiscoveredList.ForwardLink;
+    DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
 
-  // //
-  // // Mark firmware policy pages as supervisor read only
-  // // EFI_MEMORY_XP should be given as they are data pages
-  // //
-  // Status = SmmSetMemoryAttributes (
-  //            (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
-  //            (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-  //            EFI_MEMORY_RO | EFI_MEMORY_SP
-  //            );
+    DEBUG ((DEBUG_INFO, "  Setting image attributes - %g\n", &DriverEntry->FileName));
+    SmmSetImagePageAttributes (DriverEntry, FALSE);
 
-  // DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
+    RemoveEntryList (&DriverEntry->Link);
+    FreePool (DriverEntry);
+  }
+
+  if (FirmwarePolicy == NULL) {
+    Status = EFI_SECURITY_VIOLATION;
+    ASSERT (FALSE);
+    return;
+  }
+
+  //
+  // Mark firmware policy pages as supervisor read only
+  // EFI_MEMORY_XP should be given as they are data pages
+  //
+  Status = SmmSetMemoryAttributes (
+             (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
+             (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
+             EFI_MEMORY_RO | EFI_MEMORY_SP
+             );
+
+  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
 
 VOID

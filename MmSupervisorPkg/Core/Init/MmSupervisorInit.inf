@@ -42,6 +42,8 @@
 
   Dispatcher/Dispatcher.c
 
+  FwVol/FwVol.c
+
   Mem/Cet.nasm
   Mem/HeapGuard.c
   Mem/HeapGuard.h
@@ -212,7 +214,7 @@
   gMmSupervisorPolicyFileGuid                   ## CONSUMES
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gEventMmDispatchGuid                          ## CONSUMES
-  gEfiHobMemoryAllocModuleGuid
+  gMmSupervisorHobMemoryAllocModuleGuid         ## PRODUCES ## A HOB for MmSupervisor memory allocation modules
   gEfiMmPeiMmramMemoryReserveGuid
 
   gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything

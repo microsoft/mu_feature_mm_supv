@@ -42,12 +42,13 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
     NULL                                        // SmmCoreEntryContext.CpuSaveState
   },
   NULL,                                         // SmmCoreEntry
+  NULL,                                         // SmmUserEntry
   // {
   //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
   //   RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
   // },
   NULL,                                         // pointer to Ap Wrapper Func array
-  { NULL, NULL },                               // List_Entry for Tokens.
+  NULL,                               // List_Entry for Tokens.
 };
 
 //
@@ -493,7 +494,7 @@ ResetTokens (
   //
   // Reset the FirstFreeToken to the beginning of token list upon exiting SMI.
   //
-  gSmmCpuPrivate->FirstFreeToken = GetFirstNode (&gSmmCpuPrivate->TokenList);
+  gSmmCpuPrivate->FirstFreeToken = GetFirstNode (gSmmCpuPrivate->TokenList);
 }
 
 // /**
@@ -986,7 +987,7 @@ IsTokenInUse (
     return FALSE;
   }
 
-  Link = GetFirstNode (&gSmmCpuPrivate->TokenList);
+  Link = GetFirstNode (gSmmCpuPrivate->TokenList);
   //
   // Only search used tokens.
   //
@@ -997,7 +998,7 @@ IsTokenInUse (
       return TRUE;
     }
 
-    Link = GetNextNode (&gSmmCpuPrivate->TokenList, Link);
+    Link = GetNextNode (gSmmCpuPrivate->TokenList, Link);
   }
 
   return FALSE;
@@ -1062,7 +1063,7 @@ AllocateTokenBuffer (
     ProcTokens[Index].SpinLock       = SpinLock;
     ProcTokens[Index].RunningApCount = 0;
 
-    InsertTailList (&gSmmCpuPrivate->TokenList, &ProcTokens[Index].Link);
+    InsertTailList (gSmmCpuPrivate->TokenList, &ProcTokens[Index].Link);
   }
 
   return &ProcTokens[0].Link;
@@ -1089,12 +1090,12 @@ GetFreeToken (
   // If FirstFreeToken meets the end of token list, enlarge the token list.
   // Set FirstFreeToken to the first free token.
   //
-  if (gSmmCpuPrivate->FirstFreeToken == &gSmmCpuPrivate->TokenList) {
+  if (gSmmCpuPrivate->FirstFreeToken == gSmmCpuPrivate->TokenList) {
     gSmmCpuPrivate->FirstFreeToken = AllocateTokenBuffer ();
   }
 
   NewToken                       = PROCEDURE_TOKEN_FROM_LINK (gSmmCpuPrivate->FirstFreeToken);
-  gSmmCpuPrivate->FirstFreeToken = GetNextNode (&gSmmCpuPrivate->TokenList, gSmmCpuPrivate->FirstFreeToken);
+  gSmmCpuPrivate->FirstFreeToken = GetNextNode (gSmmCpuPrivate->TokenList, gSmmCpuPrivate->FirstFreeToken);
 
   NewToken->RunningApCount = RunningApsCount;
   AcquireSpinLock (NewToken->SpinLock);
@@ -1859,7 +1860,10 @@ InitializeDataForMmMp (
     gSmmCpuPrivate->ApWrapperFunc[Index].CpuIndex = Index;
   }
 
-  InitializeListHead (&gSmmCpuPrivate->TokenList);
+  gSmmCpuPrivate->TokenList = AllocatePool (sizeof (LIST_ENTRY));
+  ASSERT (gSmmCpuPrivate->TokenList != NULL);
+
+  InitializeListHead (gSmmCpuPrivate->TokenList);
 
   gSmmCpuPrivate->FirstFreeToken = AllocateTokenBuffer ();
 }
