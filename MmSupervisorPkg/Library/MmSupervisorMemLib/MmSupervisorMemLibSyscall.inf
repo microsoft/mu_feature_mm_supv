@@ -21,7 +21,7 @@
   MODULE_TYPE                    = MM_STANDALONE
   VERSION_STRING                 = 1.0
   PI_SPECIFICATION_VERSION       = 0x00010032
-  LIBRARY_CLASS                  = MemLib|MM_STANDALONE
+  LIBRARY_CLASS                  = MemLib|MM_STANDALONE MM_CORE_STANDALONE
   CONSTRUCTOR                    = MemLibConstructor
   DESTRUCTOR                     = MemLibDestructor
 
