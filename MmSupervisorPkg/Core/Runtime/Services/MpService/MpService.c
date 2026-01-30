@@ -16,7 +16,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // #include "Relocate/Relocate.h"
 #include "Mem/Mem.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
-#include "../../Common/PassDown.h"
+#include <Guid/PassDown.h>
 #include "../../Common/UserDefinitions.h"
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
@@ -1759,6 +1759,7 @@ MmAddUnblckedMemoryList (
   IN MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockMemParams
 );
 extern volatile BOOLEAN loop;
+EFI_PHYSICAL_ADDRESS mMmCoreImageBuffer;
 #define IA32_APIC_BASE_MSR_INDEX          0x1B
 #define   IA32_APIC_BSP                   (1u << 8)
 #define   IA32_APIC_X2_MODE               (1u << 10)
@@ -1883,40 +1884,17 @@ BspInit (
   //
 
   EFI_PEI_HOB_POINTERS       Hob;
-  EFI_HOB_MEMORY_ALLOCATION  *MemoryAllocationHob;
-  EFI_PHYSICAL_ADDRESS       TargetBaseAddress; // This is here so that we do work on read only memory (HOBs)
+  EFI_HOB_MEMORY_ALLOCATION_MODULE  *MemoryAllocationHob;
 
   MemoryAllocationHob = NULL;
   Hob.Raw             = GetNextHob (EFI_HOB_TYPE_MEMORY_ALLOCATION, HobStart);
   while (Hob.Raw != NULL) {
-    MemoryAllocationHob = (EFI_HOB_MEMORY_ALLOCATION *)Hob.Raw;
-    if ((MemoryAllocationHob->AllocDescriptor.MemoryType == EfiRuntimeServicesData) ||
-        (MemoryAllocationHob->AllocDescriptor.MemoryType == EfiRuntimeServicesCode)) {
-      if (!CompareGuid (&MemoryAllocationHob->AllocDescriptor.Name, &gMmSupervisorCoreGuid)) {
-        TargetBaseAddress = MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress;
-        // Supervisor page allocations
-        Status = MmAllocateSupervisorPages (
-          AllocateAddress,
-          MemoryAllocationHob->AllocDescriptor.MemoryType,
-          EFI_SIZE_TO_PAGES (MemoryAllocationHob->AllocDescriptor.MemoryLength),
-          &TargetBaseAddress
-          );
-        ASSERT_EFI_ERROR (Status);
-      } else if (CompareGuid (&MemoryAllocationHob->AllocDescriptor.Name, &gMmSupervisorUserGuid)) {
-        TargetBaseAddress = MemoryAllocationHob->AllocDescriptor.MemoryBaseAddress;
-        // User page allocations
-        Status = MmAllocatePages (
-          AllocateAddress,
-          MemoryAllocationHob->AllocDescriptor.MemoryType,
-          EFI_SIZE_TO_PAGES (MemoryAllocationHob->AllocDescriptor.MemoryLength),
-          &TargetBaseAddress
-          );
-        ASSERT_EFI_ERROR (Status);
+    MemoryAllocationHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)Hob.Raw;
+    if (CompareGuid (&MemoryAllocationHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid)) {
+      if (CompareGuid (&MemoryAllocationHob->ModuleName, &gMmSupervisorCoreGuid)) {
+        mMmCoreImageBuffer = MemoryAllocationHob->MemoryAllocationHeader.MemoryBaseAddress; 
+        break;
       }
-    } else {
-      // There will be module allocation hobs marking for supervisor and user modules
-      // But they should be already allocated during module loading phase, so we will
-      // skip them here.
     }
 
     Hob.Raw = GET_NEXT_HOB (Hob);
@@ -1988,12 +1966,17 @@ BspInit (
   mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T] = (VOID *)MmSupervisorPassDownHob->MmSupvCommBufferInternal;
   mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages =
     MmSupervisorPassDownHob->MmSupvCommBufferSize / EFI_PAGE_SIZE;
+    // TODO: a check for this
+  mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].Type = EfiRuntimeServicesData;
 
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart =
     MmSupervisorPassDownHob->MmUserCommBuffer;
   mInternalCommBufferCopy[MM_USER_BUFFER_T] = (VOID *)MmSupervisorPassDownHob->MmUserCommBufferInternal;
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages =
     MmSupervisorPassDownHob->MmUserCommBufferSize / EFI_PAGE_SIZE;
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Type = EfiRuntimeServicesData;
 
   mGdtBuffer = MmSupervisorPassDownHob->MmSupvGdtBuffer;
   mGdtBufferSize = MmSupervisorPassDownHob->MmSupvGdtBufferSize;
