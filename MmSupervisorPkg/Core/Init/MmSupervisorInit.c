@@ -13,7 +13,8 @@
 #include "Mem/HeapGuard.h"
 // #include "PrivilegeMgmt/PrivilegeMgmt.h"
 // #include "Telemetry/Telemetry.h"
-#include "../Common/PassDown.h"
+#include <Guid/PassDown.h>
+#include <Guid/DepexStruc.h>
 
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
@@ -1244,6 +1245,27 @@ CreateArbitraryHob (
   return EFI_SUCCESS;
 }
 
+INTN
+EFIAPI
+CompareMmramRangeCpuStart (
+  IN CONST VOID                 *MmramDescriptor1,
+  IN CONST VOID                 *MmramDescriptor2
+  )
+{
+  CONST EFI_MMRAM_DESCRIPTOR  *Desc1 = (CONST EFI_MMRAM_DESCRIPTOR *)MmramDescriptor1;
+  CONST EFI_MMRAM_DESCRIPTOR  *Desc2 = (CONST EFI_MMRAM_DESCRIPTOR *)MmramDescriptor2;
+
+  if (Desc1->CpuStart < Desc2->CpuStart) {
+    return -1;
+  } else if (Desc1->CpuStart > Desc2->CpuStart) {
+    return 1;
+  } else {
+    // Well, we better not have two same CpuStart entries
+    ASSERT (FALSE);
+    return 0;
+  }
+}
+
 /**
   Routine for initializing policy data provided by firmware.
 
@@ -1399,6 +1421,7 @@ MmSupervisorMain (
   EFI_HOB_GUID_TYPE               *MmramRangesHob;
   EFI_MMRAM_HOB_DESCRIPTOR_BLOCK  *MmramRangesHobData;
   EFI_MMRAM_DESCRIPTOR            *MmramRanges;
+  EFI_MMRAM_DESCRIPTOR            MmDescDummy;
   UINTN                           MmramRangeCount;
   UINT64                          StartTicker;
   UINT64                          EndTicker;
@@ -1471,6 +1494,15 @@ MmSupervisorMain (
   }
 
   CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+
+  // Sort the Mmram ranges by CpuStart address
+  QuickSort (
+    MmramRanges,
+    MmramRangeCount,
+    sizeof (EFI_MMRAM_DESCRIPTOR),
+    CompareMmramRangeCpuStart,
+    &MmDescDummy
+    );
 
   // DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
   // //
@@ -1559,6 +1591,19 @@ MmSupervisorMain (
       ASSERT (FALSE);
       PANIC ("MM Supervisor Hob size insufficient");
     }
+
+    // Filter out the MmRam Hob as we will recreate it later
+    if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_GUID_EXTENSION) {
+      EFI_GUID  *HobGuid;
+      HobGuid = &((EFI_HOB_GUID_TYPE *)Hob.Raw)->Name;
+      if (CompareGuid (HobGuid, &gEfiMmPeiMmramMemoryReserveGuid) ||
+          CompareGuid (HobGuid, &gEfiSmmSmramMemoryGuid)) {
+        DEBUG ((DEBUG_INFO, "%a Skip Copying MmRam Hob Type 0x%x Size 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize));
+        Hob.Raw = GET_NEXT_HOB (Hob);
+        continue;
+      }
+    }
+
     DEBUG ((DEBUG_INFO, "%a Copy Hob Type 0x%x Size 0x%x into offset 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize, InitialMmHobSize));
     CopyMem ((VOID *)((UINTN)MmSupervisorHobStart + InitialMmHobSize), (VOID *)Hob.Raw, HobSize);
     InitialMmHobSize += ALIGN_VALUE (HobSize, 8);
