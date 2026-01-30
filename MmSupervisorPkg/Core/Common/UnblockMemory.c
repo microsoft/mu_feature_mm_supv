@@ -295,6 +295,9 @@ ProcessBlockPages (
   MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockedMemEntry;
   LIST_ENTRY                           *Node;
   EFI_STATUS                           Status;
+  // TODO: hack: to be removed
+  EFI_PHYSICAL_ADDRESS                 StartAddress;
+  EFI_PHYSICAL_ADDRESS                 EndAddress;
 
   if (BlockMemDesc == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -304,8 +307,20 @@ ProcessBlockPages (
   BASE_LIST_FOR_EACH (Node, &mUnblockedMemoryList) {
     UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
     UnblockedMemEntry  = UnblockedListEntry->UnblockMemData;
-    if ((UnblockedMemEntry.MemoryDescriptor.PhysicalStart == BlockMemDesc->MemoryDescriptor.PhysicalStart) &&
-        (UnblockedMemEntry.MemoryDescriptor.NumberOfPages == BlockMemDesc->MemoryDescriptor.NumberOfPages))
+    DEBUG ((
+      DEBUG_INFO,
+      "%a - Checking unblocked region %g Address: 0x%p Length: 0x%x (Pages)\n",
+      __func__,
+      &UnblockedMemEntry.IdentifierGuid,
+      UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
+      UnblockedMemEntry.MemoryDescriptor.NumberOfPages
+      ));
+    // TODO: hack: to be removed
+    StartAddress = UnblockedMemEntry.MemoryDescriptor.PhysicalStart;
+    EndAddress   = UnblockedMemEntry.MemoryDescriptor.PhysicalStart +
+                   EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages);
+    if ((StartAddress <= BlockMemDesc->MemoryDescriptor.PhysicalStart) &&
+        (EndAddress >= BlockMemDesc->MemoryDescriptor.NumberOfPages))
     {
       Status = EFI_SUCCESS;
       break;
@@ -319,8 +334,8 @@ ProcessBlockPages (
 
   // Mark this region to be inaccessible
   Status = SmmSetMemoryAttributes (
-             UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
-             EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages),
+             BlockMemDesc->MemoryDescriptor.PhysicalStart,
+             EFI_PAGES_TO_SIZE (BlockMemDesc->MemoryDescriptor.NumberOfPages),
              EFI_MEMORY_RP
              );
   if (EFI_ERROR (Status)) {
@@ -333,6 +348,49 @@ ProcessBlockPages (
   // we will set the length to 0 and update the attribute.
   RemoveEntryList (Node);
   FreePool (UnblockedListEntry);
+
+  // Left split
+  if (StartAddress < BlockMemDesc->MemoryDescriptor.PhysicalStart) {
+    // if the blocked region is in the middle of a larger, we need to split it
+    // into two entries.
+    UnblockedListEntry = AllocatePool (sizeof (UNBLOCKED_MEM_LIST));
+    if (UnblockedListEntry == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __func__));
+      ASSERT (FALSE);
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+    CopyMem (&UnblockedMemEntry, &BlockMemDesc->MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
+    UnblockedMemEntry.MemoryDescriptor.NumberOfPages =
+      (UINT64)(BlockMemDesc->MemoryDescriptor.PhysicalStart - StartAddress) / EFI_PAGE_SIZE;
+    UnblockedMemEntry.MemoryDescriptor.PhysicalStart = StartAddress;
+    UnblockedMemEntry.MemoryDescriptor.VirtualStart = StartAddress;
+
+    CopyMem (&UnblockedListEntry->UnblockMemData, &UnblockedMemEntry, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
+    InsertTailList (&mUnblockedMemoryList, &UnblockedListEntry->Link);
+  }
+
+  // Right split
+  if (EndAddress > (BlockMemDesc->MemoryDescriptor.PhysicalStart +
+                    EFI_PAGES_TO_SIZE (BlockMemDesc->MemoryDescriptor.NumberOfPages)))
+  {
+    UnblockedListEntry = AllocatePool (sizeof (UNBLOCKED_MEM_LIST));
+    if (UnblockedListEntry == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a - Failed to allocate pool for unblock memory list!\n", __func__));
+      ASSERT (FALSE);
+      return EFI_OUT_OF_RESOURCES;
+    }
+
+    CopyMem (&UnblockedMemEntry, &BlockMemDesc->MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
+    UnblockedMemEntry.MemoryDescriptor.PhysicalStart =
+      BlockMemDesc->MemoryDescriptor.PhysicalStart +
+      EFI_PAGES_TO_SIZE (BlockMemDesc->MemoryDescriptor.NumberOfPages);
+    UnblockedMemEntry.MemoryDescriptor.VirtualStart = UnblockedMemEntry.MemoryDescriptor.PhysicalStart;
+    UnblockedMemEntry.MemoryDescriptor.NumberOfPages =
+      (UINT64)(EndAddress - UnblockedMemEntry.MemoryDescriptor.PhysicalStart - EFI_PAGES_TO_SIZE (BlockMemDesc->MemoryDescriptor.NumberOfPages)) / EFI_PAGE_SIZE;
+    CopyMem (&UnblockedListEntry->UnblockMemData, &UnblockedMemEntry, sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS));
+    InsertTailList (&mUnblockedMemoryList, &UnblockedListEntry->Link);
+  }
 
   return EFI_SUCCESS;
 }
