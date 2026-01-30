@@ -45,7 +45,7 @@ GetSmmSupervisorVersionAndSplValue (
     return EFI_INVALID_PARAMETER;
   }
 
-  LocalRomImage = (VOID *)(UINTN)mMmCoreDriverEntry->ImageBuffer;
+  LocalRomImage = (VOID *)(UINTN)mMmCoreImageBuffer;
 
   ImageDosHdr = (EFI_IMAGE_DOS_HEADER *)LocalRomImage;
   if (ImageDosHdr->e_magic != EFI_IMAGE_DOS_SIGNATURE) {

@@ -240,7 +240,7 @@ extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
 extern LIST_ENTRY                        gHandleList;
 extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
-extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+extern EFI_PHYSICAL_ADDRESS              mMmCoreImageBuffer;
 extern BOOLEAN                           mMmReadyToLockDone;
 extern BOOLEAN                           mCoreInitializationComplete;
 extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];

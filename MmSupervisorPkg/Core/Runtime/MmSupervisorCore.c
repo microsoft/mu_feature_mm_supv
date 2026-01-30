@@ -124,7 +124,7 @@ MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
 UINTN                             mMmramRangeCount;
 EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
-EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+// EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
 BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
