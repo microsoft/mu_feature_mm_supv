@@ -218,6 +218,7 @@
   gEfiMmPeiMmramMemoryReserveGuid
 
   gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything
+  gMmSupervisorDepexHobGuid                      ## PRODUCES ## A HOB for MmSupervisor driver depex
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version
