@@ -641,6 +641,7 @@ SyscallDispatcher (
       Ret = (UINT64)VerifyRequestUserCommBuffer ((VOID *)(UINTN)Arg1, (UINTN)Arg2);
       break;
     default:
+      DEBUG ((DEBUG_ERROR, "%a Unrecognized syscall index - %lx\n", __func__, CallIndex));
       Status = EFI_INVALID_PARAMETER;
       break;
   }

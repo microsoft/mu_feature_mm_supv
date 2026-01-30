@@ -60,13 +60,25 @@ VerifyandMoveUnblockedPages (
   }
 
   if (NewMemParam->MemoryDescriptor.Attribute != OldMemParam->MemoryDescriptor.Attribute) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different attributes, this is not allowed!\n", __func__));
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a - Incoming buffers are of different attributes (New: 0x%x, Old: 0x%x), this is not allowed!\n",
+      __func__,
+      NewMemParam->MemoryDescriptor.Attribute,
+      OldMemParam->MemoryDescriptor.Attribute
+      ));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
 
   if (NewMemParam->MemoryDescriptor.Type != OldMemParam->MemoryDescriptor.Type) {
-    DEBUG ((DEBUG_ERROR, "%a - Incoming buffers are of different types, this is not allowed!\n", __func__));
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a - Incoming buffers are of different types (New: 0x%x, Old: 0x%x), this is not allowed!\n",
+      __func__,
+      NewMemParam->MemoryDescriptor.Type,
+      OldMemParam->MemoryDescriptor.Type
+    ));
     Status = EFI_SECURITY_VIOLATION;
     goto Done;
   }
