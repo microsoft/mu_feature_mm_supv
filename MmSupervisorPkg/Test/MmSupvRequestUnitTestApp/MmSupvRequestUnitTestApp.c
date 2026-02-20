@@ -690,6 +690,7 @@ RequestUnblockRegion (
   MM_SUPERVISOR_REQUEST_HEADER  *CommBuffer;
   EFI_MEMORY_DESCRIPTOR         *MemDesc;
   VOID                          *TargetPage;
+  EFI_GUID                      *RequestGuid;
 
   TargetPage = AllocatePages (1);
   if (TargetPage == NULL) {
@@ -710,6 +711,9 @@ RequestUnblockRegion (
   MemDesc->NumberOfPages = 1;
   MemDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)TargetPage;
   MemDesc->Attribute     = 0;
+
+  RequestGuid = (EFI_GUID *)(MemDesc + 1);
+  CopyGuid (RequestGuid, &gEfiCallerIdGuid);
 
   Status = MmSupvRequestDxeToMmCommunicate ();
 
@@ -771,6 +775,8 @@ InspectSecurityPolicy (
   SecurityPolicy = FetchSecurityPolicyFromSupv (Context);
 
   UT_ASSERT_NOT_NULL (SecurityPolicy);
+
+  DUMP_HEX (DEBUG_INFO, 0, SecurityPolicy, SecurityPolicy->Size, "Fetched Security Policy:\n");
 
   UT_ASSERT_EQUAL (SecurityPolicy->VersionMajor, 0x0001);
 
