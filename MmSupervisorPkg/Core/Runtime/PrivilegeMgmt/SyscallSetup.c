@@ -140,29 +140,29 @@ Cleanup:
   return Status;
 }
 
-// Helper function to restore MSR to runtime value for BSP
-EFI_STATUS
-EFIAPI
-RestoreBspCpl0MsrStar (
-  VOID
-  )
-{
-  EFI_STATUS  Status;
+// // Helper function to restore MSR to runtime value for BSP
+// EFI_STATUS
+// EFIAPI
+// RestoreBspCpl0MsrStar (
+//   VOID
+//   )
+// {
+//   EFI_STATUS  Status;
 
-  Status = RestoreCpl0MsrStar (mSmmMpSyncData->BspIndex);
-  ASSERT_EFI_ERROR (Status);
-  return Status;
-}
+//   Status = RestoreCpl0MsrStar (mSmmMpSyncData->BspIndex);
+//   ASSERT_EFI_ERROR (Status);
+//   return Status;
+// }
 
-// Function to fetch CPL3 stack for BSP
-EFI_PHYSICAL_ADDRESS
-EFIAPI
-GetBspCpl3Stack (
-  VOID
-  )
-{
-  return GetThisCpl3Stack (mSmmMpSyncData->BspIndex);
-}
+// // Function to fetch CPL3 stack for BSP
+// EFI_PHYSICAL_ADDRESS
+// EFIAPI
+// GetBspCpl3Stack (
+//   VOID
+//   )
+// {
+//   return GetThisCpl3Stack (mSmmMpSyncData->BspIndex);
+// }
 
 /**
 
