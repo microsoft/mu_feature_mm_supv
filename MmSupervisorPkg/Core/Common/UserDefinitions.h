@@ -13,6 +13,7 @@
 typedef enum {
   MmUserRequestTypeInit,
   MmUserRequestTypeHandlerDispatch,
+  MmUserApProcedure,
   MmUserRequestTypeMax
 } MM_USER_REQUEST_TYPE;
 

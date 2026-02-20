@@ -42,8 +42,8 @@ MmEntryPoint (
   less than _gMmRevision, then return EFI_INCOMPATIBLE_VERSION.
 
   @param   UserOpCode    The MM User operation code.
-  @param   Context       Pointer to the user context.
-  @param   ContextSize   Size of the user context.
+  @param   Arg1          The first argument for the MM User operation.
+  @param   Arg2          The second argument for the MM User operation.
 
   @retval  EFI_SUCCESS               The Standalone MM Driver exited normally.
   @retval  EFI_INCOMPATIBLE_VERSION  _gMmRevision is greater than
@@ -56,15 +56,15 @@ EFI_STATUS
 EFIAPI
 _ModuleEntryPointWorker (
   IN MM_USER_REQUEST_TYPE  UserOpCode,
-  IN VOID                  *Context  OPTIONAL,
-  IN UINTN                 ContextSize
+  IN UINTN                 Arg1,
+  IN UINTN                 Arg2
   )
 {
   EFI_STATUS  Status;
 
   switch (UserOpCode) {
     case MmUserRequestTypeInit:
-      gHobList = Context;
+      gHobList = (VOID *)Arg1;
 
       //
       // Call the Standalone MM Core entry point
@@ -74,8 +74,15 @@ _ModuleEntryPointWorker (
       break;
 
     case MmUserRequestTypeHandlerDispatch:
-      // TODO: Patch the SmmStartupThisAp to use the syscall version.
-      MmEntryPoint ((EFI_MM_ENTRY_CONTEXT *)Context);
+      MmEntryPoint ((EFI_MM_ENTRY_CONTEXT *)Arg1);
+      break;
+
+    case MmUserApProcedure:
+      // For an AP procedure, the context is a pointer to the procedure argument
+      // Caution: this is a MP routine, handle with care.
+      DEBUG ((DEBUG_INFO, "Received AP procedure call with arg1=0x%x, arg2=0x%x\n", Arg1, Arg2));
+      ((EFI_AP_PROCEDURE)Arg1)((VOID *)Arg2);
+      Status = EFI_SUCCESS;
       break;
 
     default:
