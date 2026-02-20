@@ -45,6 +45,8 @@ typedef struct {
   UINT64                    MmSupvFirmwarePolicyBufferSize;
   EFI_PHYSICAL_ADDRESS      MmSupvMemoryPolicyBuffer;
   UINT64                    MmSupvMemoryPolicyBufferSize;
+  UINT64                    BspMmBaseAddress;
+  UINT64                    MmiEntrypointSize;
 } MM_SUPV_PASS_DOWN_HOB_DATA;
 
 #pragma pack ()
