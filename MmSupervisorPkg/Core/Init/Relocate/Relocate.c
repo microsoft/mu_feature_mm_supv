@@ -364,30 +364,30 @@ LockMmCoreBeforeExit (
 
   // We need to do this based off MM CR3
   SetPageTableBase (mSmmCr3);
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   //
   // Create a mix of 2MB and 4KB page table. Update some memory ranges absent and execute-disable.
   //
   InitPaging ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   // Grab all hob resource decriptors, find the ones that does not overlap with SMRAM, mark them
   // as not present
   SetNonSmmMemMapAttributes ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   // Unblock the common regions reported during PEI phase
   SetCommonBufferRegionAttribute ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   // Unblocked other requested regions reported during PEI phase
   SetUnblockRegionAttribute ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   // Protect the requested regions reported during PEI phase
   SetProtectedRegionAttribute ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   //
   // Mark critical region to be read-only in page table
   //
   SetMemMapAttributes ();
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   // Status = LockFfsBuffer ();
   // ASSERT_EFI_ERROR (Status);
 
@@ -395,10 +395,9 @@ DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
     //
     // Set page table itself to be read-only
     //
-    DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
     SetPageTableAttributes ();
   }
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   PERF_START (NULL, "SmmCompleteReadyToLock", NULL, 0);
   SmmCpuFeaturesCompleteSmmReadyToLock ();
   PERF_END (NULL, "SmmCompleteReadyToLock", NULL, 0);
@@ -733,8 +732,8 @@ SetupSmiEntryExit (
   UINTN       TileSize;
   UINT8       *Stacks;
   UINT32      RegEax;
-  UINT32      RegEbx;
-  UINT32      RegEcx;
+  // UINT32      RegEbx;
+  // UINT32      RegEcx;
   UINT32      RegEdx;
   UINTN       FamilyId;
   UINTN       ModelId;
@@ -918,38 +917,38 @@ SetupSmiEntryExit (
   DEBUG ((DEBUG_INFO, "PcdControlFlowEnforcementPropertyMask = %d\n", PcdGet32 (PcdControlFlowEnforcementPropertyMask)));
   if (PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) {
     PANIC ("CET is not supported in StMM mode");
-    AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
-    if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
-      AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, &RegEdx);
-      DEBUG ((DEBUG_INFO, "CPUID[7/0] ECX - 0x%08x\n", RegEcx));
-      DEBUG ((DEBUG_INFO, "  CET_SS  - 0x%08x\n", RegEcx & CPUID_CET_SS));
-      DEBUG ((DEBUG_INFO, "  CET_IBT - 0x%08x\n", RegEdx & CPUID_CET_IBT));
-      if ((RegEcx & CPUID_CET_SS) == 0) {
-        mCetSupported = FALSE;
-        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-        }
-      }
+    // AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
+    // if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
+    //   AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, &RegEdx);
+    //   DEBUG ((DEBUG_INFO, "CPUID[7/0] ECX - 0x%08x\n", RegEcx));
+    //   DEBUG ((DEBUG_INFO, "  CET_SS  - 0x%08x\n", RegEcx & CPUID_CET_SS));
+    //   DEBUG ((DEBUG_INFO, "  CET_IBT - 0x%08x\n", RegEdx & CPUID_CET_IBT));
+    //   if ((RegEcx & CPUID_CET_SS) == 0) {
+    //     mCetSupported = FALSE;
+    //     if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    //       PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    //     }
+    //   }
 
-      if (mCetSupported) {
-        AsmCpuidEx (CPUID_EXTENDED_STATE, CPUID_EXTENDED_STATE_SUB_LEAF, NULL, &RegEbx, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/1] EBX - 0x%08x, ECX - 0x%08x\n", RegEbx, RegEcx));
-        AsmCpuidEx (CPUID_EXTENDED_STATE, 11, &RegEax, NULL, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/11] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
-        AsmCpuidEx (CPUID_EXTENDED_STATE, 12, &RegEax, NULL, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/12] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
-      }
-    } else {
-      mCetSupported = FALSE;
-      if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-      }
-    }
+    //   if (mCetSupported) {
+    //     AsmCpuidEx (CPUID_EXTENDED_STATE, CPUID_EXTENDED_STATE_SUB_LEAF, NULL, &RegEbx, &RegEcx, NULL);
+    //     DEBUG ((DEBUG_INFO, "CPUID[D/1] EBX - 0x%08x, ECX - 0x%08x\n", RegEbx, RegEcx));
+    //     AsmCpuidEx (CPUID_EXTENDED_STATE, 11, &RegEax, NULL, &RegEcx, NULL);
+    //     DEBUG ((DEBUG_INFO, "CPUID[D/11] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
+    //     AsmCpuidEx (CPUID_EXTENDED_STATE, 12, &RegEax, NULL, &RegEcx, NULL);
+    //     DEBUG ((DEBUG_INFO, "CPUID[D/12] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
+    //   }
+    // } else {
+    //   mCetSupported = FALSE;
+    //   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    //     PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    //   }
+    // }
   } else {
-    mCetSupported = FALSE;
-    if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-    }
+    // mCetSupported = FALSE;
+    // if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    //   PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    // }
   }
 
   //
@@ -1186,7 +1185,7 @@ SetupSmiEntryExit (
   if (mSmmInitialized == NULL) {
     return EFI_OUT_OF_RESOURCES;
   }
-DEBUG ((DEBUG_INFO, "%a here %d\n", __func__, __LINE__));
+
   //
   // Fill in SMM Reserved Regions
   //

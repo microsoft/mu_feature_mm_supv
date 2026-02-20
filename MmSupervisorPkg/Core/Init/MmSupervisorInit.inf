@@ -63,7 +63,7 @@
 
   Relocate/Relocate.c
   Relocate/Relocate.h
-  Relocate/SmiEntry.nasm
+  # Relocate/SmiEntry.nasm
   Relocate/SmiException.nasm
   Relocate/SmramSaveState.c
 
@@ -86,6 +86,7 @@
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
+  SeaPkg/SeaPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -219,6 +220,7 @@
 
   gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything
   gMmSupervisorDepexHobGuid                      ## PRODUCES ## A HOB for MmSupervisor driver depex
+  gMmiEntrySeaFileGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

@@ -126,26 +126,27 @@ CheckFeatureSupported (
   )
 {
   UINT32                         RegEax;
-  UINT32                         RegEcx;
+  // UINT32                         RegEcx;
   UINT32                         RegEdx;
   MSR_IA32_MISC_ENABLE_REGISTER  MiscEnableMsr;
 
   if ((PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) && mCetSupported) {
-    AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
-    if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
-      AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, NULL);
-      if ((RegEcx & CPUID_CET_SS) == 0) {
-        mCetSupported = FALSE;
-        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-        }
-      }
-    } else {
-      mCetSupported = FALSE;
-      if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-      }
-    }
+    PANIC ("Shadow Stack is not supported in SMM currently!!!\n");
+    // AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
+    // if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
+    //   AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, NULL);
+    //   if ((RegEcx & CPUID_CET_SS) == 0) {
+    //     mCetSupported = FALSE;
+    //     if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    //       PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    //     }
+    //   }
+    // } else {
+    //   mCetSupported = FALSE;
+    //   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
+    //     PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
+    //   }
+    // }
   }
 
   AsmCpuid (CPUID_EXTENDED_FUNCTION, &RegEax, NULL, NULL, NULL);
@@ -164,12 +165,12 @@ CheckFeatureSupported (
     PANIC ("Execute Disable Bit feature is not supported on this processor.");
   }
 
-  if (StandardSignatureIsAuthenticAMD ()) {
-    //
-    // AMD processors do not support MSR_IA32_MISC_ENABLE
-    //
-    PatchInstructionX86 (gPatchMsrIa32MiscEnableSupported, FALSE, 1);
-  }
+  // if (StandardSignatureIsAuthenticAMD ()) {
+  //   //
+  //   // AMD processors do not support MSR_IA32_MISC_ENABLE
+  //   //
+  //   PatchInstructionX86 (gPatchMsrIa32MiscEnableSupported, FALSE, 1);
+  // }
 
   if (mBtsSupported) {
     AsmCpuid (CPUID_VERSION_INFO, NULL, NULL, NULL, &RegEdx);

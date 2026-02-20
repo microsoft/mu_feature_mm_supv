@@ -34,11 +34,6 @@ MmCoreFfsFindMmDriver (
   IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
   );
 
-// EFI_STATUS
-// MmDispatcher (
-//   VOID
-//   );
-
 /**
   This is the main Dispatcher for MM and it exits when there are no more
   drivers to run. Drain the mScheduledQueue and load and start a PE
@@ -66,6 +61,7 @@ extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
 extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
 extern UINTN mSmmMpSyncDataSize;
 extern LIST_ENTRY  mDiscoveredList;
+extern UINTN mMmiEntrySize;
 
 EFI_STATUS
 EFIAPI
@@ -108,49 +104,15 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
   // MmInstallConfigurationTable
   NULL,
   // I/O Service
-  {
-    {
-      (EFI_MM_CPU_IO)MmEfiNotAvailableYetArg5,        // MmMemRead
-      (EFI_MM_CPU_IO)MmEfiNotAvailableYetArg5         // MmMemWrite
-    },
-    {
-      (EFI_MM_CPU_IO)MmEfiNotAvailableYetArg5,        // MmIoRead
-      (EFI_MM_CPU_IO)MmEfiNotAvailableYetArg5         // MmIoWrite
-    }
-  },
+  { 0 },
   // Runtime memory services
   MmAllocateSupervisorPool,
   MmFreeSupervisorPool,
   MmAllocateSupervisorPages,
   MmFreePages,
-  // MP service
-  NULL,                          // MmStartupThisAp
-  0,                             // CurrentlyExecutingCpu
-  0,                             // NumberOfCpus
-  NULL,                          // CpuSaveStateSize
-  NULL,                          // CpuSaveState
-  0,                             // NumberOfTableEntries
-  NULL,                          // MmConfigurationTable
 };
 
 EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
-
-// //
-// // Table of MMI Handlers that are registered by the MM Core when it is initialized
-// //
-// MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
-//   // Note: The driver dispatch handler is registered in user handler pool, to suffice the needs
-//   //       if a driver dispatch call is invoked from user space. The handler is intentionally left
-//   //       to duplicate the real dispatcher. Because if the ring 3 broker is ready, supervisor will
-//   //       dispatch to this handler after demotion, which will trip on #GP due to SMAP. Otherwise,
-//   //       if this is invoked before ring 3 broker being dispatched, the demotion routine will
-//   //       directly bail with EFI_NOT_READY.
-//   { MmDriverDispatchHandler, &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
-//   { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
-//   { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
-//   { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
-//   { NULL,                    NULL,                              NULL, FALSE, TRUE  },
-// };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
 UINTN                             mMmramRangeCount;
@@ -386,85 +348,6 @@ Exit:
   return Status;
 }
 
-// /**
-//   Software MMI handler that should be triggered from non-MM environment upon DxeMmReadyToLock
-//   event. This function unregisters the SUPERVISOR MMIs that are not required after Ready To Lock
-//   event. Certain features, such as unblock memory regions, will not be available after this point.
-
-//   Note: User ready to lock event will be notified prior to this supervisor ready to lock event.
-//   This order is controlled in the corresponding DXE agent (IPL and/or DxeSupport driver).
-
-//   @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
-//   @param  Context         Points to an optional handler context which was specified when the handler was registered.
-//   @param  CommBuffer      A pointer to a collection of data in memory that will
-//                           be conveyed from a non-MM environment into an MM environment.
-//   @param  CommBufferSize  The size of the CommBuffer.
-
-//   @return Status Code
-
-// **/
-// EFI_STATUS
-// EFIAPI
-// MmReadyToLockHandler (
-//   IN     EFI_HANDLE  DispatchHandle,
-//   IN     CONST VOID  *Context         OPTIONAL,
-//   IN OUT VOID        *CommBuffer      OPTIONAL,
-//   IN OUT UINTN       *CommBufferSize  OPTIONAL
-//   )
-// {
-//   EFI_STATUS  Status;
-//   UINTN       Index;
-
-//   PERF_CALLBACK_BEGIN (&gEfiDxeMmReadyToLockProtocolGuid);
-
-//   DEBUG ((DEBUG_INFO, "MmReadyToLockHandler\n"));
-
-//   //
-//   // Unregister MMI Handlers that are no longer required after the MM driver dispatch is stopped
-//   //
-//   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
-//     if (mMmCoreMmiHandlers[Index].UnRegister) {
-//       if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
-//         Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
-//       } else {
-//         Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
-//       }
-//       if (EFI_ERROR (Status)) {
-//         DEBUG ((
-//           DEBUG_ERROR,
-//           "Failed to unregister supervisor handler No. %d %g (%a) - %r\n",
-//           Index,
-//           mMmCoreMmiHandlers[Index].HandlerType,
-//           mMmCoreMmiHandlers[Index].SupervisorHandler ? "S" : "U",
-//           Status
-//           ));
-//       }
-//     }
-//   }
-
-//   // All drivers has been dispatched, recycle all the buffers allocated for ffs driver caching
-//   Status = RecycleFfsBuffer ();
-//   if (EFI_ERROR (Status)) {
-//     DEBUG ((DEBUG_ERROR, "Failed to recycle ffs buffer at ready to lock - %r\n", Status));
-//     ASSERT_EFI_ERROR (Status);
-//   }
-
-//   // If MMI handler profile is supported, traverse them after unregistering
-//   // Since this is after the CPL3 ready to lock event completely, thus whatever
-//   // remains will be the one impacting runtime.
-//   if ((PcdGet8 (PcdSmiHandlerProfilePropertyMask) & 0x1) != 0) {
-//     SmmReadyToLockInSmiHandlerProfile (NULL, NULL, NULL);
-//   }
-
-//   Status = PrepareMemPolicySnapshot (MemPolicySnapshot);
-
-//   mMmReadyToLockDone = TRUE;
-
-//   PERF_CALLBACK_END (&gEfiDxeMmReadyToLockProtocolGuid);
-
-//   return Status;
-// }
-
 /**
   Determine if two buffers overlap in memory.
 
@@ -506,200 +389,6 @@ InternalIsBufferOverlapped (
   return TRUE;
 }
 
-// /**
-//   The main entry point to MM Foundation.
-
-//   Note: This function is only used by MMRAM invocation.  It is never used by DXE invocation.
-
-//   @param  MmEntryContext           Processor information and functionality
-//                                     needed by MM Foundation.
-
-// **/
-// VOID
-// EFIAPI
-// MmEntryPoint (
-//   IN CONST EFI_MM_ENTRY_CONTEXT  *MmEntryContext
-//   )
-// {
-//   EFI_STATUS                 Status;
-//   EFI_MM_COMMUNICATE_HEADER  *CommunicateHeader;
-//   EFI_PHYSICAL_ADDRESS       CommunicationBuffer;
-//   UINT64                     BufferSize;
-
-//   PERF_FUNCTION_BEGIN ();
-
-//   DEBUG ((DEBUG_VERBOSE, "MmEntryPoint ...\n"));
-
-//   //
-//   // Update MMST using the context
-//   //
-//   CopyMem (&gMmCoreMmst.MmStartupThisAp, MmEntryContext, sizeof (EFI_MM_ENTRY_CONTEXT));
-//   SyncMmEntryContextToCpl3 ();
-
-//   //
-//   // Mark the InMm flag as TRUE
-//   //
-//   if (mMmCommMailboxBufferStatus != NULL) {
-//     CopyMem (&mMmCommunicationBufferStatus, (MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
-
-//     if (mMmCommunicationBufferStatus.IsCommBufferValid) {
-//       //
-//       // Synchronous MMI for MM Core or request from Communicate protocol
-//       //
-//       if (!mMmCommunicationBufferStatus.TalkToSupervisor) {
-//         //
-//         // This should be user communicate channel, follow normal user channel iterations, but use ring 3 buffer to hold BufferSize changes
-//         //
-//         CommunicationBuffer = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
-//         ZeroMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
-//         CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
-//         CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_USER_BUFFER_T];
-
-//         //
-//         // Now we operate on the copy
-//         //
-//         SupervisorToUserDataBuffer->UserBufferSize = CommunicateHeader->MessageLength;
-//         if (SupervisorToUserDataBuffer->UserBufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-//           // The input buffer size is larger than the maximal allowed size, need to panic here.
-//           DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
-//           ASSERT (FALSE);
-//           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-//           mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
-//           mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
-//           goto Cleanup;
-//         }
-
-//         Status = MmiManage (
-//                    &CommunicateHeader->HeaderGuid,
-//                    NULL,
-//                    CommunicateHeader->Data,
-//                    (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
-//                    );
-//         //
-//         // Update CommunicationBuffer, BufferSize and ReturnStatus
-//         // Communicate service finished, reset the pointer to CommBuffer to NULL
-//         //
-//         BufferSize = SupervisorToUserDataBuffer->UserBufferSize +
-//                      OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
-//         if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-//           CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
-//         } else {
-//           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-//           DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
-//           ASSERT (FALSE);
-//         }
-
-//         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-//         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
-//         // Rather than typical not_found on errors, this will bubble up the not_ready error.
-//         mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
-//       } else {
-//         //
-//         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
-//         //
-//         CommunicationBuffer = mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
-//         ZeroMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages));
-//         CopyMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages));
-//         CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
-
-//         //
-//         // Now that we operate on the copy
-//         //
-//         BufferSize = CommunicateHeader->MessageLength;
-//         if (BufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-//           // The input buffer size is larger than the maximal allowed size, need to panic here.
-//           DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __func__));
-//           ASSERT (FALSE);
-//           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-//           mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
-//           mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
-//           mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
-//           goto Cleanup;
-//         }
-
-//         Status = MmiManage (
-//                    &CommunicateHeader->HeaderGuid,
-//                    NULL,
-//                    CommunicateHeader->Data,
-//                    (UINTN *)&BufferSize
-//                    );
-//         //
-//         // Update CommunicationBuffer, BufferSize and ReturnStatus
-//         // Communicate service finished, reset the pointer to CommBuffer to NULL
-//         //
-//         BufferSize = BufferSize + OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
-//         if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-//           CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
-//         } else {
-//           // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
-//           DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
-//           ASSERT (FALSE);
-//         }
-
-//         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
-//         mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
-//         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
-//         mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
-//         //
-//         // Do not handle asynchronous MMI sources. This cannot be it...
-//         //
-//         goto Cleanup;
-//       }
-//     }
-//   } else {
-//     DEBUG ((DEBUG_INFO, "No valid communication buffer, no Synchronous MMI will be processed\n"));
-//   }
-
-//   //
-//   // Process Asynchronous MMI sources
-//   //
-//   MmiManage (NULL, NULL, NULL, NULL);
-
-//   //
-//   // TBD: Do not use private data structure ?
-//   //
-
-// Cleanup:
-//   //
-//   // Clear the InMm flag as we are going to leave MM
-//   //
-//   if (mMmCommMailboxBufferStatus != NULL) {
-//     CopyMem (mMmCommMailboxBufferStatus, &mMmCommunicationBufferStatus, sizeof (*mMmCommMailboxBufferStatus));
-//   }
-
-//   DEBUG ((DEBUG_VERBOSE, "MmEntryPoint Done\n"));
-
-//   PERF_FUNCTION_END ();
-// }
-
-// EFI_STATUS
-// EFIAPI
-// MmConfigurationMmNotify (
-//   IN CONST EFI_GUID  *Protocol,
-//   IN VOID            *Interface,
-//   IN EFI_HANDLE      Handle
-//   )
-// {
-//   EFI_STATUS                     Status;
-//   EFI_MM_CONFIGURATION_PROTOCOL  *MmConfiguration;
-
-//   DEBUG ((DEBUG_INFO, "MmConfigurationMmNotify(%g) - %x\n", Protocol, Interface));
-
-//   MmConfiguration = Interface;
-
-//   //
-//   // Register the MM Entry Point provided by the MM Core with the MM COnfiguration protocol
-//   //
-//   Status = MmConfiguration->RegisterMmEntry (MmConfiguration, (EFI_MM_ENTRY_POINT)MmEntryPoint);
-//   ASSERT_EFI_ERROR (Status);
-
-//   //
-//   // Print debug message showing MM Core entry point address.
-//   //
-//   DEBUG ((DEBUG_INFO, "MM Core registered MM Entry Point address %p\n", (VOID *)(UINTN)MmEntryPoint));
-//   return EFI_SUCCESS;
-// }
-
 UINTN
 GetHobListSize (
   IN VOID  *HobStart
@@ -720,140 +409,6 @@ GetHobListSize (
   return (UINTN)Hob.Raw - (UINTN)HobStart + sizeof (EFI_HOB_GENERIC_HEADER);
 }
 
-// /**
-//   Install LoadedImage protocol for MM Core.
-// **/
-// VOID
-// MmCoreInstallLoadedImage (
-//   VOID
-//   )
-// {
-//   EFI_STATUS            Status;
-//   EFI_PEI_HOB_POINTERS  Hob;
-//   UINT16                          ExtHeaderOffset;
-//   EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
-//   EFI_FIRMWARE_VOLUME_EXT_HEADER  *ExtHeader;
-//   EFI_FFS_FILE_HEADER             *FileHeader;
-//   UINT64                          TotalSize;
-//   VOID                            *InnerFvHeader;
-//   VOID                        *Pe32Data;
-//   UINTN                       Pe32DataSize;
-
-//   Hob.Raw = GetHobList ();
-//   if (Hob.Raw == NULL) {
-//     PANIC ("Cannot even find the hobs. FIMD!!!\n");
-//   }
-
-//   //
-//   // Searching for Memory Allocation HOB
-//   //
-//   do {
-//     Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
-//     if (Hob.Raw != NULL) {
-//       FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
-
-//       DEBUG ((
-//         DEBUG_INFO,
-//         "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-//         __func__,
-//         (UINTN)FwVolHeader,
-//         FwVolHeader->FvLength
-//         ));
-
-//       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
-//       if (ExtHeaderOffset != 0) {
-//         ExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + ExtHeaderOffset);
-//         DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, &ExtHeader->FvName));
-//       }
-
-//       //
-//       // If a MM_STANDALONE or MM_CORE_STANDALONE driver is in the FV. Add the drivers
-//       // to the dispatch list. Mark the FV with this driver as the Standalone BFV.
-//       //
-//       FileHeader = NULL;
-//       do {
-//         Status     =  FfsFindNextFile (
-//                         EFI_FV_FILETYPE_MM_CORE_STANDALONE,
-//                         FwVolHeader,
-//                         &FileHeader
-//                         );
-//         if (!EFI_ERROR (Status)) {
-//           if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
-//             DEBUG ((
-//               DEBUG_INFO,
-//               "[%a]   Discovered Standalone MM runtime core [%g] in FV at 0x%x.\n",
-//               __func__,
-//               &FileHeader->Name,
-//               (UINTN)FwVolHeader
-//               ));
-
-//             TotalSize = 0;
-//             CopyMem (&TotalSize, FileHeader->Size, sizeof (FileHeader->Size));
-
-//             Status = MmAllocateSupervisorPages (
-//                       AllocateAnyPages,
-//                       EfiRuntimeServicesCode,
-//                       EFI_SIZE_TO_PAGES (TotalSize),
-//                       (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
-//                       );
-//             DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __func__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
-//             if (EFI_ERROR (Status)) {
-//               DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
-//               break;
-//             }
-
-
-//             Status = MmCopyMemToMmram ((UINT8 *)InnerFvHeader, FileHeader, TotalSize);
-//             if (EFI_ERROR (Status)) {
-//               DEBUG ((DEBUG_ERROR, "Copying FFS from FV failed - %r!\n", Status));
-//               MmFreePages ((EFI_PHYSICAL_ADDRESS)InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
-//               break;
-//             }
-
-//             Status  = FfsFindSectionData (EFI_SECTION_PE32, InnerFvHeader, &Pe32Data, &Pe32DataSize);
-//             DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
-
-//             //
-//             // Allocate a Loaded Image Protocol in MM
-//             //
-//             Status = MmAllocateSupervisorPool (EfiRuntimeServicesData, sizeof (EFI_MM_DRIVER_ENTRY), (VOID **)&mMmCoreDriverEntry);
-//             ASSERT_EFI_ERROR (Status);
-
-//             ZeroMem (mMmCoreDriverEntry, sizeof (EFI_MM_DRIVER_ENTRY));
-
-//             //
-//             // Fill in the remaining fields of the Loaded Image Protocol instance.
-//             //
-//             mMmCoreDriverEntry->Signature                 = EFI_MM_DRIVER_ENTRY_SIGNATURE;
-//             CopyGuid (&mMmCoreDriverEntry->FileName, &FileHeader->Name);
-//             mMmCoreDriverEntry->FwVolHeader  = FwVolHeader;
-//             mMmCoreDriverEntry->Pe32Data     = Pe32Data;
-//             mMmCoreDriverEntry->Pe32DataSize = Pe32DataSize;
-//             mMmCoreDriverEntry->DepexSize    = 0;
-//             mMmCoreDriverEntry->Depex        = NULL;
-
-//             ZeroMem (&RuntimeSupvImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
-
-//             Status = MmLoadImage (mMmCoreDriverEntry, &RuntimeSupvImageContext);
-//             if (EFI_ERROR (Status)) {
-//               DEBUG ((DEBUG_ERROR, "%a loading mm image returned %r\n", __func__, Status));
-//               PANIC ("Unable to load supervisor, FIMD!!!\n");
-//             }
-
-//             SmiRendezvous = (VOID*)RuntimeSupvImageContext.EntryPoint;
-//           }
-//         } else {
-//           break;
-//         }
-//       } while (TRUE);
-
-//       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
-//     }
-//   } while (Hob.Raw != NULL);
-
-//   return;
-// }
-
 /**
   Discovers Standalone MM drivers in FV HOBs and adds those drivers to the Standalone MM
   dispatch list.
@@ -872,8 +427,6 @@ DiscoverStandaloneMmDriversInFvHobs (
 {
   UINT16                          ExtHeaderOffset;
   EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
-  // This is here to check depex
-  EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeaderInMmRam;
   EFI_FIRMWARE_VOLUME_EXT_HEADER  *ExtHeader;
   EFI_FFS_FILE_HEADER             *FileHeader;
   EFI_PEI_HOB_POINTERS            Hob;
@@ -907,20 +460,6 @@ DiscoverStandaloneMmDriversInFvHobs (
         DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, &ExtHeader->FvName));
       }
 
-      // Allocate buffer to host the same thing inside MMRAM
-      Status = MmAllocatePages (
-        AllocateAnyPages,
-        EfiRuntimeServicesData,
-        EFI_SIZE_TO_PAGES (FwVolHeader->FvLength),
-        (EFI_PHYSICAL_ADDRESS *)&FwVolHeaderInMmRam
-        );
-      ASSERT_EFI_ERROR (Status);
-
-      CopyMem (FwVolHeaderInMmRam, FwVolHeader, (UINTN)FwVolHeader->FvLength);
-
-      // HACKHACK: Patch the HOB...
-      Hob.FirmwareVolume->BaseAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeaderInMmRam;
-
       //
       // If a MM_STANDALONE or MM_CORE_STANDALONE driver is in the FV. Add the drivers
       // to the dispatch list. Mark the FV with this driver as the Standalone BFV.
@@ -929,7 +468,7 @@ DiscoverStandaloneMmDriversInFvHobs (
       do {
         Status     =  FfsFindNextFile (
                         EFI_FV_FILETYPE_MM_CORE_STANDALONE,
-                        FwVolHeaderInMmRam,
+                        FwVolHeader,
                         &FileHeader
                         );
         if (!EFI_ERROR (Status)) {
@@ -942,7 +481,7 @@ DiscoverStandaloneMmDriversInFvHobs (
               (UINTN)FileHeader
               ));
 
-            *StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeaderInMmRam;
+            *StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
 
             TotalSize = 0;
             CopyMem (&TotalSize, FileHeader->Size, sizeof (FileHeader->Size));
@@ -982,7 +521,7 @@ DiscoverStandaloneMmDriversInFvHobs (
             //
             mMmCoreDriverEntry->Signature                 = EFI_MM_DRIVER_ENTRY_SIGNATURE;
             CopyGuid (&mMmCoreDriverEntry->FileName, &FileHeader->Name);
-            mMmCoreDriverEntry->FwVolHeader  = FwVolHeaderInMmRam;
+            mMmCoreDriverEntry->FwVolHeader  = FwVolHeader;
             mMmCoreDriverEntry->Pe32Data     = Pe32Data;
             mMmCoreDriverEntry->Pe32DataSize = Pe32DataSize;
             mMmCoreDriverEntry->DepexSize    = 0;
@@ -1044,7 +583,7 @@ DiscoverStandaloneMmDriversInFvHobs (
             //
             mMmUserDriverEntry->Signature                 = EFI_MM_DRIVER_ENTRY_SIGNATURE;
             CopyGuid (&mMmUserDriverEntry->FileName, &FileHeader->Name);
-            mMmUserDriverEntry->FwVolHeader  = FwVolHeaderInMmRam;
+            mMmUserDriverEntry->FwVolHeader  = FwVolHeader;
             mMmUserDriverEntry->Pe32Data     = Pe32Data;
             mMmUserDriverEntry->Pe32DataSize = Pe32DataSize;
             mMmUserDriverEntry->DepexSize    = 0;
@@ -1068,9 +607,9 @@ DiscoverStandaloneMmDriversInFvHobs (
           DEBUG_INFO,
           "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
           __func__,
-          (UINTN)FwVolHeaderInMmRam
+          (UINTN)FwVolHeader
           ));
-        Status = MmCoreFfsFindMmDriver (FwVolHeaderInMmRam);
+        Status = MmCoreFfsFindMmDriver (FwVolHeader);
         ASSERT_EFI_ERROR (Status);
       // }
 
@@ -1268,6 +807,9 @@ CreateArbitraryHob (
 
   PassDownData->MmSupvMemoryPolicyBuffer = (EFI_PHYSICAL_ADDRESS)MemPolicySnapshot;
   PassDownData->MmSupvMemoryPolicyBufferSize = MEM_POLICY_SNAPSHOT_SIZE;
+
+  PassDownData->BspMmBaseAddress = (EFI_PHYSICAL_ADDRESS)mCpuHotPlugData.SmBase[0];
+  PassDownData->MmiEntrypointSize = mMmiEntrySize;
 
   *Length      = *Length - NewLength;
 
@@ -1533,27 +1075,6 @@ MmSupervisorMain (
     &MmDescDummy
     );
 
-  // DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
-  // //
-  // // Install HobList
-  // //
-  // mMmHobSize = GetHobListSize (HobStart);
-  // DEBUG ((DEBUG_INFO, "HobSize - 0x%x\n", mMmHobSize));
-  // // Allocated Hob data in code intentionally to guarantee it is read only in MM
-  // Status = MmAllocatePages (AllocateAnyPages, EfiRuntimeServicesCode, EFI_SIZE_TO_PAGES (mMmHobSize), (EFI_PHYSICAL_ADDRESS *)&mMmHobStart);
-  // DEBUG ((DEBUG_INFO, "Allocated mMmHobStart: 0x%x - %r\n", mMmHobStart, Status));
-  // if (EFI_ERROR (Status)) {
-  //   ASSERT_EFI_ERROR (Status);
-  //   goto Exit;
-  // }
-
-  // CopyMem (mMmHobStart, HobStart, mMmHobSize);
-  // Status = MmInstallConfigurationTable (&gMmCoreMmst, &gEfiHobListGuid, mMmHobStart, mMmHobSize);
-  // if (EFI_ERROR (Status)) {
-  //   ASSERT_EFI_ERROR (Status);
-  //   goto Exit;
-  // }
-
   ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
 
   //
@@ -1640,21 +1161,6 @@ MmSupervisorMain (
   }
   RemainingSize -= ALIGN_VALUE (InitialMmHobSize, 8);
 
-  // //
-  // // Register notification for EFI_MM_CONFIGURATION_PROTOCOL registration and
-  // // use it to register the MM Foundation entrypoint
-  // //
-  // DEBUG ((DEBUG_INFO, "MmRegisterProtocolNotify - MmConfigurationMmProtocol\n"));
-  // Status = MmRegisterProtocolNotify (
-  //            &gEfiMmConfigurationProtocolGuid,
-  //            MmConfigurationMmNotify,
-  //            &Registration
-  //            );
-  // if (EFI_ERROR (Status)) {
-  //   ASSERT_EFI_ERROR (Status);
-  //   goto Exit;
-  // }
-
   Status = SetupSmiEntryExit ();
   if (EFI_ERROR (Status)) {
     // Should not happen
@@ -1668,34 +1174,6 @@ MmSupervisorMain (
   // Add memory allocation module hob for core and user modules
   CreateMemoryAllocationModuleHob ((EFI_PHYSICAL_ADDRESS)(MmSupervisorHobStart + ALIGN_VALUE (InitialMmHobSize, 8)), &RemainingSize);
 
-  // //
-  // // Register all handlers in the core table
-  // //
-  // for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
-  //   if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
-  //     Status = MmiSupvHandlerRegister (
-  //                mMmCoreMmiHandlers[Index].Handler,
-  //                mMmCoreMmiHandlers[Index].HandlerType,
-  //                &mMmCoreMmiHandlers[Index].DispatchHandle
-  //                );
-  //     DEBUG ((DEBUG_INFO, "MmiSupvHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
-  //   } else {
-  //     Status = MmiUserHandlerRegister (
-  //                mMmCoreMmiHandlers[Index].Handler,
-  //                mMmCoreMmiHandlers[Index].HandlerType,
-  //                &mMmCoreMmiHandlers[Index].DispatchHandle
-  //                );
-  //     DEBUG ((DEBUG_INFO, "MmiUserHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
-  //   }
-  // }
-
-  // Status = InitializeMmSupervisorTestAgents ();
-  // if (EFI_ERROR (Status)) {
-  //   DEBUG ((DEBUG_ERROR, "%a Failed to initialize test agents - Status %d\n", __func__, Status));
-  //   ASSERT (FALSE);
-  //   goto Exit;
-  // }
-
   Status = PrepareCommonBuffers ();
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to prepare comm buffer - Status %d\n", __func__, Status));
@@ -1703,23 +1181,11 @@ MmSupervisorMain (
     goto Exit;
   }
 
-  // MmCoreInstallLoadedImage ();
-
-  // MmCoreInitializeSmiHandlerProfile ();
-
   InitializePolicy (StandaloneBfvAddress);
 
   CreateArbitraryHob ((EFI_PHYSICAL_ADDRESS)(MmSupervisorHobStart + ALIGN_VALUE (mMmHobSize - RemainingSize, 8)), &RemainingSize);
 
-  // CallgateInit (mNumberOfCpus);
-
-  // SyscallInterfaceInit (mNumberOfCpus);
-
-  // CoalesceLooseExceptionHandlers ();
-
-  DEBUG ((DEBUG_INFO, "%a LockMmCoreBeforeExit %p %x %x\n", __func__, MmSupervisorHobStart, RemainingSize, mMmHobSize));
   LockMmCoreBeforeExit (MmSupervisorHobStart + mMmHobSize - RemainingSize, &RemainingSize);
-  DEBUG ((DEBUG_INFO, "%a after LockMmCoreBeforeExit %p %x %x\n", __func__, MmSupervisorHobStart, RemainingSize, mMmHobSize));
 
   // Adding the end of HOB list
   VOID* EndHob = (VOID *)(MmSupervisorHobStart + mMmHobSize - RemainingSize);

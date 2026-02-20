@@ -1443,54 +1443,54 @@ PatchMmUserSpecialPurposeRegion (
              );
   ASSERT_EFI_ERROR (Status);
 
-  // Loop through the FV hobs, we should have patched them by now.
-  EFI_PEI_HOB_POINTERS            Hob;
-  Hob.Raw = GetHobList ();
-  if (Hob.Raw == NULL) {
-    ASSERT (FALSE);
-    return;
-  }
+  // // Loop through the FV hobs, we should have patched them by now.
+  // EFI_PEI_HOB_POINTERS            Hob;
+  // Hob.Raw = GetHobList ();
+  // if (Hob.Raw == NULL) {
+  //   ASSERT (FALSE);
+  //   return;
+  // }
 
-  do {
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
-    if (Hob.Raw != NULL) {
-      EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
+  // do {
+  //   Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
+  //   if (Hob.Raw != NULL) {
+  //     EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
 
-      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
+  //     FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
 
-      DEBUG ((
-        DEBUG_INFO,
-        "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __func__,
-        (UINTN)FwVolHeader,
-        FwVolHeader->FvLength
-        ));
+  //     DEBUG ((
+  //       DEBUG_INFO,
+  //       "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
+  //       __func__,
+  //       (UINTN)FwVolHeader,
+  //       FwVolHeader->FvLength
+  //       ));
 
-      // Make sure this is inside MMRAM
-      if (!IsBufferInsideMmram ((EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader, FwVolHeader->FvLength)) {
-        DEBUG ((DEBUG_ERROR, "%a - FV HOB at 0x%x is outside of SMM MM RAM!\n", __func__, (UINTN)FwVolHeader));
-        ASSERT (FALSE);
-        continue;
-      }
+  //     // Make sure this is outside of MMRAM
+  //     if (IsBufferInsideMmram ((EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader, FwVolHeader->FvLength)) {
+  //       DEBUG ((DEBUG_ERROR, "%a - FV HOB at 0x%x is inside of SMM MM RAM!\n", __func__, (UINTN)FwVolHeader));
+  //       ASSERT (FALSE);
+  //       continue;
+  //     }
 
-      Status = SmmSetMemoryAttributes (
-                (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
-                FwVolHeader->FvLength,
-                EFI_MEMORY_RO | EFI_MEMORY_XP
-                );
-      ASSERT_EFI_ERROR (Status);
+  //     Status = SmmSetMemoryAttributes (
+  //               (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
+  //               FwVolHeader->FvLength,
+  //               EFI_MEMORY_RO | EFI_MEMORY_XP
+  //               );
+  //     ASSERT_EFI_ERROR (Status);
 
-      Status = SmmClearMemoryAttributes (
-                (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
-                FwVolHeader->FvLength,
-                EFI_MEMORY_SP
-                );
-      ASSERT_EFI_ERROR (Status);
+  //     Status = SmmClearMemoryAttributes (
+  //               (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader,
+  //               FwVolHeader->FvLength,
+  //               EFI_MEMORY_SP
+  //               );
+  //     ASSERT_EFI_ERROR (Status);
 
-      // Move to the next FV hob
-      Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
-    }
-  } while (Hob.Raw != NULL);
+  //     // Move to the next FV hob
+  //     Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
+  //   }
+  // } while (Hob.Raw != NULL);
 
   DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
