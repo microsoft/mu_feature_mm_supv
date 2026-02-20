@@ -523,8 +523,8 @@ MmDxeSupportEntry (
   VOID        *Registration;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
-  MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
-  MM_COMM_BUFFER_UPDATE_PROTOCOL     *MmCommBufferUpdate;
+  // MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
+  // MM_COMM_BUFFER_UPDATE_PROTOCOL     *MmCommBufferUpdate;
 
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
@@ -559,42 +559,42 @@ MmDxeSupportEntry (
     return Status;
   }
 
-  // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
-  Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __func__, Status));
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
+  // // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
+  // Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __func__, Status));
+  //   ASSERT_EFI_ERROR (Status);
+  //   return Status;
+  // }
 
-  // Query it another time to make sure the change took effect
-  Status = QuerySupervisorVersion (&VersionInfo);
-  if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
+  // // Query it another time to make sure the change took effect
+  // Status = QuerySupervisorVersion (&VersionInfo);
+  // if (EFI_ERROR (Status)) {
+  //   ASSERT_EFI_ERROR (Status);
+  //   return Status;
+  // }
 
-  MmCommBufferUpdate = AllocateZeroPool (sizeof (*MmCommBufferUpdate));
-  if (MmCommBufferUpdate == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
+  // MmCommBufferUpdate = AllocateZeroPool (sizeof (*MmCommBufferUpdate));
+  // if (MmCommBufferUpdate == NULL) {
+  //   return EFI_OUT_OF_RESOURCES;
+  // }
 
-  MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
-  MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
-  MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
-  MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
+  // MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
+  // MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+  // MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
+  // MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
 
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &ImageHandle,
-                  &gMmCommBufferUpdateProtocolGuid,
-                  MmCommBufferUpdate,
-                  NULL
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __func__, Status));
-    FreePool (MmCommBufferUpdate);
-    return Status;
-  }
+  // Status = gBS->InstallMultipleProtocolInterfaces (
+  //                 &ImageHandle,
+  //                 &gMmCommBufferUpdateProtocolGuid,
+  //                 MmCommBufferUpdate,
+  //                 NULL
+  //                 );
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __func__, Status));
+  //   FreePool (MmCommBufferUpdate);
+  //   return Status;
+  // }
 
   // MU_CHANGE: Since we already set up everything, directly move to protocol installation.
   //
