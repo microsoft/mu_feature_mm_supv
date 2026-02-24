@@ -10,7 +10,7 @@
 #
 ##
 
-#Override : 00000002 | MdeModulePkg/Application/SmiHandlerProfileInfo/SmiHandlerProfileAuditTestApp.inf | 9064d4320f2bd1591d42a64fcb48270a | 2025-04-12T14-58-22 | 6a19361b3a5c70a4779011d1dd35490e3b87dcc4
+#Override : 00000002 | MdeModulePkg/Application/SmiHandlerProfileInfo/SmiHandlerProfileAuditTestApp.inf | 200a51f252b868a8a770351037002853 | 2026-01-09T02-59-38 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
 
 [Defines]
   INF_VERSION                    = 0x00010005
