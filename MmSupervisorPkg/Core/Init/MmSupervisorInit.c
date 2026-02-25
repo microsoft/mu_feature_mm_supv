@@ -119,10 +119,10 @@ UINTN                             mMmramRangeCount;
 EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
 EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
-MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
+// MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
 // BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
-VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
+// VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = NULL;
 
 /**
@@ -209,27 +209,27 @@ PrepareCommonBuffers (
 
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Type      = EfiRuntimeServicesData;
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].Attribute = EFI_MEMORY_XP | EFI_MEMORY_SP;
-    if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
-      Status = MmAllocateSupervisorPages (
-                 AllocateAnyPages,
-                 EfiRuntimeServicesData,
-                 CommRegionHob->MmCommonRegionPages,
-                 (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                 );
-    } else {
-      Status = MmAllocatePages (
-                 AllocateAnyPages,
-                 EfiRuntimeServicesData,
-                 CommRegionHob->MmCommonRegionPages,
-                 (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
-                 );
-    }
+    // if (CommRegionHob->MmCommonRegionType == MM_SUPERVISOR_BUFFER_T) {
+    //   Status = MmAllocateSupervisorPages (
+    //              AllocateAnyPages,
+    //              EfiRuntimeServicesData,
+    //              CommRegionHob->MmCommonRegionPages,
+    //              (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+    //              );
+    // } else {
+    //   Status = MmAllocatePages (
+    //              AllocateAnyPages,
+    //              EfiRuntimeServicesData,
+    //              CommRegionHob->MmCommonRegionPages,
+    //              (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[CommRegionHob->MmCommonRegionType]
+    //              );
+    // }
 
-    ASSERT_EFI_ERROR (Status);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
-      goto Exit;
-    }
+    // ASSERT_EFI_ERROR (Status);
+    // if (EFI_ERROR (Status)) {
+    //   DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
+    //   goto Exit;
+    // }
 
     mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].VirtualStart = 0;
     DEBUG ((
@@ -291,18 +291,18 @@ PrepareCommonBuffers (
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages = UserCommRegionHob->NumberOfPages;
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Type          = EfiRuntimeServicesData;
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  Status                                                    = MmAllocatePages (
-                                                                AllocateAnyPages,
-                                                                EfiRuntimeServicesData,
-                                                                UserCommRegionHob->NumberOfPages,
-                                                                (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[MM_USER_BUFFER_T]
-                                                                );
+  // Status                                                    = MmAllocatePages (
+  //                                                               AllocateAnyPages,
+  //                                                               EfiRuntimeServicesData,
+  //                                                               UserCommRegionHob->NumberOfPages,
+  //                                                               (EFI_PHYSICAL_ADDRESS *)&mInternalCommBufferCopy[MM_USER_BUFFER_T]
+  //                                                               );
 
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
-    goto Exit;
-  }
+  // ASSERT_EFI_ERROR (Status);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a - Failed to allocate internal buffer copy, please consider adjust TSEG size... - %r\n", __func__, Status));
+  //   goto Exit;
+  // }
 
   mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].VirtualStart = 0;
   DEBUG ((
@@ -327,17 +327,18 @@ PrepareCommonBuffers (
     goto Exit;
   }
 
-  Status = MmAllocatePages (
-             AllocateAnyPages,
-             EfiRuntimeServicesData,
-             DEFAULT_SUPV_TO_USER_BUFFER_PAGE,
-             (EFI_PHYSICAL_ADDRESS *)&SupervisorToUserDataBuffer
-             );
-  ASSERT_EFI_ERROR (Status);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to allocate supervisor to user buffer, cannot continue...\n", __func__));
-    goto Exit;
-  }
+  // Status = MmAllocatePages (
+  //            AllocateAnyPages,
+  //            EfiRuntimeServicesData,
+  //            DEFAULT_SUPV_TO_USER_BUFFER_PAGE,
+  //            (EFI_PHYSICAL_ADDRESS *)&SupervisorToUserDataBuffer
+  //            );
+  // ASSERT_EFI_ERROR (Status);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a - Failed to allocate supervisor to user buffer, cannot continue...\n", __func__));
+  //   goto Exit;
+  // }
+  Status = EFI_SUCCESS;
 
 Exit:
   if (EFI_ERROR (Status)) {
@@ -777,25 +778,19 @@ CreateArbitraryHob (
   PassDownData->Reserved = 0;
   PassDownData->MmSupvCpuPrivate = (EFI_PHYSICAL_ADDRESS)AllocateCopyPool (sizeof (*gSmmCpuPrivate), (VOID *)gSmmCpuPrivate);
   PassDownData->MmSupvCpuPrivateSize = sizeof (*gSmmCpuPrivate);
-  PassDownData->MmSupvMpSyncData = (EFI_PHYSICAL_ADDRESS)mSmmMpSyncData;
-  PassDownData->MmSupvMpSyncDataSize = mSmmMpSyncDataSize;
 
-  PassDownData->MmSupvCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
-  PassDownData->MmSupvCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
-  PassDownData->MmSupvCommBufferSize = mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
+  // PassDownData->MmSupvCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
+  // PassDownData->MmSupvCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
+  // PassDownData->MmSupvCommBufferSize = mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
 
-  PassDownData->MmUserCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
-  PassDownData->MmUserCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_USER_BUFFER_T];
-  PassDownData->MmUserCommBufferSize = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
+  // PassDownData->MmUserCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
+  // PassDownData->MmUserCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_USER_BUFFER_T];
+  // PassDownData->MmUserCommBufferSize = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
 
-  PassDownData->MmSupvStatusBuffer = (EFI_PHYSICAL_ADDRESS)mMmCommMailboxBufferStatus;
+  // PassDownData->MmSupvStatusBuffer = (EFI_PHYSICAL_ADDRESS)mMmCommMailboxBufferStatus;
 
-  PassDownData->MmSupvToUserBuffer = (EFI_PHYSICAL_ADDRESS)SupervisorToUserDataBuffer;
-  PassDownData->MmSupvToUserBufferSize = EFI_PAGES_TO_SIZE (DEFAULT_SUPV_TO_USER_BUFFER_PAGE);
-
-  PassDownData->MmSupvGdtBuffer = mGdtBuffer;
-  PassDownData->MmSupvGdtBufferSize = mGdtBufferSize;
-  PassDownData->MmSupvGdtStepSize = mGdtStepSize;
+  // PassDownData->MmSupvToUserBuffer = (EFI_PHYSICAL_ADDRESS)SupervisorToUserDataBuffer;
+  // PassDownData->MmSupvToUserBufferSize = EFI_PAGES_TO_SIZE (DEFAULT_SUPV_TO_USER_BUFFER_PAGE);
 
   PassDownData->MmInitializedBuffer = (EFI_PHYSICAL_ADDRESS)mSmmInitialized;
 
@@ -804,9 +799,6 @@ CreateArbitraryHob (
 
   PassDownData->MmSupvFirmwarePolicyBuffer = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
   PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
-
-  PassDownData->MmSupvMemoryPolicyBuffer = (EFI_PHYSICAL_ADDRESS)MemPolicySnapshot;
-  PassDownData->MmSupvMemoryPolicyBufferSize = MEM_POLICY_SNAPSHOT_SIZE;
 
   PassDownData->BspMmBaseAddress = (EFI_PHYSICAL_ADDRESS)mCpuHotPlugData.SmBase[0];
   PassDownData->MmiEntrypointSize = mMmiEntrySize;
@@ -947,13 +939,13 @@ InitializePolicy (
     goto Done;
   }
 
-  // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
-  Status = AllocateMemForPolicySnapshot (&MemPolicySnapshot);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __func__, Status));
-    ASSERT_EFI_ERROR (Status);
-    goto Done;
-  }
+  // // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
+  // Status = AllocateMemForPolicySnapshot (&MemPolicySnapshot);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __func__, Status));
+  //   ASSERT_EFI_ERROR (Status);
+  //   goto Done;
+  // }
 
   Status = SecurityPolicyCheck (FirmwarePolicy);
   if (EFI_ERROR (Status)) {

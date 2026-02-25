@@ -222,7 +222,7 @@ typedef struct {
   BOOLEAN                       IsSupervisor; // for isolation
 } MMI_HANDLER;
 
-#define DEFAULT_SUPV_TO_USER_BUFFER_PAGE  1  // Leave 4KB space known to the supervisor that is in CPL3
+// #define DEFAULT_SUPV_TO_USER_BUFFER_PAGE  1  // Leave 4KB space known to the supervisor that is in CPL3
 
 //
 // Used to share data from supervisor to user space, nothing should be security sensitive
@@ -238,7 +238,7 @@ extern MM_COMM_BUFFER_STATUS             *mMmCommMailboxBufferStatus;
 extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
 extern LIST_ENTRY                        gHandleList;
-extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
+// extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 extern EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
