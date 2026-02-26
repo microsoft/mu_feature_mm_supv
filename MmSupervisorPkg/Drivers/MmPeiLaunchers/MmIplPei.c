@@ -15,7 +15,6 @@
 #include <Ppi/MmControl.h>
 #include <Ppi/SmmCommunication.h>
 #include <Ppi/EndOfPeiPhase.h>
-#include <Ppi/MmSupervisorCommunication.h>
 #include <Ppi/MmConfiguration.h> // MU_CHANGE: Added MM configuration PPI
 
 #include <Guid/MmCommBuffer.h>
@@ -76,29 +75,6 @@ SmmCommunicationCommunicate (
   IN OUT UINTN                            *CommSize
   );
 
-// MU_CHANGE: MM_SUPV: Supervisor communication function prototype
-
-/**
-  Communicates with a registered handler.
-
-  This function provides a service to send and receive messages from a registered UEFI service.
-
-  @param[in] This                The MM_SUPERVISOR_COMMUNICATION_PPI instance.
-  @param[in] CommBuffer          A pointer to the buffer to convey into SMRAM.
-  @param[in] CommSize            The size of the data buffer being passed in.On exit, the size of data
-                                 being returned. Zero if the handler does not wish to reply with any data.
-
-  @retval EFI_SUCCESS            The message was successfully posted.
-  @retval EFI_INVALID_PARAMETER  The CommBuffer was NULL.
-**/
-EFI_STATUS
-EFIAPI
-SupvCommunicationCommunicate (
-  IN CONST MM_SUPERVISOR_COMMUNICATION_PPI  *This,
-  IN OUT VOID                               *CommBuffer,
-  IN OUT UINTN                              *CommSize OPTIONAL
-  );
-
 /**
   This is the callback function on end of PEI.
 
@@ -127,30 +103,15 @@ EFI_PEI_SMM_COMMUNICATION_PPI  mSmmCommunication = {
   .Communicate = SmmCommunicationCommunicate
 };
 
-// MU_CHANGE: MM_SUPV: Supervisor communication PPI instance
-//
-// Supervisor MM Communication PPI instance
-//
-MM_SUPERVISOR_COMMUNICATION_PPI  mMmSupvCommunication = {
-  .Signature   = MM_SUPERVISOR_COMM_PPI_SIG,
-  .Version     = MM_SUPERVISOR_COMM_PPI_VER,
-  .Communicate = SupvCommunicationCommunicate
-};
-
 //
 // List of PPIs to be installed at the success of MM foundation setup
 //
 STATIC EFI_PEI_PPI_DESCRIPTOR  mPeiMmIplPpiList[] =
 {
   {
-    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
     &gEfiPeiSmmCommunicationPpiGuid,
     &mSmmCommunication
-  },
-  {
-    (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
-    &gPeiMmSupervisorCommunicationPpiGuid,
-    &mMmSupvCommunication
   }
 };
 
@@ -242,54 +203,6 @@ GetMmramCacheRange (
   } while (FoundAdjacentRange);
 }
 
-// MU_CHANGE: MM_SUPV: MM Supervisor communication protocol, used to query MM policy,
-//            region unblock, driver dispatching
-
-/**
-  Communicates with a registered handler.
-
-  This function provides a service to send and receive messages from a registered UEFI service.
-
-  @param[in] This                The MM_SUPERVISOR_COMMUNICATION_PPI instance.
-  @param[in, out] CommBuffer     A pointer to the buffer to convey into MMRAM.
-  @param[in, out] CommSize       The size of the data buffer being passed in. On exit, the size of data
-                                 being returned. Zero if the handler does not wish to reply with any data.
-                                 This parameter is optional and may be NULL.
-
-  @retval EFI_SUCCESS            The message was successfully posted.
-  @retval EFI_INVALID_PARAMETER  The CommBuffer was NULL.
-  @retval EFI_BAD_BUFFER_SIZE    The buffer is too large for the MM implementation.
-                                 If this error is returned, the MessageLength field
-                                 in the CommBuffer header or the integer pointed by
-                                 CommSize, are updated to reflect the maximum payload
-                                 size the implementation can accommodate.
-  @retval EFI_ACCESS_DENIED      The CommunicateBuffer parameter or CommSize parameter,
-                                 if not omitted, are in address range that cannot be
-                                 accessed by the MM environment.
-
-**/
-EFI_STATUS
-EFIAPI
-SupvCommunicationCommunicate (
-  IN CONST MM_SUPERVISOR_COMMUNICATION_PPI  *This,
-  IN OUT VOID                               *CommBuffer,
-  IN OUT UINTN                              *CommSize OPTIONAL
-  )
-{
-  if ((This == NULL) ||
-      (This->Signature != MM_SUPERVISOR_COMM_PPI_SIG) ||
-      (This->Version != MM_SUPERVISOR_COMM_PPI_VER))
-  {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  return SmmCommunicationCommunicateWorker (
-           TRUE,
-           CommBuffer,
-           CommSize
-           );
-}
-
 /**
   Communicates with a registered handler.
 
@@ -358,172 +271,14 @@ EndOfPeiCallback (
   return SmmIplGuidedEventNotifyWorker (&gEfiMmEndOfPeiProtocol);
 }
 
-// MU_CHANGE Starts: MM_SUPV: Will immediately signal MM core to dispatch MM drivers
-
-/**
-  Invokes the MM core to dispatch drivers from inside MM environment. This
-  function will only be called after MM foundation is successfully set.
-
-  @return Status of the notification.
-          The status code returned from this function is ignored.
-**/
-EFI_STATUS
-EFIAPI
-MmDriverDispatchNotify (
-  VOID
-  )
-{
-  UINTN       Size;
-  EFI_STATUS  Status;
-
-  // MU_CHANGE: MM_SUPV: Driver dispatcher command only deals with supervisor
-  mCommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
-
-  //
-  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
-  // Clear the buffer passed into the Software SMI.  This buffer will return
-  // the status of the SMM Core Dispatcher.
-  //
-  CopyGuid (&(mCommunicateHeader->HeaderGuid), &gMmSupervisorDriverDispatchGuid);
-
-  //
-  // This is actually an empty payload command, but the EFI_MM_COMMUNICATE_HEADER structure
-  // comes with a payload of at least one byte. So we set the MessageLength to 1 and
-  // the first byte to 0.
-  //
-  mCommunicateHeader->MessageLength = 1;
-  mCommunicateHeader->Data[0]       = 0;
-
-  //
-  // Generate the Software SMI and return the result
-  //
-  Size   = sizeof (EFI_MM_COMMUNICATE_HEADER);
-  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
-
-  //
-  // Return if there is no request to restart the MM Core Dispatcher
-  //
-  if (Status != EFI_SUCCESS) {
-    DEBUG ((DEBUG_ERROR, "MM Driver Dispatch failed (%r)\n", Status));
-    return Status;
-  }
-
-  //
-  // Get the status returned from the MM Core Dispatcher
-  //
-  if (Size >= sizeof (EFI_STATUS)) {
-    Status = *(EFI_STATUS *)mCommunicateHeader->Data;
-  } else {
-    Status = EFI_DEVICE_ERROR;
-  }
-
-  return Status;
-}
-
-// MU_CHANGE Ends: MM_SUPV
-
-// MU_CHANGE: Loaded Fixed Address information is unsupported
-// /**
-//   Get the fixed loading address from image header assigned by build tool. This function only be called
-//   when Loading module at Fixed address feature enabled.
-
-//   @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
-//                                     image that needs to be examined by this function.
-//   @retval EFI_SUCCESS               An fixed loading address is assigned to this image by build tools .
-//   @retval EFI_NOT_FOUND             The image has no assigned fixed loading address.
-// **/
-// EFI_STATUS
-// GetPeCoffImageFixLoadingAssignedAddress(
-//   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
-//   )
-// {
-//    UINTN                              SectionHeaderOffset;
-//    EFI_STATUS                         Status;
-//    EFI_IMAGE_SECTION_HEADER           SectionHeader;
-//    EFI_IMAGE_OPTIONAL_HEADER_UNION    *ImgHdr;
-//    EFI_PHYSICAL_ADDRESS               FixLoadingAddress;
-//    UINT16                             Index;
-//    UINTN                              Size;
-//    UINT16                             NumberOfSections;
-//    EFI_PHYSICAL_ADDRESS               MmramBase;
-//    UINT64                             MmCodeSize;
-//    UINT64                             ValueInSectionHeader;
-//    //
-//    // Build tool will calculate the smm code size and then patch the PcdLoadFixAddressSmmCodePageNumber
-//    //
-//    MmCodeSize = EFI_PAGES_TO_SIZE (PcdGet32(PcdLoadFixAddressSmmCodePageNumber));
-
-//    FixLoadingAddress = 0;
-//    Status = EFI_NOT_FOUND;
-//    MmramBase = mLMFAConfigurationTable->SmramBase;
-//    //
-//    // Get PeHeader pointer
-//    //
-//    ImgHdr = (EFI_IMAGE_OPTIONAL_HEADER_UNION *)((CHAR8* )ImageContext->Handle + ImageContext->PeCoffHeaderOffset);
-//    SectionHeaderOffset = ImageContext->PeCoffHeaderOffset +
-//                          sizeof (UINT32) +
-//                          sizeof (EFI_IMAGE_FILE_HEADER) +
-//                          ImgHdr->Pe32.FileHeader.SizeOfOptionalHeader;
-//    NumberOfSections = ImgHdr->Pe32.FileHeader.NumberOfSections;
-
-//    //
-//    // Get base address from the first section header that doesn't point to code section.
-//    //
-//    for (Index = 0; Index < NumberOfSections; Index++) {
-//      //
-//      // Read section header from file
-//      //
-//      Size = sizeof (EFI_IMAGE_SECTION_HEADER);
-//      Status = ImageContext->ImageRead (
-//                               ImageContext->Handle,
-//                               SectionHeaderOffset,
-//                               &Size,
-//                               &SectionHeader
-//                               );
-//      if (EFI_ERROR (Status)) {
-//        return Status;
-//      }
-
-//      Status = EFI_NOT_FOUND;
-
-//      if ((SectionHeader.Characteristics & EFI_IMAGE_SCN_CNT_CODE) == 0) {
-//        //
-//        // Build tool saves the offset to SMRAM base as image base in PointerToRelocations & PointerToLineNumbers fields in the
-//        // first section header that doesn't point to code section in image header. And there is an assumption that when the
-//        // feature is enabled, if a module is assigned a loading address by tools, PointerToRelocations & PointerToLineNumbers
-//        // fields should NOT be Zero, or else, these 2 fields should be set to Zero
-//        //
-//        ValueInSectionHeader = ReadUnaligned64((UINT64*)&SectionHeader.PointerToRelocations);
-//        if (ValueInSectionHeader != 0) {
-//          //
-//          // Found first section header that doesn't point to code section in which build tool saves the
-//          // offset to SMRAM base as image base in PointerToRelocations & PointerToLineNumbers fields
-//          //
-//          FixLoadingAddress = (EFI_PHYSICAL_ADDRESS)(MmramBase + (INT64)ValueInSectionHeader);
-
-//          if (MmramBase + MmCodeSize > FixLoadingAddress && MmramBase <=  FixLoadingAddress) {
-//            //
-//            // The assigned address is valid. Return the specified loading address
-//            //
-//            ImageContext->ImageAddress = FixLoadingAddress;
-//            Status = EFI_SUCCESS;
-//          }
-//        }
-//        break;
-//      }
-//      SectionHeaderOffset += sizeof (EFI_IMAGE_SECTION_HEADER);
-//    }
-//    DEBUG ((DEBUG_INFO|DEBUG_LOAD, "LOADING MODULE FIXED INFO: Loading module at fixed address %x, Status = %r \n", FixLoadingAddress, Status));
-//    return Status;
-// }
-
 // MU_CHANGE Starts: The MM core address found routine is updated with PEI services
 
 /**
   Searches MmCore in all published firmware Volumes and loads the first
   instance that contains MmCore.
 
-  @param[in]  Buffer    Placeholder for address of MM core located by this routine.
+  @param[out]  Buffer          Placeholder for address of MM core located by this routine.
+  @param[out]  MmCoreFileName  Placeholder for the GUID of the MM core file located by this routine.
 
   @retval EFI_SUCCESS   This function located MM core successfully.
   @retval Others        Errors returned by PeiServices routines.
@@ -531,13 +286,18 @@ MmDriverDispatchNotify (
 **/
 EFI_STATUS
 MmIplPeiFindMmCore (
-  OUT VOID  **Buffer
+  OUT VOID      **Buffer,
+  OUT EFI_GUID  *MmCoreFileName
   )
 {
   EFI_STATUS           Status;
   UINTN                Instance;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
+
+  if ((Buffer == NULL) || (MmCoreFileName == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Instance = 0;
   while (TRUE) {
@@ -561,17 +321,21 @@ MmIplPeiFindMmCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_MM_CORE_STANDALONE, VolumeHandle, &FileHandle);
     if (!EFI_ERROR (Status)) {
-      //
-      // Find MmCore FileHandle in this volume, then we skip other firmware volume and
-      // return the FileHandle. Search Section now.
-      //
-      Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
+      ASSERT (FileHandle != NULL);
+      if (FileHandle != NULL) {
+        CopyGuid (MmCoreFileName, &((EFI_FFS_FILE_HEADER *)FileHandle)->Name);
+        DEBUG ((DEBUG_INFO, "Mm core has file name as %g\n", MmCoreFileName));
+        //
+        // Find MmCore FileHandle in this volume, then we skip other firmware volume and
+        // return the FileHandle. Search Section now.
+        //
+        Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
+        if (EFI_ERROR (Status)) {
+          break;
+        }
 
-      return EFI_SUCCESS;
-      break;
+        return EFI_SUCCESS;
+      }
     }
 
     //
@@ -737,6 +501,7 @@ ExecuteMmCoreFromMmram (
   UINTN                                 PageCount;
   STANDALONE_MM_FOUNDATION_ENTRY_POINT  EntryPoint;
   VOID                                  *HobStart;
+  EFI_GUID                              MmCoreFileName;
 
   DEBUG ((DEBUG_INFO, "%a Enters...\n", __func__));
   //
@@ -744,7 +509,7 @@ ExecuteMmCoreFromMmram (
   //
   SourceBuffer = NULL;
   // MU_CHANGE: The MM core address found routine is updated with PEI services
-  Status = MmIplPeiFindMmCore (&SourceBuffer);
+  Status = MmIplPeiFindMmCore (&SourceBuffer, &MmCoreFileName);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __func__, Status));
     goto Exit;
@@ -818,7 +583,7 @@ ExecuteMmCoreFromMmram (
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
 
       BuildModuleHob (
-        &gMmSupervisorCoreGuid,
+        &MmCoreFileName,
         ImageContext.ImageAddress,
         (UINT64)EFI_PAGES_TO_SIZE (PageCount),
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
@@ -1105,20 +870,14 @@ MmIplPeiEntry (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS  Status;
-  UINTN       Index;
-  UINT64      MaxSize;
-  UINTN       Size;
-  UINTN       MmramRangeCount;
-  // UINT64                          MmCodeSize;
-  // EFI_CPU_ARCH_PROTOCOL           *CpuArch;
-  // EFI_STATUS                      SetAttrStatus;
-  // EFI_MMRAM_DESCRIPTOR            *MmramRangeSmmDriver;
-  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR MemDesc;
-  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
-  // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
-  MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
-  MTRR_MEMORY_CACHE_TYPE             CacheAttribute;
+  EFI_STATUS              Status;
+  UINTN                   Index;
+  UINT64                  MaxSize;
+  UINTN                   Size;
+  UINTN                   MmramRangeCount;
+  EFI_MMRAM_DESCRIPTOR    *MmramRanges;
+  MTRR_MEMORY_CACHE_TYPE  CacheAttribute;
+  EFI_MEMORY_DESCRIPTOR   CommunicationRegion;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
 
@@ -1128,7 +887,7 @@ MmIplPeiEntry (
 
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
-             &mMmSupvCommunication.CommunicationRegion
+             &CommunicationRegion
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __func__, Status));
@@ -1280,67 +1039,6 @@ MmIplPeiEntry (
     // Print error message that there are not enough SMRAM resources to load the SMM Core.
     //
     DEBUG ((DEBUG_ERROR, "SMM IPL could not find a large enough SMRAM region to load SMM Core\n"));
-  }
-
-  //
-  // Close all SMRAM ranges
-  //
-  // MU_CHANGE: Iterate through each MMRAM for PPI instance
-  for (Index = 0; Index < MmramRangeCount; Index++) {
-    Status = mSmmAccess->Close ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "SMM IPL failed to close SMRAM windows index %d - %r\n", Index, Status));
-      ASSERT (FALSE);
-      return Status;
-    }
-
-    //
-    // Print debug message that the SMRAM window is now closed.
-    //
-    DEBUG ((DEBUG_INFO, "MM IPL closed SMRAM window index %d\n", Index));
-  }
-
-  // MU_CHANGE: MM_SUPV: Locked immediately after closing instead of waiting for ready to lock event
-  //
-  // Lock the SMRAM (Note: Locking SMRAM may not be supported on all platforms)
-  //
-  for (Index = 0; Index < MmramRangeCount; Index++) {
-    Status = mSmmAccess->Lock ((EFI_PEI_SERVICES **)PeiServices, mSmmAccess, Index);
-    if (EFI_ERROR (Status)) {
-      //
-      // Print error message that the SMRAM failed to lock...
-      //
-      DEBUG ((DEBUG_ERROR, "MM IPL could not lock MMRAM (Index %d) after executing MM Core %r\n", Index, Status));
-      ASSERT (FALSE);
-      return Status;
-    }
-
-    //
-    // Print debug message that the SMRAM window is now closed.
-    //
-    DEBUG ((DEBUG_INFO, "MM IPL locked SMRAM window index %d\n", Index));
-  }
-
-  SECURITY_LOCK_REPORT_EVENT ("Lock MMRAM", HARDWARE_LOCK); // MSCHANGE
-
-  //
-  // Print debug message that the SMRAM window is now locked.
-  //
-  DEBUG ((DEBUG_INFO, "SMM IPL locked SMRAM window\n"));
-
-  // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail after setup.
-  Status = QuerySupervisorVersion (&VersionInfo);
-  if (EFI_ERROR (Status)) {
-    return Status;
-  }
-
-  // MU_CHANGE: MM_SUPV: Added a forced trigger to load all drivers in MM
-  //
-  // Trigger to dispatch MM drivers from inside MM
-  //
-  if (!EFI_ERROR (Status)) {
-    Status = MmDriverDispatchNotify ();
-    DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
   }
 
   //

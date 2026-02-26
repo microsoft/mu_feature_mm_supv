@@ -212,6 +212,11 @@ MmiManage (
                  CommBuffer,
                  CommBufferSize
                  );
+      if (Status == EFI_NOT_READY) {
+        // This is from the wrap itself due to ring 3 broker not ready, so we bail the loop and bubble it back to the caller
+        ReturnStatus = Status;
+        break;
+      }
     } else if (SupervisorPath && MmiHandler->IsSupervisor) {
       Status = MmiHandler->Handler (
                              (EFI_HANDLE)MmiHandler,
