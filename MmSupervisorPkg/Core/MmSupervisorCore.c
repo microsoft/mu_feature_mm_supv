@@ -108,10 +108,17 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 // Table of MMI Handlers that are registered by the MM Core when it is initialized
 //
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
-  { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
-  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
-  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
-  { NULL,                    NULL,                              NULL, FALSE },
+  // Note: The driver dispatch handler is registered in user handler pool, to suffice the needs
+  //       if a driver dispatch call is invoked from user space. The handler is intentionally left
+  //       to duplicate the real dispatcher. Because if the ring 3 broker is ready, supervisor will
+  //       dispatch to this handler after demotion, which will trip on #GP due to SMAP. Otherwise,
+  //       if this is invoked before ring 3 broker being dispatched, the demotion routine will
+  //       directly bail with EFI_NOT_READY.
+  { MmDriverDispatchHandler, &gEventMmDispatchGuid,             NULL, FALSE, FALSE },
+  { MmDriverDispatchHandler, &gMmSupervisorDriverDispatchGuid,  NULL, TRUE,  TRUE  },
+  { MmReadyToLockHandler,    &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE,  TRUE  },
+  { MmSupvRequestHandler,    &gMmSupervisorRequestHandlerGuid,  NULL, FALSE, TRUE  },
+  { NULL,                    NULL,                              NULL, FALSE, TRUE  },
 };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
@@ -385,13 +392,19 @@ MmReadyToLockHandler (
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
     if (mMmCoreMmiHandlers[Index].UnRegister) {
-      Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
+        Status = MmiHandlerSupvUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      } else {
+        Status = MmiHandlerUserUnRegister (mMmCoreMmiHandlers[Index].DispatchHandle);
+      }
+
       if (EFI_ERROR (Status)) {
         DEBUG ((
           DEBUG_ERROR,
-          "Failed to unregister supervisor handler No. %d %g - %r\n",
+          "Failed to unregister supervisor handler No. %d %g (%a) - %r\n",
           Index,
           mMmCoreMmiHandlers[Index].HandlerType,
+          mMmCoreMmiHandlers[Index].SupervisorHandler ? "S" : "U",
           Status
           ));
       }
@@ -560,7 +573,8 @@ MmEntryPoint (
 
         mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
         mMmCommunicationBufferStatus.ReturnBufferSize  = BufferSize;
-        mMmCommunicationBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
+        // Rather than typical not_found on errors, this will bubble up the not_ready error.
+        mMmCommunicationBufferStatus.ReturnStatus = (Status == EFI_SUCCESS) ? EFI_SUCCESS : ((Status == EFI_NOT_READY) ? EFI_NOT_READY : EFI_NOT_FOUND);
       } else {
         //
         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
@@ -1182,12 +1196,21 @@ MmSupervisorMain (
   // Register all handlers in the core table
   //
   for (Index = 0; mMmCoreMmiHandlers[Index].HandlerType != NULL; Index++) {
-    Status = MmiSupvHandlerRegister (
-               mMmCoreMmiHandlers[Index].Handler,
-               mMmCoreMmiHandlers[Index].HandlerType,
-               &mMmCoreMmiHandlers[Index].DispatchHandle
-               );
-    DEBUG ((DEBUG_INFO, "MmiHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    if (mMmCoreMmiHandlers[Index].SupervisorHandler) {
+      Status = MmiSupvHandlerRegister (
+                 mMmCoreMmiHandlers[Index].Handler,
+                 mMmCoreMmiHandlers[Index].HandlerType,
+                 &mMmCoreMmiHandlers[Index].DispatchHandle
+                 );
+      DEBUG ((DEBUG_INFO, "MmiSupvHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    } else {
+      Status = MmiUserHandlerRegister (
+                 mMmCoreMmiHandlers[Index].Handler,
+                 mMmCoreMmiHandlers[Index].HandlerType,
+                 &mMmCoreMmiHandlers[Index].DispatchHandle
+                 );
+      DEBUG ((DEBUG_INFO, "MmiUserHandlerRegister - GUID %g - Status %d\n", mMmCoreMmiHandlers[Index].HandlerType, Status));
+    }
   }
 
   Status = InitializeMmSupervisorTestAgents ();
