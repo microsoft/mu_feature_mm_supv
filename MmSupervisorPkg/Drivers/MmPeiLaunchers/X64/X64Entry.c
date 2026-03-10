@@ -16,8 +16,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/DebugAgentLib.h>
 #include "Common/CommonHeader.h"
 
-#define EXCEPTION_VECTOR_NUMBER  0x22
-
 #define IA32_PG_P   BIT0
 #define IA32_PG_RW  BIT1
 #define IA32_PG_PS  BIT7
@@ -37,7 +35,7 @@ typedef struct _PAGE_FAULT_CONTEXT {
 
 typedef struct _PAGE_FAULT_IDT_TABLE {
   PAGE_FAULT_CONTEXT          PageFaultContext;
-  IA32_IDT_GATE_DESCRIPTOR    IdtEntryTable[EXCEPTION_VECTOR_NUMBER];
+  IA32_IDT_GATE_DESCRIPTOR    IdtEntryTable[X86_CPU_INTERRUPT_NUM];
 } PAGE_FAULT_IDT_TABLE;
 
 /**
@@ -239,9 +237,9 @@ _ModuleEntryPoint (
   //
   // Setup X64 IDT table
   //
-  ZeroMem (PageFaultIdtTable.IdtEntryTable, sizeof (IA32_IDT_GATE_DESCRIPTOR) * EXCEPTION_VECTOR_NUMBER);
+  ZeroMem (PageFaultIdtTable.IdtEntryTable, sizeof (IA32_IDT_GATE_DESCRIPTOR) * X86_CPU_INTERRUPT_NUM);
   X64Idtr.Base  = (UINTN)PageFaultIdtTable.IdtEntryTable;
-  X64Idtr.Limit = (UINT16)(sizeof (IA32_IDT_GATE_DESCRIPTOR) * EXCEPTION_VECTOR_NUMBER - 1);
+  X64Idtr.Limit = (UINT16)(sizeof (IA32_IDT_GATE_DESCRIPTOR) * X86_CPU_INTERRUPT_NUM - 1);
   AsmWriteIdtr ((IA32_DESCRIPTOR *)&X64Idtr);
 
   //
