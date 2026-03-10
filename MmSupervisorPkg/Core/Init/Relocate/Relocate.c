@@ -374,11 +374,11 @@ LockMmCoreBeforeExit (
   // as not present
   SetNonSmmMemMapAttributes ();
 
-  // Unblock the common regions reported during PEI phase
-  SetCommonBufferRegionAttribute ();
-
   // Unblocked other requested regions reported during PEI phase
   SetUnblockRegionAttribute ();
+
+  // Unblock the common regions reported during PEI phase
+  SetCommonBufferRegionAttribute ();
 
   // Protect the requested regions reported during PEI phase
   SetProtectedRegionAttribute ();
