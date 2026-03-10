@@ -93,6 +93,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile                   ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize          ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages                 ## CONSUMES
 
 [Depex]
   gEfiPeiMmAccessPpiGuid AND gEfiPeiMmControlPpiGuid AND gMmCommunicationBufferReadyPpiGuid
