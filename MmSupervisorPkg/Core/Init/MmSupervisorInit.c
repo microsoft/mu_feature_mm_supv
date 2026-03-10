@@ -1107,7 +1107,7 @@ MmSupervisorMain (
   mMmHobSize = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
   mMmHobSize += EFI_PAGE_SIZE;
 
-  Status = (EFI_PHYSICAL_ADDRESS)(UINTN)MmAllocatePages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &MmSupervisorHobStart);
+  Status = (EFI_PHYSICAL_ADDRESS)(UINTN)MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &MmSupervisorHobStart);
   if (EFI_ERROR (Status)) {
     PANIC ("Failed to allocate MM Supervisor hob memory");
   } else {
