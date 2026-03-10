@@ -613,7 +613,7 @@ ConvertMemoryPageAttributes (
     // The only reason that PageTableMap returns RETURN_INVALID_PARAMETER here is to modify other attributes
     // of a non-present range but remains the non-present range still as non-present.
     //
-    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] is not permitted\n", BaseAddress, BaseAddress + Length));
+    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] to %x is not permitted\n", BaseAddress, BaseAddress + Length, Attributes));
   }
 
   ASSERT_RETURN_ERROR (Status);
@@ -2427,13 +2427,24 @@ SetCommonBufferRegionAttribute (
         goto Cleanup;
       }
 
-      // Remove RX set above
-      CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
-      Status = ProcessUnblockPages (&UnblockRegionParams);
-      if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-        ASSERT (FALSE);
-        goto Cleanup;
+      if (Index == MM_SUPERVISOR_BUFFER_T) {
+        DEBUG ((DEBUG_INFO, "%a - Marking Supervisor common buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, mMmSupervisorAccessBuffer[Index].PhysicalStart, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)));
+        // Remove RX set above
+        CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
+        Status = ProcessUnblockPages (&UnblockRegionParams);
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
+          ASSERT (FALSE);
+          goto Cleanup;
+        }
+      } else {
+        DEBUG ((DEBUG_INFO, "%a - Marking Supervisor access buffer index %d as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, Index, mMmSupervisorAccessBuffer[Index].PhysicalStart, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)));
+        // For user comm buffer, it should be unblocked just like other unblocked regions, and we will just add SP to it.
+        Status = SmmSetMemoryAttributes (
+                   mMmSupervisorAccessBuffer[Index].PhysicalStart,
+                   EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages),
+                   EFI_MEMORY_SP
+                   );
       }
     }
   }
@@ -2441,13 +2452,13 @@ SetCommonBufferRegionAttribute (
   // For the supervisor core private data that is shared with the IPL
   // TODO: really do not want this region to be accessible by the IPL, but what
   // is the difference if you will need it for common buffer anyway?
-  // Remove RX set above
-  ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
-  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
-  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  Status                                             = ProcessUnblockPages (&UnblockRegionParams);
+  DEBUG ((DEBUG_INFO, "%a - Marking Supervisor mailbox buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, (UINTN)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus)));
+  // For user comm buffer, it should be unblocked just like other unblocked regions, and we will just add SP to it.
+  Status = SmmSetMemoryAttributes (
+              (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus,
+              (sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK),
+              EFI_MEMORY_SP
+              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
     ASSERT (FALSE);
