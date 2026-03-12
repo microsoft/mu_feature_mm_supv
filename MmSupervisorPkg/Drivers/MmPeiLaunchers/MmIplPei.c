@@ -836,7 +836,7 @@ ExecuteMmCoreFromMmram (
       // Execute image directly
       //
       DEBUG ((DEBUG_INFO, "%a Easy mode, load it directly...\n", __func__));
-      Status = EntryPoint (HobStart);
+      EntryPoint (HobStart);
  #endif
       // MU_CHANGE Ends
     }

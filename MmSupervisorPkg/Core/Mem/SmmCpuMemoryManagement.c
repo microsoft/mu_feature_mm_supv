@@ -7,6 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <PiMm.h>
 #include <SmmSecurePolicy.h>
+#include <Guid/MemoryTypeInformation.h>
 #include <Guid/MmCommonRegion.h>
 #include <Guid/MmProtectedRegion.h>
 #include <Guid/MmSupvUnblockRegion.h>
@@ -1803,7 +1804,8 @@ SkipResourceDescriptor (
 {
   if ((ResourceDesc == NULL) ||
       (ResourceDesc->ResourceType == EFI_RESOURCE_IO) ||
-      (ResourceDesc->ResourceType == EFI_RESOURCE_IO_RESERVED))
+      (ResourceDesc->ResourceType == EFI_RESOURCE_IO_RESERVED) ||
+      CompareGuid (&ResourceDesc->Owner, &gEfiMemoryTypeInformationGuid))
   {
     return TRUE;
   }

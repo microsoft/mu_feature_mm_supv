@@ -10,21 +10,29 @@
 #
 ##
 
+# release/202511
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-01-23T16-28-14 | 60efc6d51c056bb9dcd9fbdc3f26fbdf0ca14355
 # release/202502
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 887d09c7b82217d50d0b0cf311290739 | 2025-05-23T09-22-55 | a0369d2113577ca80280fb1eeafe3dc7c536d5d8
 # Secure
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
-# Non-Secure
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2025-09-30T17-01-30 | 22a192411052c19a6556e6f092e3d2c72c023e2b
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+# release/202511
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b2b837cadad1c2282a7562585679f21b | 2026-03-09T22-12-25 | 5bf68b66296329fe0b8050dc217ef2a6af17476f
+# release/202502
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2025-09-30T17-01-30 | 22a192411052c19a6556e6f092e3d2c72c023e2b
+
+# release/202511
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-01-23T16-33-32 | 60efc6d51c056bb9dcd9fbdc3f26fbdf0ca14355
+# release/202502
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmSupervisorCore
   FILE_GUID                      = 4E4C89DC-A452-4B6B-B183-F16A2A223733
   MODULE_TYPE                    = MM_CORE_STANDALONE
-  VERSION_STRING                 = 21.000
+  VERSION_STRING                 = 22.000
   PI_SPECIFICATION_VERSION       = 0x00010032
   ENTRY_POINT                    = MmSupervisorMain
 
@@ -32,8 +40,8 @@
   #Major: major version is one or two digits from 0 to 99
   #Minor: minor version is four digits, the first 3 digits are the minor number, the last digit is the flag
   #flag=9 represents RELEASE version, flag=8 represents DEBUG version, flag=0~7 represents test version
-  RELEASE_DRIVER_VERSION   = 21.0009
-  DEBUG_DRIVER_VERSION     = 21.0008
+  RELEASE_DRIVER_VERSION   = 22.0009
+  DEBUG_DRIVER_VERSION     = 22.0008
   #SPL value definition: SPL version = Major.Minor, SPL value = (Major << 16 | Minor)
   #Major: major value is an UINT16 number in decimal from 0 to 65535
   #Minor: minor value is an UINT16 number in decimal from 0 to 65535
@@ -238,6 +246,9 @@
   gMmPagingAuditMmiHandlerGuid                  ## SOMETIMES_CONSUMES
   gEfiHobMemoryAllocModuleGuid
   gEfiMmPeiMmramMemoryReserveGuid
+  gEfiMemoryTypeInformationGuid
+
+  gEfiMmCommunicateHeaderV3Guid                 ## CONSUMES
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

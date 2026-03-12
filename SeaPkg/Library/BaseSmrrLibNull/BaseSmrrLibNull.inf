@@ -1,0 +1,24 @@
+
+## @file
+# Null instance of the SMRR Library
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+
+[Defines]
+  INF_VERSION     = 1.27
+  BASE_NAME       = BaseSmrrLibNull
+  FILE_GUID       = FBBB1CEA-83BB-483E-A442-1A667CF2EB87
+  VERSION_STRING  = 1.0
+  MODULE_TYPE     = BASE
+  LIBRARY_CLASS   = SmrrLib
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[Sources]
+  BaseSmrrLibNull.c
+

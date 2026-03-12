@@ -30,6 +30,7 @@ SmmCpuFeaturesSmmRelocationComplete (
   VOID
   )
 {
+  SmrrLibInitAfterRelocation ();
 }
 
 /**
