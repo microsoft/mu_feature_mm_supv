@@ -807,8 +807,8 @@ MmCoreFindMmDriverFromFwVol (
   OUT EFI_PHYSICAL_ADDRESS        *StandaloneBfvAddress
   )
 {
-  EFI_STATUS            Status;
-  EFI_FFS_FILE_HEADER   *FileHeader;
+  EFI_STATUS           Status;
+  EFI_FFS_FILE_HEADER  *FileHeader;
 
   //
   // If a MM_STANDALONE or MM_CORE_STANDALONE driver is in the FV. Add the drivers
@@ -854,7 +854,6 @@ MmCoreFindMmDriverFromFwVol (
   return Status;
 }
 
-
 /**
   Discovers Standalone MM drivers in FV HOBs and adds those drivers to the Standalone MM
   dispatch list.
@@ -883,20 +882,22 @@ DiscoverStandaloneMmDriversInFvHobs (
     return EFI_NOT_FOUND;
   }
 
-for (Hob.Raw = GetHobList (); !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
+  for (Hob.Raw = GetHobList (); !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
     if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
-      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
+      FwVolHeader     = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
       if (ExtHeaderOffset != 0) {
         ExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + ExtHeaderOffset);
-        FvName = &ExtHeader->FvName;
+        FvName    = &ExtHeader->FvName;
+      } else {
+        FvName = NULL;
       }
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
       FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume2->BaseAddress);
-      FvName = &Hob.FirmwareVolume2->FvName;
+      FvName      = &Hob.FirmwareVolume2->FvName;
     } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV3) {
       FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume3->BaseAddress);
-      FvName = &Hob.FirmwareVolume3->FvName;
+      FvName      = &Hob.FirmwareVolume3->FvName;
     } else {
       // Do nothing for other types of HOBs
       continue;
