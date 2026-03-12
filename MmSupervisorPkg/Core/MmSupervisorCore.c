@@ -792,6 +792,70 @@ MmCoreInstallLoadedImage (
 }
 
 /**
+  Helper function to discover MM drivers in FV HOBs and add them to the dispatch list.
+
+  @param FwVolHeader  The pointer to the FV header of the FV HOB.
+
+  @retval EFI_SUCCESS             An error was not encountered discovering MM drivers in the FV HOB.
+  @retval EFI_NOT_FOUND           No MM drivers were found in the FV HOB.
+  @retval EFI_INVALID_PARAMETER   The FwVolHeader is NULL or invalid.
+
+**/
+EFI_STATUS
+MmCoreFindMmDriverFromFwVol (
+  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
+  IN EFI_PHYSICAL_ADDRESS        *StandaloneBfvAddress
+  )
+{
+  EFI_STATUS            Status;
+  EFI_FFS_FILE_HEADER   *FileHeader;
+
+  //
+  // If a MM_STANDALONE or MM_CORE_STANDALONE driver is in the FV. Add the drivers
+  // to the dispatch list. Mark the FV with this driver as the Standalone BFV.
+  //
+  FileHeader = NULL;
+  Status     =  FfsFindNextFile (
+                  EFI_FV_FILETYPE_MM_CORE_STANDALONE,
+                  FwVolHeader,
+                  &FileHeader
+                  );
+  if (!EFI_ERROR (Status)) {
+    if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
+      *StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
+      DEBUG ((
+        DEBUG_INFO,
+        "[%a]   Discovered Standalone MM Core [%g] in FV at 0x%x.\n",
+        __func__,
+        &gEfiCallerIdGuid,
+        (UINTN)FwVolHeader
+        ));
+    }
+  } else {
+    FileHeader = NULL;
+    Status     =  FfsFindNextFile (
+                    EFI_FV_FILETYPE_MM_STANDALONE,
+                    FwVolHeader,
+                    &FileHeader
+                    );
+  }
+
+  if (!EFI_ERROR (Status)) {
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
+      __func__,
+      (UINTN)FwVolHeader
+      ));
+    Status = MmCoreFfsFindMmDriver (FwVolHeader);
+    ASSERT_EFI_ERROR (Status);
+  }
+
+  return Status;
+}
+
+
+/**
   Discovers Standalone MM drivers in FV HOBs and adds those drivers to the Standalone MM
   dispatch list.
 
@@ -810,8 +874,8 @@ DiscoverStandaloneMmDriversInFvHobs (
   UINT16                          ExtHeaderOffset;
   EFI_FIRMWARE_VOLUME_HEADER      *FwVolHeader;
   EFI_FIRMWARE_VOLUME_EXT_HEADER  *ExtHeader;
-  EFI_FFS_FILE_HEADER             *FileHeader;
   EFI_PEI_HOB_POINTERS            Hob;
+  EFI_GUID                        *FvName;
   EFI_STATUS                      Status;
 
   Hob.Raw = GetHobList ();
@@ -819,69 +883,44 @@ DiscoverStandaloneMmDriversInFvHobs (
     return EFI_NOT_FOUND;
   }
 
-  do {
-    Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
-    if (Hob.Raw != NULL) {
+for (Hob.Raw = GetHobList (); !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
+    if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV) {
       FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume->BaseAddress);
-
-      DEBUG ((
-        DEBUG_INFO,
-        "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
-        __func__,
-        (UINTN)FwVolHeader,
-        FwVolHeader->FvLength
-        ));
-
       ExtHeaderOffset = ReadUnaligned16 (&FwVolHeader->ExtHeaderOffset);
       if (ExtHeaderOffset != 0) {
         ExtHeader = (EFI_FIRMWARE_VOLUME_EXT_HEADER *)((UINT8 *)FwVolHeader + ExtHeaderOffset);
-        DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, &ExtHeader->FvName));
+        FvName = &ExtHeader->FvName;
       }
-
-      //
-      // If a MM_STANDALONE or MM_CORE_STANDALONE driver is in the FV. Add the drivers
-      // to the dispatch list. Mark the FV with this driver as the Standalone BFV.
-      //
-      FileHeader = NULL;
-      Status     =  FfsFindNextFile (
-                      EFI_FV_FILETYPE_MM_CORE_STANDALONE,
-                      FwVolHeader,
-                      &FileHeader
-                      );
-      if (!EFI_ERROR (Status)) {
-        if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
-          *StandaloneBfvAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)FwVolHeader;
-          DEBUG ((
-            DEBUG_INFO,
-            "[%a]   Discovered Standalone MM Core [%g] in FV at 0x%x.\n",
-            __func__,
-            &gEfiCallerIdGuid,
-            (UINTN)FwVolHeader
-            ));
-        }
-      } else {
-        FileHeader = NULL;
-        Status     =  FfsFindNextFile (
-                        EFI_FV_FILETYPE_MM_STANDALONE,
-                        FwVolHeader,
-                        &FileHeader
-                        );
-      }
-
-      if (!EFI_ERROR (Status)) {
-        DEBUG ((
-          DEBUG_INFO,
-          "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
-          __func__,
-          (UINTN)FwVolHeader
-          ));
-        Status = MmCoreFfsFindMmDriver (FwVolHeader);
-        ASSERT_EFI_ERROR (Status);
-      }
-
-      Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
+    } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV2) {
+      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume2->BaseAddress);
+      FvName = &Hob.FirmwareVolume2->FvName;
+    } else if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_FV3) {
+      FwVolHeader = (EFI_FIRMWARE_VOLUME_HEADER *)(UINTN)(Hob.FirmwareVolume3->BaseAddress);
+      FvName = &Hob.FirmwareVolume3->FvName;
+    } else {
+      // Do nothing for other types of HOBs
+      continue;
     }
-  } while (Hob.Raw != NULL);
+
+    DEBUG ((
+      DEBUG_INFO,
+      "[%a] Found FV HOB referencing FV at 0x%x. Size is 0x%x.\n",
+      __func__,
+      (UINTN)FwVolHeader,
+      FwVolHeader->FvLength
+      ));
+
+    DEBUG ((DEBUG_INFO, "[%a]   FV GUID = {%g}.\n", __func__, FvName));
+
+    Status = MmCoreFindMmDriverFromFwVol (FwVolHeader, StandaloneBfvAddress);
+    if (Status == EFI_NOT_FOUND) {
+      DEBUG ((DEBUG_INFO, "[%a]   No MM drivers found in this FV.\n", __func__));
+    } else if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "[%a]   Failed to find MM drivers from FV at 0x%x - %r\n", __func__, (UINTN)FwVolHeader, Status));
+    } else {
+      DEBUG ((DEBUG_INFO, "[%a]   Successfully processed this FV for MM drivers.\n", __func__));
+    }
+  }
 
   return EFI_SUCCESS;
 }
