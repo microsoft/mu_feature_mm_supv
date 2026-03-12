@@ -794,8 +794,8 @@ MmCoreInstallLoadedImage (
 /**
   Helper function to discover MM drivers in FV HOBs and add them to the dispatch list.
 
-  @param FwVolHeader  The pointer to the FV header of the FV HOB.
-
+  @param FwVolHeader            The pointer to the FV header of the FV HOB.
+  @param StandaloneBfvAddress   Standalone MM Boot Firmware Volume address
   @retval EFI_SUCCESS             An error was not encountered discovering MM drivers in the FV HOB.
   @retval EFI_NOT_FOUND           No MM drivers were found in the FV HOB.
   @retval EFI_INVALID_PARAMETER   The FwVolHeader is NULL or invalid.
@@ -803,8 +803,8 @@ MmCoreInstallLoadedImage (
 **/
 EFI_STATUS
 MmCoreFindMmDriverFromFwVol (
-  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
-  IN EFI_PHYSICAL_ADDRESS        *StandaloneBfvAddress
+  IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
+  OUT EFI_PHYSICAL_ADDRESS        *StandaloneBfvAddress
   )
 {
   EFI_STATUS            Status;
