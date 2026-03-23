@@ -10,22 +10,35 @@
 #
 ##
 
-# release/202511
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-01-23T16-28-14 | 60efc6d51c056bb9dcd9fbdc3f26fbdf0ca14355
-# release/202502
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 887d09c7b82217d50d0b0cf311290739 | 2025-05-23T09-22-55 | a0369d2113577ca80280fb1eeafe3dc7c536d5d8
-# Secure
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 8fe771a8b6f0e46bb563d2491c9eb10e | 2025-07-25T21-04-21 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+# release/202511 (Non Secure)
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-03-23T19-03-02 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-03-23T19-03-36 | 1617810253e428d5455fe5fdb304789416564fa3
 
-# release/202511
-#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b2b837cadad1c2282a7562585679f21b | 2026-03-09T22-12-25 | 5bf68b66296329fe0b8050dc217ef2a6af17476f
-# release/202502
-#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2025-09-30T17-01-30 | 22a192411052c19a6556e6f092e3d2c72c023e2b
+# release/202502 (Non Secure)
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-21-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-22-00 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
 
-# release/202511
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-01-23T16-33-32 | 60efc6d51c056bb9dcd9fbdc3f26fbdf0ca14355
-# release/202502
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
+# release/202511 (Non Secure)
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b2b837cadad1c2282a7562585679f21b | 2026-03-23T19-04-12 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b2b837cadad1c2282a7562585679f21b | 2026-03-23T19-04-35 | 1617810253e428d5455fe5fdb304789416564fa3
+
+# release/202502 (Non Secure)
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2026-03-23T19-22-18 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2026-03-23T19-22-46 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
+
+# release/202511 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-03-23T19-05-01 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-03-23T19-05-20 | 1617810253e428d5455fe5fdb304789416564fa3
+
+# release/202502 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2026-03-23T19-24-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2026-03-23T19-24-57 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
 
 [Defines]
   INF_VERSION                    = 0x0001001A
