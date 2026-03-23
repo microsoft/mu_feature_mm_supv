@@ -17,10 +17,26 @@
   PI_SPECIFICATION_VERSION       = 0x0001000A
   ENTRY_POINT                    = MmIplPeiEntry
 
-# release/202511
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | d40c6972c8fdedf15330e1ca758447b5 | 2026-01-09T02-58-15 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
+# release/202511 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | a165f79660ba4b14254d8807a6e91591 | 2026-03-23T19-01-13 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | a165f79660ba4b14254d8807a6e91591 | 2026-03-23T19-01-30 | 1617810253e428d5455fe5fdb304789416564fa3
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | ed9df131b59a49c5b6f12313952462ac | 2026-01-09T02-58-57 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
+# release/202502 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 25e768becf05bb0ea1cc33c990770e83 | 2026-03-23T19-20-18 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf | 25e768becf05bb0ea1cc33c990770e83 | 2026-03-23T19-20-37 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
+
+# release/202511 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | ed9df131b59a49c5b6f12313952462ac | 2026-03-23T19-01-55 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | ed9df131b59a49c5b6f12313952462ac | 2026-03-23T19-02-20 | 1617810253e428d5455fe5fdb304789416564fa3
+
+# release/202502 (Non Secure)
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 52d8f2a8158f91ca0d671c00dbcb3f5b | 2026-03-23T19-20-56 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsulePei.inf | 52d8f2a8158f91ca0d671c00dbcb3f5b | 2026-03-23T19-21-13 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
+
 #
 # The following information is for reference only and not required by the build tools.
 #

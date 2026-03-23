@@ -15,7 +15,15 @@
 #
 ##
 
-#Override : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 574c6b8ff5d4192af95ba062539da64e | 2026-01-09T03-02-52 | 90bd8f57b29398fda07843b9b99857b7bd08a82b
+# release/202511 (Non Secure)
+#Track : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 574c6b8ff5d4192af95ba062539da64e | 2026-03-23T18-58-48 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+# release/202511 (Secure)
+#Track : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 574c6b8ff5d4192af95ba062539da64e | 2026-03-23T18-59-13 | 1617810253e428d5455fe5fdb304789416564fa3
+
+# release/202502 (Non Secure)
+#Track : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 3a01cac1d68c77e9e4f807ac56107bff | 2026-03-23T19-18-55 | 40548b12d821a8bce209f8b5559c3b230b226d50
+# release/202502 (Secure)
+#Track : 00000002 | MdePkg/Library/BaseCpuLib/BaseCpuLib.inf | 3a01cac1d68c77e9e4f807ac56107bff | 2026-03-23T19-19-19 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
 
 [Defines]
   INF_VERSION                    = 0x00010005
