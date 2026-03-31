@@ -129,10 +129,10 @@ InitializeSmmIdt (
   IA32_DESCRIPTOR  DxeIdtr;
 
   //
-  // There are 32 (not 255) entries in it since only processor
-  // generated exceptions will be handled.
+  // Populate 256 entries to ensure that a known state occurs
+  // for all possible IDT vectors.
   //
-  gcSmiIdtr.Limit = (sizeof (IA32_IDT_GATE_DESCRIPTOR) * 32) - 1;
+  gcSmiIdtr.Limit = (sizeof (IA32_IDT_GATE_DESCRIPTOR) * X86_CPU_INTERRUPT_NUM) - 1;
   //
   // Allocate page aligned IDT, because it might be set as read only.
   //
