@@ -61,6 +61,7 @@ typedef struct {
   EFI_GUID                      *HandlerType;
   EFI_HANDLE                    DispatchHandle;
   BOOLEAN                       UnRegister;
+  BOOLEAN                       SupervisorHandler;
 } MM_CORE_MMI_HANDLERS;
 
 //
