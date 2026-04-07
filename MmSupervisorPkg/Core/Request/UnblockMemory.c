@@ -278,21 +278,41 @@ ProcessBlockPages (
   )
 {
   UNBLOCKED_MEM_LIST                   *UnblockedListEntry;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockedMemEntry;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockedMemEntry;
   LIST_ENTRY                           *Node;
   EFI_STATUS                           Status;
+
+  if (mMmReadyToLockDone) {
+    // Note that this flag will be set once the policy is requested
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a - Block requested after ready to lock, will not proceed!\n",
+      __func__
+      ));
+    return EFI_ACCESS_DENIED;
+  }
 
   if (BlockMemDesc == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
+  DEBUG ((
+    DEBUG_INFO,
+    "%a - %g requested blocking Address: 0x%p Length: 0x%x (Pages)\n",
+    __func__,
+    &BlockMemDesc->IdentifierGuid,
+    BlockMemDesc->MemoryDescriptor.PhysicalStart,
+    BlockMemDesc->MemoryDescriptor.NumberOfPages
+    ));
+
   Status = EFI_NOT_FOUND;
   BASE_LIST_FOR_EACH (Node, &mUnblockedMemoryList) {
     UnblockedListEntry = BASE_CR (Node, UNBLOCKED_MEM_LIST, Link);
-    UnblockedMemEntry  = UnblockedListEntry->UnblockMemData;
-    if ((UnblockedMemEntry.MemoryDescriptor.PhysicalStart == BlockMemDesc->MemoryDescriptor.PhysicalStart) &&
-        (UnblockedMemEntry.MemoryDescriptor.NumberOfPages == BlockMemDesc->MemoryDescriptor.NumberOfPages))
+    UnblockedMemEntry  = &UnblockedListEntry->UnblockMemData;
+    if ((UnblockedMemEntry->MemoryDescriptor.PhysicalStart == BlockMemDesc->MemoryDescriptor.PhysicalStart) &&
+        (UnblockedMemEntry->MemoryDescriptor.NumberOfPages == BlockMemDesc->MemoryDescriptor.NumberOfPages))
     {
+      DEBUG ((DEBUG_INFO, "%a - Found the unblock record for the requested block region from %g\n", __func__, &UnblockedMemEntry->IdentifierGuid));
       Status = EFI_SUCCESS;
       break;
     }
@@ -300,13 +320,14 @@ ProcessBlockPages (
 
   // If not found, then bail...
   if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Cannot find the unblock record for the requested block region!\n", __func__));
     return Status;
   }
 
   // Mark this region to be inaccessible
   Status = SmmSetMemoryAttributes (
-             UnblockedMemEntry.MemoryDescriptor.PhysicalStart,
-             EFI_PAGES_TO_SIZE (UnblockedMemEntry.MemoryDescriptor.NumberOfPages),
+             UnblockedMemEntry->MemoryDescriptor.PhysicalStart,
+             EFI_PAGES_TO_SIZE (UnblockedMemEntry->MemoryDescriptor.NumberOfPages),
              EFI_MEMORY_RP
              );
   if (EFI_ERROR (Status)) {
