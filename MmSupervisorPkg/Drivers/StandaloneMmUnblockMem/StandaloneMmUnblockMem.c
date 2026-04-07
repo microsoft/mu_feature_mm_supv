@@ -26,6 +26,7 @@
 
 BOOLEAN                               mReadyToLockOccurred    = FALSE;
 MM_SUPERVISOR_COMMUNICATION_PROTOCOL  *mMmCommunicateProtocol = NULL;
+BOOLEAN                               mReblockSupported       = FALSE;
 
 EFI_STATUS
 EFIAPI
@@ -35,9 +36,18 @@ MmIplRequestUnblockPages (
   IN CONST EFI_GUID        *IdentifierGuid
   );
 
+EFI_STATUS
+EFIAPI
+MmIplRequestReblockPages (
+  IN EFI_PHYSICAL_ADDRESS  ReblockAddress,
+  IN UINT64                NumberOfPages,
+  IN CONST EFI_GUID        *IdentifierGuid
+  );
+
 MM_SUPERVISOR_UNBLOCK_MEMORY_PROTOCOL  mMmUnblockMemProtocol = {
   .Version             = MM_UNBLOCK_REQUEST_PROTOCOL_VERSION,
-  .RequestUnblockPages = MmIplRequestUnblockPages
+  .RequestUnblockPages = MmIplRequestUnblockPages,
+  .RequestReblockPages = MmIplRequestReblockPages
 };
 
 /**
@@ -280,6 +290,7 @@ MmIplRequestUnblockPages (
   Status = mMmCommunicateProtocol->Communicate (mMmCommunicateProtocol, CommHeader, &CommBufferSize);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, Status));
+    FreePool (CommHeader);
     return Status;
   }
 
@@ -288,6 +299,140 @@ MmIplRequestUnblockPages (
     DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, RequestBuffer->Result));
   }
 
+  FreePool (CommHeader);
+  return RequestBuffer->Result;
+}
+
+/**
+  This API provides a way to reblock certain data pages to be inaccessible inside MM environment.
+  The reblock operation is the reverse of unblock operation, which means the input address and page
+  number should be already unblocked before, otherwise the reblock request will be rejected.
+
+  @param  ReblockAddress              The address of buffer caller requests to reblock, the address
+                                      has to be page aligned.
+  @param  NumberOfPages               The number of pages requested to be reblocked from MM
+                                      environment.
+
+  @return EFI_SUCCESS             The request goes through successfully.
+  @return EFI_NOT_AVAILABLE_YET   The requested functionality is not produced yet.
+  @return EFI_UNSUPPORTED         The requested functionality is not supported on current platform.
+  @return EFI_SECURITY_VIOLATION  The requested address failed to pass security check for
+                                      reblocking.
+  @return EFI_INVALID_PARAMETER   Input address either NULL pointer or not page aligned.
+  @return EFI_ACCESS_DENIED       The request is rejected due to system has passed certain boot
+                                      phase.
+
+**/
+EFI_STATUS
+EFIAPI
+MmIplRequestReblockPages (
+  IN EFI_PHYSICAL_ADDRESS  ReblockAddress,
+  IN UINT64                NumberOfPages,
+  IN CONST EFI_GUID        *IdentifierGuid
+  )
+{
+  EFI_STATUS                           Status;
+  EFI_MM_COMMUNICATE_HEADER            *CommHeader;
+  MM_SUPERVISOR_REQUEST_HEADER         *RequestBuffer;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *UnblockBuffer;
+  UINTN                                CommBufferSize;
+
+  // Step 0: Check if reblock functionality is supported on supervisor side, if not, just return unsupported.
+  if (!mReblockSupported) {
+    DEBUG ((DEBUG_WARN, "%a Reblock memory request is not supported by supervisor, return unsupported!\n", __func__));
+    return EFI_UNSUPPORTED;
+  }
+
+  // Step 1: Basic sanity check
+  if ((IdentifierGuid == NULL) ||
+      (ReblockAddress == 0) ||
+      ReblockAddress & (EFI_PAGE_SIZE - 1))
+  {
+    DEBUG ((
+      DEBUG_ERROR,
+      "%a Input argument of address %p or identifier GUID %p is invalid!\n",
+      __func__,
+      ReblockAddress,
+      IdentifierGuid
+      ));
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (NumberOfPages == 0) {
+    // This is dumb...
+    DEBUG ((DEBUG_WARN, "%a Requesting to reblock 0 pages, return here!\n", __func__));
+    return EFI_SUCCESS;
+  }
+
+  if (mReadyToLockOccurred) {
+    // Someone must have done something terrible...
+    DEBUG ((DEBUG_ERROR, "%a Request is blocked after exit boot services, how did you get here?\n", __func__));
+    return EFI_ACCESS_DENIED;
+  }
+
+  if (mMmCommunicateProtocol == NULL) {
+    DEBUG ((DEBUG_ERROR, "%a Communicate protocol is not in place, cannot process the request\n", __func__));
+    return EFI_NOT_READY;
+  }
+
+  // Reblock request should be evaluated in a more strict way by supervisor,
+  // here we do not check against the current usage of this memory region, because this
+  // interface could be potentially used for blocking anything now (MMIO, etc.).
+
+  // Status = EvaluateRequestedRegion (ReblockAddress, NumberOfPages);
+  // if (EFI_ERROR (Status)) {
+  //   // Someone must have done something terrible...
+  //   DEBUG ((DEBUG_ERROR, "%a Requested address did not pass evaluation %r\n", __func__, Status));
+  //   return EFI_ACCESS_DENIED;
+  // }
+
+  // Step 2: Start to populate contents
+
+  // Step 2.1: MM Communication common header
+  CommBufferSize = sizeof (MM_SUPERVISOR_REQUEST_HEADER) +
+                   sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS) +
+                   OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
+  CommHeader = (EFI_MM_COMMUNICATE_HEADER *)AllocatePool (CommBufferSize);
+  ASSERT (CommHeader != NULL);
+  if (CommHeader == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  ZeroMem (CommHeader, CommBufferSize);
+  CopyGuid (&CommHeader->HeaderGuid, &gMmSupervisorRequestHandlerGuid);
+  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) +
+                              sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS);
+
+  // Step 2.2: MM_SUPERVISOR_REQUEST_HEADER content per our needs
+  RequestBuffer            = (MM_SUPERVISOR_REQUEST_HEADER *)(CommHeader->Data);
+  RequestBuffer->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  RequestBuffer->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  RequestBuffer->Request   = MM_SUPERVISOR_REQUEST_REBLOCK_MEM;
+  RequestBuffer->Result    = EFI_SUCCESS;
+
+  // Step 2.3: MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS content per our needs
+  UnblockBuffer = (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS *)(RequestBuffer + 1);
+  CopyGuid (&UnblockBuffer->IdentifierGuid, IdentifierGuid);
+  UnblockBuffer->MemoryDescriptor.Type          = 0; // Type is not needed for reblock operation
+  UnblockBuffer->MemoryDescriptor.PhysicalStart = ReblockAddress;
+  UnblockBuffer->MemoryDescriptor.VirtualStart  = 0;
+  UnblockBuffer->MemoryDescriptor.NumberOfPages = NumberOfPages;
+  UnblockBuffer->MemoryDescriptor.Attribute     = 0;
+
+  // Step 3: Ready to signal Mmi.
+  Status = mMmCommunicateProtocol->Communicate (mMmCommunicateProtocol, CommHeader, &CommBufferSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, Status));
+    FreePool (CommHeader);
+    return Status;
+  }
+
+  // Step 4: Just print the error here
+  if (EFI_ERROR (RequestBuffer->Result)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed from MmCommunication protocol - %r\n", __func__, RequestBuffer->Result));
+  }
+
+  FreePool (CommHeader);
   return RequestBuffer->Result;
 }
 
@@ -312,6 +457,95 @@ MmUnblockMemReadyToLockNotify (
 }
 
 /**
+  Communicate to MmSupervisor to query version information, as defined in
+  MM_SUPERVISOR_VERSION_INFO_BUFFER.
+
+  @param[out] VersionInfo        Pointer to hold returned version information structure.
+
+  @retval EFI_SUCCESS            The version information was successfully queried.
+  @retval EFI_INVALID_PARAMETER  The VersionInfo was NULL.
+  @retval EFI_SECURITY_VIOLATION The Version returned by supervisor is invalid.
+  @retval Others                 Other error status returned during communication to supervisor.
+
+**/
+EFI_STATUS
+QuerySupervisorVersion (
+  OUT MM_SUPERVISOR_VERSION_INFO_BUFFER  *VersionInfo
+  )
+{
+  EFI_STATUS                    Status;
+  MM_SUPERVISOR_REQUEST_HEADER  *RequestHeader;
+  EFI_MM_COMMUNICATE_HEADER     *CommHeader;
+  UINTN                         CommBufferSize;
+
+  if (VersionInfo == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  // Prepare MM Communication common header
+  CommBufferSize = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data) +
+              sizeof (MM_SUPERVISOR_REQUEST_HEADER) +
+              sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER);
+  CommHeader = (EFI_MM_COMMUNICATE_HEADER *)AllocatePool (CommBufferSize);
+  ASSERT (CommHeader != NULL);
+  if (CommHeader == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  ZeroMem (CommHeader, CommBufferSize);
+  CopyGuid (&(CommHeader->HeaderGuid), &gMmSupervisorRequestHandlerGuid);
+  CommHeader->MessageLength = sizeof (MM_SUPERVISOR_REQUEST_HEADER) + sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER);
+
+  RequestHeader            = (MM_SUPERVISOR_REQUEST_HEADER *)CommHeader->Data;
+  RequestHeader->Signature = MM_SUPERVISOR_REQUEST_SIG;
+  RequestHeader->Revision  = MM_SUPERVISOR_REQUEST_REVISION;
+  RequestHeader->Request   = MM_SUPERVISOR_REQUEST_VERSION_INFO;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Status = mMmCommunicateProtocol->Communicate (mMmCommunicateProtocol, CommHeader, &CommBufferSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM through supervisor channel - %r!!\n", __func__, Status));
+    FreePool (CommHeader);
+    return Status;
+  }
+
+  Status = EFI_SUCCESS;
+  if ((UINTN)RequestHeader->Result != 0) {
+    Status = ENCODE_ERROR ((UINTN)RequestHeader->Result);
+  }
+
+  CopyMem (
+    VersionInfo,
+    (MM_SUPERVISOR_VERSION_INFO_BUFFER *)(RequestHeader + 1),
+    sizeof (MM_SUPERVISOR_VERSION_INFO_BUFFER)
+    );
+
+  DEBUG ((
+    DEBUG_INFO,
+    "%a Supervisor version is 0x%x, patch level is 0x%x, maximal request level is 0x%x!!\n",
+    __func__,
+    VersionInfo->Version,
+    VersionInfo->PatchLevel,
+    VersionInfo->MaxSupervisorRequestLevel
+    ));
+
+  if (VersionInfo->Version == 0) {
+ #ifdef __GNUC__
+    DEBUG ((DEBUG_WARN, "%a Unable to get supervisor version under GCC compiler!!\n", __func__));
+ #else
+    // This means the supervisor version is 0, something must be wrong...
+    FreePool (CommHeader);
+    return EFI_SECURITY_VIOLATION;
+ #endif
+  }
+
+  FreePool (CommHeader);
+  return EFI_SUCCESS;
+}
+
+/**
 Register Exit Boot callback and process previous errors when variable service is ready
 
 @param[in]  Event                 Event whose notification function is being invoked.
@@ -329,6 +563,7 @@ SetupUnblockMemProtocol (
   EFI_STATUS  Status;
   EFI_HANDLE  UnusedHandle = NULL;
   EFI_EVENT   TempEvent;
+  MM_SUPERVISOR_VERSION_INFO_BUFFER VersionInfo;
 
   if (mMmCommunicateProtocol == NULL) {
     Status = gBS->LocateProtocol (&gMmSupervisorCommunicationProtocolGuid, NULL, (VOID **)&mMmCommunicateProtocol);
@@ -337,6 +572,18 @@ SetupUnblockMemProtocol (
       DEBUG ((DEBUG_ERROR, "%a Failed to locate Mm communicate protocol - %r!\n", __func__, Status));
       goto Done;
     }
+  }
+
+  Status = QuerySupervisorVersion (&VersionInfo);
+  if (EFI_ERROR (Status)) {
+    ASSERT_EFI_ERROR (Status);
+    goto Done;
+  }
+
+  if (VersionInfo.MaxSupervisorRequestLevel < MM_SUPERVISOR_REQUEST_REBLOCK_MEM) {
+    DEBUG ((DEBUG_WARN, "%a Supervisor does not support reblock memory request, version: 0x%x!\n", __func__, VersionInfo.Version));
+  } else {
+    mReblockSupported = TRUE;
   }
 
   Status = gBS->InstallProtocolInterface (
