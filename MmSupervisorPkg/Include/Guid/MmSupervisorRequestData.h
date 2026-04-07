@@ -97,11 +97,18 @@ typedef struct _COMM_UPDATE_BUFFER {
 #define   MM_SUPERVISOR_REQUEST_COMM_UPDATE  0x0004
 
 /**
+  @retval EFI_SECURITY_VIOLATION     If requested page is not page aligned
+  @retval EFI_ACCESS_DENIED          If request occurs after ready to lock or policy fetching
+  @retval EFI_INVALID_PARAMETER      If incoming memory ID is invalid
+ **/
+#define   MM_SUPERVISOR_REQUEST_REBLOCK_MEM  0x0005
+
+/**
   Maximal request index supported by supervisor. When supported, the value of this definition
   will be populated in the MaxSupervisorRequestLevel of VERSION_INFO_BUFFER upon a successful query
   to supervisor.
 
  **/
-#define   MM_SUPERVISOR_REQUEST_MAX_SUPPORTED  MM_SUPERVISOR_REQUEST_COMM_UPDATE
+#define   MM_SUPERVISOR_REQUEST_MAX_SUPPORTED  MM_SUPERVISOR_REQUEST_REBLOCK_MEM
 
 #endif // _MM_SUPV_REQUEST_DATA_H_
