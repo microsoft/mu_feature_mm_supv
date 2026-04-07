@@ -83,3 +83,36 @@ MmUnblockMemoryRequest (
 Done:
   return Status;
 }
+
+/**
+  This API provides a way to reblock certain data pages to be inaccessible inside MM environment.
+  The reblock operation is the reverse of unblock operation, which means the input address and page
+  number should be already unblocked before, otherwise the reblock request will be rejected.
+
+  @param  ReblockAddress              The address of buffer caller requests to reblock, the address
+                                      has to be page aligned.
+  @param  NumberOfPages               The number of pages requested to be reblocked from MM
+                                      environment.
+
+  @retval RETURN_SUCCESS              The request goes through successfully.
+  @retval RETURN_NOT_AVAILABLE_YET    The requested functionality is not produced yet.
+  @retval RETURN_UNSUPPORTED          The requested functionality is not supported on current platform.
+  @retval RETURN_SECURITY_VIOLATION   The requested address failed to pass security check for
+                                      reblocking.
+  @retval RETURN_INVALID_PARAMETER    Input address either NULL pointer or not page aligned.
+  @retval RETURN_ACCESS_DENIED        The request is rejected due to system has passed certain boot
+                                      phase.
+
+**/
+RETURN_STATUS
+EFIAPI
+MmReblockMemoryRequest (
+  IN PHYSICAL_ADDRESS  ReblockAddress,
+  IN UINT64            NumberOfPages
+  )
+{
+  // For simplicty, we will not support this API in PEI phase, as the main use case of this API is for normal environment
+  // to revoke the access right of certain pages after they are done with MM service, which does not have common usage
+  // in PEI phase.
+  return EFI_UNSUPPORTED;
+}
