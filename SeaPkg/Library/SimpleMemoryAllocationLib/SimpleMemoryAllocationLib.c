@@ -9,6 +9,7 @@
 
 #include <Uefi/UefiBaseType.h>
 
+#include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
 
 /**
@@ -53,3 +54,41 @@ FreePages (
   IN VOID   *Buffer,
   IN UINTN  Pages
   );
+
+VOID *
+EFIAPI
+AllocatePool (
+  IN UINTN  AllocationSize
+  )
+{
+  return AllocatePages (EFI_SIZE_TO_PAGES (AllocationSize));
+}
+
+VOID *
+EFIAPI
+AllocateZeroPool (
+  IN UINTN  AllocationSize
+  )
+{
+  VOID  *Buffer;
+
+  Buffer = AllocatePool (AllocationSize);
+  if (Buffer != NULL) {
+    ZeroMem (Buffer, AllocationSize);
+  }
+
+  return Buffer;
+}
+
+VOID
+EFIAPI
+FreePool (
+  IN VOID  *Buffer
+  )
+{
+  //
+  // The underlying page allocator does not track individual allocation sizes,
+  // so pool-level free is a no-op, matching FreePages behavior when the
+  // address is not at HeapTop.
+  //
+}
