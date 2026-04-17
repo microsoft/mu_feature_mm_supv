@@ -65,3 +65,56 @@ MmUnblockMemoryRequest (
 Done:
   return Status;
 }
+
+/**
+  This API provides a way to reblock certain data pages to be inaccessible inside MM environment.
+  The reblock operation is the reverse of unblock operation, which means the input address and page
+  number should be already unblocked before, otherwise the reblock request will be rejected.
+
+  @param  ReblockAddress              The address of buffer caller requests to reblock, the address
+                                      has to be page aligned.
+  @param  NumberOfPages               The number of pages requested to be reblocked from MM
+                                      environment.
+
+  @return EFI_SUCCESS             The request goes through successfully.
+  @return EFI_NOT_AVAILABLE_YET   The requested functionality is not produced yet.
+  @return EFI_UNSUPPORTED         The requested functionality is not supported on current platform.
+  @return EFI_SECURITY_VIOLATION  The requested address failed to pass security check for
+                                      reblocking.
+  @return EFI_INVALID_PARAMETER   Input address either NULL pointer or not page aligned.
+  @return EFI_ACCESS_DENIED       The request is rejected due to system has passed certain boot
+                                      phase.
+
+**/
+EFI_STATUS
+EFIAPI
+MmReblockMemoryRequest (
+  IN EFI_PHYSICAL_ADDRESS  ReblockAddress,
+  IN UINT64                NumberOfPages
+  )
+{
+  EFI_STATUS                             Status;
+  MM_SUPERVISOR_UNBLOCK_MEMORY_PROTOCOL  *MmSupvUnblockMemoryProtocol = NULL;
+
+  if (gBS == NULL) {
+    Status = EFI_NOT_AVAILABLE_YET;
+    goto Done;
+  }
+
+  Status = gBS->LocateProtocol (&gMmSupervisorUnblockMemoryProtocolGuid, NULL, (VOID **)&MmSupvUnblockMemoryProtocol);
+  if (EFI_ERROR (Status)) {
+    // Should not happen due to depex requirement
+    DEBUG ((DEBUG_ERROR, "%a The reblock protocol has failed to locate - %r\n", __func__, Status));
+    Status = EFI_NOT_AVAILABLE_YET;
+    goto Done;
+  }
+
+  Status = MmSupvUnblockMemoryProtocol->RequestReblockPages (ReblockAddress, NumberOfPages, &gEfiCallerIdGuid);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a The reblock request has failed - %r\n", __func__, Status));
+    ASSERT_EFI_ERROR (Status);
+  }
+
+Done:
+  return Status;
+}

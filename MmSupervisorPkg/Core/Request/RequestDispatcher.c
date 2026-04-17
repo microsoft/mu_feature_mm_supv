@@ -148,6 +148,22 @@ MmSupvRequestHandler (
                                       );
       break;
 
+    case MM_SUPERVISOR_REQUEST_REBLOCK_MEM:
+      ExpectedSize += sizeof (MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS);
+      if (*CommBufferSize < ExpectedSize) {
+        DEBUG ((
+          DEBUG_ERROR,
+          "%a - Reblock param block has bad comm buffer size! %d < %d\n",
+          __func__,
+          *CommBufferSize,
+          ExpectedSize
+          ));
+        return EFI_INVALID_PARAMETER;
+      }
+
+      MmSupvRequestHeader->Result = ProcessBlockPages ((MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS *)(MmSupvRequestHeader + 1));
+      break;
+
     default:
       // Mark unknown requested command as EFI_UNSUPPORTED.
       DEBUG ((DEBUG_ERROR, "%a - Invalid command requested! %d\n", __func__, MmSupvRequestHeader->Request));

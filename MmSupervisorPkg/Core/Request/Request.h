@@ -95,4 +95,25 @@ ProcessUpdateCommBufferRequest (
   IN MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer
   );
 
+/**
+  Helper routine used to block requested region. The routine will loop through unblocked
+  entries and try to locate the entry that matches the input based on base address and
+  length. For the match entry, if the page is not already blocked, supervisor will issue
+  command to block access. Once successful, the corresponding entry will be removed from
+  unblocked list.
+
+  @param[in]  BlockMemDesc        Input unblock parameters conveyed from non-MM environment
+
+  @retval EFI_SUCCESS             The requested region properly unblocked.
+  @retval EFI_ACCESS_DENIED       The request was made post lock down event.
+  @retval EFI_INVALID_PARAMETER   UnblockMemParams or its ID GUID is null pointer.
+  @retval EFI_ALREADY_STARTED     The requested region has illegal page attributes.
+  @retval Others                  Page attribute setting/clearing routine has failed.
+
+**/
+EFI_STATUS
+ProcessBlockPages (
+  IN MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *BlockMemDesc
+  );
+
 #endif // _MM_SUPV_REQUEST_H_
