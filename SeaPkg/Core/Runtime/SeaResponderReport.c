@@ -136,10 +136,14 @@ VerifyAndHashImage (
 {
   EFI_STATUS                    Status;
   VOID                          *InternalCopy;
-  VOID                          *Buffer    = NULL;
-  VOID                          *NewBuffer = NULL;
+  VOID                          *Buffer;
+  VOID                          *NewBuffer;
   UINTN                         NewBufferSize;
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+
+  InternalCopy = NULL;
+  Buffer       = NULL;
+  NewBuffer    = NULL;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
