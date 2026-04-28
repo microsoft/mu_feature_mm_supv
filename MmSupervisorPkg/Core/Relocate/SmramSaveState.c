@@ -339,7 +339,6 @@ ProcessUserSaveStateAccess (
                  NULL
                  );
       if (Status == EFI_NOT_FOUND) {
-        Status = EFI_SUCCESS;
         goto Exit;
       } else if (EFI_ERROR (Status)) {
         DEBUG ((DEBUG_ERROR, "%a SavestateRead Blocked by Policy - %r\n", __func__, Status));
@@ -353,10 +352,6 @@ ProcessUserSaveStateAccess (
                  UserSaveStateAccessHolder.CpuIndex,
                  UserSaveStateAccessHolder.Buffer
                  );
-      if (!EFI_ERROR (Status) || (Status == EFI_NOT_FOUND)) {
-        // Only convert EFI_NOT_FOUND to unblocking return code on this attempt.
-        Status = EFI_SUCCESS;
-      }
 
       break;
     default:
