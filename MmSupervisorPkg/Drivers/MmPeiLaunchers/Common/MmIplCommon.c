@@ -148,6 +148,7 @@ SmmCommunicationCommunicateWorker (
   if (TalkToSupervisor) {
     CommunicateHeader->MessageLength = TempCommSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
   }
+
   // MU_CHANGE Ends: MM_SUPV
 
   //
