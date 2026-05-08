@@ -144,6 +144,11 @@ SmmCommunicationCommunicateWorker (
     CopyMem (CommunicateHeader, CommBuffer, TempCommSize);
   }
 
+  // When communicating to supervisor, we always bump up the message length to the size of the buffer, so that supervisor can access the entire buffer
+  if (TalkToSupervisor) {
+    CommunicateHeader->MessageLength = TempCommSize - OFFSET_OF (EFI_SMM_COMMUNICATE_HEADER, Data);
+  }
+
   // MU_CHANGE Ends: MM_SUPV
 
   //
