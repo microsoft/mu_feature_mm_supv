@@ -27,28 +27,7 @@
 
 #include "MmSupervisorCore.h"
 #include "Mem.h"
-
-//
-// MEMORY_MAP / MEMORY_MAP_SIGNATURE / gMemoryMap are file-private to Page.c.
-// We mirror just enough of those declarations here to walk the list.  If the
-// MEMORY_MAP layout in Page.c ever changes, this declaration must be kept in
-// lock-step (we get the same coupling that Init's standalone Page.c had
-// before the split, since both copies inlined the struct).
-//
-#define MEMORY_MAP_SIGNATURE  SIGNATURE_32 ('m', 'm', 'a', 'p')
-
-typedef struct {
-  UINTN              Signature;
-  LIST_ENTRY         Link;
-
-  BOOLEAN            FromStack;
-  BOOLEAN            IsSupervisorPage;
-  EFI_MEMORY_TYPE    Type;
-  UINT64             Start;
-  UINT64             End;
-} MEMORY_MAP;
-
-extern LIST_ENTRY  gMemoryMap;
+#include "PageInternal.h"
 
 EFI_STATUS
 EFIAPI

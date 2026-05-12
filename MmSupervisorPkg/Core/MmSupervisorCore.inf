@@ -65,6 +65,7 @@
   Mem/MemWrapper.c
   Mem/MemWrapper_core.c
   Mem/Page.c
+  Mem/PageInternal.h
   Mem/PageTbl.c
   Mem/PageTbl_core.c
   Mem/Pool.c
@@ -88,6 +89,7 @@
   Relocate/SmiException.nasm
   Relocate/SmramSaveState.c
   Relocate/SmramSaveState_core.c
+  Relocate/SmramSaveStateInternal.h
 
   Services/CpuService/CpuService.c
   Services/CpuService/CpuService_core.c
@@ -109,6 +111,7 @@
   Request/RequestDispatcher.c
   Request/UnblockMemory.c
   Request/UnblockMemory_core.c
+  Request/UnblockMemoryInternal.h
   Request/FetchPolicy.c
   Request/VersionInfo.c
   Request/UpdateCommBuffer.c

@@ -22,19 +22,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "Mem/Mem.h"
-
-//
-// Mirror of the UNBLOCKED_MEM_LIST node typedef and the shared list head
-// declared in UnblockMemory.c.  Duplicated here (instead of being hoisted
-// into a header) because the typedef is private to this trio of source
-// files.
-//
-typedef struct {
-  LIST_ENTRY                             Link;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS    UnblockMemData;
-} UNBLOCKED_MEM_LIST;
-
-extern LIST_ENTRY  mUnblockedMemoryList;
+#include "UnblockMemoryInternal.h"
 
 /**
   Helper function to check if range requested is within boundary of unblocked lists.

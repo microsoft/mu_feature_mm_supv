@@ -24,6 +24,7 @@
 #include <PiMm.h>
 #include <SmmSecurePolicy.h>
 #include <Guid/MmSupvUnblockRegion.h>
+#include <Guid/MmSupervisorRequestData.h>
 
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>

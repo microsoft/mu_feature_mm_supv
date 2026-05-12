@@ -18,11 +18,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "MmSupervisorCore.h"
 #include "Mem/Mem.h"
-
-typedef struct {
-  LIST_ENTRY                             Link;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS    UnblockMemData;
-} UNBLOCKED_MEM_LIST;
+#include "UnblockMemoryInternal.h"
 
 LIST_ENTRY  mUnblockedMemoryList = INITIALIZE_LIST_HEAD_VARIABLE (mUnblockedMemoryList);
 
@@ -97,7 +93,6 @@ CollectUnblockedRegionsFromNthNode (
   @return Status Code
 
 **/
-STATIC
 EFI_STATUS
 VerifyUnblockRequest (
   IN CONST MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  *RequestedData

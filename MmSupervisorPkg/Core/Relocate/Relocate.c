@@ -332,7 +332,6 @@ SmBaseHobCompare (
   @retval EFI_OUT_OF_RESOURCES  Memory allocation failed.
   @retval EFI_NOT_FOUND         gSmmBaseHobGuid was never created.
 **/
-STATIC
 EFI_STATUS
 GetSmBase (
   IN  UINTN  MaxNumberOfCpus,

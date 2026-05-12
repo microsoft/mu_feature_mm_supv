@@ -38,6 +38,13 @@
 //
 extern LIST_ENTRY  mDiscoveredList;
 
+EFI_STATUS
+EFIAPI
+MmLoadImage (
+  IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
+  );
+
 EFI_MM_DRIVER_ENTRY *
 MmInitDriverEntry (
   IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,

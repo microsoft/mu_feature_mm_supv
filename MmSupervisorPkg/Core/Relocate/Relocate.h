@@ -348,6 +348,55 @@ FindSmramInfo (
   OUT UINT32  *SmrrSize
   );
 
+//
+// Symbols defined in shared Relocate.c that are now referenced from the
+// per-build sibling files (Relocate_init.c, Relocate_core.c) after the
+// commonization split.  Without these declarations the sibling translation
+// units would see implicit-int warnings (treated as errors under /WX) or
+// fail to link against STATIC definitions.
+//
+extern BOOLEAN  mSmmCodeAccessCheckEnable;
+
+/**
+  Initialize IDT to setup exception handlers for SMM.
+
+**/
+VOID
+InitializeSmmIdt (
+  VOID
+  );
+
+/**
+  Retrieve the SMBASE values for all processors from the SmmBase HOB.
+
+  @param[in]  MaxNumberOfCpus        Max NumberOfCpus.
+  @param[out] AllocatedSmBaseBuffer  Pointer to the allocated SmBase buffer.
+
+  @retval EFI_SUCCESS           SmBase Buffer output successfully.
+  @retval EFI_OUT_OF_RESOURCES  Memory allocation failed.
+  @retval EFI_NOT_FOUND         gSmmBaseHobGuid was never created.
+**/
+EFI_STATUS
+GetSmBase (
+  IN  UINTN  MaxNumberOfCpus,
+  OUT UINTN  **AllocatedSmBaseBuffer
+  );
+
+/**
+  Extract NumberOfCpus, MaxNumberOfCpus and EFI_PROCESSOR_INFORMATION for all
+  CPU from MpInformation2 HOB.
+
+  @param[out] NumberOfCpus     Pointer to NumberOfCpus.
+  @param[out] MaxNumberOfCpus  Pointer to MaxNumberOfCpus.
+
+  @retval ProcessorInfo  Pointer to EFI_PROCESSOR_INFORMATION buffer.
+**/
+EFI_PROCESSOR_INFORMATION *
+GetMpInformation (
+  OUT UINTN  *NumberOfCpus,
+  OUT UINTN  *MaxNumberOfCpus
+  );
+
 /**
   Page Fault handler for SMM use.
 
