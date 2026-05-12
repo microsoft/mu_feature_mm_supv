@@ -33,6 +33,7 @@
   UnitTestLib|UnitTestFrameworkPkg/Library/UnitTestLib/UnitTestLib.inf
   MtrrLib|UefiCpuPkg/Library/MtrrLib/MtrrLib.inf
   PeCoffValidationLib|SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
+  SmrrLib|SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
   StackCheckLib|MdePkg/Library/StackCheckLibNull/StackCheckLibNull.inf
 
 [LibraryClasses.common.PEIM]
@@ -63,7 +64,7 @@
   StmLib|SeaPkg/Library/StmLib/StmLib.inf
   StmPlatformLib|SeaPkg/Library/StmPlatformLibNull/StmPlatformLibNull.inf
   SynchronizationLib|SeaPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
-  HashLib|SeaPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+  HashLibRaw|SeaPkg/Library/HashLibRaw/HashLibRaw.inf
   Tpm2CommandLib|SecurityPkg/Library/Tpm2CommandLib/Tpm2CommandLib.inf
   Tpm2DeviceLib|SecurityPkg/Library/Tpm2DeviceLibDTpm/Tpm2DeviceLibDTpmStandaloneMm.inf
   MemoryAllocationLib|SeaPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf
@@ -87,6 +88,7 @@
   SeaPkg/Library/BaseSeaManifestPublicationLibNull/BaseSeaManifestPublicationLibNull.inf
   SeaPkg/Library/DxeSeaManifestPublicationLibConfigTable/DxeSeaManifestPublicationLibConfigTable.inf
   SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf
+  SeaPkg/Library/BaseSmrrLibNull/BaseSmrrLibNull.inf
 
 [Components.X64]
   SeaPkg/Core/Stm.inf {
@@ -104,5 +106,5 @@
   SeaPkg/Library/SimpleSynchronizationLib/SimpleSynchronizationLib.inf
   SeaPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf
   SeaPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf
-  SeaPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+  SeaPkg/Library/HashLibRaw/HashLibRaw.inf
   SeaPkg/Library/SimpleMemoryAllocationLib/SimpleMemoryAllocationLib.inf

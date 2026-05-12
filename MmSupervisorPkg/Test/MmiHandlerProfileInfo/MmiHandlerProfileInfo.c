@@ -67,10 +67,6 @@ GetSmiHandlerProfileDatabase (
   SMI_HANDLER_PROFILE_PARAMETER_GET_INFO            *CommGetInfo;
   SMI_HANDLER_PROFILE_PARAMETER_GET_DATA_BY_OFFSET  *CommGetData;
   MM_SUPERVISOR_COMMUNICATION_PROTOCOL              *SmmCommunication; // MU_CHANGE: MM_SUPV: Communicate to supervisor
-  UINTN                                             MinimalSizeNeeded;
-  EDKII_PI_SMM_COMMUNICATION_REGION_TABLE           *PiSmmCommunicationRegionTable;
-  UINT32                                            Index;
-  EFI_MEMORY_DESCRIPTOR                             *Entry;
   VOID                                              *Buffer;
   UINTN                                             Size;
   UINTN                                             Offset;
@@ -82,34 +78,8 @@ GetSmiHandlerProfileDatabase (
     return;
   }
 
-  MinimalSizeNeeded = EFI_PAGE_SIZE;
-
-  // MU_CHANGE: MM_SUPV: Communicate to supervisor
-  Status = EfiGetSystemConfigurationTable (
-             &gMmSupervisorCommunicationRegionTableGuid,
-             (VOID **)&PiSmmCommunicationRegionTable
-             );
-  if (EFI_ERROR (Status)) {
-    Print (L"SmiHandlerProfile: Get PiSmmCommunicationRegionTable - %r\n", Status);
-    return;
-  }
-
-  ASSERT (PiSmmCommunicationRegionTable != NULL);
-  Entry = (EFI_MEMORY_DESCRIPTOR *)(PiSmmCommunicationRegionTable + 1);
-  Size  = 0;
-  for (Index = 0; Index < PiSmmCommunicationRegionTable->NumberOfEntries; Index++) {
-    if (Entry->Type == EfiConventionalMemory) {
-      Size = EFI_PAGES_TO_SIZE ((UINTN)Entry->NumberOfPages);
-      if (Size >= MinimalSizeNeeded) {
-        break;
-      }
-    }
-
-    Entry = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)Entry + PiSmmCommunicationRegionTable->DescriptorSize);
-  }
-
-  ASSERT (Index < PiSmmCommunicationRegionTable->NumberOfEntries);
-  CommBuffer = (UINT8 *)(UINTN)Entry->PhysicalStart;
+  CommBuffer = (UINT8 *)(UINTN)SmmCommunication->CommunicationRegion.PhysicalStart;
+  Size       = EFI_PAGES_TO_SIZE (SmmCommunication->CommunicationRegion.NumberOfPages);
 
   //
   // Get Size

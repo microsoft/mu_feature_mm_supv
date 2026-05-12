@@ -308,6 +308,85 @@ CrossCheckSmBase (
 }
 
 /**
+  Helper function to cross-check SMBASE-relative data across all CPUs.
+
+  @param[in] CpuIndex  The index of the CPU to check against all others.
+  @param[in] SmBase    The SMBASE of the CPU.
+  @param[in] Offset    The offset from SMBASE to read the data.
+  @param[in] Size      The size of the data to read.
+
+  @retval EFI_SUCCESS            The data matches across all CPUs.
+  @retval EFI_UNSUPPORTED        The size is larger than UINT64.
+  @retval EFI_NOT_STARTED        The CPU hot-plug data has not been initialized yet.
+  @retval EFI_NOT_READY          The specified CPU has not run yet.
+  @retval EFI_SECURITY_VIOLATION The data does not match across CPUs.
+**/
+EFI_STATUS
+CrossCheckSmBase (
+  IN UINTN                 CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS  SmBase,
+  IN UINTN                 Offset,
+  IN UINTN                 Size
+  )
+{
+  UINTN       Index;
+  UINT64      Target = 0;
+  UINT64      Other  = 0;
+  EFI_STATUS  Status;
+
+  if (Size > sizeof (UINT64)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu == NULL) {
+    return EFI_NOT_STARTED;
+  }
+
+  if (CpuIndex >= mHostContextCommon.CpuNum) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
+    return EFI_NOT_READY;
+  }
+
+  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Smbase != SmBase) {
+    return EFI_SECURITY_VIOLATION;
+  }
+
+  CopyMem (&Target, (VOID *)(UINTN)(SmBase + Offset), Size);
+
+  Status = EFI_SUCCESS;
+  for (Index = 0; Index < mHostContextCommon.CpuNum; Index++) {
+    if ((mHostContextCommon.HostContextPerCpu[Index].Stack == 0) &&
+        (Index != CpuIndex))
+    {
+      // If this one has not run yet, we can ignore it
+      continue;
+    }
+
+    Other = 0;
+    CopyMem (&Other, (VOID *)(UINTN)(mHostContextCommon.HostContextPerCpu[Index].Smbase + Offset), Size);
+    if (Other != Target) {
+      SAFE_DEBUG (
+        (DEBUG_ERROR, "%a Offset (0x%x) from SMBASE (0x%x) on CPU %d has value 0x%x and does not match that (0x%x) of this CPU (%d)\n",
+         __func__,
+         Offset,
+         SmBase,
+         Index,
+         Other,
+         Target,
+         CpuIndex)
+        );
+      Status = EFI_SECURITY_VIOLATION;
+      break;
+    }
+  }
+
+  return Status;
+}
+
+/**
 
   This function initialize BSP.
 
@@ -964,12 +1043,12 @@ GetResources (
   IN OUT X86_REGISTER  *Register
   )
 {
-  STM_STATUS                        StmStatus;
-  EFI_STATUS                        Status;
-  UINT64                            BufferBase;
-  UINT64                            BufferSize;
-  UINTN                             CpuIndex;
-  TPML_DIGEST_VALUES                DigestList[SUPPORTED_DIGEST_COUNT];
+  STM_STATUS          StmStatus;
+  EFI_STATUS          Status;
+  UINT64              BufferBase;
+  UINT64              BufferSize;
+  UINTN               CpuIndex;
+  TPML_DIGEST_VALUES  DigestList[SUPPORTED_DIGEST_COUNT];
 
   if (Register == NULL) {
     Status = EFI_INVALID_PARAMETER;
@@ -1031,17 +1110,17 @@ GetResources (
              DigestList,
              SUPPORTED_DIGEST_COUNT,
              (VOID *)(UINTN)BufferBase,
-             BufferSize
+             &BufferSize
              );
   if (!EFI_ERROR (Status)) {
     SAFE_DEBUG ((DEBUG_ERROR, "%a Validation routine succeeded!\n", __func__));
     StmStatus = STM_SUCCESS;
-    Status = EFI_SUCCESS;
+    Status    = EFI_SUCCESS;
   } else if (Status == EFI_BUFFER_TOO_SMALL) {
     SAFE_DEBUG ((DEBUG_ERROR, "%a Policy cannot fit into provided buffer (0x%x)!\n", __func__, BufferSize));
     StmStatus = ERROR_STM_BUFFER_TOO_SMALL;
     // Populate rdx with the number of pages required
-    WriteUnaligned32 ((UINT32 *)&Register->Rdx, EFI_SIZE_TO_PAGES (BufferSize));
+    WriteUnaligned64 (&Register->Rdx, EFI_SIZE_TO_PAGES (BufferSize));
     Status = EFI_SECURITY_VIOLATION;
   } else {
     // Some other errors

@@ -9,30 +9,19 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef __CRT_LIB_SUPPORT_H__
-#define __CRT_LIB_SUPPORT_H__
+#pragma once
 
 #include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include <Library/PrintLib.h>
+#include <Library/TimerLib.h>
 
 #define OPENSSLDIR  ""
 #define ENGINESDIR  ""
 #define MODULESDIR  ""
 
 #define MAX_STRING_SIZE  0x1000
-
-//
-// We already have "no-ui" in out Configure invocation.
-// but the code still fails to compile.
-// Ref:  https://github.com/openssl/openssl/issues/8904
-//
-// This is defined in CRT library(stdio.h).
-//
-#ifndef BUFSIZ
-#define BUFSIZ  8192
-#endif
 
 //
 // OpenSSL relies on explicit configuration for word size in crypto/bn,
@@ -54,7 +43,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // 64-bit. Since using 'long long' works fine on GCC too, just do that.
 //
 #define SIXTY_FOUR_BIT
-  #elif defined (MDE_CPU_IA32) || defined (MDE_CPU_ARM) || defined (MDE_CPU_EBC)
+  #elif defined (MDE_CPU_IA32) || defined (MDE_CPU_EBC)
 #define THIRTY_TWO_BIT
   #else
     #error Unknown target architecture
@@ -64,16 +53,10 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 //
 // Map all va_xxxx elements to VA_xxx defined in MdePkg/Include/Base.h
 //
-#if !defined (__CC_ARM) // if va_list is not already defined
 #define va_list   VA_LIST
 #define va_arg    VA_ARG
 #define va_start  VA_START
 #define va_end    VA_END
-#else // __CC_ARM
-#define va_start(Marker, Parameter)  __va_start(Marker, Parameter)
-#define va_arg(Marker, TYPE)         __va_arg(Marker, TYPE)
-#define va_end(Marker)               ((void)0)
-#endif
 
 //
 // Definitions for global constants used by CRT library routines
@@ -88,6 +71,12 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define ULONG_MAX     0xFFFFFFFF      /* Maximum unsigned long value */
 #define CHAR_BIT      8               /* Number of bits in a char */
 #define SIZE_MAX      0xFFFFFFFF      /* Maximum unsigned size_t */
+#define INT16_MAX     0x7FFF          /* Maximum (signed) short value */
+#define UINT16_MAX    0xFFFF          /* Maximum unsigned short value */
+
+#define INT32_MIN   INT_MIN
+#define INT32_MAX   INT_MAX
+#define UINT32_MAX  UINT_MAX
 
 //
 // Address families.
@@ -108,9 +97,11 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 typedef UINTN   size_t;
 typedef UINTN   off_t;
 typedef UINTN   u_int;
+typedef UINTN   intptr_t;
 typedef INTN    ptrdiff_t;
 typedef INTN    ssize_t;
 typedef INT64   time_t;
+typedef UINT64  ms_time_t;
 typedef UINT8   __uint8_t;
 typedef UINT8   sa_family_t;
 typedef UINT8   u_char;
@@ -146,6 +137,8 @@ struct timeval {
   long    tv_usec;  /* time value, in microseconds */
 };
 
+struct timezone;
+
 struct sockaddr {
   __uint8_t      sa_len;      /* total length */
   sa_family_t    sa_family;   /* address family */
@@ -157,6 +150,7 @@ struct sockaddr {
 //
 extern int   errno;
 extern FILE  *stderr;
+extern long  timezone;
 
 //
 // Function prototypes of CRT Library routines
@@ -334,6 +328,22 @@ gmtime     (
   const time_t *
   );
 
+unsigned int
+sleep (
+  unsigned int  seconds
+  );
+
+int
+gettimeofday (
+  struct timeval   *tv,
+  struct timezone  *tz
+  );
+
+time_t
+mktime (
+  struct tm  *t
+  );
+
 uid_t
 getuid      (
   void
@@ -416,10 +426,22 @@ strcat (
   const char  *strSource
   );
 
+char *
+strpbrk (
+  const char  *s,
+  const char  *accept
+  );
+
+void *
+memcpy (
+  void        *dest,
+  const void  *src,
+  size_t      n
+  );
+
 //
 // Macros that directly map functions to BaseLib, BaseMemoryLib, and DebugLib functions
 //
-#define memcpy(dest, source, count)       CopyMem(dest,source,(UINTN)(count))
 #define memset(dest, ch, count)           SetMem(dest,(UINTN)(count),(UINT8)(ch))
 #define memchr(buf, ch, count)            ScanMem8(buf,(UINTN)(count),(UINT8)ch)
 #define memcmp(buf1, buf2, count)         (int)(CompareMem(buf1,buf2,(UINTN)(count)))
@@ -433,6 +455,40 @@ strcat (
 #define assert(expression)
 #define offsetof(type, member)  OFFSET_OF(type,member)
 #define atoi(nptr)              AsciiStrDecimalToUintn(nptr)
-#define gettimeofday(tvp, tz)   do { (tvp)->tv_sec = time(NULL); (tvp)->tv_usec = 0; } while (0)
 
+#ifndef _BYTESWAP_DEFINED
+#define _BYTESWAP_DEFINED
+#define _byteswap_ushort  SwapBytes16
+#define _byteswap_ulong   SwapBytes32
+#define _byteswap_uint64  SwapBytes64
+#endif
+
+#ifndef SecureZeroMemory
+#define SecureZeroMemory(ptr, sz)  memset((ptr), 0, (sz))
+#endif
+
+#ifndef INT64_MAX
+#define INT64_MAX  0x7FFFFFFFFFFFFFFFL
+#define INT64_MIN  (-0x7FFFFFFFFFFFFFFFL - 1)
+#endif
+
+#ifndef INT16_MAX
+#define INT16_MIN   (-32768)
+#define INT16_MAX   (32767)
+#define UINT16_MAX  (65535)
+#endif
+
+#ifndef UINT64_MAX
+#define UINT64_MAX  0xFFFFFFFFFFFFFFFFUL
+#endif
+
+#ifndef ULLONG_MAX
+#define ULLONG_MAX  0xFFFFFFFFFFFFFFFFUL
+#endif
+
+#undef UINTPTR_MAX
+#if (UINT_MAX > 0xFFFFFFFFUL)
+#define UINTPTR_MAX  0xFFFFFFFFFFFFFFFFUL
+#else
+#define UINTPTR_MAX  0xFFFFFFFFUL
 #endif

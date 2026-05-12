@@ -13,25 +13,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define HASH_LIB_RAW_H_
 
 /**
-  Hash sequence complete and return the digest list.
-
-  @param HashHandle    Hash handle.
-  @param DataToHash    Data to be hashed.
-  @param DataToHashLen Data size.
-  @param DigestList    Digest list.
-
-  @retval EFI_SUCCESS     Hash sequence complete and DigestList is returned.
-**/
-EFI_STATUS
-EFIAPI
-HashComplete (
-  IN HASH_HANDLE          HashHandle,
-  IN VOID                 *DataToHash,
-  IN UINTN                DataToHashLen,
-  OUT TPML_DIGEST_VALUES  *DigestList
-  );
-
-/**
   Hash data and return the digest list.
 
   @param DataToHash    Data to be hashed.

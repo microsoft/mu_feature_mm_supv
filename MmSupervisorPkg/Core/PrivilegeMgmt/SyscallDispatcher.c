@@ -418,7 +418,7 @@ SyscallDispatcher (
 
       break;
     case SMM_SC_SVST_READ_2:
-      DEBUG ((DEBUG_VERBOSE, "%a Save state read\n", __func__));
+      DEBUG ((DEBUG_VERBOSE, "%a Save state read 2\n", __func__));
       Ret = 0;
       if (Arg1 == 0) {
         Status = EFI_INVALID_PARAMETER;
@@ -431,7 +431,10 @@ SyscallDispatcher (
       }
 
       Status = ProcessUserSaveStateAccess (CallIndex, (EFI_MM_CPU_PROTOCOL *)Arg1, Arg2, Arg3);
-      if (!EFI_ERROR (Status)) {
+      if (EFI_ERROR (Status)) {
+        Ret    = Status;
+        Status = EFI_SUCCESS;
+      } else {
         Ret = EFI_SUCCESS;
       }
 

@@ -27,7 +27,6 @@
   MdeModulePkg/MdeModulePkg.dec
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
-  SecurityPkg/SecurityPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
   SeaPkg/SeaPkg.dec
 
@@ -35,7 +34,7 @@
   BaseLib
   BaseMemoryLib
   DebugLib
-  HashLib
+  HashLibRaw
   PeCoffLibNegative
   SecurePolicyLib
 

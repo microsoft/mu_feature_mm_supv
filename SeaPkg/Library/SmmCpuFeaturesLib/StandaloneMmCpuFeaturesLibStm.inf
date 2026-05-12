@@ -44,6 +44,7 @@
   MemoryAllocationLib
   DebugLib
   MmServicesTableLib
+  SmrrLib
   TpmMeasurementLib
 
 [Guids]

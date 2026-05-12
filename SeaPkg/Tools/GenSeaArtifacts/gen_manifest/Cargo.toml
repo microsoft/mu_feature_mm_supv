@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.5.1", features = ["derive"] }
-scroll = { version = "0.12.0", features = ["derive"] }
+scroll = { version = "0.13.0", features = ["derive"] }
 
 # Hashing
 hex = "0.4.3"

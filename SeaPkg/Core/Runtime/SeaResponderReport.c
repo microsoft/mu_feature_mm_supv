@@ -26,12 +26,33 @@
 #include <Library/SafeIntLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/HashLib.h>
 #include <Library/HashLibRaw.h>
 #include <Library/SecurePolicyLib.h>
 #include <Library/PeCoffValidationLib.h>
 
 #include "StmRuntimeUtil.h"
+
+/**
+  Helper function to cross-check SMBASE-relative data across all CPUs.
+
+  @param[in] CpuIndex  The index of the CPU to check against all others.
+  @param[in] SmBase    The SMBASE of the CPU.
+  @param[in] Offset    The offset from SMBASE to read the data.
+  @param[in] Size      The size of the data to read.
+
+  @retval EFI_SUCCESS            The data matches across all CPUs.
+  @retval EFI_UNSUPPORTED        The size is larger than UINT64.
+  @retval EFI_NOT_STARTED        The CPU hot-plug data has not been initialized yet.
+  @retval EFI_NOT_READY          The specified CPU has not run yet.
+  @retval EFI_SECURITY_VIOLATION The data does not match across CPUs.
+**/
+EFI_STATUS
+CrossCheckSmBase (
+  IN UINTN                 CpuIndex,
+  IN EFI_PHYSICAL_ADDRESS  SmBase,
+  IN UINTN                 Offset,
+  IN UINTN                 Size
+  );
 
 /**
   Helper function to check if one range is inside another.
@@ -115,10 +136,14 @@ VerifyAndHashImage (
 {
   EFI_STATUS                    Status;
   VOID                          *InternalCopy;
-  VOID                          *Buffer    = NULL;
-  VOID                          *NewBuffer = NULL;
+  VOID                          *Buffer;
+  VOID                          *NewBuffer;
   UINTN                         NewBufferSize;
   PE_COFF_LOADER_IMAGE_CONTEXT  ImageContext;
+
+  InternalCopy = NULL;
+  Buffer       = NULL;
+  NewBuffer    = NULL;
 
   // First need to make sure if this image is inside the MMRAM region
   if (!IsBufferInsideMmram (ImageBase, ImageSize)) {
@@ -499,7 +524,7 @@ SeaResponderReport (
   MmSupervisorBase = Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmiRendezvousSymbol->Offset;
 
   // MM supervisor base should be consistent across all cores
-  Status = CrossCheckSmBase (CpuIndex, MmBase, Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY] - MmBase, sizeof (UINT64));
+  Status = CrossCheckSmBase (CpuIndex, MmBase, (UINTN)(Fixup64Ptr + FIXUP64_SMI_RDZ_ENTRY) - (UINTN)LocalMmiEntryBase + SMM_HANDLER_OFFSET, sizeof (UINT64));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a CrossCheckSmBase of SMI rendezvous entry failed. - %r\n", __func__, Status));
     goto Exit;
@@ -559,7 +584,7 @@ SeaResponderReport (
   }
 
   // CR3 should be consistent across all cores
-  Status = CrossCheckSmBase (CpuIndex, MmBase, Fixup32Ptr + FIXUP32_CR3_OFFSET - MmBase, sizeof (UINT64));
+  Status = CrossCheckSmBase (CpuIndex, MmBase, (UINTN)(Fixup32Ptr + FIXUP32_CR3_OFFSET) - (UINTN)LocalMmiEntryBase + SMM_HANDLER_OFFSET, sizeof (Fixup32Ptr[FIXUP32_CR3_OFFSET]));
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a CrossCheckSmBase of CR3 failed. - %r\n", __func__, Status));
     goto Exit;
@@ -607,7 +632,8 @@ SeaResponderReport (
   // Then if the incoming buffer is not empty, we will do nothing, assuming that BSP already did the right thing.
   if ((PolicyBuffer != NULL) &&
       (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->VersionMajor == 0x0001) &&
-      (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->VersionMinor == 0x0000)) {
+      (((SMM_SUPV_SECURE_POLICY_DATA_V1_0 *)PolicyBuffer)->VersionMinor == 0x0000))
+  {
     DEBUG ((DEBUG_INFO, "%a The policy is already populated, skipping %d!!!.\n", __func__, CpuIndex));
     Status = EFI_SUCCESS;
     goto Exit;
@@ -650,9 +676,12 @@ SeaResponderReport (
   // Step 4: Report MM Secure Policy code
   if ((PolicyBuffer == NULL) || (FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE > *PolicyBufferSize)) {
     DEBUG ((DEBUG_ERROR, "%a Policy collected (0x%x) cannot fit into provided buffer (0x%x)!\n", __func__, FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE, *PolicyBufferSize));
-    Status = EFI_BUFFER_TOO_SMALL;
+    *PolicyBufferSize = FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE;
+    Status            = EFI_BUFFER_TOO_SMALL;
     goto Exit;
   }
+
+  *PolicyBufferSize = FirmwarePolicy->Size + MEM_POLICY_SNAPSHOT_SIZE;
 
   DrtmSmmPolicyData = PolicyBuffer;
 

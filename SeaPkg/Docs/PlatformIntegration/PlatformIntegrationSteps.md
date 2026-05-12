@@ -237,7 +237,7 @@ These values are then used to build the SEA core for final integration.
   SeaPkg/Core/Stm.inf {
     <LibraryClasses>
       NULL|MdePkg/Library/StackCheckLib/StackCheckLibStaticInit.inf
-      HashLib|SeaPkg/Library/HashLibTpm2Raw/HashLibTpm2Raw.inf
+      HashLibRaw|SeaPkg/Library/HashLibRaw/HashLibRaw.inf
       BaseCryptLib|CryptoPkg/Library/BaseCryptLibMbedTls/BaseCryptLib.inf
       MbedTlsLib|CryptoPkg/Library/MbedTlsLib/MbedTlsLib.inf
       IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
