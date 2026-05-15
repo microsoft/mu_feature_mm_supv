@@ -2348,8 +2348,8 @@ SetCommonBufferRegionAttribute (
                    ))
       {
         DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with user mailbox buffer with IPL!\n", __func__));
-        ASSERT_EFI_ERROR (Status);
         Status = EFI_SECURITY_VIOLATION;
+        ASSERT_EFI_ERROR (Status);
         goto Cleanup;
       }
 
