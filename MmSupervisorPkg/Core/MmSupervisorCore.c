@@ -525,11 +525,11 @@ MmEntryPoint (
   TalkToSupervisor = FALSE;
 
   if (mMmCommSupvMailboxBufferStatus != NULL) {
-    CopyMem (&MmCommunicationSupvBufferStatus, (MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus));
+    CopyMem (&MmCommunicationSupvBufferStatus, mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus));
   }
 
   if (mMmCommUserMailboxBufferStatus != NULL) {
-    CopyMem (&MmCommunicationUserBufferStatus, (MM_COMM_BUFFER_STATUS *)(UINTN)mMmCommUserMailboxBufferStatus, sizeof (*mMmCommUserMailboxBufferStatus));
+    CopyMem (&MmCommunicationUserBufferStatus, mMmCommUserMailboxBufferStatus, sizeof (*mMmCommUserMailboxBufferStatus));
   }
 
   if (MmCommunicationSupvBufferStatus.IsCommBufferValid) {
