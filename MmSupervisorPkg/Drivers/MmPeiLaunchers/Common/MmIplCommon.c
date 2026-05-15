@@ -31,7 +31,7 @@ VOID    *mMmUserCommonBuffer         = NULL;
 VOID    *mMmSupvCommonBufferPhysical = NULL;
 VOID    *mMmUserCommonBufferPhysical = NULL;
 
-EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader  = NULL;
+EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader      = NULL;
 MM_COMM_BUFFER_STATUS      *mMmCommSupvBufferStatus = NULL;
 MM_COMM_BUFFER_STATUS      *mMmCommUserBufferStatus = NULL;
 

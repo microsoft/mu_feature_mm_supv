@@ -250,7 +250,7 @@ PrepareCommonBuffers (
     if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus))) {
       DEBUG ((DEBUG_ERROR, "%a - Supervisor Mm Comm region overlaps into SMM\n", __func__));
       mMmCommSupvMailboxBufferStatus = NULL;
-      Status = EFI_SECURITY_VIOLATION;
+      Status                         = EFI_SECURITY_VIOLATION;
       goto Exit;
     }
 
@@ -339,7 +339,7 @@ PrepareCommonBuffers (
   if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommUserMailboxBufferStatus, sizeof (*mMmCommUserMailboxBufferStatus))) {
     DEBUG ((DEBUG_ERROR, "%a User Mm Comm region overlaps into SMM\n", __func__));
     mMmCommUserMailboxBufferStatus = NULL;
-    Status = EFI_SECURITY_VIOLATION;
+    Status                         = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
 
@@ -569,11 +569,11 @@ MmEntryPoint (
     BufferSize -= CommHeaderSize;
 
     Status = MmiManage (
-                (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
-                NULL,
-                (UINT8 *)CommunicateHeader + CommHeaderSize,
-                (UINTN *)&BufferSize
-                );
+               (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
+               NULL,
+               (UINT8 *)CommunicateHeader + CommHeaderSize,
+               (UINTN *)&BufferSize
+               );
     //
     // Update CommunicationBuffer, BufferSize and ReturnStatus
     // Communicate service finished, reset the pointer to CommBuffer to NULL
@@ -629,11 +629,11 @@ MmEntryPoint (
     SupervisorToUserDataBuffer->UserBufferSize = BufferSize;
 
     Status = MmiManage (
-                (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
-                NULL,
-                (UINT8 *)CommunicateHeader + CommHeaderSize,
-                (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
-                );
+               (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
+               NULL,
+               (UINT8 *)CommunicateHeader + CommHeaderSize,
+               (UINTN *)&(SupervisorToUserDataBuffer->UserBufferSize)
+               );
     //
     // Update CommunicationBuffer, BufferSize and ReturnStatus
     // Communicate service finished, reset the pointer to CommBuffer to NULL
@@ -667,7 +667,7 @@ Cleanup:
   //
   // Clear the InMm flag as we are going to leave MM
   //
-  if (TalkToSupervisor && mMmCommSupvMailboxBufferStatus != NULL) {
+  if (TalkToSupervisor && (mMmCommSupvMailboxBufferStatus != NULL)) {
     CopyMem (mMmCommSupvMailboxBufferStatus, &MmCommunicationSupvBufferStatus, sizeof (MmCommunicationSupvBufferStatus));
   } else if (mMmCommUserMailboxBufferStatus != NULL) {
     CopyMem (mMmCommUserMailboxBufferStatus, &MmCommunicationUserBufferStatus, sizeof (MmCommunicationUserBufferStatus));

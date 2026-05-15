@@ -385,8 +385,8 @@ UpdateDxeCommunicateBuffer (
   }
 
   // Now we are in the real deal, start with allocating new buffers
-  NewUserCommBuffer     = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
-  NewSupvCommBuffer     = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
+  NewUserCommBuffer         = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
+  NewSupvCommBuffer         = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
   NewMmCommSupvBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
   NewMmCommUserBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
 

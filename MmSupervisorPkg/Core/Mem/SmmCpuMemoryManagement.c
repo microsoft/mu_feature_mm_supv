@@ -1638,7 +1638,7 @@ IsSmmCommBufferForbiddenAddress (
   {
     return FALSE;
   } else if ((Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus) &&
-      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus + ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
+             (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus + ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
   {
     return FALSE;
   }
@@ -2339,11 +2339,11 @@ SetCommonBufferRegionAttribute (
         Status = EFI_SECURITY_VIOLATION;
         goto Cleanup;
       } else if (InternalIsBufferOverlapped (
-            (UINT8 *)mMmCommUserMailboxBufferStatus,
-            sizeof (*mMmCommUserMailboxBufferStatus),
-            (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
-            EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
-            ))
+                   (UINT8 *)mMmCommUserMailboxBufferStatus,
+                   sizeof (*mMmCommUserMailboxBufferStatus),
+                   (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
+                   EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
+                   ))
       {
         DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with user mailbox buffer with IPL!\n", __func__));
         ASSERT_EFI_ERROR (Status);
