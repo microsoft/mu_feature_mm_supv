@@ -32,7 +32,8 @@ VOID    *mMmSupvCommonBufferPhysical = NULL;
 VOID    *mMmUserCommonBufferPhysical = NULL;
 
 EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader  = NULL;
-MM_COMM_BUFFER_STATUS      *mMmCommBufferStatus = NULL;
+MM_COMM_BUFFER_STATUS      *mMmCommSupvBufferStatus = NULL;
+MM_COMM_BUFFER_STATUS      *mMmCommUserBufferStatus = NULL;
 
 /**
   Helper function for MM Communication protocol or PPI.
@@ -74,6 +75,7 @@ SmmCommunicationCommunicateWorker (
   EFI_SMM_COMMUNICATE_HEADER  *CommunicateBufferPhysical;
   UINT64                      LongCommSize; // MU_CHANGE: BZ3398
   UINTN                       TempCommSize;
+  MM_COMM_BUFFER_STATUS       *MmCommBufferStatus;
 
   //
   // Check parameters
@@ -138,7 +140,11 @@ SmmCommunicationCommunicateWorker (
     DEBUG ((DEBUG_INFO, "SmmCommunicationCommunicateWorker: Using User Communicate Buffer - %p, %p, %x\n", CommunicateHeader, CommunicateBufferPhysical, TempCommSize));
   }
 
-  mMmCommBufferStatus->TalkToSupervisor = TalkToSupervisor;
+  if (TalkToSupervisor) {
+    MmCommBufferStatus = mMmCommSupvBufferStatus;
+  } else {
+    MmCommBufferStatus = mMmCommUserBufferStatus;
+  }
 
   if (CommunicateHeader != CommBuffer) {
     CopyMem (CommunicateHeader, CommBuffer, TempCommSize);
@@ -150,15 +156,15 @@ SmmCommunicationCommunicateWorker (
   // Standalone version will not have the scenario when communication protocol is ready but MM foundation is not set.
   // Thus this function should always be invoked from non-MM environment to trigger a MMI to communicate to MM core
   //
-  if (mMmCommBufferStatus->IsCommBufferValid) {
+  if (MmCommBufferStatus->IsCommBufferValid) {
     ASSERT (FALSE);
     return EFI_INVALID_PARAMETER;
   }
 
   //
-  // Put arguments for Software SMI in mMmCommBufferStatus
+  // Put arguments for Software SMI in MmCommBufferStatus
   //
-  mMmCommBufferStatus->IsCommBufferValid = TRUE;
+  MmCommBufferStatus->IsCommBufferValid = TRUE;
 
   // MU_CHANGE: Use abstracted routine to trigger MM, where PEI and DXE will invoke their own MmControl->Trigger, respectively.
   //
@@ -170,7 +176,7 @@ SmmCommunicationCommunicateWorker (
   }
 
   // MU_CHANGE Starts: Covert UINT64 to UINTN using SafeInt routine, and use them for further operations
-  Status = SafeUint64ToUintn (mMmCommBufferStatus->ReturnBufferSize, &TempCommSize);
+  Status = SafeUint64ToUintn (MmCommBufferStatus->ReturnBufferSize, &TempCommSize);
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     return EFI_BAD_BUFFER_SIZE;
@@ -191,8 +197,8 @@ SmmCommunicationCommunicateWorker (
   // Convert to 32-bit Status and return
   //
   Status = EFI_SUCCESS;
-  if ((UINTN)mMmCommBufferStatus->ReturnStatus != 0) {
-    Status = ENCODE_ERROR ((UINTN)mMmCommBufferStatus->ReturnStatus);
+  if ((UINTN)MmCommBufferStatus->ReturnStatus != 0) {
+    Status = ENCODE_ERROR ((UINTN)MmCommBufferStatus->ReturnStatus);
   }
 
   return Status;
@@ -290,6 +296,9 @@ InitializeCommunicationBufferFromHob (
     mMmSupvCommonBufferPages    = CommRegionHob->MmCommonRegionPages;
     mMmSupvCommonBuffer         = (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr;
     mMmSupvCommonBufferPhysical = mMmSupvCommonBuffer;
+    mMmCommSupvBufferStatus     = (MM_COMM_BUFFER_STATUS *)(UINTN)CommRegionHob->MmStatusRegionAddr;
+
+    DEBUG ((DEBUG_INFO, "%a Supervisor communication buffer is at 0x%p with 0x%p status buffer, number of pages is 0x%x\n", __func__, mMmSupvCommonBuffer, mMmCommSupvBufferStatus, mMmSupvCommonBufferPages));
 
     SupvCommonRegionDesc->Type          = EfiRuntimeServicesData;
     SupvCommonRegionDesc->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmSupvCommonBuffer;
@@ -320,7 +329,9 @@ InitializeCommunicationBufferFromHob (
     mMmUserCommonBufferPages    = CommBuffer->NumberOfPages;
     mMmUserCommonBuffer         = (VOID *)(UINTN)CommBuffer->PhysicalStart;
     mMmUserCommonBufferPhysical = mMmUserCommonBuffer;
-    mMmCommBufferStatus         = (MM_COMM_BUFFER_STATUS *)(UINTN)CommBuffer->Status;
+    mMmCommUserBufferStatus     = (MM_COMM_BUFFER_STATUS *)(UINTN)CommBuffer->Status;
+
+    DEBUG ((DEBUG_INFO, "%a User communication buffer is at 0x%p with 0x%p status buffer, number of pages is 0x%x\n", __func__, mMmUserCommonBuffer, mMmCommUserBufferStatus, mMmUserCommonBufferPages));
   } else {
     Status = EFI_ALREADY_STARTED;
   }

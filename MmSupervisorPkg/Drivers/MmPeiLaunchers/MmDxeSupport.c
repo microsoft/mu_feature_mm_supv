@@ -370,7 +370,8 @@ UpdateDxeCommunicateBuffer (
   MM_SUPERVISOR_COMM_UPDATE_BUFFER  *NewCommBuffer;
   VOID                              *NewUserCommBuffer;
   VOID                              *NewSupvCommBuffer;
-  VOID                              *NewMmCommBufferStatus;
+  VOID                              *NewMmCommSupvBufferStatus;
+  VOID                              *NewMmCommUserBufferStatus;
 
   if ((VersionInfo == NULL) || (UpdatedCommBuffer == NULL)) {
     ASSERT (VersionInfo != NULL);
@@ -386,12 +387,14 @@ UpdateDxeCommunicateBuffer (
   // Now we are in the real deal, start with allocating new buffers
   NewUserCommBuffer     = AllocateAlignedRuntimePages (mMmUserCommonBufferPages, EFI_PAGE_SIZE);
   NewSupvCommBuffer     = AllocateAlignedRuntimePages (mMmSupvCommonBufferPages, EFI_PAGE_SIZE);
-  NewMmCommBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
+  NewMmCommSupvBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
+  NewMmCommUserBufferStatus = AllocateAlignedRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)), EFI_PAGE_SIZE);
 
-  if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCommBufferStatus == NULL)) {
+  if ((NewUserCommBuffer == NULL) || (NewSupvCommBuffer == NULL) || (NewMmCommSupvBufferStatus == NULL) || (NewMmCommUserBufferStatus == NULL)) {
     ASSERT (NewUserCommBuffer != NULL);
     ASSERT (NewSupvCommBuffer != NULL);
-    ASSERT (NewMmCommBufferStatus != NULL);
+    ASSERT (NewMmCommSupvBufferStatus != NULL);
+    ASSERT (NewMmCommUserBufferStatus != NULL);
     return EFI_OUT_OF_RESOURCES;
   }
 
@@ -415,12 +418,12 @@ UpdateDxeCommunicateBuffer (
   RequestHeader->Request   = MM_SUPERVISOR_REQUEST_COMM_UPDATE;
 
   NewCommBuffer = (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(RequestHeader + 1);
-  CopyMem (&(NewCommBuffer->NewMmCoreData.IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_COMM_BUFFER_STATUS) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
-  NewCommBuffer->NewMmCoreData.MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
+  CopyMem (&(NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
+  NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_COMM_BUFFER_STATUS) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommSupvBufferStatus;
+  NewCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommSupvBufferStatus;
 
   CopyMem (&(NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
   NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
@@ -428,6 +431,13 @@ UpdateDxeCommunicateBuffer (
   NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.NumberOfPages = mMmSupvCommonBufferPages;
   NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
   NewCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
+
+  CopyMem (&(NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
+  NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (MM_COMM_BUFFER_STATUS) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommUserBufferStatus;
+  NewCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommUserBufferStatus;
 
   CopyMem (&(NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].IdentifierGuid), &gEfiCallerIdGuid, sizeof (EFI_GUID));
   NewCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
@@ -447,14 +457,17 @@ UpdateDxeCommunicateBuffer (
   }
 
   // Re-check the return status on the new buffers.
-  mMmCommBufferStatus = (MM_COMM_BUFFER_STATUS *)NewMmCommBufferStatus;
-  DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommMailboxBufferStatus to new location - %p!\n", __func__, mMmCommBufferStatus));
-  if ((UINTN)mMmCommBufferStatus->ReturnStatus != 0) {
-    Status = mMmCommBufferStatus->ReturnStatus;
+  mMmCommSupvBufferStatus = (MM_COMM_BUFFER_STATUS *)NewMmCommSupvBufferStatus;
+  DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommSupvBufferStatus to new location - %p!\n", __func__, mMmCommSupvBufferStatus));
+  if ((UINTN)mMmCommSupvBufferStatus->ReturnStatus != 0) {
+    Status = mMmCommSupvBufferStatus->ReturnStatus;
     DEBUG ((DEBUG_ERROR, "%a Failed to communicate to MM to switch core mailbox - %r!!\n", __func__, Status));
     Status = EFI_DEVICE_ERROR;
     goto Done;
   }
+
+  mMmCommUserBufferStatus = (MM_COMM_BUFFER_STATUS *)NewMmCommUserBufferStatus;
+  DEBUG ((DEBUG_ERROR, "%a - Updated mMmCommUserBufferStatus to new location - %p!\n", __func__, mMmCommUserBufferStatus));
 
   mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)NewSupvCommBuffer;
   RequestHeader      = (MM_SUPERVISOR_REQUEST_HEADER *)mCommunicateHeader->Data;
@@ -487,7 +500,7 @@ UpdateDxeCommunicateBuffer (
 
   CommBuffer                = (MM_COMM_BUFFER *)GET_GUID_HOB_DATA (GuidHob.Guid);
   CommBuffer->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmUserCommonBuffer;
-  CommBuffer->Status        = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommBufferStatus;
+  CommBuffer->Status        = (EFI_PHYSICAL_ADDRESS)(UINTN)NewMmCommUserBufferStatus;
 
   // Update supervisor communicate protocol communicate regions
   mMmSupvCommunication.CommunicationRegion.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
@@ -582,7 +595,7 @@ MmDxeSupportEntry (
   MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
   MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
   MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
-  MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmCoreData.MemoryDescriptor.PhysicalStart;
+  MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
 
   Status = gBS->InstallMultipleProtocolInterfaces (
                   &ImageHandle,

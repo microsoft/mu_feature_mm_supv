@@ -150,20 +150,33 @@ ProcessUpdateCommBufferRequest (
     CopyMem (&mMmSupervisorAccessBuffer[Index], &(UpdateCommBuffer->NewCommBuffers[Index].MemoryDescriptor), sizeof (mMmSupervisorAccessBuffer[0]));
   }
 
-  // Next deal with the mMmCommMailboxBufferStatus
+  // Next deal with the mMmCommUserMailboxBufferStatus
   // Craft a temp block for the existing buffer
-  MmCoreDataDesc.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus;
-  MmCoreDataDesc.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  MmCoreDataDesc.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus;
+  MmCoreDataDesc.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
   MmCoreDataDesc.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  Status                                        = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewMmCoreData, &MmCoreDataDesc);
+  Status                                        = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T], &MmCoreDataDesc);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __func__, Index, Status));
+    goto Done;
+  }
+
+  // And then mMmCommSupvMailboxBufferStatus
+  MmCoreDataDesc.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus;
+  MmCoreDataDesc.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommSupvMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  MmCoreDataDesc.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  Status                                        = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T], &MmCoreDataDesc);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __func__, Index, Status));
     goto Done;
   }
 
   // Then update the cached global variable and prepare for the content fix up.
-  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UpdateCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart;
-  DEBUG ((DEBUG_INFO, "%a - Updated mMmCommMailboxBufferStatus to new location - %p!\n", __func__, mMmCommMailboxBufferStatus));
+  mMmCommSupvMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UpdateCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart;
+  DEBUG ((DEBUG_INFO, "%a - Updated mMmCommSupvMailboxBufferStatus to new location - %p!\n", __func__, mMmCommSupvMailboxBufferStatus));
+
+  mMmCommUserMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UpdateCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+  DEBUG ((DEBUG_INFO, "%a - Updated mMmCommUserMailboxBufferStatus to new location - %p!\n", __func__, mMmCommUserMailboxBufferStatus));
 
   // Note: The content on the original communicate buffer and mMmCommMailboxBufferStatus will be restored to the new buffer,
   // so no need to worry about copy contents here.

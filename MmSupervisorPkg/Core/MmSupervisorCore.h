@@ -234,7 +234,8 @@ typedef struct {
 //
 // MM Core Global Variables
 //
-extern MM_COMM_BUFFER_STATUS             *mMmCommMailboxBufferStatus;
+extern MM_COMM_BUFFER_STATUS             *mMmCommSupvMailboxBufferStatus;
+extern MM_COMM_BUFFER_STATUS             *mMmCommUserMailboxBufferStatus;
 extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
 extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
 extern LIST_ENTRY                        gHandleList;
