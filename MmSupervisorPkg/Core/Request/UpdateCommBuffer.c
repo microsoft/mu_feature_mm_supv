@@ -167,7 +167,7 @@ ProcessUpdateCommBufferRequest (
   MmCoreDataDesc.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
   Status                                        = VerifyandMoveUnblockedPages (&UpdateCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T], &MmCoreDataDesc);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to moved unblocked buffer (%d) - %r!\n", __func__, Index, Status));
+    DEBUG ((DEBUG_ERROR, "%a - Failed to move unblocked supervisor buffer - %r!\n", __func__, Status));
     goto Done;
   }
 
