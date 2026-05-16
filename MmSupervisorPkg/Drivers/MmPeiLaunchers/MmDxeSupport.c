@@ -510,16 +510,16 @@ UpdateDxeCommunicateBuffer (
 Done:
   if (EFI_ERROR (Status)) {
     if (NewUserCommBuffer) {
-      FreePages ((UINTN)NewUserCommBuffer, mMmUserCommonBufferPages);
+      FreePages (NewUserCommBuffer, mMmUserCommonBufferPages);
     }
     if (NewSupvCommBuffer) {
-      FreePages ((UINTN)NewSupvCommBuffer, mMmSupvCommonBufferPages);
+      FreePages (NewSupvCommBuffer, mMmSupvCommonBufferPages);
     }
     if (NewMmCommSupvBufferStatus) {
-      FreePages ((UINTN)NewMmCommSupvBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+      FreePages (NewMmCommSupvBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
     }
     if (NewMmCommUserBufferStatus) {
-      FreePages ((UINTN)NewMmCommUserBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+      FreePages (NewMmCommUserBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
     }
   }
   return Status;
