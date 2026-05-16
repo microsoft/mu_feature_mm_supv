@@ -395,7 +395,8 @@ UpdateDxeCommunicateBuffer (
     ASSERT (NewSupvCommBuffer != NULL);
     ASSERT (NewMmCommSupvBufferStatus != NULL);
     ASSERT (NewMmCommUserBufferStatus != NULL);
-    return EFI_OUT_OF_RESOURCES;
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
   }
 
   mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
@@ -507,6 +508,20 @@ UpdateDxeCommunicateBuffer (
   mMmSupvCommunication.CommunicationRegion.VirtualStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)NewSupvCommBuffer;
 
 Done:
+  if (EFI_ERROR (Status)) {
+    if (NewUserCommBuffer) {
+      FreePages ((UINTN)NewUserCommBuffer, mMmUserCommonBufferPages);
+    }
+    if (NewSupvCommBuffer) {
+      FreePages ((UINTN)NewSupvCommBuffer, mMmSupvCommonBufferPages);
+    }
+    if (NewMmCommSupvBufferStatus) {
+      FreePages ((UINTN)NewMmCommSupvBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+    }
+    if (NewMmCommUserBufferStatus) {
+      FreePages ((UINTN)NewMmCommUserBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+    }
+  }
   return Status;
 }
 

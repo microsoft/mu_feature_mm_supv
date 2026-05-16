@@ -178,9 +178,6 @@ ProcessUpdateCommBufferRequest (
   mMmCommUserMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UpdateCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
   DEBUG ((DEBUG_INFO, "%a - Updated mMmCommUserMailboxBufferStatus to new location - %p!\n", __func__, mMmCommUserMailboxBufferStatus));
 
-  // Note: The content on the original communicate buffer and mMmCommMailboxBufferStatus will be restored to the new buffer,
-  // so no need to worry about copy contents here.
-
   mAlreadyMoved = TRUE;
 
 Done:
