@@ -512,16 +512,20 @@ Done:
     if (NewUserCommBuffer) {
       FreePages (NewUserCommBuffer, mMmUserCommonBufferPages);
     }
+
     if (NewSupvCommBuffer) {
       FreePages (NewSupvCommBuffer, mMmSupvCommonBufferPages);
     }
+
     if (NewMmCommSupvBufferStatus) {
       FreePages (NewMmCommSupvBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
     }
+
     if (NewMmCommUserBufferStatus) {
       FreePages (NewMmCommUserBufferStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
     }
   }
+
   return Status;
 }
 
