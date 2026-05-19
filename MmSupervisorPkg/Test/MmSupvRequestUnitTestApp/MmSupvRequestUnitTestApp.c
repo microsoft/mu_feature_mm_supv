@@ -895,10 +895,11 @@ RequestUpdateCommBuffer (
   // It really should not matter, but just in case...
   // We intentionally set it to some bogus address so that it would fail
   // catastrophically if the flow does not work.
-  UpdateCommBuffer                                                                        = (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(CommBuffer + 1);
-  UpdateCommBuffer->NewMmCoreData.MemoryDescriptor.PhysicalStart                          = 0xDEADBEEF;
-  UpdateCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart       = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
-  UpdateCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
+  UpdateCommBuffer                                                                         = (MM_SUPERVISOR_COMM_UPDATE_BUFFER *)(CommBuffer + 1);
+  UpdateCommBuffer->NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart       = 0xDEADBEEF;
+  UpdateCommBuffer->NewMmStatusBuff[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart = 0xFEEDF00D;
+  UpdateCommBuffer->NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart        = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
+  UpdateCommBuffer->NewCommBuffers[MM_SUPERVISOR_BUFFER_T].MemoryDescriptor.PhysicalStart  = (EFI_PHYSICAL_ADDRESS)(UINTN)RequestUpdateCommBuffer;
 
   Status = MmSupvRequestDxeToMmCommunicate ();
 
