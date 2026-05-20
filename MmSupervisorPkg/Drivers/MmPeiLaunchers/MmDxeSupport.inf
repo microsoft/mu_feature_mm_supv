@@ -60,6 +60,7 @@
   ## SOMETIMES_PRODUCES ## UNDEFINED # Used to do smm communication
   gEfiEventReadyToBootGuid
   gEfiEndOfDxeEventGroupGuid                    ## CONSUMES             ## Event
+  gEfiEventExitBootServicesGuid                 ## CONSUMES             ## Event
   gMmCommonRegionHobGuid                        ## CONSUMES
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
