@@ -247,6 +247,7 @@
   gEventMmDispatchGuid                          ## CONSUMES
   gMmSupervisorHobMemoryAllocModuleGuid         ## PRODUCES ## A HOB for MmSupervisor memory allocation modules
   gEfiMmPeiMmramMemoryReserveGuid
+  gEfiMemoryTypeInformationGuid
 
   gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything
   gMmSupervisorDepexHobGuid                      ## PRODUCES ## A HOB for MmSupervisor driver depex
