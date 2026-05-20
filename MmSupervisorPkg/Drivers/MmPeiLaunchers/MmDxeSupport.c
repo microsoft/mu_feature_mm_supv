@@ -166,24 +166,24 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // the associated event is immediately signalled, so the notification function will be executed and the
   // DXE SMM Ready To Lock Protocol will be found if it is already in the handle database.
   //
-  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify, &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
+  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify,      &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
   //
   // Declare event notification on EndOfDxe event.  This is used to set EndOfDxe event signaled flag.
   //
-  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,    &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK,     NULL },
+  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,         &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK,     NULL },
   //
   // Declare event notification on Ready To Boot Event Group.  This is an extra event notification that is
   // used to make sure SMRAM is locked before any boot options are processed.
   //
-  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify, &gEfiEventReadyToBootGuid,          TPL_CALLBACK,     NULL },
+  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify,      &gEfiEventReadyToBootGuid,          TPL_CALLBACK,     NULL },
   //
   // Declare event notification on Exit Boot Services Event Group.  This is used to signal the supervisor to
   // stop accepting any supervisor requests after handing off to OS.
-  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,      SmmIplExitBootServicesEventNotify, &gEfiEventExitBootServicesGuid,     TPL_CALLBACK,     NULL },
+  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,     SmmIplExitBootServicesEventNotify, &gEfiEventExitBootServicesGuid,     TPL_CALLBACK,     NULL },
   //
   // Terminate the table of event notifications
   //
-  { FALSE, FALSE, NULL,                               NULL,                         NULL,                               TPL_CALLBACK,     NULL }
+  { FALSE, FALSE, NULL,                               NULL,                              NULL,                               TPL_CALLBACK,     NULL }
 };
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
@@ -406,7 +406,7 @@ SmmIplExitBootServicesEventNotify (
   //
   // Generate the Software SMI and return the result
   //
-  Size = sizeof (EFI_SMM_COMMUNICATE_HEADER);
+  Size   = sizeof (EFI_SMM_COMMUNICATE_HEADER);
   Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "Failed to communicate with supervisor at ExitBootServices event - %r\n", Status));

@@ -108,11 +108,11 @@ EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 // Table of MMI Handlers that are registered by the MM Core when it is initialized
 //
 MM_CORE_MMI_HANDLERS  mMmCoreMmiHandlers[] = {
-  { MmDriverDispatchHandler,    &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
-  { MmReadyToLockHandler,       &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
-  { MmSupvRequestHandler,       &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
-  { MmExitBootServicesHandler,  &gEfiEventExitBootServicesGuid,    NULL, FALSE },
-  { NULL,                    NULL,                                 NULL, FALSE },
+  { MmDriverDispatchHandler,   &gMmSupervisorDriverDispatchGuid,  NULL, TRUE  },
+  { MmReadyToLockHandler,      &gEfiDxeMmReadyToLockProtocolGuid, NULL, TRUE  },
+  { MmSupvRequestHandler,      &gMmSupervisorRequestHandlerGuid,  NULL, FALSE },
+  { MmExitBootServicesHandler, &gEfiEventExitBootServicesGuid,    NULL, FALSE },
+  { NULL,                      NULL,                              NULL, FALSE },
 };
 
 EFI_SYSTEM_TABLE                  *mEfiSystemTable;
