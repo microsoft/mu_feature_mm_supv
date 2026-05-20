@@ -90,9 +90,18 @@ ReserveSupvCommBuffer (
 
   CommRegionHob->MmCommonRegionPages = PageSize;
 
+  CommRegionHob->MmStatusRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+  if (NULL == (VOID *)(UINTN)CommRegionHob->MmStatusRegionAddr) {
+    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
+    ASSERT (FALSE);
+    Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
+  }
+
   DEBUG ((DEBUG_INFO, "Reserved MM common buffer type 0x%x\n", CommRegionHob->MmCommonRegionType));
   DEBUG ((DEBUG_INFO, "  PhysicalStart   - 0x%lx\n", CommRegionHob->MmCommonRegionAddr));
   DEBUG ((DEBUG_INFO, "  NumberOfPages   - 0x%lx\n", CommRegionHob->MmCommonRegionPages));
+  DEBUG ((DEBUG_INFO, "  StatusAddr      - 0x%lx\n", CommRegionHob->MmStatusRegionAddr));
 
   if (BufferAddress != NULL) {
     *BufferAddress = CommRegionHob->MmCommonRegionAddr;

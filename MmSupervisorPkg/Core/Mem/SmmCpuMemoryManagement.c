@@ -1581,8 +1581,14 @@ IsSmmCommBufferForbiddenAddress (
     }
   }
 
-  if ((Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus) &&
-      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus + ((sizeof (*mMmCommMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
+  if ((mMmCommSupvMailboxBufferStatus != NULL) &&
+      (Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus) &&
+      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus + ((sizeof (*mMmCommSupvMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
+  {
+    return FALSE;
+  } else if ((mMmCommUserMailboxBufferStatus != NULL) &&
+             (Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus) &&
+             (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus + ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
   {
     return FALSE;
   }

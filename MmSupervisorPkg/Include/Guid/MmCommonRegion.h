@@ -22,6 +22,7 @@ typedef struct {
   UINT64                  MmCommonRegionType;     // Should be either MM_SUPERVISOR_BUFFER_T or MM_USER_BUFFER_T
   EFI_PHYSICAL_ADDRESS    MmCommonRegionAddr;
   UINT64                  MmCommonRegionPages;
+  EFI_PHYSICAL_ADDRESS    MmStatusRegionAddr;     // The address of MM_COMM_BUFFER_STATUS structure for this common region
 } MM_COMM_REGION_HOB;
 
 extern EFI_GUID  gMmCommonRegionHobGuid;

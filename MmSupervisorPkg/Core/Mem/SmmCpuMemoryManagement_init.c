@@ -162,15 +162,26 @@ SetCommonBufferRegionAttribute (
     } else {
       // Sanity check on the comm buffers and the mailbox data region
       if (InternalIsBufferOverlapped (
-            (UINT8 *)mMmCommMailboxBufferStatus,
-            sizeof (*mMmCommMailboxBufferStatus),
+            (UINT8 *)mMmCommSupvMailboxBufferStatus,
+            sizeof (*mMmCommSupvMailboxBufferStatus),
             (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
             EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
             ))
       {
-        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with mailbox buffer with IPL!\n", __func__));
-        ASSERT_EFI_ERROR (Status);
+        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with supervisor mailbox buffer with IPL!\n", __func__));
         Status = EFI_SECURITY_VIOLATION;
+        ASSERT_EFI_ERROR (Status);
+        goto Cleanup;
+      } else if (InternalIsBufferOverlapped (
+                   (UINT8 *)mMmCommUserMailboxBufferStatus,
+                   sizeof (*mMmCommUserMailboxBufferStatus),
+                   (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
+                   EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
+                   ))
+      {
+        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with user mailbox buffer with IPL!\n", __func__));
+        Status = EFI_SECURITY_VIOLATION;
+        ASSERT_EFI_ERROR (Status);
         goto Cleanup;
       }
 
@@ -199,15 +210,28 @@ SetCommonBufferRegionAttribute (
   // For the supervisor core private data that is shared with the IPL
   // TODO: really do not want this region to be accessible by the IPL, but what
   // is the difference if you will need it for common buffer anyway?
-  DEBUG ((DEBUG_INFO, "%a - Marking Supervisor mailbox buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, (UINTN)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus)));
+  DEBUG ((DEBUG_INFO, "%a - Marking Supervisor mailbox buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, (UINTN)mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus)));
   // For user comm buffer, it should be unblocked just like other unblocked regions, and we will just add SP to it.
   Status = SmmSetMemoryAttributes (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommMailboxBufferStatus,
-             (sizeof (mMmCommMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK),
+             (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus,
+             (sizeof (mMmCommSupvMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK),
              EFI_MEMORY_SP
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
+    ASSERT (FALSE);
+  }
+
+  // For the user status buffer that is shared with the non-MM world
+  DEBUG ((DEBUG_INFO, "%a - Marking User mailbox buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, (UINTN)mMmCommUserMailboxBufferStatus, sizeof (*mMmCommUserMailboxBufferStatus)));
+  // For user comm buffer, it should be unblocked just like other unblocked regions, and we will just add SP to it.
+  Status = SmmSetMemoryAttributes (
+             (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus,
+             (sizeof (mMmCommUserMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK),
+             EFI_MEMORY_SP
+             );
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a - Failed to mark User common buffer as unblocked - %r\n", __func__, Status));
     ASSERT (FALSE);
   }
 
