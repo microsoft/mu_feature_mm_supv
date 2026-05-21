@@ -803,12 +803,9 @@ MmReadyToLockHandler (
   );
 
 /**
-  Software MMI handler that should be triggered from non-MM environment upon DxeMmReadyToLock
-  event. This function unregisters the SUPERVISOR MMIs that are not required after Ready To Lock
-  event. Certain features, such as unblock memory regions, will not be available after this point.
-
-  Note: User ready to lock event will be notified prior to this supervisor ready to lock event.
-  This order is controlled in the corresponding DXE agent (IPL and/or DxeSupport driver).
+  Software MMI handler that is called when ExitBootServices is triggered in non-MM environment.
+  This function will set a flag to indicate MM is at runtime, and the flag will be used to prevent
+  any further MM communication through supervisor buffer.
 
   @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
   @param  Context         Points to an optional handler context which was specified when the handler was registered.

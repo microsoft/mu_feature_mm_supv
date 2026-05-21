@@ -443,12 +443,9 @@ MmReadyToLockHandler (
 }
 
 /**
-  Software MMI handler that should be triggered from non-MM environment upon DxeMmReadyToLock
-  event. This function unregisters the SUPERVISOR MMIs that are not required after Ready To Lock
-  event. Certain features, such as unblock memory regions, will not be available after this point.
-
-  Note: User ready to lock event will be notified prior to this supervisor ready to lock event.
-  This order is controlled in the corresponding DXE agent (IPL and/or DxeSupport driver).
+  Software MMI handler that is called when ExitBootServices is triggered in non-MM environment.
+  This function will set a flag to indicate MM is at runtime, and the flag will be used to prevent
+  any further MM communication through supervisor buffer.
 
   @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
   @param  Context         Points to an optional handler context which was specified when the handler was registered.
@@ -629,7 +626,16 @@ MmEntryPoint (
     MmCommunicationUserBufferStatus.IsCommBufferValid = FALSE;
     MmCommunicationUserBufferStatus.ReturnBufferSize  = BufferSize;
     MmCommunicationUserBufferStatus.ReturnStatus      = (Status == EFI_SUCCESS) ? EFI_SUCCESS : EFI_NOT_FOUND;
-  } else if (!mAtRuntime && MmCommunicationSupvBufferStatus.IsCommBufferValid) {
+  } else if (MmCommunicationSupvBufferStatus.IsCommBufferValid) {
+    if (mAtRuntime) {
+      DEBUG ((DEBUG_ERROR, "Supervisor buffer cannot be used for communication after ExitBootServices is signaled!!\n"));
+      ASSERT (FALSE);
+      MmCommunicationSupvBufferStatus.IsCommBufferValid = FALSE;
+      MmCommunicationSupvBufferStatus.ReturnBufferSize  = 0;
+      MmCommunicationSupvBufferStatus.ReturnStatus      = EFI_ACCESS_DENIED;
+      goto Cleanup;
+    }
+
     //
     // This should be supervisor communicate channel, everything can be ring 0 buffer fine
     //
