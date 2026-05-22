@@ -468,9 +468,9 @@ MmExitBootServicesHandler (
   DEBUG ((DEBUG_INFO, "%a\n", __func__));
 
   if (mAtRuntime) {
-    DEBUG ((DEBUG_ERROR, "ExitBootServices event is signaled more than once??\n"));
-    ASSERT (FALSE);
-    return EFI_ALREADY_STARTED;
+    DEBUG ((DEBUG_WARN, "ExitBootServices event is signaled more than once??\n"));
+    // This is to prevent further dispatching of other handlers.
+    return EFI_SUCCESS;
   }
 
   mAtRuntime = TRUE;
