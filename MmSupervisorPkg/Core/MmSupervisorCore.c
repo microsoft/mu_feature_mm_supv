@@ -447,11 +447,11 @@ MmReadyToLockHandler (
   This function will set a flag to indicate MM is at runtime, and the flag will be used to prevent
   any further MM communication through supervisor buffer.
 
-  @param  DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
-  @param  Context         Points to an optional handler context which was specified when the handler was registered.
-  @param  CommBuffer      A pointer to a collection of data in memory that will
-                          be conveyed from a non-MM environment into an MM environment.
-  @param  CommBufferSize  The size of the CommBuffer.
+  @param[in]      DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
+  @param[in]      Context         Points to an optional handler context which was specified when the handler was registered.
+  @param[in,out]  CommBuffer      A pointer to a collection of data in memory that will
+                                  be conveyed from a non-MM environment into an MM environment.
+  @param[in,out]  CommBufferSize  The size of the CommBuffer.
 
   @return Status Code
 
