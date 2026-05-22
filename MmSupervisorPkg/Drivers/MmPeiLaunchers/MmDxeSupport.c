@@ -387,11 +387,6 @@ SmmIplExitBootServicesEventNotify (
   mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
 
   //
-  // Use Guid to initialize EFI_SMM_COMMUNICATE_HEADER structure
-  //
-  CopyGuid (&mCommunicateHeader->HeaderGuid, (EFI_GUID *)Context);
-
-  //
   // Check to make sure the header GUID is the correct one for ExitBootServices.
   //
   if (!CompareGuid ((EFI_GUID *)Context, &gEfiEventExitBootServicesGuid)) {
@@ -399,6 +394,11 @@ SmmIplExitBootServicesEventNotify (
     ASSERT (FALSE);
     return;
   }
+
+  //
+  // Use Guid to initialize EFI_SMM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&mCommunicateHeader->HeaderGuid, (EFI_GUID *)Context);
 
   // Set the message length to 1 and data to 0 to keep the MmiManage input check happy.
   mCommunicateHeader->MessageLength = 1;
