@@ -242,6 +242,7 @@
   gEfiHobListGuid
   gMmFvDispatchGuid
   gEfiEventLegacyBootGuid
+  gEfiEventExitBootServicesGuid
 
   gMmCoreMmProfileGuid
   gMmCommonRegionHobGuid                        ## CONSUMES

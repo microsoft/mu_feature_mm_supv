@@ -803,6 +803,29 @@ MmReadyToLockHandler (
   );
 
 /**
+  Software MMI handler that is called when ExitBootServices is triggered in non-MM environment.
+  This function will set a flag to indicate MM is at runtime, and the flag will be used to prevent
+  any further MM communication through supervisor buffer.
+
+  @param[in]      DispatchHandle  The unique handle assigned to this handler by MmiHandlerRegister().
+  @param[in]      Context         Points to an optional handler context which was specified when the handler was registered.
+  @param[in,out]  CommBuffer      A pointer to a collection of data in memory that will
+                                  be conveyed from a non-MM environment into an MM environment.
+  @param[in,out]  CommBufferSize  The size of the CommBuffer.
+
+  @return Status Code
+
+**/
+EFI_STATUS
+EFIAPI
+MmExitBootServicesHandler (
+  IN     EFI_HANDLE  DispatchHandle,
+  IN     CONST VOID  *Context         OPTIONAL,
+  IN OUT VOID        *CommBuffer      OPTIONAL,
+  IN OUT UINTN       *CommBufferSize  OPTIONAL
+  );
+
+/**
   Place holder function until all the MM System Table Service are available.
 
   @param  Arg1                   Undefined

@@ -103,6 +103,20 @@ SmmIplEndOfDxeEventNotify (
   IN VOID       *Context
   );
 
+/**
+  Event notification that is fired when the ExitBootServices event is signaled.
+
+  @param[in]  Event                 The Event that is being processed, not used.
+  @param[in]  Context               Event Context, not used.
+
+**/
+VOID
+EFIAPI
+SmmIplExitBootServicesEventNotify (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  );
+
 //
 // Data structure used to declare a table of protocol notifications and event
 // notifications required by the SMM IPL
@@ -152,20 +166,24 @@ SMM_IPL_EVENT_NOTIFICATION  mSmmIplEvents[] = {
   // the associated event is immediately signalled, so the notification function will be executed and the
   // DXE SMM Ready To Lock Protocol will be found if it is already in the handle database.
   //
-  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify, &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
+  { TRUE,  TRUE,  &gEfiDxeSmmReadyToLockProtocolGuid, SmmIplReadyToLockEventNotify,      &gEfiDxeSmmReadyToLockProtocolGuid, TPL_CALLBACK - 1, NULL },
   //
   // Declare event notification on EndOfDxe event.  This is used to set EndOfDxe event signaled flag.
   //
-  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,    &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK,     NULL },
+  { FALSE, TRUE,  &gEfiEndOfDxeEventGroupGuid,        SmmIplEndOfDxeEventNotify,         &gEfiEndOfDxeEventGroupGuid,        TPL_CALLBACK,     NULL },
   //
   // Declare event notification on Ready To Boot Event Group.  This is an extra event notification that is
   // used to make sure SMRAM is locked before any boot options are processed.
   //
-  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify, &gEfiEventReadyToBootGuid,          TPL_CALLBACK,     NULL },
+  { FALSE, TRUE,  &gEfiEventReadyToBootGuid,          SmmIplReadyToLockEventNotify,      &gEfiEventReadyToBootGuid,          TPL_CALLBACK,     NULL },
+  //
+  // Declare event notification on Exit Boot Services Event Group.  This is used to signal the supervisor to
+  // stop accepting any supervisor requests after handing off to OS.
+  { FALSE, FALSE, &gEfiEventExitBootServicesGuid,     SmmIplExitBootServicesEventNotify, &gEfiEventExitBootServicesGuid,     TPL_CALLBACK,     NULL },
   //
   // Terminate the table of event notifications
   //
-  { FALSE, FALSE, NULL,                               NULL,                         NULL,                               TPL_CALLBACK,     NULL }
+  { FALSE, FALSE, NULL,                               NULL,                              NULL,                               TPL_CALLBACK,     NULL }
 };
 
 // MU_CHANGE: Abstracted function implementation of MmControl->Trigger for PEI
@@ -345,6 +363,57 @@ SmmIplReadyToLockEventNotify (
 }
 
 // MM_SUPV: Update communicate buffer when entering DXE.
+
+/**
+  Event notification that is fired when the ExitBootServices event is signaled.
+
+  @param[in]  Event                 The Event that is being processed, not used.
+  @param[in]  Context               Event Context, not used.
+
+**/
+VOID
+EFIAPI
+SmmIplExitBootServicesEventNotify (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_STATUS  Status;
+  UINTN       Size;
+
+  //
+  // We inform SMM Core that the DxeSmmReadyToLock protocol was installed
+  //
+  mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
+
+  //
+  // Check to make sure the header GUID is the correct one for ExitBootServices.
+  //
+  if (!CompareGuid ((EFI_GUID *)Context, &gEfiEventExitBootServicesGuid)) {
+    DEBUG ((DEBUG_ERROR, "Unexpected event notification for %g\n", (EFI_GUID *)Context));
+    ASSERT (FALSE);
+    return;
+  }
+
+  //
+  // Use Guid to initialize EFI_SMM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&mCommunicateHeader->HeaderGuid, (EFI_GUID *)Context);
+
+  // Set the message length to 1 and data to 0 to keep the MmiManage input check happy.
+  mCommunicateHeader->MessageLength = 1;
+  mCommunicateHeader->Data[0]       = 0;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (EFI_SMM_COMMUNICATE_HEADER);
+  Status = SupvCommunicationCommunicate (&mMmSupvCommunication, mCommunicateHeader, &Size);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "Failed to communicate with supervisor at ExitBootServices event - %r\n", Status));
+    ASSERT_EFI_ERROR (Status);
+  }
+}
 
 /**
   Communicate to MmSupervisor to update the buffer to runtime pages allocated in DXE.
