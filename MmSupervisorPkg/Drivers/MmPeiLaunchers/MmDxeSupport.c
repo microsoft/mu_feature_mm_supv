@@ -106,8 +106,8 @@ SmmIplEndOfDxeEventNotify (
 /**
   Event notification that is fired when the ExitBootServices event is signaled.
 
-  @param  Event                 The Event that is being processed, not used.
-  @param  Context               Event Context, not used.
+  @param[in]  Event                 The Event that is being processed, not used.
+  @param[in]  Context               Event Context, not used.
 
 **/
 VOID
