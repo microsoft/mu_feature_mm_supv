@@ -400,6 +400,7 @@ SmmIplExitBootServicesEventNotify (
     return;
   }
 
+  // Set the message length to 1 and data to 0 to keep the MmiManage input check happy.
   mCommunicateHeader->MessageLength = 1;
   mCommunicateHeader->Data[0]       = 0;
 
