@@ -37,6 +37,7 @@
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/PanicLib.h>
+#include <Library/MmUnblockMemoryLib.h>
 
 #include <Library/SafeIntLib.h>           // MU_CHANGE: BZ3398
 #include <Library/SecurityLockAuditLib.h> // MSCHANGE
@@ -539,7 +540,7 @@ ExecuteMmCoreFromMmram (
   //
   PageCount = (UINTN)EFI_SIZE_TO_PAGES ((UINTN)ImageContext.ImageSize + ImageContext.SectionAlignment);
 
-  ImageContext.ImageAddress = MmIplAllocateMmramPage (PageCount);
+  ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (PageCount);
   if (ImageContext.ImageAddress == 0) {
     return EFI_NOT_FOUND;
   }
@@ -906,11 +907,25 @@ ReserveUserCommBuffer (
 
   CommRegionHob->NumberOfPages = PageSize;
 
+  Status = MmUnblockMemoryRequest (CommRegionHob->PhysicalStart, PageSize);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to unblock memory for common buffer - %r\n", __func__, Status));
+    ASSERT (FALSE);
+    goto Done;
+  }
+
   CommRegionStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)AllocateRuntimePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
   if (NULL == (VOID *)CommRegionStatus) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
     ASSERT (FALSE);
     Status = EFI_OUT_OF_RESOURCES;
+    goto Done;
+  }
+
+  Status = MmUnblockMemoryRequest ((EFI_PHYSICAL_ADDRESS)(UINTN)CommRegionStatus, EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to unblock memory for common buffer status - %r\n", __func__, Status));
+    ASSERT (FALSE);
     goto Done;
   }
 
@@ -967,19 +982,19 @@ MmIplPeiEntry (
     return EFI_SUCCESS;
   }
 
+  // MU_CHANGE: MM_SUPV: Prepare common buffers for user and supervisor handlers.
+  Status = ReserveUserCommBuffer (PcdGet64 (PcdUserCommBufferPages), NULL);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to reserve user communication buffer - %r\n", __func__, Status));
+    return Status;
+  }
+
   // MU_CHANGE: MM_SUPV: Initialize Comm buffer from HOBs first
   Status = InitializeCommunicationBufferFromHob (
              &CommunicationRegion
              );
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_INFO, "%a Failed to initialize communication buffer from HOBs - %r\n", __func__, Status));
-    return Status;
-  }
-
-  // MU_CHANGE: MM_SUPV: Prepare common buffers for user and supervisor handlers.
-  Status = ReserveUserCommBuffer (PcdGet64 (PcdUserCommBufferPages), NULL);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to reserve user communication buffer - %r\n", __func__, Status));
     return Status;
   }
 
