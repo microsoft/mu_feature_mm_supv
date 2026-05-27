@@ -210,13 +210,13 @@ SetCommonBufferRegionAttribute (
   // For the supervisor core private data that is shared with the IPL
   // TODO: really do not want this region to be accessible by the IPL, but what
   // is the difference if you will need it for common buffer anyway?
-  DEBUG ((DEBUG_INFO, "%a - Marking Supervisor mailbox buffer as accessible to SMM, Start(0x%0lx) Length(0x%0lx)\n", __func__, (UINTN)mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus)));
-  // For user comm buffer, it should be unblocked just like other unblocked regions, and we will just add SP to it.
-  Status = SmmSetMemoryAttributes (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus,
-             (sizeof (mMmCommSupvMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK),
-             EFI_MEMORY_SP
-             );
+  // Remove RX set above
+  ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
+  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus;
+  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommSupvMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
+  UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
+  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
+  Status                                             = ProcessUnblockPages (&UnblockRegionParams);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
     ASSERT (FALSE);

@@ -10,8 +10,6 @@
 #
 ##
 
-#Override : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | cdec6e3cae1fb9ea6b40885aa3ac7317 | 2025-09-30T17-01-30 | 22a192411052c19a6556e6f092e3d2c72c023e2b
-#Override : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2025-07-25T21-33-16 | 4240524cbb169bee0b3c7480787d402e48d2b6f5
 [Defines]
   INF_VERSION                    = 0x0001001A
   BASE_NAME                      = MmSupervisorInit

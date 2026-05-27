@@ -90,8 +90,8 @@ MmLoadImage (
 //
 // Physical pointer to MM_COMM_BUFFER structure shared between MM IPL and the MM Core
 //
-MM_COMM_BUFFER_STATUS  mMmCommunicationBufferStatus;
-MM_COMM_BUFFER_STATUS  *mMmCommMailboxBufferStatus = NULL;
+MM_COMM_BUFFER_STATUS *mMmCommSupvMailboxBufferStatus;
+MM_COMM_BUFFER_STATUS *mMmCommUserMailboxBufferStatus;
 
 //
 // Ring 3 Hob pointer
@@ -252,6 +252,22 @@ PrepareCommonBuffers (
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
       mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages
       ));
+
+    mMmCommSupvMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)CommRegionHob->MmStatusRegionAddr;
+    if (mMmCommSupvMailboxBufferStatus == NULL) {
+      DEBUG ((DEBUG_ERROR, "%a - Invalid Supervisor MM Communication Buffer Status pointer!\n", __func__));
+      Status = EFI_INVALID_PARAMETER;
+      goto Exit;
+    }
+
+    if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommSupvMailboxBufferStatus, sizeof (*mMmCommSupvMailboxBufferStatus))) {
+      DEBUG ((DEBUG_ERROR, "%a - Supervisor Mm Comm region overlaps into SMM\n", __func__));
+      mMmCommSupvMailboxBufferStatus = NULL;
+      Status                         = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+
+    DEBUG ((DEBUG_INFO, "%a - Supervisor communication buffer status is at 0x%p\n", __func__, mMmCommSupvMailboxBufferStatus));
   } else {
     DEBUG ((
       DEBUG_ERROR,
@@ -326,18 +342,20 @@ PrepareCommonBuffers (
     mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages
     ));
 
-  mMmCommMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UserCommRegionHob->Status;
-  if (mMmCommMailboxBufferStatus == NULL) {
+  mMmCommUserMailboxBufferStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)UserCommRegionHob->Status;
+  if (mMmCommUserMailboxBufferStatus == NULL) {
     DEBUG ((DEBUG_ERROR, "%a - Invalid MM Communication Buffer Status pointer!\n", __func__));
     Status = EFI_INVALID_PARAMETER;
     goto Exit;
   }
 
-  if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommMailboxBufferStatus, sizeof (*mMmCommMailboxBufferStatus))) {
+  if (FALSE == MmIsBufferOutsideMmValid ((EFI_PHYSICAL_ADDRESS)(VOID *)mMmCommUserMailboxBufferStatus, sizeof (*mMmCommUserMailboxBufferStatus))) {
     DEBUG ((DEBUG_ERROR, "%a User Mm Comm region overlaps into SMM\n", __func__));
     Status = EFI_SECURITY_VIOLATION;
     goto Exit;
   }
+
+  DEBUG ((DEBUG_INFO, "%a - User communication buffer status is at 0x%p\n", __func__, mMmCommUserMailboxBufferStatus));
 
   // Status = MmAllocatePages (
   //            AllocateAnyPages,
