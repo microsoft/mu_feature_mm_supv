@@ -29,6 +29,159 @@
 #include "Mem.h"
 #include "PageInternal.h"
 
+/**
+  Serialize the supervisor MMRAM layout into EFI_MMRAM_DESCRIPTORs.
+
+  Walks the (already Start-sorted) supervisor memory map (gMemoryMap) against the
+  MMRAM ranges (mMmramRanges), emitting one descriptor per allocated sub-region
+  (runtime-services allocations, tagged EFI_ALLOCATED) and one per free gap. This
+  is the shared core of PrepareMmSupervisorHobs' two passes:
+
+    * Call with Descriptors == NULL to obtain the descriptor count (for sizing).
+    * Call with a buffer sized for that count to populate it.
+
+  The walk is deterministic, so both calls return the same count. gMemoryMap must
+  already be sorted by Start address before calling.
+
+  @param[out]  Descriptors  Optional buffer to receive the descriptors. When NULL,
+                            the routine only counts and writes nothing.
+
+  @return  The number of descriptors emitted (or that would be emitted).
+**/
+STATIC
+UINT32
+SerializeMmramDescriptors (
+  OUT EFI_MMRAM_DESCRIPTOR  *Descriptors  OPTIONAL
+  )
+{
+  LIST_ENTRY            *Link;
+  MEMORY_MAP            *Entry;
+  EFI_MMRAM_DESCRIPTOR  *MmramEntry;
+  UINT32                Count;
+
+  Count = 0;
+  Link  = gMemoryMap.ForwardLink;
+
+  for (UINTN Index = 0; Index < mMmramRangeCount; Index++) {
+    MmramEntry = &mMmramRanges[Index];
+
+    EFI_PHYSICAL_ADDRESS  Start = MmramEntry->PhysicalStart;
+    EFI_PHYSICAL_ADDRESS  End   = MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1;
+
+    // Walk the sorted memory map entries that fall within this MMRAM region.
+    while (Link != &gMemoryMap) {
+      Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
+
+      if (Entry->Start > End) {
+        // No more entries in this region
+        break;
+      }
+
+      if (Entry->End < Start) {
+        // The entry landed in a gap between MMRAM regions or outside MMRAM entirely.
+        ASSERT (FALSE);
+        Link = Link->ForwardLink;
+        continue;
+      }
+
+      if (Start < Entry->Start) {
+        // There is a gap before this entry, which is a free mmram region.
+        if (Descriptors != NULL) {
+          Descriptors[Count].CpuStart      = Start;
+          Descriptors[Count].PhysicalStart = Start;
+          Descriptors[Count].PhysicalSize  = Entry->Start - Start;
+          Descriptors[Count].RegionState   = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
+        }
+
+        Count++;
+        Start = Entry->Start;
+        // It is unexpected to have uncovered regions through memory map
+        ASSERT (FALSE);
+      }
+
+      // The entry overlaps the current MMRAM region. A single memory map entry
+      // can straddle adjacent MMRAM descriptors because the memory map merges
+      // adjacent allocations of the same type, so clip it to the region bounds.
+      if (Descriptors != NULL) {
+        EFI_PHYSICAL_ADDRESS  DescStart = MAX (Entry->Start, Start);
+        EFI_PHYSICAL_ADDRESS  DescEnd   = MIN (Entry->End, End);
+
+        DEBUG ((
+          DEBUG_INFO,
+          "%a - Including Start: 0x%lx, End: 0x%lx, Type: 0x%x, IsSupervisorPage: %d\n",
+          __func__,
+          DescStart,
+          DescEnd,
+          Entry->Type,
+          Entry->IsSupervisorPage
+          ));
+        Descriptors[Count].CpuStart      = DescStart;
+        Descriptors[Count].PhysicalStart = DescStart;
+        Descriptors[Count].PhysicalSize  = DescEnd - DescStart + 1;
+        if ((Entry->Type == EfiRuntimeServicesCode) || (Entry->Type == EfiRuntimeServicesData)) {
+          Descriptors[Count].RegionState = EFI_SMRAM_CLOSED | EFI_CACHEABLE | EFI_ALLOCATED;
+        } else {
+          // Should not happen
+          Descriptors[Count].RegionState = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
+        }
+      }
+
+      Count++;
+
+      if (Entry->End > End) {
+        // The entry extends into the next MMRAM region. This is only valid when
+        // the next region is immediately adjacent and shares the same region
+        // state (ignoring EFI_ALLOCATED, which this routine derives).
+        ASSERT ((Index + 1) < mMmramRangeCount);
+        if ((Index + 1) < mMmramRangeCount) {
+          ASSERT (mMmramRanges[Index + 1].PhysicalStart == End + 1);
+          ASSERT (
+            (mMmramRanges[Index + 1].RegionState & ~(UINT64)EFI_ALLOCATED) ==
+            (MmramEntry->RegionState & ~(UINT64)EFI_ALLOCATED)
+            );
+        }
+
+        Start = End + 1;
+        break;
+      }
+
+      Start = Entry->End + 1;
+
+      Link = Link->ForwardLink;
+    }
+
+    if (Start <= End) {
+      // There is a gap at the end, which is a free mmram region.
+      if (Descriptors != NULL) {
+        DEBUG ((
+          DEBUG_INFO,
+          "%a - Including ending free entry Start: 0x%lx, End: 0x%lx within MMRAM %p - %p (State %x).\n",
+          __func__,
+          Start,
+          End,
+          MmramEntry->PhysicalStart,
+          MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1,
+          MmramEntry->RegionState
+          ));
+        Descriptors[Count].CpuStart      = Start;
+        Descriptors[Count].PhysicalStart = Start;
+        Descriptors[Count].PhysicalSize  = End - Start + 1;
+        Descriptors[Count].RegionState   = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
+      }
+
+      Count++;
+      // It is unexpected to have uncovered regions through memory map
+      ASSERT (FALSE);
+    }
+  }
+
+  // Every memory map entry must be covered by an MMRAM region. Any entries left
+  // unconsumed lie beyond the last MMRAM region (outside MMRAM).
+  ASSERT (Link == &gMemoryMap);
+
+  return Count;
+}
+
 EFI_STATUS
 EFIAPI
 PrepareMmSupervisorHobs (
@@ -45,7 +198,6 @@ PrepareMmSupervisorHobs (
   EFI_HOB_GUID_TYPE     *MmramGuidedHob;
 
   UINT32                Count;
-  EFI_MMRAM_DESCRIPTOR  *MmramEntry;
 
   EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *SmramHobBlock;
 
@@ -85,85 +237,11 @@ PrepareMmSupervisorHobs (
     }
   } while (Swapped);
 
-  // Now the memory map is sorted, we can recreate the MmRam hobs
-  // Based on existing mMmramRanges and mMmramRangeCount, we will mark the allocated
-  // regions with EFI_ALLOCATED, and insert the empty regions without EFI_ALLOCATED.
-
-  // First we figure out how many EFI_MMRAM_DESCRIPTOR we will need.
+  // Now that the memory map is sorted, count the EFI_MMRAM_DESCRIPTORs required
+  // to describe the MMRAM layout (allocated sub-regions plus free gaps).
   // Absolutely no more allocation here!!!!
-  Link = gMemoryMap.ForwardLink;
-  for (UINTN Index = 0; Index < mMmramRangeCount; Index++) {
-    MmramEntry = &mMmramRanges[Index];
-
-    EFI_PHYSICAL_ADDRESS  Start = MmramEntry->PhysicalStart;
-    EFI_PHYSICAL_ADDRESS  End   = MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1;
-
-    // Here go through the sorted linked list, and count the allocated regions inside this region
-    while (Link != &gMemoryMap) {
-      Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
-
-      if (Entry->Start > End) {
-        // No more entries in this region
-        break;
-      }
-
-      if (Start < Entry->Start) {
-        // There is a gap before this entry, which will be a free mmram region
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - Found starting free entry Start: 0x%lx, End: 0x%lx within MMRAM %p - %p (State %x).\n",
-          __func__,
-          Start,
-          Entry->Start - 1,
-          MmramEntry->PhysicalStart,
-          MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1,
-          MmramEntry->RegionState
-          ));
-        // Count this entry
-        TotalHobSize += sizeof (EFI_MMRAM_DESCRIPTOR);
-        Start         = Entry->Start;
-        // It is unexpected to have uncovered regions through memory map
-        ASSERT (FALSE);
-      }
-
-      if ((Entry->Start >= Start) && (Entry->End <= End)) {
-        // This entry is inside the mmram region
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - Including allocated Start: 0x%lx, End: 0x%lx, Type: 0x%x, IsSupervisorPage: %d\n",
-          __func__,
-          Entry->Start,
-          Entry->End,
-          Entry->Type,
-          Entry->IsSupervisorPage
-          ));
-        // Count this entry
-        TotalHobSize += sizeof (EFI_MMRAM_DESCRIPTOR);
-      }
-
-      Start = Entry->End + 1;
-
-      Link = Link->ForwardLink;
-    }
-
-    if (Start <= End) {
-      // There is a gap at the end, which will be a free mmram region
-      DEBUG ((
-        DEBUG_INFO,
-        "%a - Including ending free entry Start: 0x%lx, End: 0x%lx within MMRAM %p - %p (State %x).\n",
-        __func__,
-        Start,
-        End,
-        MmramEntry->PhysicalStart,
-        MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1,
-        MmramEntry->RegionState
-        ));
-      // Count this entry
-      TotalHobSize += sizeof (EFI_MMRAM_DESCRIPTOR);
-      // It is unexpected to have uncovered regions through memory map
-      ASSERT (FALSE);
-    }
-  }
+  Count         = SerializeMmramDescriptors (NULL);
+  TotalHobSize += (UINTN)Count * sizeof (EFI_MMRAM_DESCRIPTOR);
 
   TotalHobSize += OFFSET_OF (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK, Descriptor);
 
@@ -187,100 +265,10 @@ PrepareMmSupervisorHobs (
   CopyGuid (&MmramGuidedHob->Name, &gEfiSmmSmramMemoryGuid);
 
   SmramHobBlock = (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK *)(MmramGuidedHob + 1);
-  Count         = 0;
 
-  Link = gMemoryMap.ForwardLink;
-  for (UINTN Index = 0; Index < mMmramRangeCount; Index++) {
-    MmramEntry = &mMmramRanges[Index];
-
-    EFI_PHYSICAL_ADDRESS  Start = MmramEntry->PhysicalStart;
-    EFI_PHYSICAL_ADDRESS  End   = MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1;
-
-    // Here go through the sorted linked list, and count the allocated regions inside this region
-    while (Link != &gMemoryMap) {
-      Entry = CR (Link, MEMORY_MAP, Link, MEMORY_MAP_SIGNATURE);
-
-      if (Entry->Start > End) {
-        // No more entries in this region
-        break;
-      }
-
-      if (Start < Entry->Start) {
-        // There is a gap before this entry, which will be a free mmram region
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - Including ending free entry Start: 0x%lx, End: 0x%lx within MMRAM %p - %p (State %x).\n",
-          __func__,
-          Start,
-          Entry->Start - 1,
-          MmramEntry->PhysicalStart,
-          MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1,
-          MmramEntry->RegionState
-          ));
-        // Count this entry
-        SmramHobBlock->Descriptor[Count].CpuStart      = Start;
-        SmramHobBlock->Descriptor[Count].PhysicalStart = Start;
-        SmramHobBlock->Descriptor[Count].PhysicalSize  = Entry->Start - Start;
-        SmramHobBlock->Descriptor[Count].RegionState   = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
-        Count++;
-        Start = Entry->Start;
-        // It is unexpected to have uncovered regions through memory map
-        ASSERT (FALSE);
-      }
-
-      if ((Entry->Start >= Start) && (Entry->End <= End)) {
-        // This entry is inside the mmram region
-        DEBUG ((
-          DEBUG_INFO,
-          "%a - Including Start: 0x%lx, End: 0x%lx, Type: 0x%x, IsSupervisorPage: %d\n",
-          __func__,
-          Entry->Start,
-          Entry->End,
-          Entry->Type,
-          Entry->IsSupervisorPage
-          ));
-        // Count this entry
-        // Count this entry
-        SmramHobBlock->Descriptor[Count].CpuStart      = Entry->Start;
-        SmramHobBlock->Descriptor[Count].PhysicalStart = Entry->Start;
-        SmramHobBlock->Descriptor[Count].PhysicalSize  = Entry->End - Entry->Start + 1;
-        if ((Entry->Type == EfiRuntimeServicesCode) || (Entry->Type == EfiRuntimeServicesData)) {
-          SmramHobBlock->Descriptor[Count].RegionState = EFI_SMRAM_CLOSED | EFI_CACHEABLE | EFI_ALLOCATED;
-        } else {
-          // Should not happen
-          SmramHobBlock->Descriptor[Count].RegionState = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
-        }
-
-        Count++;
-      }
-
-      Start = Entry->End + 1;
-
-      Link = Link->ForwardLink;
-    }
-
-    if (Start <= End) {
-      // There is a gap at the end, which will be a free mmram region
-      DEBUG ((
-        DEBUG_INFO,
-        "%a - Including ending free entry Start: 0x%lx, End: 0x%lx within MMRAM %p - %p (State %x).\n",
-        __func__,
-        Start,
-        End,
-        MmramEntry->PhysicalStart,
-        MmramEntry->PhysicalStart + MmramEntry->PhysicalSize - 1,
-        MmramEntry->RegionState
-        ));
-      // Count this entry
-      SmramHobBlock->Descriptor[Count].CpuStart      = Start;
-      SmramHobBlock->Descriptor[Count].PhysicalStart = Start;
-      SmramHobBlock->Descriptor[Count].PhysicalSize  = End - Start + 1;
-      SmramHobBlock->Descriptor[Count].RegionState   = EFI_SMRAM_CLOSED | EFI_CACHEABLE;
-      Count++;
-      // It is unexpected to have uncovered regions through memory map
-      ASSERT (FALSE);
-    }
-  }
+  // Populate the descriptors now that the block is allocated. The deterministic
+  // walk yields the same count as the sizing pass above.
+  Count = SerializeMmramDescriptors (SmramHobBlock->Descriptor);
 
   SmramHobBlock->NumberOfSmmReservedRegions = Count;
 
