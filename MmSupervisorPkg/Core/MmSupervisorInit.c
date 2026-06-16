@@ -1086,8 +1086,6 @@ MmSupervisorMain (
     goto Exit;
   }
 
-  CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
-
   // Sort the Mmram ranges by CpuStart address
   QuickSort (
     MmramRanges,
@@ -1096,6 +1094,8 @@ MmSupervisorMain (
     CompareMmramRangeCpuStart,
     &MmDescDummy
     );
+
+  CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
 
   ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
 
