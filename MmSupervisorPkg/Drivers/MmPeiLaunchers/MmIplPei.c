@@ -540,7 +540,7 @@ ExecuteMmCoreFromMmram (
   //
   PageCount = (UINTN)EFI_SIZE_TO_PAGES ((UINTN)ImageContext.ImageSize + ImageContext.SectionAlignment);
 
-  ImageContext.ImageAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (PageCount);
+  ImageContext.ImageAddress = MmIplAllocateMmramPage (PageCount);
   if (ImageContext.ImageAddress == 0) {
     return EFI_NOT_FOUND;
   }
