@@ -251,62 +251,6 @@ InitBasicContext (
   mGuestContextCommonNormal.GuestContextPerCpu = AllocatePages (STM_SIZE_TO_PAGES (sizeof (SEA_GUEST_CONTEXT_PER_CPU)) * mHostContextCommon.CpuNum);
 }
 
-EFI_STATUS
-CrossCheckSmBase (
-  UINTN CpuIndex,
-  EFI_PHYSICAL_ADDRESS  SmBase,
-  UINTN Offset,
-  UINTN Size
-) {
-  UINTN Index;
-  UINT64 Target = 0;
-  UINT64 Other = 0;
-  EFI_STATUS Status;
-
-  if (Size > sizeof (UINT64)) {
-    return EFI_UNSUPPORTED;
-  }
-
-  if (mHostContextCommon.HostContextPerCpu == NULL) {
-    return EFI_NOT_STARTED;
-  }
-
-  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
-    return EFI_NOT_READY;
-  }
-
-  if (mHostContextCommon.HostContextPerCpu[CpuIndex].Smbase != SmBase) {
-    return EFI_SECURITY_VIOLATION;
-  }
-
-  CopyMem (&Target, (VOID *)(UINTN)(SmBase + Offset), Size);
-
-  Status = EFI_SUCCESS;
-  for (Index = 0; Index < mHostContextCommon.CpuNum; Index ++) {
-    if (mHostContextCommon.HostContextPerCpu[CpuIndex].Stack == 0) {
-      // If this one has not run yet, we can ignore it
-      continue;
-    }
-
-    Other = 0;
-    CopyMem (&Other, (VOID *)(UINTN)(mHostContextCommon.HostContextPerCpu[Index].Smbase + Offset), Size);
-    if (Other != Target) {
-      SAFE_DEBUG ((DEBUG_ERROR, "%a Offset (0x%x) from SMBASE (0x%x) on CPU %d has value 0x%x and does not match that (0x%x) of this CPU (%d)\n",
-        __func__,
-        Offset,
-        SmBase,
-        Index,
-        Other,
-        Target,
-        CpuIndex));
-      Status = EFI_SECURITY_VIOLATION;
-      break;
-    }
-  }
-
-  return Status;
-}
-
 /**
   Helper function to cross-check SMBASE-relative data across all CPUs.
 

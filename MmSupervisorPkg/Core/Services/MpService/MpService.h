@@ -17,6 +17,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/SynchronizationLib.h>
 #include <Library/SmmCpuSyncLib.h>
 
+#include "Services/CpuService/CpuService.h"
+
 #define INVALID_APIC_ID  0xFFFFFFFFFFFFFFFFULL
 
 //

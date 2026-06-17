@@ -148,8 +148,9 @@ typedef struct {
 //
 // Copy of the PcdPteMemoryEncryptionAddressOrMask
 //
-extern UINT64  mAddressEncMask;
-extern UINT8   mPhysicalAddressBits;
+extern UINT64   mAddressEncMask;
+extern UINT8    mPhysicalAddressBits;
+extern BOOLEAN  mCpuSmmRestrictedMemoryAccess;
 
 extern EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap;
 extern UINTN                  mInitDescriptorSize;

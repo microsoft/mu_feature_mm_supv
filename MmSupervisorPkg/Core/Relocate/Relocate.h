@@ -154,6 +154,9 @@ extern UINT8  mSmmSaveStateRegisterLma;
 
 extern BOOLEAN  mSmmRebootOnException;                     // MS_CHANGE
 
+extern SMM_EXCEPTION_TEST_PROTOCOL  mSmmExceptionTestProtocol;     // MS_CHANGE
+extern EFI_HANDLE                   mSmmExceptionTestProtocolHandle; // MS_CHANGE
+
 //
 // SMM CPU Protocol function prototypes.
 //

@@ -37,6 +37,14 @@
 #include "MmSupervisorCore.h"
 #include "PrivilegeMgmt/PrivilegeMgmt.h"
 
+EFI_STATUS
+EFIAPI
+MmLoadImage (
+  IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
+  );
+
+
 //
 // Globals defined in the shared Dispatcher.c — declared here for use by
 // MmDispatcher and MmInsertOnScheduledQueueWhileProcessingBeforeAndAfter.
@@ -45,6 +53,11 @@ extern LIST_ENTRY  mDiscoveredList;
 extern LIST_ENTRY  mScheduledQueue;
 extern BOOLEAN     gDispatcherRunning;
 extern BOOLEAN     gRequestDispatch;
+
+VOID
+MmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (
+  IN  EFI_MM_DRIVER_ENTRY  *InsertedDriverEntry
+  );
 
 /**
   Install the EFI_LOADED_IMAGE_PROTOCOL for a freshly loaded MM driver image

@@ -10,7 +10,7 @@
 **/
 
 #include <PiMm.h>
-#include <Library/MemLib.h>
+#include <Library/StandaloneMmMemLib.h>
 
 #include "FwVol.h"
 
