@@ -98,6 +98,8 @@ ReserveSupvCommBuffer (
     goto Done;
   }
 
+  ZeroMem ((VOID *)(UINTN)CommRegionHob->MmStatusRegionAddr, sizeof (MM_COMM_BUFFER_STATUS));
+
   DEBUG ((DEBUG_INFO, "Reserved MM common buffer type 0x%x\n", CommRegionHob->MmCommonRegionType));
   DEBUG ((DEBUG_INFO, "  PhysicalStart   - 0x%lx\n", CommRegionHob->MmCommonRegionAddr));
   DEBUG ((DEBUG_INFO, "  NumberOfPages   - 0x%lx\n", CommRegionHob->MmCommonRegionPages));
