@@ -70,7 +70,10 @@
 
   Dispatcher/Dependency.c
   Dispatcher/Dispatcher.c
+  Dispatcher/Dispatcher_core.c
   FwVol/FwVol.c
+  FwVol/FwVol.h
+  FwVol/FwVol_core.c
   Hand/Handle.c
   Hand/Locate.c
   Hand/Notify.c
@@ -81,40 +84,55 @@
   Mem/HeapGuard.h
   Mem/Mem.h
   Mem/MemWrapper.c
+  Mem/MemWrapper_core.c
   Mem/Page.c
+  Mem/PageInternal.h
   Mem/PageTbl.c
+  Mem/PageTbl_core.c
   Mem/Pool.c
   Mem/SmmCpuMemoryManagement.c
+  Mem/SmmCpuMemoryManagement_core.c
   Mem/SmmProfile.c
+  Mem/SmmProfile_core.c
   Mem/SmmProfile.h
   Mem/SmmProfileInternal.h
   Misc/InstallConfigurationTable.c
   Misc/MemoryAttributesTable.c
   Misc/SmmFuncsArch.c
+  Misc/SmmFuncsArch_core.c
   Misc/SmmMpPerf.h
   Misc/SmmMpPerf.c
 
   Relocate/Relocate.c
+  Relocate/Relocate_core.c
   Relocate/Relocate.h
   Relocate/SmiEntry.nasm
   Relocate/SmiException.nasm
   Relocate/SmramSaveState.c
+  Relocate/SmramSaveState_core.c
+  Relocate/SmramSaveStateInternal.h
 
   Services/CpuService/CpuService.c
+  Services/CpuService/CpuService_core.c
   Services/CpuService/CpuService.h
   Services/MpService/MpService.c
+  Services/MpService/MpService_core.c
   Services/MpService/SyncTimer.c
 
   PrivilegeMgmt/PrivilegeMgmt.h
   PrivilegeMgmt/CallGateTransfer.c
+  PrivilegeMgmt/CallGateTransfer_core.c
   PrivilegeMgmt/AsmCallGateTransfer.nasm
   PrivilegeMgmt/SyscallSetup.c
+  PrivilegeMgmt/SyscallSetup_core.c
   PrivilegeMgmt/SyscallDispatcher.c
   PrivilegeMgmt/SysCallEntry.nasm
 
   Request/Request.h
   Request/RequestDispatcher.c
   Request/UnblockMemory.c
+  Request/UnblockMemory_core.c
+  Request/UnblockMemoryInternal.h
   Request/FetchPolicy.c
   Request/VersionInfo.c
   Request/UpdateCommBuffer.c

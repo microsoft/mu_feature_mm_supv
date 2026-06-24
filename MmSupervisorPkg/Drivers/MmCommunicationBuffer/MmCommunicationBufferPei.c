@@ -116,88 +116,6 @@ Done:
 }
 
 /**
-  Helper function to allocate reserved buffer for communication buffer based on
-  given buffer type and size.
-
-  @param[in]  PageSize              Number of pages needs to be allocated for given type.
-  @param[out] BufferAddress         Buffer address allocated for given type when operation
-                                    returns successfully. Otherwise it will be set to NULL.
-
-  @retval     EFI_SUCCESS           The routine completes successfully.
-  @retval     EFI_INVALID_PARAMETER The input type is not supported or page size is invalid.
-  @retval     EFI_OUT_OF_RESOURCES  Insufficient resources to create communication buffer.
-**/
-STATIC
-EFI_STATUS
-ReserveUserCommBuffer (
-  IN  UINT64                PageSize,
-  OUT EFI_PHYSICAL_ADDRESS  *BufferAddress  OPTIONAL
-  )
-{
-  EFI_STATUS             Status;
-  MM_COMM_BUFFER         *CommRegionHob;
-  MM_COMM_BUFFER_STATUS  *CommRegionStatus;
-
-  if (PageSize == 0) {
-    DEBUG ((DEBUG_ERROR, "%a Invalid input PageSize 0x%x!\n", __func__, PageSize));
-    ASSERT (FALSE);
-    Status = EFI_INVALID_PARAMETER;
-    goto Done;
-  }
-
-  if (BufferAddress != NULL) {
-    *BufferAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)NULL;
-  }
-
-  CommRegionHob = BuildGuidHob (&gMmCommBufferHobGuid, sizeof (MM_COMM_BUFFER));
-  if (CommRegionHob == NULL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to create GUIDed HOB %g!\n", __func__, &gMmCommBufferHobGuid));
-    ASSERT (FALSE);
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Done;
-  }
-
-  ZeroMem (CommRegionHob, sizeof (MM_COMM_BUFFER));
-
-  //
-  // Allocate and fill CommRegionHob
-  //
-  CommRegionHob->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
-  if (NULL == (VOID *)(UINTN)CommRegionHob->PhysicalStart) {
-    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __func__, PageSize));
-    ASSERT (FALSE);
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Done;
-  }
-
-  CommRegionHob->NumberOfPages = PageSize;
-
-  CommRegionStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
-  if (NULL == (VOID *)CommRegionStatus) {
-    DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
-    ASSERT (FALSE);
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Done;
-  }
-
-  ZeroMem (CommRegionStatus, sizeof (MM_COMM_BUFFER_STATUS));
-  CommRegionHob->Status = (EFI_PHYSICAL_ADDRESS)(UINTN)CommRegionStatus;
-
-  DEBUG ((DEBUG_INFO, "Reserved MM common buffer for user\n"));
-  DEBUG ((DEBUG_INFO, "  PhysicalStart   - 0x%lx\n", CommRegionHob->PhysicalStart));
-  DEBUG ((DEBUG_INFO, "  NumberOfPages   - 0x%lx\n", CommRegionHob->NumberOfPages));
-
-  if (BufferAddress != NULL) {
-    *BufferAddress = CommRegionHob->PhysicalStart;
-  }
-
-  Status = EFI_SUCCESS;
-
-Done:
-  return Status;
-}
-
-/**
   Entry point of MM communication buffer initialization module in PEI phase.
 
   This module will allocate buffer for MM communication and create hobs with
@@ -218,17 +136,10 @@ MmCommunicationBufferPeiEntry (
 {
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  SupvBufferAddr;
-  EFI_PHYSICAL_ADDRESS  UserBufferAddr;
 
   Status = ReserveSupvCommBuffer (PcdGet64 (PcdSupervisorCommBufferPages), &SupvBufferAddr);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for supervisor - %r!\n", __func__, Status));
-    goto Done;
-  }
-
-  Status = ReserveUserCommBuffer (PcdGet64 (PcdUserCommBufferPages), &UserBufferAddr);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to reserve communicate buffer for user - %r!\n", __func__, Status));
     goto Done;
   }
 
@@ -244,11 +155,6 @@ Done:
     if (NULL != (VOID *)(UINTN)SupvBufferAddr) {
       // Clean supervisor legacy if any
       FreePages ((VOID *)(UINTN)SupvBufferAddr, (UINTN)PcdGet64 (PcdSupervisorCommBufferPages));
-    }
-
-    if (NULL != (VOID *)(UINTN)UserBufferAddr) {
-      // Clean user legacy if any
-      FreePages ((VOID *)(UINTN)UserBufferAddr, (UINTN)PcdGet64 (PcdUserCommBufferPages));
     }
   }
 

@@ -276,3 +276,105 @@ Note: There might be other silicon specific drivers a platform will need for the
     SECTION RAW = $(OUTPUT_DIRECTORY)/$(TARGET)_$(TOOL_CHAIN_TAG)/X64/SeaPkg/Core/Stm/DEBUG/Stm.bin
   }
 ```
+
+### Integraion Guide for Rust-based Supervisor
+
+This section describes the general guideline on platform integration instructions.
+
+#### Platform level library
+
+As the supervised MM is moving to work with standard Standalone MM IPL from EDK2, the requirements from EDK2 Standalone MM
+will apply to this scenario.
+
+The main difference here is that the HOBs exposed to Standalone MM environment is different from the `MmIplPei`, which will
+pass in all the available HOBs from PEI phase, whereas the EDK2 Standalone introduced the IPL with a platform level library
+`MmPlatformHobProducerLib`, which will enforce the platform to "produce" HOBs available to Standalone MM, on top of the HOBs
+already covered by the IPL.
+
+See this implementation from (EDK2 IPL)[https://github.com/tianocore/edk2/blob/4e90b65e7b7bf0c090d3bc5142a684acac56345f/StandaloneMmPkg/Drivers/StandaloneMmIplPei/MmFoundationHob.c#L912]
+
+Thus within the scope of MM supervisor, the `MmPlatformHobProducerLib` will at least need to produce the following HOBs from
+PEI environment:
+
+| HOB Type | Region | Note |
+|-|-|-|
+| EFI_HOB_TYPE_RESOURCE_DESCRIPTOR | Certain MMIO regions | A few examples are APIC, PCIe (i.e. serial register) |
+| EFI_HOB_TYPE_RESOURCE_DESCRIPTOR | MMRAM regions | The content from `gEfiMmPeiMmramMemoryReserveGuid` or `gEfiSmmSmramMemoryGuid` |
+| EFI_HOB_TYPE_GUID_EXTENSION | Advanced Logger information | To initialize Advanced logger in user space, under `gAdvancedLoggerHobGuid` |
+| EFI_HOB_TYPE_GUID_EXTENSION | Unblocked memory regions | To map the regions outside of MMRAM, under `gMmSupvUnblockRegionHobGuid` |
+
+#### Platform DSC statements for Rust Supervisor
+
+The changes below assume that the platform has already integrated the C based MM Supervisor.
+
+1. Update the entries the DSC sections below: remove the commented entries and replace the new ones.
+
+``` bash
+[LibraryClasses.X64.MM_CORE_STANDALONE]
+  # Remove the following 3 entries for Standalone MM drivers
+  #
+  # MmServicesTableLib|MmSupervisorPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf
+  # HobLib|MmSupervisorPkg/Library/StandaloneMmHobLibSyscall/StandaloneMmHobLibSyscall.inf
+  # StandaloneMmDriverEntryPoint|MmSupervisorPkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverEntryPoint.inf
+
+  # Add the existing library instances with the following instances
+  #
+  MmServicesTableLib|MdePkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf
+  HobLib|StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf
+  StandaloneMmDriverEntryPoint|MdePkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverEntryPoint.inf
+
+  # This will be the new library classes platform needs to author
+  MmPlatformHobProducerLib|PlatformPkg/Library/MmPlatformHobProducerLib/MmPlatformHobProducerLib.inf
+
+[Components.X64]
+  # Remove the following modules
+  #
+  # MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
+  # MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
+  # MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
+  # MmSupervisorPkg/Core/MmSupervisorCore.inf
+
+  # Add the following components
+  StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
+  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
+  SeaPkg/MmiEntrySea/MmiEntrySea.inf
+  MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
+  MmSupervisorPkg/Drivers/MmSupervisedCpu/MmSupervisedCpu.inf
+```
+
+Note that if you have any reference to Standalone MM drivers in the form of binary releases (i.e. crypto), please switch
+to "non-supervised" flavor, which will allow the entrypoint to transition normally rather than a call gate involved implementation.
+
+#### Platform FDF statements
+
+1. Modify the FDF sections below.
+
+``` bash
+[FV.YOUR_PEI_FV]
+  INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
+
+[FV.YOUR_POST_MEM_PEI_FV]
+  # Remove the following entries
+  #
+  # INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
+  # INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
+  # INF MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
+  # INF  MmSupervisorPkg/Core/MmSupervisorCore.inf
+
+  INF StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
+  INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
+  INF MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
+
+  FILE MM_CORE_STANDALONE = gMmSupervisorCoreGuid {
+    SECTION PE32 = path/to/binary_mm_supervisor.efi
+    SECTION UI   = "MmSupervisorCore"
+  }
+  FILE MM_CORE_STANDALONE = gMmSupervisorUserGuid {
+    SECTION PE32 = path/to/binary_mm_user.efi
+    SECTION UI   = "MmUserCore"
+  }
+
+  # Note that this already assumes the SMI entry point is populated using `gMmiEntrySeaFileGuid`
+
+  INF  MmSupervisorPkg/Drivers/MmSupervisedCpu/MmSupervisedCpu.inf
+```

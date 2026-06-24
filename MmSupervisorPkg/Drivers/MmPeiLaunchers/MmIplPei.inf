@@ -78,12 +78,12 @@
   PeiServicesLib  #MU_CHANGE: Add PeiServicesLib to INF
   HobLib  #MU_CHANGE: Add HobLib to INF
   PanicLib  #MU_CHANGE: Add PanicLib to INF
+  MmUnblockMemoryLib  #MU_CHANGE: MM_SUPV: Added library to unblock memory for MM communication buffer and status
 
 [Ppis]
   gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
   gEfiPeiMmAccessPpiGuid                        ## CONSUMES
   gEfiPeiMmControlPpiGuid                       ## CONSUMES
-  gPeiMmSupervisorCommunicationPpiGuid          ## PRODUCES
   gEfiPeiLoadFilePpiGuid                        ## CONSUMES
   gEfiEndOfPeiSignalPpiGuid                     ## CONSUMES
   gEfiPeiMmConfigurationPpi                     ## CONSUMES # MU_CHANGE: Added MM Configuration PPI
@@ -94,13 +94,11 @@
 [Guids]
   # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
   gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
-  gMmCommonRegionHobGuid                        ## PRODUCES
-  gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
+  gMmCommonRegionHobGuid                        ## CONSUMES
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
   gEfiMmPeiMmramMemoryReserveGuid               ## CONSUMES
   gEfiSmmSmramMemoryGuid                        ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
-  gMmSupervisorCoreGuid                         ## CONSUMES
 
 [Pcd]
   # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
@@ -111,6 +109,7 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile                   ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize          ## CONSUMES
+  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages                 ## CONSUMES
 
 [Depex]
   gEfiPeiMmAccessPpiGuid AND gEfiPeiMmControlPpiGuid AND gMmCommunicationBufferReadyPpiGuid

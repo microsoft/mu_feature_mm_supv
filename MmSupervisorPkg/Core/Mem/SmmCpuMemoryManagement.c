@@ -613,7 +613,7 @@ ConvertMemoryPageAttributes (
     // The only reason that PageTableMap returns RETURN_INVALID_PARAMETER here is to modify other attributes
     // of a non-present range but remains the non-present range still as non-present.
     //
-    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] is not permitted\n", BaseAddress, BaseAddress + Length));
+    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] to %x is not permitted\n", BaseAddress, BaseAddress + Length, Attributes));
   }
 
   ASSERT_RETURN_ERROR (Status);
@@ -948,7 +948,7 @@ GenSmmPageTable (
     //
     // Mark the 4KB guard page between known good stack and smm stack as non-present
     //
-    for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
+    for (Index = 0; Index < mNumberOfCpus; Index++) {
       GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
       Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
       ASSERT (Status == RETURN_SUCCESS);
@@ -1321,58 +1321,6 @@ PatchGdtIdtMap (
     Size,
     EFI_MEMORY_XP | EFI_MEMORY_SP
     );
-}
-
-VOID
-EFIAPI
-PatchMmSupervisorCoreRegion (
-  VOID
-  )
-{
-  //
-  // Patch MM Supervisor Core
-  //
-  EFI_STATUS  Status;
-
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
-
-  //
-  // The range should have been set to RO/XP based on image record routines
-  // this is the last pass that makes sure the entire region is still in
-  // supervisor realm.
-  //
-  Status = SmmSetImagePageAttributes (mMmCoreDriverEntry, TRUE);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __func__, Status));
-    // We should not continue with this configuration, either hang the system or reboot
-    ResetCold ();
-    // Should not be here
-    CpuDeadLoop ();
-  }
-
-  Status = SmmSetMemoryAttributes (
-             mMmCoreDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
-
-  if (FirmwarePolicy == NULL) {
-    Status = EFI_SECURITY_VIOLATION;
-    ASSERT (FALSE);
-    return;
-  }
-
-  //
-  // Mark firmware policy pages as supervisor read only
-  // EFI_MEMORY_XP should be given as they are data pages
-  //
-  Status = SmmSetMemoryAttributes (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
-             (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-             EFI_MEMORY_RO | EFI_MEMORY_SP
-             );
-
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
 
 VOID
@@ -2302,97 +2250,6 @@ Exit:
     ASSERT_EFI_ERROR (Status);
     ResetCold ();
   }
-}
-
-/*
-Helper function to mark common buffer range as accessible from inside MM
-*/
-EFI_STATUS
-EFIAPI
-SetCommonBufferRegionAttribute (
-  VOID
-  )
-{
-  EFI_STATUS                           Status;
-  UINTN                                Index;
-  MM_SUPERVISOR_UNBLOCK_MEMORY_PARAMS  UnblockRegionParams;
-
-  ZeroMem (&UnblockRegionParams, sizeof (UnblockRegionParams));
-  CopyMem (&UnblockRegionParams.IdentifierGuid, &gEfiCallerIdGuid, sizeof (EFI_GUID));
-
-  for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
-    // For the supervisor buffer communication buffer space
-    if (mMmSupervisorAccessBuffer[Index].PhysicalStart == 0) {
-      // For the supervisor communication buffer space
-      ASSERT (mMmSupervisorAccessBuffer[Index].PhysicalStart != 0);
-      Status = EFI_NOT_AVAILABLE_YET;
-      goto Cleanup;
-    } else {
-      // Sanity check on the comm buffers and the mailbox data region
-      if (InternalIsBufferOverlapped (
-            (UINT8 *)mMmCommSupvMailboxBufferStatus,
-            sizeof (*mMmCommSupvMailboxBufferStatus),
-            (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
-            EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
-            ))
-      {
-        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with supervisor mailbox buffer with IPL!\n", __func__));
-        Status = EFI_SECURITY_VIOLATION;
-        ASSERT_EFI_ERROR (Status);
-        goto Cleanup;
-      } else if (InternalIsBufferOverlapped (
-                   (UINT8 *)mMmCommUserMailboxBufferStatus,
-                   sizeof (*mMmCommUserMailboxBufferStatus),
-                   (UINT8 *)(UINTN)mMmSupervisorAccessBuffer[Index].PhysicalStart,
-                   EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[Index].NumberOfPages)
-                   ))
-      {
-        DEBUG ((DEBUG_ERROR, "%a - Communicate buffer overlaps with user mailbox buffer with IPL!\n", __func__));
-        Status = EFI_SECURITY_VIOLATION;
-        ASSERT_EFI_ERROR (Status);
-        goto Cleanup;
-      }
-
-      // Remove RX set above
-      CopyMem (&UnblockRegionParams.MemoryDescriptor, &mMmSupervisorAccessBuffer[Index], sizeof (EFI_MEMORY_DESCRIPTOR));
-      Status = ProcessUnblockPages (&UnblockRegionParams);
-      if (EFI_ERROR (Status)) {
-        DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-        ASSERT (FALSE);
-        goto Cleanup;
-      }
-    }
-  }
-
-  // For the supervisor core private data that is shared with the IPL
-  // TODO: really do not want this region to be accessible by the IPL, but what
-  // is the difference if you will need it for common buffer anyway?
-  // Remove RX set above
-  ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
-  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus;
-  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommSupvMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  Status                                             = ProcessUnblockPages (&UnblockRegionParams);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to mark Supervisor common buffer as unblocked - %r\n", __func__, Status));
-    ASSERT (FALSE);
-  }
-
-  // For the user status buffer that is shared with the non-MM world
-  ZeroMem (&UnblockRegionParams.MemoryDescriptor, sizeof (EFI_MEMORY_DESCRIPTOR));
-  UnblockRegionParams.MemoryDescriptor.PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus;
-  UnblockRegionParams.MemoryDescriptor.NumberOfPages = EFI_SIZE_TO_PAGES ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_MASK) & ~(EFI_PAGE_MASK));
-  UnblockRegionParams.MemoryDescriptor.Attribute     = EFI_MEMORY_XP | EFI_MEMORY_SP;
-  UnblockRegionParams.MemoryDescriptor.Type          = EfiRuntimeServicesData;
-  Status                                             = ProcessUnblockPages (&UnblockRegionParams);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a - Failed to mark User common buffer as unblocked - %r\n", __func__, Status));
-    ASSERT (FALSE);
-  }
-
-Cleanup:
-  return Status;
 }
 
 /*

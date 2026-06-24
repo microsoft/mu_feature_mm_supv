@@ -1,0 +1,53 @@
+#/** @file
+#
+#  Standalone MM Ring 3 MM CPU driver for X64 Platforms
+#
+#  Copyright (c), Microsoft Corporation.
+#
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#**/
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmSupervisedCpu
+  FILE_GUID                      = BB3D60C4-210B-4076-B596-3DD298AFEA49
+  MODULE_TYPE                    = MM_STANDALONE
+  VERSION_STRING                 = 1.0
+  PI_SPECIFICATION_VERSION       = 0x00010032
+  ENTRY_POINT                    = MmSupervisedCpuEntry
+
+[Sources]
+  MmSupervisedCpu.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  StandaloneMmPkg/StandaloneMmPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+
+[LibraryClasses]
+  BaseMemoryLib
+  DebugLib
+  StandaloneMmDriverEntryPoint
+
+[Protocols]
+  gEfiMmCpuProtocolGuid                   # PRODUCES
+  gMmRing3HandlerReadyProtocol            # PRODUCES
+
+  gEfiDxeMmReadyToLockProtocolGuid        # PRODUCES
+  gEfiMmReadyToLockProtocolGuid           # PRODUCES
+  gEfiMmEndOfDxeProtocolGuid              # PRODUCES
+  gEfiMmEndOfPeiProtocol                  # PRODUCES
+
+[Guids]
+  gEfiEndOfDxeEventGroupGuid              # PRODUCES
+  gEfiEventExitBootServicesGuid
+  gEfiEventReadyToBootGuid
+  gSmiHandlerProfileGuid                  # PRODUCES
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSmiHandlerProfilePropertyMask
+
+[Depex]
+  TRUE

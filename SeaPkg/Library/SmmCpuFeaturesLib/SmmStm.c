@@ -65,7 +65,7 @@ EFI_SM_MONITOR_INIT_PROTOCOL  mSmMonitorInitProtocol = {
 //
 extern BOOLEAN  mCetSupported;
 extern BOOLEAN  mXdSupported;
-extern BOOLEAN  gPatchMsrIa32MiscEnableSupported;
+// extern BOOLEAN  gPatchMsrIa32MiscEnableSupported;
 extern BOOLEAN  m5LevelPagingNeeded;
 
 extern UINT32  mCetPl0Ssp;

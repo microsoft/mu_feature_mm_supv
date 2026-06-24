@@ -20,7 +20,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define FIXUP64_XD_SUPPORTED      3
 #define FIXUP64_CET_SUPPORTED     4
 #define FIXUP64_SMI_HANDLER_IDTR  5
-#define FIXUP64_OFFSET6_RSVD      6
+#define FIXUP64_HOB_START         6
 
 #define FIXUP32_mPatchCetPl0Ssp             0
 #define FIXUP32_GDTR                        1
@@ -39,7 +39,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define FIXUP8_OFFSET6_RSVD                      6
 #define FIXUP8_OFFSET7_RSVD
 
-#define MMI_ENTRY_STRUCT_VERSION  4
+#define MMI_ENTRY_STRUCT_VERSION  5
 
 #define SEA_SPEC_VERSION_MAJOR  1
 #define SEA_SPEC_VERSION_MINOR  0

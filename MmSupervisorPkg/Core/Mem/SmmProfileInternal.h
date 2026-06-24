@@ -34,6 +34,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 extern UINTN              gSmiExceptionHandlers[];
 extern BOOLEAN            mXdSupported;
+extern BOOLEAN            mBtsSupported;
 X86_ASSEMBLY_PATCH_LABEL  gPatchXdSupported;
 X86_ASSEMBLY_PATCH_LABEL  gPatchMsrIa32MiscEnableSupported;
 

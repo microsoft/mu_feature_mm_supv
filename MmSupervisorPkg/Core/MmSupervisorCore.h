@@ -242,6 +242,12 @@ extern LIST_ENTRY                        gHandleList;
 extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
 extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
 extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+//
+// mMmUserDriverEntry is defined only by the Init build (see MmSupervisorInit.c).
+// The Core build never references it, but the extern is harmless to declare here
+// so that the shared header can be consumed by both modules.
+//
+extern EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
 extern BOOLEAN                           mMmReadyToLockDone;
 extern BOOLEAN                           mCoreInitializationComplete;
 extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
@@ -967,11 +973,12 @@ SetupSmiEntryExit (
   VOID
   );
 
-VOID
-EFIAPI
-LockMmCoreBeforeExit (
-  VOID
-  );
+//
+// LockMmCoreBeforeExit has DIFFERENT signatures in the Core (VOID) and Init
+// (EFI_PHYSICAL_ADDRESS, UINT64 *) builds.  Until Slice 7 splits Relocate.c we
+// intentionally do not declare it here; each .c file declares the appropriate
+// signature locally.
+//
 
 EFI_STATUS
 EFIAPI
