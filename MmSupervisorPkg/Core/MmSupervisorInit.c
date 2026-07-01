@@ -806,8 +806,10 @@ CreateArbitraryHob (
   PassDownData = (MM_SUPV_PASS_DOWN_HOB_DATA *)(GuidedHob + 1);
   PassDownData->Revision = MM_SUPV_PASS_DOWN_HOB_REVISION;
   PassDownData->Reserved = 0;
-  PassDownData->MmSupvCpuPrivate = (EFI_PHYSICAL_ADDRESS)AllocateCopyPool (sizeof (*gSmmCpuPrivate), (VOID *)gSmmCpuPrivate);
-  PassDownData->MmSupvCpuPrivateSize = sizeof (*gSmmCpuPrivate);
+  //
+  // Pass the per-CPU SMBASE array pointer directly.
+  //
+  PassDownData->SmBase = (EFI_PHYSICAL_ADDRESS)(UINTN)mCpuHotPlugData.SmBase;
 
   // PassDownData->MmSupvCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
   // PassDownData->MmSupvCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
@@ -830,7 +832,6 @@ CreateArbitraryHob (
   PassDownData->MmSupvFirmwarePolicyBuffer = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
   PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
 
-  PassDownData->BspMmBaseAddress = (EFI_PHYSICAL_ADDRESS)mCpuHotPlugData.SmBase[0];
   PassDownData->MmiEntrypointSize = mMmiEntrySize;
 
   *Length      = *Length - NewLength;
