@@ -856,6 +856,11 @@ impl TypeInfo {
             if d.size != 0 {
                 return Ok(data);
             }
+            // A size-0 class that is a complete definition (not a forward
+            // reference) is a genuine zero-sized type. Return it as-is.
+            if !d.properties.forward_reference() {
+                return Ok(data);
+            }
             class_name = d.name.to_string().to_string();
         } else {
             return Ok(data);
