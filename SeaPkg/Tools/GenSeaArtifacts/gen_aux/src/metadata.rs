@@ -848,9 +848,8 @@ impl TypeInfo {
         let data = finder.find(index)?;
         let item = data.parse()?;
 
-        // Return the item if it is anything other than class, and only
-// Return the item as-is if it is anything other than a class, or if it
-// is a class that is not a zero-size forward reference.
+        // Return the item as-is if it is anything other than a class, or if it
+        // is a class that is not a zero-size forward reference.
         let class_name;
         if let TypeData::Class(d) = item {
             if d.size != 0 {
