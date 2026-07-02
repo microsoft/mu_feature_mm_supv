@@ -800,11 +800,10 @@ impl TypeInfo {
                 // type, which is ultimately divided by the total size of the symbol.
                 let total_size = arr.dimensions[0] as usize;
                 let element = TypeInfo::from_type_index(info, arr.element_type)?;
-                TypeInfo::many(
-                    element.element_size(),
-                    total_size / element.element_size() as usize,
-                    element.type_id(),
-                )
+                let element_size = element.element_size();
+                // Guard against a zero-sized element type.
+                let count = if element_size == 0 { 1 } else { total_size / element_size as usize };
+                TypeInfo::many(element_size, count, element.type_id())
             }
             pdb::TypeData::Union(union) => TypeInfo::one(union.size as u32, Some(index)),
             // We don't have a good way to deal with bit-fields in this code, so we just return the size of the
@@ -867,8 +866,8 @@ impl TypeInfo {
             return Ok(data);
         }
 
-        // The type was a class and size 0, so it should have a shadow class
-        // with the real information.
+        // The type was a size-0 forward-reference class, so it should have a
+        // shadow class with the real information.
         let mut iter = info.iter();
         let item = iter.find(|item| {
             let item = item.parse()?;
