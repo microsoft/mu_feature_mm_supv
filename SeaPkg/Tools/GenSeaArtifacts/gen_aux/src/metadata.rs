@@ -850,7 +850,8 @@ impl TypeInfo {
         let item = data.parse()?;
 
         // Return the item if it is anything other than class, and only
-        // if the class size is not zero.
+// Return the item as-is if it is anything other than a class, or if it
+// is a class that is not a zero-size forward reference.
         let class_name;
         if let TypeData::Class(d) = item {
             if d.size != 0 {
