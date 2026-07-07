@@ -99,6 +99,7 @@
   gEfiMmPeiMmramMemoryReserveGuid               ## CONSUMES
   gEfiSmmSmramMemoryGuid                        ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
+  gEventMmDispatchGuid
 
 [Pcd]
   # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported

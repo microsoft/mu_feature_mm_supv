@@ -244,6 +244,43 @@ SmmCommunicationCommunicate (
 }
 
 /**
+  Dispatch StandaloneMm drivers in MM.
+
+  StandaloneMm core will exit when MmEntryPoint was registered in CPU
+  StandaloneMm driver, and issue a software SMI by communicate mode to
+  dispatch other StandaloneMm drivers.
+
+  @retval  EFI_SUCCESS      Dispatch StandaloneMm drivers successfully.
+  @retval  Other            Dispatch StandaloneMm drivers failed.
+
+**/
+EFI_STATUS
+MmIplDispatchMmDrivers (
+  VOID
+  )
+{
+  EFI_STATUS                 Status;
+  UINTN                      Size;
+  EFI_MM_COMMUNICATE_HEADER  CommunicateHeader;
+
+  //
+  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&CommunicateHeader.HeaderGuid, &gEventMmDispatchGuid);
+  CommunicateHeader.MessageLength = 1;
+  CommunicateHeader.Data[0]       = 0;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (CommunicateHeader);
+  Status = SmmCommunicationCommunicateWorker (FALSE, &CommunicateHeader, &Size);
+  ASSERT_EFI_ERROR (Status);
+
+  return Status;
+}
+
+/**
   This is the callback function on end of PEI.
 
   This callback is used for call MmEndOfPeiHandler in standalone MM core.
@@ -1168,6 +1205,12 @@ MmIplPeiEntry (
   // Create the set of ppi and event notifications that the SMM IPL requires
   //
   Status = (*PeiServices)->NotifyPpi (PeiServices, &mPeiMmIplNotifyList);
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // Dispatch StandaloneMm drivers in MM
+  //
+  Status = MmIplDispatchMmDrivers ();
   ASSERT_EFI_ERROR (Status);
 
   return EFI_SUCCESS;
