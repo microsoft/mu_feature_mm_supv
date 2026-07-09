@@ -484,6 +484,10 @@ MmEntryPoint (
   UINT64                        BufferSize;
   UINTN                         CommGuidOffset;
   UINTN                         CommHeaderSize;
+  RETURN_STATUS                 SafeIntStatus;
+  UINT64                        BufferPayloadSize;
+  UINTN                         MaxBufferSize;
+  UINTN                         BufferPageCount;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -510,8 +514,28 @@ MmEntryPoint (
         // This should be user communicate channel, follow normal user channel iterations, but use ring 3 buffer to hold BufferSize changes
         //
         CommunicationBuffer = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
-        ZeroMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
-        CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages));
+        SafeIntStatus       = SafeUint64ToUintn (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages, &BufferPageCount);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a User communication buffer page count conversion failed\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
+        SafeIntStatus = SafeUintnMult (BufferPageCount, EFI_PAGE_SIZE, &MaxBufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a User communication buffer size overflow while converting page count\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
+        ZeroMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], MaxBufferSize);
+        CopyMem (mInternalCommBufferCopy[MM_USER_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, MaxBufferSize);
         CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_USER_BUFFER_T];
 
         // Check if MM Communicate V3 is being used
@@ -520,14 +544,32 @@ MmEntryPoint (
           CommGuidOffset      = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER_V3, MessageGuid);
           CommHeaderSize      = sizeof (EFI_MM_COMMUNICATE_HEADER_V3);
           BufferSize          = CommunicateHeaderV3->BufferSize;
+
+          SafeIntStatus = SafeUint64Sub (BufferSize, CommHeaderSize, &BufferPayloadSize);
+          if (RETURN_ERROR (SafeIntStatus) || (CommunicateHeaderV3->MessageSize > BufferPayloadSize)) {
+            DEBUG ((DEBUG_ERROR, "%a Invalid V3 communication header size metadata\n", __func__));
+            ASSERT (FALSE);
+            mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+            mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+            mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+            goto Cleanup;
+          }
         } else {
           CommGuidOffset = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, HeaderGuid);
           CommHeaderSize = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
-          BufferSize     = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data) + CommunicateHeader->MessageLength;
+          SafeIntStatus  = SafeUint64Add (OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data), CommunicateHeader->MessageLength, &BufferSize);
+          if (RETURN_ERROR (SafeIntStatus)) {
+            DEBUG ((DEBUG_ERROR, "%a Legacy communication header size overflow\n", __func__));
+            ASSERT (FALSE);
+            mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+            mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+            mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+            goto Cleanup;
+          }
         }
 
-        if (BufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-          // The input buffer size is larger than the maximal allowed size, need to panic here.
+        if (BufferSize > MaxBufferSize) {
+          // The input buffer size is larger than the maximal allowed size
           DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed user buffer size, something is off...\n", __func__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
@@ -536,7 +578,16 @@ MmEntryPoint (
           goto Cleanup;
         }
 
-        BufferSize                                -= CommHeaderSize;
+        SafeIntStatus = SafeUint64Sub (BufferSize, CommHeaderSize, &BufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Communication payload size is invalid\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
         SupervisorToUserDataBuffer->UserBufferSize = BufferSize;
 
         Status = MmiManage (
@@ -549,11 +600,20 @@ MmEntryPoint (
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
         //
-        BufferSize = SupervisorToUserDataBuffer->UserBufferSize + CommHeaderSize;
-        if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages)) {
-          CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, BufferSize);
+        SafeIntStatus = SafeUint64Add (SupervisorToUserDataBuffer->UserBufferSize, CommHeaderSize, &BufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Returned communication buffer size overflow\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
+        if (BufferSize <= MaxBufferSize) {
+          CopyMem ((VOID *)(UINTN)CommunicationBuffer, CommunicateHeader, (UINTN)BufferSize);
         } else {
-          // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
+          // The returned buffer size indicating the return buffer is larger than input buffer,
           DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
           ASSERT (FALSE);
         }
@@ -566,8 +626,25 @@ MmEntryPoint (
         // This should be supervisor communicate channel, everything can be ring 0 buffer fine
         //
         CommunicationBuffer = mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
-        ZeroMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages));
-        CopyMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages));
+        SafeIntStatus       = SafeUint64ToUintn (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages, &BufferPageCount);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Supervisor communication buffer page count conversion failed\n", __func__));
+          PANIC ("Supervisor communication buffer page count conversion failed\n");
+        }
+
+        SafeIntStatus = SafeUintnMult (BufferPageCount, EFI_PAGE_SIZE, &MaxBufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Supervisor communication buffer size overflow while converting page count\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
+        ZeroMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], MaxBufferSize);
+        CopyMem (mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T], (VOID *)(UINTN)CommunicationBuffer, MaxBufferSize);
         CommunicateHeader = (EFI_MM_COMMUNICATE_HEADER *)(UINTN)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
 
         // Check if MM Communicate V3 is being used
@@ -582,11 +659,20 @@ MmEntryPoint (
         } else {
           CommGuidOffset = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, HeaderGuid);
           CommHeaderSize = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data);
-          BufferSize     = OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data) + CommunicateHeader->MessageLength;
+          SafeIntStatus  = SafeUint64Add (OFFSET_OF (EFI_MM_COMMUNICATE_HEADER, Data), CommunicateHeader->MessageLength, &BufferSize);
+          if (RETURN_ERROR (SafeIntStatus)) {
+            DEBUG ((DEBUG_ERROR, "%a Supervisor communication header size overflow\n", __func__));
+            ASSERT (FALSE);
+            mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+            mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
+            mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+            mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+            goto Cleanup;
+          }
         }
 
-        if (BufferSize > EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-          // The input buffer size is larger than the maximal allowed size, need to panic here.
+        if (BufferSize > MaxBufferSize) {
+          // The input buffer size is larger than the maximal allowed size
           DEBUG ((DEBUG_ERROR, "%a Input buffer size is larger than maximal allowed size, something is off...\n", __func__));
           ASSERT (FALSE);
           mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
@@ -596,7 +682,16 @@ MmEntryPoint (
           goto Cleanup;
         }
 
-        BufferSize -= CommHeaderSize;
+        SafeIntStatus = SafeUint64Sub (BufferSize, CommHeaderSize, &BufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Supervisor communication payload size is invalid\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
 
         Status = MmiManage (
                    (EFI_GUID *)((UINT8 *)CommunicateHeader + CommGuidOffset),
@@ -608,11 +703,21 @@ MmEntryPoint (
         // Update CommunicationBuffer, BufferSize and ReturnStatus
         // Communicate service finished, reset the pointer to CommBuffer to NULL
         //
-        BufferSize = BufferSize + CommHeaderSize;
-        if (BufferSize <= EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages)) {
-          CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, BufferSize);
+        SafeIntStatus = SafeUint64Add (BufferSize, CommHeaderSize, &BufferSize);
+        if (RETURN_ERROR (SafeIntStatus)) {
+          DEBUG ((DEBUG_ERROR, "%a Returned supervisor communication buffer size overflow\n", __func__));
+          ASSERT (FALSE);
+          mMmCommunicationBufferStatus.IsCommBufferValid = FALSE;
+          mMmCommunicationBufferStatus.TalkToSupervisor  = FALSE;
+          mMmCommunicationBufferStatus.ReturnBufferSize  = 0;
+          mMmCommunicationBufferStatus.ReturnStatus      = EFI_BAD_BUFFER_SIZE;
+          goto Cleanup;
+        }
+
+        if (BufferSize <= MaxBufferSize) {
+          CopyMem ((VOID *)(UINTN)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart, CommunicateHeader, (UINTN)BufferSize);
         } else {
-          // The returned buffer size indicating the return buffer is larger than input buffer, need to panic here.
+          // The returned buffer size indicating the return buffer is larger than input buffer
           DEBUG ((DEBUG_ERROR, "%a Returned buffer size is larger than maximal allowed size indicated in input, something is off...\n", __func__));
           ASSERT (FALSE);
         }
@@ -1045,6 +1150,8 @@ MmSupervisorMain (
   UINT64                          StartTicker;
   UINT64                          EndTicker;
   EFI_PHYSICAL_ADDRESS            StandaloneBfvAddress;
+  RETURN_STATUS                   SafeIntStatus;
+  UINTN                           MmramRangeSize;
 
   MmSupervisorCoreEntryInit ();
 
@@ -1104,7 +1211,14 @@ MmSupervisorMain (
   //
   mMmramRangeCount = MmramRangeCount;
   DEBUG ((DEBUG_INFO, "mMmramRangeCount - 0x%x\n", mMmramRangeCount));
-  mMmramRanges = AllocatePool (mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+  SafeIntStatus = SafeUintnMult (mMmramRangeCount, sizeof (EFI_MMRAM_DESCRIPTOR), &MmramRangeSize);
+  if (RETURN_ERROR (SafeIntStatus)) {
+    DEBUG ((DEBUG_ERROR, "%a mMmramRangeCount size overflow\n", __func__));
+    Status = EFI_BAD_BUFFER_SIZE;
+    goto Exit;
+  }
+
+  mMmramRanges = AllocatePool (MmramRangeSize);
   DEBUG ((DEBUG_INFO, "mMmramRanges - 0x%x\n", mMmramRanges));
   if (mMmramRanges == NULL) {
     ASSERT (mMmramRanges != NULL);
@@ -1112,7 +1226,7 @@ MmSupervisorMain (
     goto Exit;
   }
 
-  CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
+  CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, MmramRangeSize);
 
   DEBUG ((DEBUG_INFO, "MmInstallConfigurationTable For HobList\n"));
   //
