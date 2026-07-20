@@ -9,13 +9,6 @@
                                       and frees per-driver entries (the runtime
                                       driver does this at a different stage).
 
-    * SetCommonBufferRegionAttribute
-                                    - Init's unblock dispatcher is not online
-                                      yet, so user buffers and the mailbox
-                                      status page get marked via
-                                      SmmSetMemoryAttributes(SP) directly
-                                      instead of via ProcessUnblockPages.
-
   Copyright (c) 2016 - 2023, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 

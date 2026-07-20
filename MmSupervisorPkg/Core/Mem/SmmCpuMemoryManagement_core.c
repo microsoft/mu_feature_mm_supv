@@ -10,15 +10,6 @@
                                       driver list and free per-driver entries;
                                       see SmmCpuMemoryManagement_init.c.
 
-    * SetCommonBufferRegionAttribute
-                                    - Marks the supervisor / user shared
-                                      communicate buffers as accessible from
-                                      MM, using ProcessUnblockPages.  Init
-                                      uses SmmSetMemoryAttributes for the
-                                      same effect since it does not yet have
-                                      the unblock dispatcher up; see
-                                      SmmCpuMemoryManagement_init.c.
-
   Copyright (c) 2016 - 2023, Intel Corporation. All rights reserved.<BR>
   SPDX-License-Identifier: BSD-2-Clause-Patent
 
