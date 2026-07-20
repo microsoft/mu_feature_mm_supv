@@ -131,7 +131,6 @@
   MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
   MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
 
-  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
 
