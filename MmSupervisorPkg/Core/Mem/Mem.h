@@ -551,15 +551,6 @@ SetPageTableBase (
   );
 
 /*
-Helper function to mark common buffer range as accessible from inside MM
-*/
-EFI_STATUS
-EFIAPI
-SetCommonBufferRegionAttribute (
-  VOID
-  );
-
-/*
   Per-build pass that locks down the MM Supervisor Core image region.
 
   Defined separately in SmmCpuMemoryManagement_core.c and
