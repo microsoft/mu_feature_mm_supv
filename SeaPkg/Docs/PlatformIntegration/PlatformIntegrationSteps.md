@@ -329,14 +329,13 @@ The changes below assume that the platform has already integrated the C based MM
 [Components.X64]
   # Remove the following modules
   #
-  # MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   # MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
   # MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   # MmSupervisorPkg/Core/MmSupervisorCore.inf
 
   # Add the following components
   StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
-  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
+  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   SeaPkg/MmiEntrySea/MmiEntrySea.inf
   MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
   MmSupervisorPkg/Drivers/MmSupervisedCpu/MmSupervisedCpu.inf
