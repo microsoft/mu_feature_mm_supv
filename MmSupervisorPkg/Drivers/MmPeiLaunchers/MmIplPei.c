@@ -1383,6 +1383,10 @@ MmIplPeiEntry (
   if (!EFI_ERROR (Status)) {
     Status = MmDriverDispatchNotify ();
     DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
+    if (Status == EFI_NOT_FOUND) {
+      DEBUG ((DEBUG_WARN, "No MM drivers found to dispatch from supervisor\n"));
+      Status = EFI_SUCCESS;
+    }
   }
 
   //
@@ -1410,11 +1414,11 @@ MmIplPeiEntry (
   Status = (*PeiServices)->NotifyPpi (PeiServices, &mPeiMmIplNotifyList);
   ASSERT_EFI_ERROR (Status);
 
-  // //
-  // // Dispatch StandaloneMm drivers in MM
-  // //
-  // Status = MmIplDispatchMmDrivers ();
-  // ASSERT_EFI_ERROR (Status);
+  //
+  // Dispatch StandaloneMm drivers in MM
+  //
+  Status = MmIplDispatchMmDrivers ();
+  ASSERT_EFI_ERROR (Status);
 
   return EFI_SUCCESS;
 }
