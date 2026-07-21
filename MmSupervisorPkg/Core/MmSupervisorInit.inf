@@ -75,7 +75,6 @@
 
   Services/CpuService/CpuService.c
   Services/CpuService/CpuService.h
-  Services/MpService/MpService.c
   Services/MpService/MpService_init.c
   Services/MpService/MpService_init.h
 
