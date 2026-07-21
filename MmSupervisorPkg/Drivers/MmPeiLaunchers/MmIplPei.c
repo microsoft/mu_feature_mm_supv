@@ -1153,14 +1153,18 @@ MmIplPeiEntry (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS                         Status;
-  UINTN                              Index;
-  UINT64                             MaxSize;
-  UINTN                              Size;
-  UINTN                              MmramRangeCount;
-  EFI_MMRAM_DESCRIPTOR               *MmramRanges;
-  MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
-  MTRR_MEMORY_CACHE_TYPE             CacheAttribute;
+  EFI_STATUS  Status;
+  UINTN       Index;
+  UINT64      MaxSize;
+  UINTN       Size;
+  UINTN       MmramRangeCount;
+  // UINT64                          MmCodeSize;
+  // EFI_CPU_ARCH_PROTOCOL           *CpuArch;
+  // EFI_STATUS                      SetAttrStatus;
+  // EFI_MMRAM_DESCRIPTOR            *MmramRangeSmmDriver;
+  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR MemDesc;
+  EFI_MMRAM_DESCRIPTOR  *MmramRanges;
+  // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
 
   Status = PeiServicesRegisterForShadow (FileHandle);
 
