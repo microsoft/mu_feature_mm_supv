@@ -44,7 +44,8 @@ SmmInitializeMemoryAttributesTable (
 VOID
 EFIAPI
 LockMmCoreBeforeExit (
-  VOID
+  EFI_PHYSICAL_ADDRESS  MmHobStart,
+  UINT64                *RemainingSize
   )
 {
   EFI_STATUS  Status;

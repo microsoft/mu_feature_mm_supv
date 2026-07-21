@@ -34,18 +34,6 @@ MmCoreFfsFindMmDriver (
   IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
   );
 
-//
-// LockMmCoreBeforeExit signature differs between the Core (VOID) and Init
-// (EFI_PHYSICAL_ADDRESS, UINT64 *) builds; declare the Init variant locally
-// since the shared MmSupervisorCore.h no longer declares it.
-//
-VOID
-EFIAPI
-LockMmCoreBeforeExit (
-  EFI_PHYSICAL_ADDRESS  MmHobStart,
-  UINT64                *RemainingSize
-  );
-
 /**
   This is the main Dispatcher for MM and it exits when there are no more
   drivers to run. Drain the mScheduledQueue and load and start a PE
@@ -132,7 +120,7 @@ EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
 EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
 EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
 // MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
-// BOOLEAN                           mMmReadyToLockDone          = FALSE;
+BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
 VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = NULL;

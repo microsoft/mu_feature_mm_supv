@@ -973,12 +973,12 @@ SetupSmiEntryExit (
   VOID
   );
 
-//
-// LockMmCoreBeforeExit has DIFFERENT signatures in the Core (VOID) and Init
-// (EFI_PHYSICAL_ADDRESS, UINT64 *) builds.  Until Slice 7 splits Relocate.c we
-// intentionally do not declare it here; each .c file declares the appropriate
-// signature locally.
-//
+VOID
+EFIAPI
+LockMmCoreBeforeExit (
+  EFI_PHYSICAL_ADDRESS  MmHobStart,
+  UINT64                *RemainingSize
+  );
 
 EFI_STATUS
 EFIAPI

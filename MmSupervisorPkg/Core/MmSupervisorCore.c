@@ -35,17 +35,6 @@ MmDispatcher (
   );
 
 //
-// LockMmCoreBeforeExit signature differs between the Core (VOID) and Init
-// (EFI_PHYSICAL_ADDRESS, UINT64 *) builds; declare the Core variant locally
-// since the shared MmSupervisorCore.h no longer declares it.
-//
-VOID
-EFIAPI
-LockMmCoreBeforeExit (
-  VOID
-  );
-
-//
 // Globals used to initialize the protocol
 //
 EFI_HANDLE  mMmCpuHandle = NULL;
@@ -1299,7 +1288,7 @@ MmSupervisorMain (
 
   CoalesceLooseExceptionHandlers ();
 
-  LockMmCoreBeforeExit ();
+  LockMmCoreBeforeExit (0, NULL);
 
   mCoreInitializationComplete = TRUE;
 
