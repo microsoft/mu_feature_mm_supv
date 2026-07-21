@@ -72,8 +72,6 @@
   Dispatcher/Dispatcher.c
   Dispatcher/Dispatcher_core.c
   FwVol/FwVol.c
-  FwVol/FwVol.h
-  FwVol/FwVol_core.c
   Hand/Handle.c
   Hand/Locate.c
   Hand/Notify.c

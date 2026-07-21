@@ -46,8 +46,6 @@
   Dispatcher/Dispatcher_init.c
 
   FwVol/FwVol.c
-  FwVol/FwVol.h
-  FwVol/FwVol_init.c
 
   Mem/MemWrapper.c
   Mem/MemWrapper_init.c

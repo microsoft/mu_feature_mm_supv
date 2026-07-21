@@ -11,7 +11,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/ExtractGuidedSectionLib.h>
 
 #include "Mem/Mem.h"
-#include "FwVol.h"
 
 //
 // MM FFS driver cache list node signature
@@ -134,7 +133,7 @@ Returns:
     if (!EFI_ERROR (Status)) {
       FileSize = 0;
       CopyMem (&FileSize, FileHeader->Size, sizeof (FileHeader->Size));
-      Status = FwVolCopyToInternalBuffer ((UINT8 *)InnerFvHeader + BufferIndex, FileHeader, FileSize);
+      Status = MmCopyMemToMmram ((UINT8 *)InnerFvHeader + BufferIndex, FileHeader, FileSize);
       if (EFI_ERROR (Status)) {
         DEBUG ((DEBUG_ERROR, "Copying FFS from FV failed - %r!\n", Status));
         FreePages (InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
