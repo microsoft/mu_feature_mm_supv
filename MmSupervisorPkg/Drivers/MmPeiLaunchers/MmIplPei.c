@@ -1165,6 +1165,8 @@ MmIplPeiEntry (
   // EFI_GCD_MEMORY_SPACE_DESCRIPTOR MemDesc;
   EFI_MMRAM_DESCRIPTOR  *MmramRanges;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
+  MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
+  MTRR_MEMORY_CACHE_TYPE             CacheAttribute;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
 
