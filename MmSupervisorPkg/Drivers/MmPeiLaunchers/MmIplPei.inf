@@ -78,7 +78,6 @@
   PeiServicesLib  #MU_CHANGE: Add PeiServicesLib to INF
   HobLib  #MU_CHANGE: Add HobLib to INF
   PanicLib  #MU_CHANGE: Add PanicLib to INF
-  MmUnblockMemoryLib  #MU_CHANGE: MM_SUPV: Added library to unblock memory for MM communication buffer and status
 
 [Ppis]
   gEfiPeiSmmCommunicationPpiGuid                ## PRODUCES
@@ -112,7 +111,6 @@
   gUefiCpuPkgTokenSpaceGuid.PcdCpuSmmProfileSize                        ## SOMETIMES_CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdMmIplX64RelayFile                   ## CONSUMES
   gMmSupervisorPkgTokenSpaceGuid.PcdPeiMmInitLongModeStackSize          ## CONSUMES
-  gMmSupervisorPkgTokenSpaceGuid.PcdUserCommBufferPages                 ## CONSUMES
 
 [Depex]
   gEfiPeiMmAccessPpiGuid AND gEfiPeiMmControlPpiGuid AND gMmCommunicationBufferReadyPpiGuid
