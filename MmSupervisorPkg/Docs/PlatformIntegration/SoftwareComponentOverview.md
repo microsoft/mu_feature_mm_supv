@@ -17,38 +17,38 @@ For more general background about the steps necessary to integrate the MM Superv
 ## MM Standalone Mode PEI Modules
 
 | PEI Module | Location |
-| ---| ---|
+| --- | --- |
 | StandaloneMmHob | MmSupervisorPkg/Drivers/StandaloneMmHob/StandaloneMmHob.inf |
 
 ## MM PEI Libraries
 
 | PEI Library | Location |
-| ---| ---|
+| --- | --- |
 | MmSupervisorUnblockMemoryLib | MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf |
 
 ## MM Standalone Mode DXE Drivers
 
 | DXE Driver | Location |
-| ---| ---|
+| --- | --- |
 | StandaloneMmUnblockMem | MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf |
 
 ## MM DXE Libraries
 
 | DXE Library | Location |
-| ---| ---|
+| --- | --- |
 | DxeMmSupervisorVersionPublicationLib | MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf |
 | MmSupervisorUnblockMemoryLib | MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf |
 
 ## MM Standalone Mode MM Core
 
 | MM Driver | Location |
-| ---| ---|
+| --- | --- |
 | MmSupervisorCore | MmSupervisorPkg/Core/MmSupervisorCore.inf |
 
 ## MM Standalone Mode MM Drivers
 
 | MM Driver | Location |
-| ---| ---|
+| --- | --- |
 | MmSupervisorRing3Broker       | MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf |
 | MmSupervisorRing3Performance  | MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf |
 | MmSupervisorErrorReport       | MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf |
@@ -56,7 +56,7 @@ For more general background about the steps necessary to integrate the MM Superv
 ## MM Standalone Core Libraries
 
 | Library | Location |
-| --- | ---|
+| --- | --- |
 | MmSupervisorCoreInitLib | MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf |
 
 ## MM Standalone User Mode Libraries
@@ -64,7 +64,7 @@ For more general background about the steps necessary to integrate the MM Superv
 *These MM User Mode libraries are expected to be used as is and linked to other MM standalone drivers for standard functionality.*
 
 | Library | Location |
-| --- | ---|
+| --- | --- |
 | BaseIoLibIntrinsic | MmSupervisorPkg/Library/BaseIoLibIntrinsicSysCall/BaseIoLibIntrinsic.inf |
 | BaseLib | MmSupervisorPkg/Library/BaseLibSysCall/BaseLib.inf |
 | StandaloneMmCommunicationLib | MmSupervisorPkg/Library/StandaloneMmCommunicationLib/StandaloneMmCommunicationLib.inf |
