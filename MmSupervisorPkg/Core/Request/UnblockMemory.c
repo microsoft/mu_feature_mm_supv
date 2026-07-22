@@ -257,17 +257,19 @@ Done:
 }
 
 /**
-  Routine used to validate and block requested region to be inaccessible in MM
-  environment.
+  Helper routine used to block requested region. The routine will loop through unblocked
+  entries and try to locate the entry that matches the input based on base address and
+  length. For the match entry, if the page is not already blocked, supervisor will issue
+  command to block access. Once successful, the corresponding entry will be removed from
+  unblocked list.
 
-  @param[in] BlockMemDesc       Pointer to the descriptor of the region to be
-                                blocked.
+  @param[in]  BlockMemDesc        Input unblock parameters conveyed from non-MM environment
 
-  @retval EFI_SUCCESS           The requested region was found and is now blocked.
-  @retval EFI_INVALID_PARAMETER BlockMemDesc is a null pointer.
-  @retval EFI_NOT_FOUND         The requested region is not currently in the
-                                unblocked memory list.
-  @retval Others                Page attribute setting routine has failed.
+  @retval EFI_SUCCESS             The requested region properly unblocked.
+  @retval EFI_ACCESS_DENIED       The request was made post lock down event.
+  @retval EFI_INVALID_PARAMETER   UnblockMemParams or its ID GUID is null pointer.
+  @retval EFI_ALREADY_STARTED     The requested region has illegal page attributes.
+  @retval Others                  Page attribute setting/clearing routine has failed.
 
 **/
 EFI_STATUS
@@ -324,16 +326,19 @@ ProcessBlockPages (
 /**
   Routine used to validate and unblock requested region to be accessible in MM
   environment. Given this routine could received untrusted data, the requested
-  region must be already aligned to page boundary, since the page table
-  attributes setting code only manipulates aligned regions to such granularity.
+  memory region has to be already mapped as "not present" prior to this request.
+  For requests that pass security checks, the region will be marked as R/W data
+  page, while the page ownership (supervisor vs. user) is determined by whether
+  EFI_MEMORY_SP bit of memory descriptor's attribute is set or not.
 
-  @param[in] UnblockMemParams     Pointer to the descriptor of the region to be
-                                  unblocked.
+  @param[in]  UnblockMemParams  Input unblock parameters conveyed from non-MM environment
 
   @retval EFI_SUCCESS             The requested region properly unblocked.
   @retval EFI_ACCESS_DENIED       The request was made post lock down event.
   @retval EFI_INVALID_PARAMETER   UnblockMemParams or its ID GUID is null pointer.
-  @retval EFI_ALREADY_STARTED     The requested region has illegal page attributes.
+  @retval EFI_SECURITY_VIOLATION  The requested region has illegal page attributes.
+  @retval EFI_OUT_OF_RESOURCES    The unblocked database failed to log new entry after
+                                  processing this request.
   @retval Others                  Page attribute setting/clearing routine has failed.
 
 **/
