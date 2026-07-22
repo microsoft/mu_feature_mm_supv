@@ -104,7 +104,7 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
   // MmInstallConfigurationTable
   NULL,
   // I/O Service
-  { 0 },
+  { },
   // Runtime memory services
   MmAllocateSupervisorPool,
   MmFreeSupervisorPool,
@@ -1006,8 +1006,6 @@ MmSupervisorMain (
   EFI_MMRAM_DESCRIPTOR            *MmramRanges;
   EFI_MMRAM_DESCRIPTOR            MmDescDummy;
   UINTN                           MmramRangeCount;
-  UINT64                          StartTicker;
-  UINT64                          EndTicker;
   EFI_PHYSICAL_ADDRESS            StandaloneBfvAddress;
 
   MmSupervisorCoreEntryInit ();
@@ -1092,9 +1090,7 @@ MmSupervisorMain (
   //
   // Discover Standalone MM drivers for dispatch
   //
-  StartTicker = GetPerformanceCounter ();
-  Status      = DiscoverStandaloneMmDriversInFvHobs (&StandaloneBfvAddress);
-  EndTicker   = GetPerformanceCounter ();
+  Status = DiscoverStandaloneMmDriversInFvHobs (&StandaloneBfvAddress);
   if (EFI_ERROR (Status)) {
     ASSERT_EFI_ERROR (Status);
     goto Exit;
