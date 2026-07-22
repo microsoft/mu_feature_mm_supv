@@ -351,7 +351,7 @@ FindSmramInfo (
 //
 // Symbols defined in shared Relocate.c that are now referenced from the
 // per-build sibling files (Relocate_init.c, Relocate_core.c) after the
-// commonization split.  Without these declarations the sibling translation
+// centralization split.  Without these declarations the sibling translation
 // units would see implicit-int warnings (treated as errors under /WX) or
 // fail to link against STATIC definitions.
 //
