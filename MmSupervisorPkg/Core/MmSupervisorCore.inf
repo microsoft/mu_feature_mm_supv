@@ -111,7 +111,6 @@
   Relocate/SmramSaveStateInternal.h
 
   Services/CpuService/CpuService.c
-  Services/CpuService/CpuService_core.c
   Services/CpuService/CpuService.h
   Services/MpService/MpService_core.c
   Services/MpService/SyncTimer.c

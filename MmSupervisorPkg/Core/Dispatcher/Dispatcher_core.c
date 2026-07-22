@@ -46,6 +46,29 @@ extern LIST_ENTRY  mScheduledQueue;
 extern BOOLEAN     gDispatcherRunning;
 extern BOOLEAN     gRequestDispatch;
 
+EFI_STATUS
+EFIAPI
+MmLoadImage (
+  IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
+  );
+
+/**
+  Insert InsertedDriverEntry onto the mScheduledQueue. To do this you
+  must add any driver with a before dependency on InsertedDriverEntry first.
+  You do this by recursively calling this routine. After all the Befores are
+  processed you can add InsertedDriverEntry to the mScheduledQueue.
+  Then you can add any driver with an After dependency on InsertedDriverEntry
+  by recursively calling this routine.
+
+  @param  InsertedDriverEntry   The driver to insert on the ScheduledLink Queue
+
+**/
+VOID
+MmInsertOnScheduledQueueWhileProcessingBeforeAndAfter (
+  IN  EFI_MM_DRIVER_ENTRY  *InsertedDriverEntry
+  );
+
 /**
   Install the EFI_LOADED_IMAGE_PROTOCOL for a freshly loaded MM driver image
   and apply the image's code/data page attributes.

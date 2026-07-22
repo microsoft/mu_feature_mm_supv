@@ -17,6 +17,29 @@
 #include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 
+/**
+  Enable exception handling test mode.
+
+  NOTE: This should only work on debug builds, otherwise return EFI_UNSUPPORTED.
+
+  @retval EFI_SUCCESS            Test mode enabled.
+  @retval EFI_UNSUPPORTED        Test mode could not be enabled.
+
+**/
+EFI_STATUS
+EFIAPI
+EnableSmmExceptionTestMode (
+  VOID
+  );
+
+//
+// Protocol for other drivers to enable test mode.
+//
+SMM_EXCEPTION_TEST_PROTOCOL  mSmmExceptionTestProtocol = {
+  EnableSmmExceptionTestMode
+};
+EFI_HANDLE                   mSmmExceptionTestProtocolHandle = NULL;
+
 //
 // Forward decls referenced by the Core variants.  These are defined in shared
 // Relocate.c (FindSmramInfo, GetSmBase) or other Core compilation units.

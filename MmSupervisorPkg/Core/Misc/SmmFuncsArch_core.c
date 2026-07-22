@@ -19,6 +19,7 @@
 #include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
 
+#include "Services/CpuService/CpuService.h"
 #include "Services/MpService/MpService.h"
 
 extern BOOLEAN  mCetSupported;

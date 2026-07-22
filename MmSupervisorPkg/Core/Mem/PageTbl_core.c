@@ -45,6 +45,7 @@
 #include "Telemetry/Telemetry.h"
 
 extern X86_ASSEMBLY_PATCH_LABEL  gPatch5LevelPagingNeeded;
+extern BOOLEAN                   mCpuSmmRestrictedMemoryAccess;
 
 /**
   Patch the prebuilt SMI-entry assembly thunk's 5-level-paging-needed slot.

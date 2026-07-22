@@ -104,14 +104,6 @@ EnableSmmExceptionTestMode (
   VOID
   );
 
-//
-// Protocol for other drivers to enable test mode.
-//
-SMM_EXCEPTION_TEST_PROTOCOL  mSmmExceptionTestProtocol = {
-  EnableSmmExceptionTestMode
-};
-EFI_HANDLE                   mSmmExceptionTestProtocolHandle = NULL;
-
 BOOLEAN  mSmmRebootOnException = TRUE;
 // MSCHANGE [END]
 

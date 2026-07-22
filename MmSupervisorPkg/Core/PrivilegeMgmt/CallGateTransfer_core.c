@@ -36,6 +36,23 @@ extern UINTN  RegisteredRing3JumpPointer;
 extern UINTN  RegApRing3JumpPointer;
 extern UINTN  RegErrorReportJumpPointer;
 
+// Helper function to patch the call gate
+EFI_STATUS
+EFIAPI
+PatchCallGatePtr (
+  IN  IA32_IDT_GATE_DESCRIPTOR  *CallGatePtr,
+  IN  VOID                      *ReturnPointer
+  );
+
+// Helper function to patch the Tss descriptor
+EFI_STATUS
+EFIAPI
+PatchTssDescriptor (
+  IN  IA32_TSS_DESCRIPTOR      *TssDescPtr,
+  IN  IA32_TASK_STATE_SEGMENT  *TaskSegmentPtr,
+  IN  VOID                     *Cpl0StackPtr
+  );
+
 // Function to set up call gate for just one thread/core
 VOID
 EFIAPI
