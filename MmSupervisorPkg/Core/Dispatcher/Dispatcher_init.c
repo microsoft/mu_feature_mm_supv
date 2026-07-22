@@ -134,10 +134,10 @@ MmLoadButNotDispatch (
 **/
 EFI_STATUS
 MmRegisterLoadedImage (
-  IN OUT EFI_MM_DRIVER_ENTRY            *DriverEntry,
-  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT   *ImageContext,
-  IN     EFI_PHYSICAL_ADDRESS           DstBuffer,
-  IN     UINTN                          PageCount
+  IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
+  IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext,
+  IN     EFI_PHYSICAL_ADDRESS          DstBuffer,
+  IN     UINTN                         PageCount
   )
 {
   return EFI_SUCCESS;

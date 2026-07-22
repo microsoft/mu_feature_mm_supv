@@ -25,8 +25,8 @@
 #include <Library/FvLib.h>
 #include <Library/SecurePolicyLib.h>
 
-PE_COFF_LOADER_IMAGE_CONTEXT  RuntimeSupvImageContext;
-VOID *SmiRendezvous;
+PE_COFF_LOADER_IMAGE_CONTEXT      RuntimeSupvImageContext;
+VOID                              *SmiRendezvous;
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot = NULL;
 
 EFI_STATUS
@@ -58,10 +58,10 @@ MmLoadButNotDispatch (
 // TODO: This should not be here.
 #include "Services/MpService/MpService_init.h"
 extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
-extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
-extern UINTN mSmmMpSyncDataSize;
-extern LIST_ENTRY  mDiscoveredList;
-extern UINTN mMmiEntrySize;
+extern SMM_CPU_PRIVATE_DATA         *gSmmCpuPrivate;
+extern UINTN                        mSmmMpSyncDataSize;
+extern LIST_ENTRY                   mDiscoveredList;
+extern UINTN                        mMmiEntrySize;
 
 EFI_STATUS
 EFIAPI
@@ -78,8 +78,8 @@ MmLoadImage (
 //
 // Physical pointer to MM_COMM_BUFFER structure shared between MM IPL and the MM Core
 //
-MM_COMM_BUFFER_STATUS *mMmCommSupvMailboxBufferStatus;
-MM_COMM_BUFFER_STATUS *mMmCommUserMailboxBufferStatus;
+MM_COMM_BUFFER_STATUS  *mMmCommSupvMailboxBufferStatus;
+MM_COMM_BUFFER_STATUS  *mMmCommUserMailboxBufferStatus;
 
 //
 // Ring 3 Hob pointer
@@ -114,11 +114,11 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
 
 EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 
-EFI_SYSTEM_TABLE                  *mEfiSystemTable;
-UINTN                             mMmramRangeCount;
-EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
-EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
-EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
+EFI_SYSTEM_TABLE      *mEfiSystemTable;
+UINTN                 mMmramRangeCount;
+EFI_MMRAM_DESCRIPTOR  *mMmramRanges;
+EFI_MM_DRIVER_ENTRY   *mMmCoreDriverEntry;
+EFI_MM_DRIVER_ENTRY   *mMmUserDriverEntry;
 // MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer = NULL;
 BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
@@ -453,8 +453,8 @@ DiscoverStandaloneMmDriversInFvHobs (
   EFI_STATUS                      Status;
   UINT64                          TotalSize;
   VOID                            *InnerFvHeader;
-  VOID                        *Pe32Data;
-  UINTN                       Pe32DataSize;
+  VOID                            *Pe32Data;
+  UINTN                           Pe32DataSize;
 
   Hob.Raw = GetHobList ();
   if (Hob.Raw == NULL) {
@@ -486,11 +486,11 @@ DiscoverStandaloneMmDriversInFvHobs (
       //
       FileHeader = NULL;
       do {
-        Status     =  FfsFindNextFile (
-                        EFI_FV_FILETYPE_MM_CORE_STANDALONE,
-                        FwVolHeader,
-                        &FileHeader
-                        );
+        Status =  FfsFindNextFile (
+                    EFI_FV_FILETYPE_MM_CORE_STANDALONE,
+                    FwVolHeader,
+                    &FileHeader
+                    );
         if (!EFI_ERROR (Status)) {
           if (CompareGuid (&FileHeader->Name, &gMmSupervisorCoreGuid)) {
             DEBUG ((
@@ -507,11 +507,11 @@ DiscoverStandaloneMmDriversInFvHobs (
             CopyMem (&TotalSize, FileHeader->Size, sizeof (FileHeader->Size));
 
             Status = MmAllocateSupervisorPages (
-                      AllocateAnyPages,
-                      EfiRuntimeServicesCode,
-                      EFI_SIZE_TO_PAGES (TotalSize),
-                      (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
-                      );
+                       AllocateAnyPages,
+                       EfiRuntimeServicesCode,
+                       EFI_SIZE_TO_PAGES (TotalSize),
+                       (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
+                       );
             DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __func__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
@@ -525,7 +525,7 @@ DiscoverStandaloneMmDriversInFvHobs (
               break;
             }
 
-            Status  = FfsFindSectionData (EFI_SECTION_PE32, InnerFvHeader, &Pe32Data, &Pe32DataSize);
+            Status = FfsFindSectionData (EFI_SECTION_PE32, InnerFvHeader, &Pe32Data, &Pe32DataSize);
             DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
 
             //
@@ -539,7 +539,7 @@ DiscoverStandaloneMmDriversInFvHobs (
             //
             // Fill in the remaining fields of the Loaded Image Protocol instance.
             //
-            mMmCoreDriverEntry->Signature                 = EFI_MM_DRIVER_ENTRY_SIGNATURE;
+            mMmCoreDriverEntry->Signature = EFI_MM_DRIVER_ENTRY_SIGNATURE;
             CopyGuid (&mMmCoreDriverEntry->FileName, &FileHeader->Name);
             mMmCoreDriverEntry->FwVolHeader  = FwVolHeader;
             mMmCoreDriverEntry->Pe32Data     = Pe32Data;
@@ -555,7 +555,7 @@ DiscoverStandaloneMmDriversInFvHobs (
               PANIC ("Unable to load supervisor, FIMD!!!\n");
             }
 
-            SmiRendezvous = (VOID*)RuntimeSupvImageContext.EntryPoint;
+            SmiRendezvous = (VOID *)RuntimeSupvImageContext.EntryPoint;
           } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorUserGuid)) {
             DEBUG ((
               DEBUG_INFO,
@@ -569,11 +569,11 @@ DiscoverStandaloneMmDriversInFvHobs (
             CopyMem (&TotalSize, FileHeader->Size, sizeof (FileHeader->Size));
 
             Status = MmAllocatePages (
-                      AllocateAnyPages,
-                      EfiRuntimeServicesCode,
-                      EFI_SIZE_TO_PAGES (TotalSize),
-                      (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
-                      );
+                       AllocateAnyPages,
+                       EfiRuntimeServicesCode,
+                       EFI_SIZE_TO_PAGES (TotalSize),
+                       (EFI_PHYSICAL_ADDRESS *)&InnerFvHeader
+                       );
             DEBUG ((DEBUG_INFO, "%a Allocating for discovered ffs address: 0x%p, pages: 0x%x\n", __func__, InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize)));
             if (EFI_ERROR (Status)) {
               DEBUG ((DEBUG_ERROR, "Allocating for FwVol out of resources - %r!\n", Status));
@@ -587,7 +587,7 @@ DiscoverStandaloneMmDriversInFvHobs (
               break;
             }
 
-            Status  = FfsFindSectionData (EFI_SECTION_PE32, InnerFvHeader, &Pe32Data, &Pe32DataSize);
+            Status = FfsFindSectionData (EFI_SECTION_PE32, InnerFvHeader, &Pe32Data, &Pe32DataSize);
             DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
 
             //
@@ -601,7 +601,7 @@ DiscoverStandaloneMmDriversInFvHobs (
             //
             // Fill in the remaining fields of the Loaded Image Protocol instance.
             //
-            mMmUserDriverEntry->Signature                 = EFI_MM_DRIVER_ENTRY_SIGNATURE;
+            mMmUserDriverEntry->Signature = EFI_MM_DRIVER_ENTRY_SIGNATURE;
             CopyGuid (&mMmUserDriverEntry->FileName, &FileHeader->Name);
             mMmUserDriverEntry->FwVolHeader  = FwVolHeader;
             mMmUserDriverEntry->Pe32Data     = Pe32Data;
@@ -623,14 +623,14 @@ DiscoverStandaloneMmDriversInFvHobs (
       } while (TRUE);
 
       // if (!EFI_ERROR (Status)) {
-        DEBUG ((
-          DEBUG_INFO,
-          "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
-          __func__,
-          (UINTN)FwVolHeader
-          ));
-        Status = MmCoreFfsFindMmDriver (FwVolHeader);
-        ASSERT_EFI_ERROR (Status);
+      DEBUG ((
+        DEBUG_INFO,
+        "[%a]   Adding Standalone MM drivers in FV at 0x%x to the dispatch list.\n",
+        __func__,
+        (UINTN)FwVolHeader
+        ));
+      Status = MmCoreFfsFindMmDriver (FwVolHeader);
+      ASSERT_EFI_ERROR (Status);
       // }
 
       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
@@ -645,7 +645,7 @@ EFIAPI
 PrepareMmSupervisorHobs (
   IN  EFI_PHYSICAL_ADDRESS  MmHobStart,
   OUT UINT64                *MmHobSize
-);
+  );
 
 EFI_STATUS
 CreateMemoryAllocationModuleHob (
@@ -655,14 +655,14 @@ CreateMemoryAllocationModuleHob (
 {
   UINTN                             NewLength;
   EFI_HOB_MEMORY_ALLOCATION_MODULE  *MmCoreModuleHob;
-  LIST_ENTRY                    *Link;
-  EFI_MM_DRIVER_ENTRY           *DriverEntry;
+  LIST_ENTRY                        *Link;
+  EFI_MM_DRIVER_ENTRY               *DriverEntry;
 
-  EFI_HOB_GUID_TYPE           *DepexHob;
+  EFI_HOB_GUID_TYPE       *DepexHob;
   MM_SUPV_DEPEX_HOB_DATA  *DepexHobData;
-  EFI_PHYSICAL_ADDRESS OriginalBase = BaseAddress;
+  EFI_PHYSICAL_ADDRESS    OriginalBase = BaseAddress;
 
-  if (BaseAddress == 0 || Length == NULL) {
+  if ((BaseAddress == 0) || (Length == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -671,8 +671,8 @@ CreateMemoryAllocationModuleHob (
   NewLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8) * 2; // For MM Core and MM User
   for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
     DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
-    NewLength += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-    NewLength += ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
+    NewLength  += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
+    NewLength  += ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
   }
 
   if (*Length < NewLength) {
@@ -686,16 +686,16 @@ CreateMemoryAllocationModuleHob (
   MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
   CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
   MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(mMmCoreDriverEntry->ImageBuffer);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE(mMmCoreDriverEntry->NumberOfPage);
+  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage);
   MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
   ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
 
   CopyGuid (&MmCoreModuleHob->ModuleName, &gMmSupervisorCoreGuid);
   MmCoreModuleHob->EntryPoint = mMmCoreDriverEntry->ImageEntryPoint;
 
-  MmCoreModuleHob->Header.HobType    = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-  MmCoreModuleHob->Header.HobLength  = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-  MmCoreModuleHob->Header.Reserved   = 0;
+  MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
+  MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
+  MmCoreModuleHob->Header.Reserved  = 0;
 
   // Move to next HOB location
   BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
@@ -704,16 +704,16 @@ CreateMemoryAllocationModuleHob (
   MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
   CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
   MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(mMmUserDriverEntry->ImageBuffer);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE(mMmUserDriverEntry->NumberOfPage);
+  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage);
   MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
   ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
 
   CopyGuid (&MmCoreModuleHob->ModuleName, &gMmSupervisorUserGuid);
   MmCoreModuleHob->EntryPoint = mMmUserDriverEntry->ImageEntryPoint;
 
-  MmCoreModuleHob->Header.HobType    = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-  MmCoreModuleHob->Header.HobLength  = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-  MmCoreModuleHob->Header.Reserved   = 0;
+  MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
+  MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
+  MmCoreModuleHob->Header.Reserved  = 0;
 
   // Move to next HOB location
   BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
@@ -725,16 +725,16 @@ CreateMemoryAllocationModuleHob (
     MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
     CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
     MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(DriverEntry->ImageBuffer);
-    MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE(DriverEntry->NumberOfPage);
+    MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (DriverEntry->NumberOfPage);
     MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
     ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
 
     CopyGuid (&MmCoreModuleHob->ModuleName, &DriverEntry->FileName);
     MmCoreModuleHob->EntryPoint = DriverEntry->ImageEntryPoint;
 
-    MmCoreModuleHob->Header.HobType    = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-    MmCoreModuleHob->Header.HobLength  = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-    MmCoreModuleHob->Header.Reserved   = 0;
+    MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
+    MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
+    MmCoreModuleHob->Header.Reserved  = 0;
 
     // Move to next HOB location
     BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
@@ -742,9 +742,9 @@ CreateMemoryAllocationModuleHob (
     // Create DEPEX HOB for Discovered Driver
     DepexHob = (EFI_HOB_GUID_TYPE *)(UINTN)BaseAddress;
     CopyGuid (&DepexHob->Name, &gMmSupervisorDepexHobGuid);
-    DepexHob->Header.HobType  = EFI_HOB_TYPE_GUID_EXTENSION;
+    DepexHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
     DepexHob->Header.HobLength = (UINT16)ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
-    DepexHob->Header.Reserved = 0;
+    DepexHob->Header.Reserved  = 0;
 
     DepexHobData = (MM_SUPV_DEPEX_HOB_DATA *)(DepexHob + 1);
     CopyGuid (&DepexHobData->Name, &DriverEntry->FileName);
@@ -759,7 +759,7 @@ CreateMemoryAllocationModuleHob (
 
   ASSERT ((UINTN)(BaseAddress - OriginalBase) == NewLength);
 
-  *Length      = *Length - NewLength;
+  *Length = *Length - NewLength;
 
   return EFI_SUCCESS;
 }
@@ -770,11 +770,11 @@ CreateArbitraryHob (
   IN OUT UINT64            *Length
   )
 {
-  UINTN                             NewLength;
-  EFI_HOB_GUID_TYPE                 *GuidedHob;
+  UINTN                       NewLength;
+  EFI_HOB_GUID_TYPE           *GuidedHob;
   MM_SUPV_PASS_DOWN_HOB_DATA  *PassDownData;
 
-  if (BaseAddress == 0 || Length == NULL) {
+  if ((BaseAddress == 0) || (Length == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -792,7 +792,7 @@ CreateArbitraryHob (
   GuidedHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
   GuidedHob->Header.Reserved  = 0;
 
-  PassDownData = (MM_SUPV_PASS_DOWN_HOB_DATA *)(GuidedHob + 1);
+  PassDownData           = (MM_SUPV_PASS_DOWN_HOB_DATA *)(GuidedHob + 1);
   PassDownData->Revision = MM_SUPV_PASS_DOWN_HOB_REVISION;
   PassDownData->Reserved = 0;
   //
@@ -815,15 +815,15 @@ CreateArbitraryHob (
 
   PassDownData->MmInitializedBuffer = (EFI_PHYSICAL_ADDRESS)mSmmInitialized;
 
-  PassDownData->MmSupervisorCpl3StackBase = (EFI_PHYSICAL_ADDRESS)mSmmCpl3StackArrayBase;
+  PassDownData->MmSupervisorCpl3StackBase        = (EFI_PHYSICAL_ADDRESS)mSmmCpl3StackArrayBase;
   PassDownData->MmSupervisorCpl3PerCoreStackSize = mSmmStackSize;
 
-  PassDownData->MmSupvFirmwarePolicyBuffer = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
+  PassDownData->MmSupvFirmwarePolicyBuffer     = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
   PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
 
   PassDownData->MmiEntrypointSize = mMmiEntrySize;
 
-  *Length      = *Length - NewLength;
+  *Length = *Length - NewLength;
 
   return EFI_SUCCESS;
 }
@@ -831,8 +831,8 @@ CreateArbitraryHob (
 INTN
 EFIAPI
 CompareMmramRangeCpuStart (
-  IN CONST VOID                 *MmramDescriptor1,
-  IN CONST VOID                 *MmramDescriptor2
+  IN CONST VOID  *MmramDescriptor1,
+  IN CONST VOID  *MmramDescriptor2
   )
 {
   CONST EFI_MMRAM_DESCRIPTOR  *Desc1 = (CONST EFI_MMRAM_DESCRIPTOR *)MmramDescriptor1;
@@ -998,8 +998,8 @@ MmSupervisorMain (
   IN VOID  *HobStart
   )
 {
-  EFI_STATUS                      Status;
-  UINTN                           Index;
+  EFI_STATUS  Status;
+  UINTN       Index;
   // VOID                            *Registration;
   EFI_HOB_GUID_TYPE               *MmramRangesHob;
   EFI_MMRAM_HOB_DESCRIPTOR_BLOCK  *MmramRangesHobData;
@@ -1113,7 +1113,7 @@ MmSupervisorMain (
   DEBUG ((DEBUG_INFO, "HobSize - 0x%x\n", InitialMmHobSize));
 
   MmSupervisorHobSize = 0;
-  Status = PrepareMmSupervisorHobs (0, &MmSupervisorHobSize);
+  Status              = PrepareMmSupervisorHobs (0, &MmSupervisorHobSize);
   if (Status != EFI_BUFFER_TOO_SMALL) {
     DEBUG ((DEBUG_ERROR, "%a Failed to get MM Supervisor allocation hob size - Status %d\n", __func__, Status));
     ASSERT (FALSE);
@@ -1124,7 +1124,7 @@ MmSupervisorMain (
 
   // Note: Allocate an extra page to avoid Hob overlapping with other memory
   // This page is supposed to cover all the subsequent allocations during hob creation, page table setup, allocation module hob, etc.
-  mMmHobSize = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
+  mMmHobSize  = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
   mMmHobSize += EFI_PAGE_SIZE;
 
   Status = (EFI_PHYSICAL_ADDRESS)(UINTN)MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &MmSupervisorHobStart);
@@ -1144,7 +1144,7 @@ MmSupervisorMain (
   EFI_PEI_HOB_POINTERS  Hob;
 
   InitialMmHobSize = 0;
-  Hob.Raw = (UINT8 *)gHobList;
+  Hob.Raw          = (UINT8 *)gHobList;
   while (!END_OF_HOB_LIST (Hob)) {
     UINTN  HobSize;
     HobSize = GET_HOB_LENGTH (Hob);
@@ -1159,7 +1159,8 @@ MmSupervisorMain (
       EFI_GUID  *HobGuid;
       HobGuid = &((EFI_HOB_GUID_TYPE *)Hob.Raw)->Name;
       if (CompareGuid (HobGuid, &gEfiMmPeiMmramMemoryReserveGuid) ||
-          CompareGuid (HobGuid, &gEfiSmmSmramMemoryGuid)) {
+          CompareGuid (HobGuid, &gEfiSmmSmramMemoryGuid))
+      {
         DEBUG ((DEBUG_INFO, "%a Skip Copying MmRam Hob Type 0x%x Size 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize));
         Hob.Raw = GET_NEXT_HOB (Hob);
         continue;
@@ -1169,8 +1170,9 @@ MmSupervisorMain (
     DEBUG ((DEBUG_INFO, "%a Copy Hob Type 0x%x Size 0x%x into offset 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize, InitialMmHobSize));
     CopyMem ((VOID *)((UINTN)MmSupervisorHobStart + InitialMmHobSize), (VOID *)Hob.Raw, HobSize);
     InitialMmHobSize += ALIGN_VALUE (HobSize, 8);
-    Hob.Raw = GET_NEXT_HOB (Hob);
+    Hob.Raw           = GET_NEXT_HOB (Hob);
   }
+
   RemainingSize -= ALIGN_VALUE (InitialMmHobSize, 8);
 
   Status = SetupSmiEntryExit ();
@@ -1200,7 +1202,7 @@ MmSupervisorMain (
   LockMmCoreBeforeExit (MmSupervisorHobStart + mMmHobSize - RemainingSize, &RemainingSize);
 
   // Adding the end of HOB list
-  VOID* EndHob = (VOID *)(MmSupervisorHobStart + mMmHobSize - RemainingSize);
+  VOID  *EndHob = (VOID *)(MmSupervisorHobStart + mMmHobSize - RemainingSize);
 
   if (RemainingSize < ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8)) {
     DEBUG ((DEBUG_ERROR, "%a MM Supervisor Hob size 0x%x is not enough to add end of hob list, need at least 0x%x\n", __func__, mMmHobSize, ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8)));

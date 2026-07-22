@@ -16,9 +16,9 @@
 #pragma pack (1)
 //
 typedef struct {
-  EFI_GUID                  Name;
-  UINT64                    Length;
-  UINT8                     Data[];
+  EFI_GUID    Name;
+  UINT64      Length;
+  UINT8       Data[];
 } MM_SUPV_DEPEX_HOB_DATA;
 
 #pragma pack ()

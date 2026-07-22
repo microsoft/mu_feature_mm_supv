@@ -48,25 +48,25 @@ typedef struct {
 #define SMM_CPU_PRIVATE_DATA_SIGNATURE  SIGNATURE_32 ('s', 'c', 'p', 'u')
 
 typedef struct {
-  UINTN                             Signature;
+  UINTN                            Signature;
 
-  EFI_HANDLE                        SmmCpuHandle;
+  EFI_HANDLE                       SmmCpuHandle;
 
-  EFI_PROCESSOR_INFORMATION         *ProcessorInfo;
+  EFI_PROCESSOR_INFORMATION        *ProcessorInfo;
   // SMM_CPU_OPERATION                 *Operation;
-  UINTN                             *CpuSaveStateSize;
-  VOID                              **CpuSaveState;
+  UINTN                            *CpuSaveStateSize;
+  VOID                             **CpuSaveState;
 
-  EFI_SMM_RESERVED_SMRAM_REGION     SmmReservedSmramRegion[1];
-  EFI_SMM_ENTRY_CONTEXT             SmmCoreEntryContext;
-  EFI_SMM_ENTRY_POINT               SmmCoreEntry;
-  EFI_SMM_ENTRY_POINT               SmmUserEntry;
+  EFI_SMM_RESERVED_SMRAM_REGION    SmmReservedSmramRegion[1];
+  EFI_SMM_ENTRY_CONTEXT            SmmCoreEntryContext;
+  EFI_SMM_ENTRY_POINT              SmmCoreEntry;
+  EFI_SMM_ENTRY_POINT              SmmUserEntry;
 
   // EFI_SMM_CONFIGURATION_PROTOCOL    SmmConfiguration;
 
-  PROCEDURE_WRAPPER                 *ApWrapperFunc;
-  LIST_ENTRY                        *TokenList;
-  LIST_ENTRY                        *FirstFreeToken;
+  PROCEDURE_WRAPPER                *ApWrapperFunc;
+  LIST_ENTRY                       *TokenList;
+  LIST_ENTRY                       *FirstFreeToken;
 } SMM_CPU_PRIVATE_DATA;
 
 // extern SMM_CPU_PRIVATE_DATA  *gSmmCpuPrivate;
@@ -94,17 +94,17 @@ typedef struct {
   // Pointer to an array. The array should be located immediately after this structure
   // so that UC cache-ability can be set together.
   //
-  SMM_CPU_DATA_BLOCK            *CpuData;
-  volatile UINT32               BspIndex;
-  volatile BOOLEAN              *InsideSmm;
-  volatile BOOLEAN              *AllCpusInSync;
+  SMM_CPU_DATA_BLOCK      *CpuData;
+  volatile UINT32         BspIndex;
+  volatile BOOLEAN        *InsideSmm;
+  volatile BOOLEAN        *AllCpusInSync;
   // volatile SMM_CPU_SYNC_MODE    EffectiveSyncMode;
-  volatile BOOLEAN              SwitchBsp;
-  volatile BOOLEAN              *CandidateBsp;
-  volatile BOOLEAN              AllApArrivedWithException;
+  volatile BOOLEAN        SwitchBsp;
+  volatile BOOLEAN        *CandidateBsp;
+  volatile BOOLEAN        AllApArrivedWithException;
   // EFI_AP_PROCEDURE              StartupProcedure;
   // VOID                          *StartupProcArgs;
-  SMM_CPU_SYNC_CONTEXT          *SyncContext;
+  SMM_CPU_SYNC_CONTEXT    *SyncContext;
 } SMM_DISPATCHER_MP_SYNC_DATA;
 
 // extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;

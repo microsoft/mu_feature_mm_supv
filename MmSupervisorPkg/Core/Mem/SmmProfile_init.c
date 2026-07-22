@@ -46,7 +46,7 @@ CheckFeatureSupported (
   VOID
   )
 {
-  UINT32                         RegEax;
+  UINT32  RegEax;
   // UINT32                         RegEcx;
   UINT32                         RegEdx;
   MSR_IA32_MISC_ENABLE_REGISTER  MiscEnableMsr;

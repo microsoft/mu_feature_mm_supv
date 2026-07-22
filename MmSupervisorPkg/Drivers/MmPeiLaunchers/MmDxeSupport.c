@@ -624,6 +624,7 @@ MmDxeSupportEntry (
   VOID        *Registration;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
+
   // MM_SUPERVISOR_COMM_UPDATE_BUFFER   NewCommBuffer;
   // MM_COMM_BUFFER_UPDATE_PROTOCOL     *MmCommBufferUpdate;
 

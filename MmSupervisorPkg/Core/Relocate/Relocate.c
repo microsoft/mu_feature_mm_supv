@@ -578,7 +578,6 @@ PostRelocationRun (
   SmmCpuFeaturesSmmRelocationComplete ();
 }
 
-
 /**
   Function to compare 2 EFI_SMRAM_DESCRIPTOR based on CpuStart.
   @param[in] Buffer1            pointer to Device Path pointer to compare

@@ -191,13 +191,13 @@ PrepareMmSupervisorHobs (
 {
   // Loop through all the allocated pages
   // convert them into memory allocation hobs
-  LIST_ENTRY            *Link;
-  MEMORY_MAP            *Entry;
+  LIST_ENTRY  *Link;
+  MEMORY_MAP  *Entry;
 
-  UINTN                 TotalHobSize;
-  EFI_HOB_GUID_TYPE     *MmramGuidedHob;
+  UINTN              TotalHobSize;
+  EFI_HOB_GUID_TYPE  *MmramGuidedHob;
 
-  UINT32                Count;
+  UINT32  Count;
 
   EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *SmramHobBlock;
 

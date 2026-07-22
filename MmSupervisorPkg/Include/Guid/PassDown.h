@@ -18,15 +18,15 @@
 #pragma pack (1)
 //
 typedef struct {
-  UINT32                    Revision;
-  UINT32                    Reserved;
-  EFI_PHYSICAL_ADDRESS      MmSupervisorCpl3StackBase;
-  UINT64                    MmSupervisorCpl3PerCoreStackSize;
-  EFI_PHYSICAL_ADDRESS      SmBase;
-  EFI_PHYSICAL_ADDRESS      MmInitializedBuffer;
-  EFI_PHYSICAL_ADDRESS      MmSupvFirmwarePolicyBuffer;
-  UINT64                    MmSupvFirmwarePolicyBufferSize;
-  UINT64                    MmiEntrypointSize;
+  UINT32                  Revision;
+  UINT32                  Reserved;
+  EFI_PHYSICAL_ADDRESS    MmSupervisorCpl3StackBase;
+  UINT64                  MmSupervisorCpl3PerCoreStackSize;
+  EFI_PHYSICAL_ADDRESS    SmBase;
+  EFI_PHYSICAL_ADDRESS    MmInitializedBuffer;
+  EFI_PHYSICAL_ADDRESS    MmSupvFirmwarePolicyBuffer;
+  UINT64                  MmSupvFirmwarePolicyBufferSize;
+  UINT64                  MmiEntrypointSize;
 } MM_SUPV_PASS_DOWN_HOB_DATA;
 
 #pragma pack ()

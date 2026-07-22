@@ -47,7 +47,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 // X86_ASSEMBLY_PATCH_LABEL  gSmiRendezvous;
 // X86_ASSEMBLY_PATCH_LABEL  gMmSupvHobStart;
 
-extern VOID *SmiRendezvous;
+extern VOID  *SmiRendezvous;
 // extern volatile UINT8     gcSmiHandlerTemplate[];
 // extern CONST UINT16       gcSmiHandlerSize;
 
@@ -55,7 +55,7 @@ extern VOID *SmiRendezvous;
 // Variables used by SMI Handler
 //
 IA32_DESCRIPTOR  *gSmiHandlerIdtr = NULL;
-IA32_DESCRIPTOR  *mGdtrPtr = NULL;
+IA32_DESCRIPTOR  *mGdtrPtr        = NULL;
 
 //
 // mSmmSaveStateRegisterLma is defined in shared SmramSaveState.c.
@@ -116,10 +116,10 @@ LookupMmiEntryInFvHobs (
   EFI_FFS_FILE_HEADER             *FileHeader;
   EFI_PEI_HOB_POINTERS            Hob;
   EFI_STATUS                      Status;
-  BOOLEAN                         MmiEntryFound     = FALSE;
+  BOOLEAN                         MmiEntryFound = FALSE;
   VOID                            *RawMmiEntryFileData;
 
-  if (BaseAddress == NULL || Size == NULL) {
+  if ((BaseAddress == NULL) || (Size == NULL)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -169,7 +169,7 @@ LookupMmiEntryInFvHobs (
             Status = FfsFindSectionData (EFI_SECTION_RAW, FileHeader, &RawMmiEntryFileData, &mMmiEntrySize);
             if (!EFI_ERROR (Status)) {
               *BaseAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)RawMmiEntryFileData;
-              *Size = mMmiEntrySize;
+              *Size        = mMmiEntrySize;
             } else {
               DEBUG ((DEBUG_ERROR, "[%a]   Failed to load MmiEntry [%g] in FV at 0x%p of %x bytes - %r.\n", __func__, &gMmiEntrySeaFileGuid, FileHeader, FileHeader->Size, Status));
               break;
@@ -247,9 +247,9 @@ InstallSmiHandler (
   IN UINT32  Cr3
   )
 {
-  PROCESSOR_SMM_DESCRIPTOR  *Psd;
-  UINT32                    CpuSmiStack;
-  EFI_STATUS                Status;
+  PROCESSOR_SMM_DESCRIPTOR       *Psd;
+  UINT32                         CpuSmiStack;
+  EFI_STATUS                     Status;
   PER_CORE_MMI_ENTRY_STRUCT_HDR  *SmiEntryStructHdrPtr = NULL;
   UINT32                         SmiEntryStructHdrAddr;
   UINT32                         WholeStructSize;
@@ -297,7 +297,7 @@ InstallSmiHandler (
   }
 
   if (gSmiHandlerIdtr == NULL) {
-    gSmiHandlerIdtr = AllocateCodePages (1);
+    gSmiHandlerIdtr        = AllocateCodePages (1);
     gSmiHandlerIdtr->Base  = IdtBase;
     gSmiHandlerIdtr->Limit = (UINT16)(IdtSize - 1);
   }
@@ -308,7 +308,7 @@ InstallSmiHandler (
   *(UINTN *)(UINTN)CpuSmiStack = CpuIndex;
   DEBUG ((DEBUG_ERROR, "[%a] - Set stack address (0x%x) to 0x%lx.\n", __func__, CpuSmiStack, CpuIndex));
 
-  if (mMmiEntryBaseAddress == 0 || mMmiEntrySize == 0) {
+  if ((mMmiEntryBaseAddress == 0) || (mMmiEntrySize == 0)) {
     //
     // Lookup the MMI entry in the FV HOBs if not done before.
     //
@@ -359,7 +359,7 @@ InstallSmiHandler (
   Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = 0;
   Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = 0;
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)gSmiHandlerIdtr;
-  Fixup64Ptr[FIXUP64_HOB_START]         = (UINT64)(UINTN)mMmHobStart;
+  Fixup64Ptr[FIXUP64_HOB_START]        = (UINT64)(UINTN)mMmHobStart;
 
   Fixup8Ptr[FIXUP8_gPatchXdSupported] = TRUE;
   if (StandardSignatureIsAuthenticAMD ()) {

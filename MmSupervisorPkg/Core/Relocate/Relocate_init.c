@@ -177,11 +177,11 @@ SetupSmiEntryExit (
   UINT32      RegEax;
   // UINT32      RegEbx;
   // UINT32      RegEcx;
-  UINT32      RegEdx;
-  UINTN       FamilyId;
-  UINTN       ModelId;
-  UINT32      Cr3;
-  UINT8       *Cpl3Stacks;
+  UINT32  RegEdx;
+  UINTN   FamilyId;
+  UINTN   ModelId;
+  UINT32  Cr3;
+  UINT8   *Cpl3Stacks;
 
   PERF_FUNCTION_BEGIN ();
 

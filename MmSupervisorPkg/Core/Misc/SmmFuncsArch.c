@@ -117,4 +117,3 @@ InitGdt (
   *GdtStepSize = GdtTableStepSize;
   return GdtTssTables;
 }
-

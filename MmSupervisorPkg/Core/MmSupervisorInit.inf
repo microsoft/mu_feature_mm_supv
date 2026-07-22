@@ -221,7 +221,6 @@
   gMmSupvUnblockRegionHobGuid                   ## SOMETIMES_CONSUMES
   gMmSupervisorCoreGuid                         ## CONSUMES
   gMmSupervisorUserGuid                         ## CONSUMES
-  gMmSupervisorInitGuid                         ## CONSUMES
 
   ## SOMETIMES_PRODUCES   ## GUID # Install protocol
   ## SOMETIMES_PRODUCES   ## GUID # SmiHandlerRegister

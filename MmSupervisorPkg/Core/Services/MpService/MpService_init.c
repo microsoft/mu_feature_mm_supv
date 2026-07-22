@@ -31,15 +31,15 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
   NULL,                                         // Pointer to CpuSaveStateSize array
   NULL,                                         // Pointer to CpuSaveState array
   {
-    { 0    }
+    { 0 }
   },                                            // SmmReservedSmramRegion
   {
     // SmmStartupThisAp,                           // SmmCoreEntryContext.SmmStartupThisAp
     NULL,                           // SmmCoreEntryContext.SmmStartupThisAp
-    0,                                          // SmmCoreEntryContext.CurrentlyExecutingCpu
-    0,                                          // SmmCoreEntryContext.NumberOfCpus
-    NULL,                                       // SmmCoreEntryContext.CpuSaveStateSize
-    NULL                                        // SmmCoreEntryContext.CpuSaveState
+    0,                              // SmmCoreEntryContext.CurrentlyExecutingCpu
+    0,                              // SmmCoreEntryContext.NumberOfCpus
+    NULL,                           // SmmCoreEntryContext.CpuSaveStateSize
+    NULL                            // SmmCoreEntryContext.CpuSaveState
   },
   NULL,                                         // SmmCoreEntry
   NULL,                                         // SmmUserEntry
@@ -47,7 +47,7 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
   //   mSmmCpuPrivateData.SmmReservedSmramRegion,  // SmmConfiguration.SmramReservedRegions
   //   RegisterSmmEntry                            // SmmConfiguration.RegisterSmmEntry
   // },
-  NULL,                                         // pointer to Ap Wrapper Func array
+  NULL,                               // pointer to Ap Wrapper Func array
   NULL,                               // List_Entry for Tokens.
 };
 
@@ -67,8 +67,8 @@ SMM_CPU_SEMAPHORES           mSmmCpuSemaphores;
 UINTN                        mSemaphoreSize;
 SPIN_LOCK                    *mPFLock = NULL;
 // SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
-BOOLEAN                      mMachineCheckSupported = FALSE;
-MM_COMPLETION                mSmmStartupThisApToken;
+BOOLEAN        mMachineCheckSupported = FALSE;
+MM_COMPLETION  mSmmStartupThisApToken;
 
 //
 // Processor specified by mPackageFirstThreadIndex[PackageIndex] will do the package-scope register check.
