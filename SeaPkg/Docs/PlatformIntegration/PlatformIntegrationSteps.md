@@ -283,21 +283,21 @@ This section describes the general guideline on platform integration instruction
 
 #### Platform level library
 
-As the supervised MM is moving to work with standard Standalone MM IPL from EDK2, the requirements from EDK2 Standalone MM
-will apply to this scenario.
+As the supervised MM is moving to work with standard Standalone MM IPL from EDK2, the requirements from EDK2 Standalone
+MM will apply to this scenario.
 
 The main difference here is that the HOBs exposed to Standalone MM environment is different from the `MmIplPei`, which will
 pass in all the available HOBs from PEI phase, whereas the EDK2 Standalone introduced the IPL with a platform level library
-`MmPlatformHobProducerLib`, which will enforce the platform to "produce" HOBs available to Standalone MM, on top of the HOBs
-already covered by the IPL.
+`MmPlatformHobProducerLib`, which will enforce the platform to "produce" HOBs available to Standalone MM, on top of the
+HOBs already covered by the IPL.
 
-See this implementation from (EDK2 IPL)[https://github.com/tianocore/edk2/blob/4e90b65e7b7bf0c090d3bc5142a684acac56345f/StandaloneMmPkg/Drivers/StandaloneMmIplPei/MmFoundationHob.c#L912]
+See this implementation from [EDK2 IPL](https://github.com/tianocore/edk2/blob/4e90b65e7b7bf0c090d3bc5142a684acac56345f/StandaloneMmPkg/Drivers/StandaloneMmIplPei/MmFoundationHob.c#L912)
 
-Thus within the scope of MM supervisor, the `MmPlatformHobProducerLib` will at least need to produce the following HOBs from
-PEI environment:
+Thus within the scope of MM supervisor, the `MmPlatformHobProducerLib` will at least need to produce the following HOBs
+from PEI environment:
 
 | HOB Type | Region | Note |
-|-|-|-|
+| - | - | - |
 | EFI_HOB_TYPE_RESOURCE_DESCRIPTOR | Certain MMIO regions | A few examples are APIC, PCIe (i.e. serial register) |
 | EFI_HOB_TYPE_RESOURCE_DESCRIPTOR | MMRAM regions | The content from `gEfiMmPeiMmramMemoryReserveGuid` or `gEfiSmmSmramMemoryGuid` |
 | EFI_HOB_TYPE_GUID_EXTENSION | Advanced Logger information | To initialize Advanced logger in user space, under `gAdvancedLoggerHobGuid` |
@@ -344,7 +344,7 @@ The changes below assume that the platform has already integrated the C based MM
 Note that if you have any reference to Standalone MM drivers in the form of binary releases (i.e. crypto), please switch
 to "non-supervised" flavor, which will allow the entrypoint to transition normally rather than a call gate involved implementation.
 
-#### Platform FDF statements
+#### Platform FDF statements for Rust Supervisor
 
 1. Modify the FDF sections below.
 
