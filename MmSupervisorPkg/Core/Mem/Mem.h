@@ -560,6 +560,21 @@ SetCommonBufferRegionAttribute (
   );
 
 /*
+  Per-build pass that locks down the MM Supervisor Core image region.
+
+  Defined separately in SmmCpuMemoryManagement_core.c and
+  SmmCpuMemoryManagement_init.c so that only the symbol appropriate for the
+  current INF is linked in.  The shared SmmCpuMemoryManagement.c (a separate
+  translation unit in both builds) calls this function, so a public prototype
+  is required here.
+*/
+VOID
+EFIAPI
+PatchMmSupervisorCoreRegion (
+  VOID
+  );
+
+/*
 Helper function to mark regions needs protection to be certain attributes
 */
 EFI_STATUS

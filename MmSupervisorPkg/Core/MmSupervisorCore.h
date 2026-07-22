@@ -234,14 +234,20 @@ typedef struct {
 //
 // MM Core Global Variables
 //
-extern MM_COMM_BUFFER_STATUS             *mMmCommSupvMailboxBufferStatus;
-extern MM_COMM_BUFFER_STATUS             *mMmCommUserMailboxBufferStatus;
-extern EFI_MM_SYSTEM_TABLE               gMmCoreMmst;
-extern EFI_MM_SYSTEM_TABLE               *gMmUserMmst;
-extern LIST_ENTRY                        gHandleList;
-extern MM_SUPV_USER_COMMON_BUFFER        *SupervisorToUserDataBuffer;
-extern MM_CORE_MMI_HANDLERS              mMmCoreMmiHandlers[];
-extern EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
+extern MM_COMM_BUFFER_STATUS       *mMmCommSupvMailboxBufferStatus;
+extern MM_COMM_BUFFER_STATUS       *mMmCommUserMailboxBufferStatus;
+extern EFI_MM_SYSTEM_TABLE         gMmCoreMmst;
+extern EFI_MM_SYSTEM_TABLE         *gMmUserMmst;
+extern LIST_ENTRY                  gHandleList;
+extern MM_SUPV_USER_COMMON_BUFFER  *SupervisorToUserDataBuffer;
+extern MM_CORE_MMI_HANDLERS        mMmCoreMmiHandlers[];
+extern EFI_MM_DRIVER_ENTRY         *mMmCoreDriverEntry;
+//
+// mMmUserDriverEntry is defined only by the Init build (see MmSupervisorInit.c).
+// The Core build never references it, but the extern is harmless to declare here
+// so that the shared header can be consumed by both modules.
+//
+extern EFI_MM_DRIVER_ENTRY               *mMmUserDriverEntry;
 extern BOOLEAN                           mMmReadyToLockDone;
 extern BOOLEAN                           mCoreInitializationComplete;
 extern EFI_MEMORY_DESCRIPTOR             mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
@@ -970,7 +976,8 @@ SetupSmiEntryExit (
 VOID
 EFIAPI
 LockMmCoreBeforeExit (
-  VOID
+  EFI_PHYSICAL_ADDRESS  MmHobStart,
+  UINT64                *RemainingSize
   );
 
 EFI_STATUS

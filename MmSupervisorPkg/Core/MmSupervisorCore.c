@@ -1288,7 +1288,7 @@ MmSupervisorMain (
 
   CoalesceLooseExceptionHandlers ();
 
-  LockMmCoreBeforeExit ();
+  LockMmCoreBeforeExit (0, NULL);
 
   mCoreInitializationComplete = TRUE;
 

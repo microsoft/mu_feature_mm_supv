@@ -330,6 +330,43 @@ SmmCommunicationCommunicate (
 }
 
 /**
+  Dispatch StandaloneMm drivers in MM.
+
+  StandaloneMm core will exit when MmEntryPoint was registered in CPU
+  StandaloneMm driver, and issue a software SMI by communicate mode to
+  dispatch other StandaloneMm drivers.
+
+  @retval  EFI_SUCCESS      Dispatch StandaloneMm drivers successfully.
+  @retval  Other            Dispatch StandaloneMm drivers failed.
+
+**/
+EFI_STATUS
+MmIplDispatchMmDrivers (
+  VOID
+  )
+{
+  EFI_STATUS                 Status;
+  UINTN                      Size;
+  EFI_MM_COMMUNICATE_HEADER  CommunicateHeader;
+
+  //
+  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&CommunicateHeader.HeaderGuid, &gEventMmDispatchGuid);
+  CommunicateHeader.MessageLength = 1;
+  CommunicateHeader.Data[0]       = 0;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (CommunicateHeader);
+  Status = SmmCommunicationCommunicateWorker (FALSE, &CommunicateHeader, &Size);
+  ASSERT_EFI_ERROR (Status);
+
+  return Status;
+}
+
+/**
   This is the callback function on end of PEI.
 
   This callback is used for call MmEndOfPeiHandler in standalone MM core.
@@ -523,7 +560,8 @@ MmDriverDispatchNotify (
   Searches MmCore in all published firmware Volumes and loads the first
   instance that contains MmCore.
 
-  @param[in]  Buffer    Placeholder for address of MM core located by this routine.
+  @param[out]  Buffer          Placeholder for address of MM core located by this routine.
+  @param[out]  MmCoreFileName  Placeholder for the GUID of the MM core file located by this routine.
 
   @retval EFI_SUCCESS   This function located MM core successfully.
   @retval Others        Errors returned by PeiServices routines.
@@ -531,13 +569,18 @@ MmDriverDispatchNotify (
 **/
 EFI_STATUS
 MmIplPeiFindMmCore (
-  OUT VOID  **Buffer
+  OUT VOID      **Buffer,
+  OUT EFI_GUID  *MmCoreFileName
   )
 {
   EFI_STATUS           Status;
   UINTN                Instance;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
+
+  if ((Buffer == NULL) || (MmCoreFileName == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Instance = 0;
   while (TRUE) {
@@ -561,17 +604,21 @@ MmIplPeiFindMmCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_MM_CORE_STANDALONE, VolumeHandle, &FileHandle);
     if (!EFI_ERROR (Status)) {
-      //
-      // Find MmCore FileHandle in this volume, then we skip other firmware volume and
-      // return the FileHandle. Search Section now.
-      //
-      Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
+      ASSERT (FileHandle != NULL);
+      if (FileHandle != NULL) {
+        CopyGuid (MmCoreFileName, &((EFI_FFS_FILE_HEADER *)FileHandle)->Name);
+        DEBUG ((DEBUG_INFO, "Mm core has file name as %g\n", MmCoreFileName));
+        //
+        // Find MmCore FileHandle in this volume, then we skip other firmware volume and
+        // return the FileHandle. Search Section now.
+        //
+        Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
+        if (EFI_ERROR (Status)) {
+          break;
+        }
 
-      return EFI_SUCCESS;
-      break;
+        return EFI_SUCCESS;
+      }
     }
 
     //
@@ -737,6 +784,7 @@ ExecuteMmCoreFromMmram (
   UINTN                                 PageCount;
   STANDALONE_MM_FOUNDATION_ENTRY_POINT  EntryPoint;
   VOID                                  *HobStart;
+  EFI_GUID                              MmCoreFileName;
 
   DEBUG ((DEBUG_INFO, "%a Enters...\n", __func__));
   //
@@ -744,7 +792,7 @@ ExecuteMmCoreFromMmram (
   //
   SourceBuffer = NULL;
   // MU_CHANGE: The MM core address found routine is updated with PEI services
-  Status = MmIplPeiFindMmCore (&SourceBuffer);
+  Status = MmIplPeiFindMmCore (&SourceBuffer, &MmCoreFileName);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __func__, Status));
     goto Exit;
@@ -818,7 +866,7 @@ ExecuteMmCoreFromMmram (
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
 
       BuildModuleHob (
-        &gMmSupervisorCoreGuid,
+        &MmCoreFileName,
         ImageContext.ImageAddress,
         (UINT64)EFI_PAGES_TO_SIZE (PageCount),
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
@@ -1341,6 +1389,10 @@ MmIplPeiEntry (
   if (!EFI_ERROR (Status)) {
     Status = MmDriverDispatchNotify ();
     DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
+    if (Status == EFI_NOT_FOUND) {
+      DEBUG ((DEBUG_WARN, "No MM drivers found to dispatch from supervisor\n"));
+      Status = EFI_SUCCESS;
+    }
   }
 
   //
@@ -1366,6 +1418,12 @@ MmIplPeiEntry (
   // Create the set of ppi and event notifications that the SMM IPL requires
   //
   Status = (*PeiServices)->NotifyPpi (PeiServices, &mPeiMmIplNotifyList);
+  ASSERT_EFI_ERROR (Status);
+
+  //
+  // Dispatch StandaloneMm drivers in MM
+  //
+  Status = MmIplDispatchMmDrivers ();
   ASSERT_EFI_ERROR (Status);
 
   return EFI_SUCCESS;

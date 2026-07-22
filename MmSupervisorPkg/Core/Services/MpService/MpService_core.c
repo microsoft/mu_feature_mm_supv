@@ -702,11 +702,6 @@ BSPHandler (
   InitializeDebugAgent (DEBUG_AGENT_INIT_EXIT_SMI, NULL, NULL);
 
   //
-  // Perform pending operations for hot-plug
-  //
-  SmmCpuUpdate ();
-
-  //
   // Clear the Present flag of BSP
   //
   *(mSmmMpSyncData->CpuData[CpuIndex].Present) = FALSE;

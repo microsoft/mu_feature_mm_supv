@@ -14,26 +14,16 @@
 #include "MmSupervisorCore.h"
 #include "Mem.h"
 #include "HeapGuard.h"
+#include "PageInternal.h"
 
 #define TRUNCATE_TO_PAGES(a)  ((a) >> EFI_PAGE_SHIFT)
 
 LIST_ENTRY  mMmMemoryMap = INITIALIZE_LIST_HEAD_VARIABLE (mMmMemoryMap);
 
 //
-// For GetMemoryMap()
+// For GetMemoryMap() -- MEMORY_MAP / MEMORY_MAP_SIGNATURE / gMemoryMap are
+// declared in PageInternal.h so that Page_init.c can walk the same list.
 //
-
-#define MEMORY_MAP_SIGNATURE  SIGNATURE_32('m','m','a','p')
-typedef struct {
-  UINTN              Signature;
-  LIST_ENTRY         Link;
-
-  BOOLEAN            FromStack;
-  BOOLEAN            IsSupervisorPage;
-  EFI_MEMORY_TYPE    Type;
-  UINT64             Start;
-  UINT64             End;
-} MEMORY_MAP;
 
 LIST_ENTRY  gMemoryMap = INITIALIZE_LIST_HEAD_VARIABLE (gMemoryMap);
 

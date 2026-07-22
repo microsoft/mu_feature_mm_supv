@@ -613,7 +613,7 @@ ConvertMemoryPageAttributes (
     // The only reason that PageTableMap returns RETURN_INVALID_PARAMETER here is to modify other attributes
     // of a non-present range but remains the non-present range still as non-present.
     //
-    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] is not permitted\n", BaseAddress, BaseAddress + Length));
+    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] to %x is not permitted\n", BaseAddress, BaseAddress + Length, Attributes));
   }
 
   ASSERT_RETURN_ERROR (Status);
@@ -948,7 +948,7 @@ GenSmmPageTable (
     //
     // Mark the 4KB guard page between known good stack and smm stack as non-present
     //
-    for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
+    for (Index = 0; Index < mNumberOfCpus; Index++) {
       GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
       Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
       ASSERT (Status == RETURN_SUCCESS);
@@ -1321,58 +1321,6 @@ PatchGdtIdtMap (
     Size,
     EFI_MEMORY_XP | EFI_MEMORY_SP
     );
-}
-
-VOID
-EFIAPI
-PatchMmSupervisorCoreRegion (
-  VOID
-  )
-{
-  //
-  // Patch MM Supervisor Core
-  //
-  EFI_STATUS  Status;
-
-  DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
-
-  //
-  // The range should have been set to RO/XP based on image record routines
-  // this is the last pass that makes sure the entire region is still in
-  // supervisor realm.
-  //
-  Status = SmmSetImagePageAttributes (mMmCoreDriverEntry, TRUE);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM core %r!!!\n", __func__, Status));
-    // We should not continue with this configuration, either hang the system or reboot
-    ResetCold ();
-    // Should not be here
-    CpuDeadLoop ();
-  }
-
-  Status = SmmSetMemoryAttributes (
-             mMmCoreDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
-
-  if (FirmwarePolicy == NULL) {
-    Status = EFI_SECURITY_VIOLATION;
-    ASSERT (FALSE);
-    return;
-  }
-
-  //
-  // Mark firmware policy pages as supervisor read only
-  // EFI_MEMORY_XP should be given as they are data pages
-  //
-  Status = SmmSetMemoryAttributes (
-             (EFI_PHYSICAL_ADDRESS)(UINTN)FirmwarePolicy,
-             (FirmwarePolicy->Size + EFI_PAGE_SIZE - 1) & ~(EFI_PAGE_SIZE -1),
-             EFI_MEMORY_RO | EFI_MEMORY_SP
-             );
-
-  DEBUG ((DEBUG_INFO, "%a - Exit - %r\n", __func__, Status));
 }
 
 VOID

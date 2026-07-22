@@ -26,7 +26,8 @@
             "StandaloneMmPkg/StandaloneMmPkg.dec",
             "UefiCpuPkg/UefiCpuPkg.dec",
             "MsWheaPkg/MsWheaPkg.dec",
-            "MmSupervisorPkg/MmSupervisorPkg.dec"
+            "MmSupervisorPkg/MmSupervisorPkg.dec",
+            "SeaPkg/SeaPkg.dec" # TODO: This should not be...
         ],
         "AcceptableDependencies-HOST_APPLICATION":[ # for host based unit tests
             "UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec"

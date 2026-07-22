@@ -115,50 +115,6 @@ SmmWhoAmI (
 }
 
 /**
-  Update the SMM CPU list per the pending operation.
-
-  This function is called after return from SMI handlers.
-**/
-VOID
-SmmCpuUpdate (
-  VOID
-  )
-{
-  UINTN  Index;
-
-  //
-  // Handle pending BSP switch operations
-  //
-  for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-    if (gSmmCpuPrivate->Operation[Index] == SmmCpuSwitchBsp) {
-      gSmmCpuPrivate->Operation[Index]    = SmmCpuNone;
-      mSmmMpSyncData->SwitchBsp           = TRUE;
-      mSmmMpSyncData->CandidateBsp[Index] = TRUE;
-    }
-  }
-
-  //
-  // Handle pending hot-add operations
-  //
-  for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-    if (gSmmCpuPrivate->Operation[Index] == SmmCpuAdd) {
-      gSmmCpuPrivate->Operation[Index] = SmmCpuNone;
-      mNumberOfCpus++;
-    }
-  }
-
-  //
-  // Handle pending hot-remove operations
-  //
-  for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-    if (gSmmCpuPrivate->Operation[Index] == SmmCpuRemove) {
-      gSmmCpuPrivate->Operation[Index] = SmmCpuNone;
-      mNumberOfCpus--;
-    }
-  }
-}
-
-/**
   Register exception handler.
 
   @param  This                  A pointer to the SMM_CPU_SERVICE_PROTOCOL instance.
