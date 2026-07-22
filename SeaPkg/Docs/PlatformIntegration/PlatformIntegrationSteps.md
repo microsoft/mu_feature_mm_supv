@@ -277,7 +277,7 @@ Note: There might be other silicon specific drivers a platform will need for the
   }
 ```
 
-### Integraion Guide for Rust-based Supervisor
+### Integration Guide for Rust-based Supervisor
 
 This section describes the general guideline on platform integration instructions.
 
