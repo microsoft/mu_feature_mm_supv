@@ -94,16 +94,7 @@
   Misc/SmmMpPerf.c
   Services/MpService/SyncTimer.c
 
-  # UnblockMemory has been 3-way split.  The shared list management and
-  # 2 byte-identical helpers live in Request/UnblockMemory.c; the Init
-  # build's divergent ProcessBlockPages / ProcessUnblockPages /
-  # IsWithinUnblockedRegion bodies plus the Init-only MmAddUnblckedMemoryList
-  # helper live in Request/UnblockMemory_init.c.  The corresponding Core
-  # bodies live in Request/UnblockMemory_core.c (built only by
-  # MmSupervisorCore.inf).
   Request/UnblockMemory.c
-  Request/UnblockMemory_init.c
-  Request/UnblockMemoryInternal.h
 
 [Packages]
   MdePkg/MdePkg.dec

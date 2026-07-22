@@ -113,6 +113,7 @@
   Services/CpuService/CpuService.c
   Services/CpuService/CpuService_core.c
   Services/CpuService/CpuService.h
+  Services/MpService/MpService_core.c
   Services/MpService/SyncTimer.c
 
   PrivilegeMgmt/PrivilegeMgmt.h
@@ -127,8 +128,6 @@
   Request/Request.h
   Request/RequestDispatcher.c
   Request/UnblockMemory.c
-  Request/UnblockMemory_core.c
-  Request/UnblockMemoryInternal.h
   Request/FetchPolicy.c
   Request/VersionInfo.c
   Request/UpdateCommBuffer.c
