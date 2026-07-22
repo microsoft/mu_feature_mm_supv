@@ -69,9 +69,7 @@
   Relocate/Relocate.h
   # Relocate/SmiEntry.nasm
   Relocate/SmiException.nasm
-  Relocate/SmramSaveState.c
   Relocate/SmramSaveState_init.c
-  Relocate/SmramSaveStateInternal.h
 
   Services/CpuService/CpuService.c
   Services/CpuService/CpuService.h

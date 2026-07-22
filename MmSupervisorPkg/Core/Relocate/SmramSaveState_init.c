@@ -29,7 +29,40 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Mem/Mem.h"
 #include "Services/MpService/MpService_init.h"
 #include "MmSupervisorCore.h"
-#include "SmramSaveStateInternal.h"
+
+typedef struct {
+  UINT64    Signature;                                      // Offset 0x00
+  UINT16    Reserved1;                                      // Offset 0x08
+  UINT16    Reserved2;                                      // Offset 0x0A
+  UINT16    Reserved3;                                      // Offset 0x0C
+  UINT16    SmmCs;                                          // Offset 0x0E
+  UINT16    SmmDs;                                          // Offset 0x10
+  UINT16    SmmSs;                                          // Offset 0x12
+  UINT16    SmmOtherSegment;                                // Offset 0x14
+  UINT16    Reserved4;                                      // Offset 0x16
+  UINT64    Reserved5;                                      // Offset 0x18
+  UINT64    Reserved6;                                      // Offset 0x20
+  UINT64    Reserved7;                                      // Offset 0x28
+  UINT64    SmmGdtPtr;                                      // Offset 0x30
+  UINT32    SmmGdtSize;                                     // Offset 0x38
+  UINT32    Reserved8;                                      // Offset 0x3C
+  UINT64    Reserved9;                                      // Offset 0x40
+  UINT64    Reserved10;                                     // Offset 0x48
+  UINT16    Reserved11;                                     // Offset 0x50
+  UINT16    Reserved12;                                     // Offset 0x52
+  UINT32    Reserved13;                                     // Offset 0x54
+  UINT64    Reserved14;                                     // Offset 0x58
+} PROCESSOR_SMM_DESCRIPTOR;
+
+extern CONST PROCESSOR_SMM_DESCRIPTOR  gcPsd;
+
+///
+/// Structure used to build a lookup table for the IOMisc width information
+///
+typedef struct {
+  UINT8                          Width;
+  EFI_SMM_SAVE_STATE_IO_WIDTH    IoWidth;
+} CPU_SMM_SAVE_STATE_IO_WIDTH;
 
 //
 // EFER register LMA bit
@@ -57,10 +90,7 @@ extern VOID  *SmiRendezvous;
 IA32_DESCRIPTOR  *gSmiHandlerIdtr = NULL;
 IA32_DESCRIPTOR  *mGdtrPtr        = NULL;
 
-//
-// mSmmSaveStateRegisterLma is defined in shared SmramSaveState.c.
-//
-extern UINT8  mSmmSaveStateRegisterLma;
+UINT8  mSmmSaveStateRegisterLma;
 
 EFI_PHYSICAL_ADDRESS  mMmiEntryBaseAddress;
 UINTN                 mMmiEntrySize;
