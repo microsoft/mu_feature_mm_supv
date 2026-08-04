@@ -184,7 +184,27 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
     /// Creates a new KeySymbol from the given key.
     pub fn build_key_symbol(&mut self, key: &config::Key) -> Result<file::KeySymbol> {
         let symbol = self.find_symbol(&key.symbol).clone();
-        Ok(file::KeySymbol::new(key.signature, symbol.address))
+        let mut address = symbol.address;
+
+        if let Some(field) = &key.field {
+            let type_information = &mut self.pdb.type_information()?;
+            let type_id = symbol.type_info.type_id().ok_or_else(|| {
+                anyhow!(
+                    "Symbol [{}] has no type information. Cannot resolve field [{}].",
+                    symbol.name(),
+                    field
+                )
+            })?;
+            let (field_offset, _) = Symbol::find_field_offset_and_size(
+                type_information,
+                &type_id,
+                field,
+                symbol.name(),
+            )?;
+            address += field_offset;
+        }
+
+        Ok(file::KeySymbol::new(key.signature, address))
     }
 
     /// Creates new zero content rules for padding that should always be all zeros.
@@ -1129,24 +1149,64 @@ mod test {
         let key = Key {
             symbol: "ABCDEFG".to_string(),
             signature: ['L', 'O', 'O', 'L'],
+            field: None,
         };
 
         // This will panic
         let _ = metadata.build_key_symbol(&key);
     }
     #[test]
-    fn test_build_key_symbol() {
+    fn test_build_key_symbol_without_field_uses_symbol_address() {
         let mut metadata = build_metadata();
+        let expected_address = metadata.find_symbol("mMmSupvPoolLists").address;
 
         let key = Key {
             symbol: "mMmSupvPoolLists".to_string(),
             signature: ['P', 'O', 'O', 'L'],
+            field: None,
         };
 
         let key_symbol = metadata
             .build_key_symbol(&key)
             .unwrap_or_else(|e| panic!("Failed to build key symbol: [{}]", e));
         assert_eq!(key_symbol.signature, 0x4c_4f_4f_50); // 'POOL'
+        assert_eq!(key_symbol.offset, expected_address);
+    }
+
+    #[test]
+    fn test_build_key_symbol_with_field_adds_field_offset() {
+        let mut metadata = build_metadata();
+        let symbol_address = metadata.find_symbol("mRootMmiEntry").address;
+        let key = Key {
+            symbol: "mRootMmiEntry".to_string(),
+            signature: ['L', 'I', 'S', 'T'],
+            field: Some("AllEntries".to_string()),
+        };
+
+        let key_symbol = metadata
+            .build_key_symbol(&key)
+            .unwrap_or_else(|e| panic!("Failed to build key symbol: [{}]", e));
+
+        assert_eq!(key_symbol.signature, 0x54_53_49_4c); // 'LIST'
+        assert_eq!(key_symbol.offset, symbol_address + 0x8);
+    }
+
+    #[test]
+    fn test_build_key_symbol_with_invalid_field_fails() {
+        let mut metadata = build_metadata();
+        let key = Key {
+            symbol: "mRootMmiEntry".to_string(),
+            signature: ['L', 'I', 'S', 'T'],
+            field: Some("NonExistentField".to_string()),
+        };
+
+        let error = metadata
+            .build_key_symbol(&key)
+            .expect_err("an invalid key field should fail");
+
+        assert!(error
+            .to_string()
+            .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]"));
     }
 
     #[test]
