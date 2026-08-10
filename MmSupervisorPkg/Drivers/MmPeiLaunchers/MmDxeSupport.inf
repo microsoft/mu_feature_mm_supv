@@ -65,5 +65,8 @@
   gMmSupervisorRequestHandlerGuid               ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
 
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdPeiMemoryBinsEnable  ## CONSUMES
+
 [Depex]
   gEfiSmmControl2ProtocolGuid

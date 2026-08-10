@@ -661,40 +661,42 @@ MmDxeSupportEntry (
   }
 
   // MU_CHANGE: MM_SUPV: We are just making sure this communication to supervisor does not fail.
-  Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __func__, Status));
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
+  if (!FeaturePcdGet (PcdPeiMemoryBinsEnable)) {
+    Status = UpdateDxeCommunicateBuffer (&VersionInfo, &NewCommBuffer);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to switch communication channel - %r\n", __func__, Status));
+      ASSERT_EFI_ERROR (Status);
+      return Status;
+    }
 
-  // Query it another time to make sure the change took effect
-  Status = QuerySupervisorVersion (&VersionInfo);
-  if (EFI_ERROR (Status)) {
-    ASSERT_EFI_ERROR (Status);
-    return Status;
-  }
+    // Query it another time to make sure the change took effect
+    Status = QuerySupervisorVersion (&VersionInfo);
+    if (EFI_ERROR (Status)) {
+      ASSERT_EFI_ERROR (Status);
+      return Status;
+    }
 
-  MmCommBufferUpdate = AllocateZeroPool (sizeof (*MmCommBufferUpdate));
-  if (MmCommBufferUpdate == NULL) {
-    return EFI_OUT_OF_RESOURCES;
-  }
+    MmCommBufferUpdate = AllocateZeroPool (sizeof (*MmCommBufferUpdate));
+    if (MmCommBufferUpdate == NULL) {
+      return EFI_OUT_OF_RESOURCES;
+    }
 
-  MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
-  MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
-  MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
-  MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+    MmCommBufferUpdate->Version                         = MM_COMMUNICATE_BUFFER_UPDATE_PROTOCOL_VERSION;
+    MmCommBufferUpdate->UpdatedCommBuffer.PhysicalStart = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
+    MmCommBufferUpdate->UpdatedCommBuffer.NumberOfPages = NewCommBuffer.NewCommBuffers[MM_USER_BUFFER_T].MemoryDescriptor.NumberOfPages;
+    MmCommBufferUpdate->UpdatedCommBuffer.Status        = NewCommBuffer.NewMmStatusBuff[MM_USER_BUFFER_T].MemoryDescriptor.PhysicalStart;
 
-  Status = gBS->InstallMultipleProtocolInterfaces (
-                  &ImageHandle,
-                  &gMmCommBufferUpdateProtocolGuid,
-                  MmCommBufferUpdate,
-                  NULL
-                  );
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __func__, Status));
-    FreePool (MmCommBufferUpdate);
-    return Status;
+    Status = gBS->InstallMultipleProtocolInterfaces (
+                    &ImageHandle,
+                    &gMmCommBufferUpdateProtocolGuid,
+                    MmCommBufferUpdate,
+                    NULL
+                    );
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "%a Failed to install MM_COMM_BUFFER_UPDATE_PROTOCOL - %r\n", __func__, Status));
+      FreePool (MmCommBufferUpdate);
+      return Status;
+    }
   }
 
   // MU_CHANGE: Since we already set up everything, directly move to protocol installation.
