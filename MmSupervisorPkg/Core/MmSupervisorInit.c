@@ -821,7 +821,7 @@ CreateArbitraryHob (
   PassDownData->MmSupvFirmwarePolicyBuffer     = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
   PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
 
-  PassDownData->MmiEntrypointSize = mMmiEntrySize;
+  PassDownData->MmiEntrypointSize = GetSmiHandlerSize ();
 
   *Length = *Length - NewLength;
 
