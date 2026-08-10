@@ -85,6 +85,7 @@ ReserveSupvCommBuffer (
   } else {
     CommRegionHob->MmCommonRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   }
+
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmCommonRegionAddr) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __func__, PageSize));
     ASSERT (FALSE);
@@ -99,6 +100,7 @@ ReserveSupvCommBuffer (
   } else {
     CommRegionHob->MmStatusRegionAddr = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
   }
+
   if (NULL == (VOID *)(UINTN)CommRegionHob->MmStatusRegionAddr) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
     ASSERT (FALSE);
@@ -173,6 +175,7 @@ ReserveUserCommBuffer (
   } else {
     CommRegionHob->PhysicalStart = (EFI_PHYSICAL_ADDRESS)(UINTN)AllocatePages ((UINTN)PageSize);
   }
+
   if (NULL == (VOID *)(UINTN)CommRegionHob->PhysicalStart) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer of 0x%x pages failed!\n", __func__, PageSize));
     ASSERT (FALSE);
@@ -187,6 +190,7 @@ ReserveUserCommBuffer (
   } else {
     CommRegionStatus = (MM_COMM_BUFFER_STATUS *)(UINTN)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (MM_COMM_BUFFER_STATUS)));
   }
+
   if (NULL == (VOID *)CommRegionStatus) {
     DEBUG ((DEBUG_ERROR, "%a Request of allocating common buffer status failed!\n", __func__));
     ASSERT (FALSE);
