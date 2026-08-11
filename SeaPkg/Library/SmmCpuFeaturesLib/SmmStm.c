@@ -869,17 +869,5 @@ SmmCpuFeaturesCompleteSmmReadyToLock (
     DEBUG ((DEBUG_ERROR, "[%a]   Failed to set MSEG region at 0x%p of %x bytes to be read-only - %r.\n", __func__, mMsegBase, mMsegSize, Status));
   }
 
-  // Pin the IDTR consumed by the MMI entry so the IDT cannot be repointed after lock
-  if (mSmiHandlerIdtrPtr != NULL) {
-    Status = SmmSetMemoryAttributes (
-               (EFI_PHYSICAL_ADDRESS)(UINTN)mSmiHandlerIdtrPtr,
-               EFI_PAGE_SIZE,
-               EFI_MEMORY_RO | EFI_MEMORY_XP | EFI_MEMORY_SP
-               );
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "[%a]   Failed to set MMI handler IDTR page at 0x%p to be read-only - %r.\n", __func__, mSmiHandlerIdtrPtr, Status));
-    }
-  }
-
   mLockLoadMonitor = TRUE;
 }
