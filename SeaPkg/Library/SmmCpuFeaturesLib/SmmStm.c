@@ -73,7 +73,7 @@ extern UINT32  mCetInterruptSsp;
 extern UINT32  mCetInterruptSspTable;
 
 extern SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy;
-extern VOID *mMmHobStart;
+extern VOID                              *mMmHobStart;
 
 VOID
 EFIAPI
@@ -87,7 +87,7 @@ CpuSmmDebugExit (
   IN UINTN  CpuIndex
   );
 
-extern VOID   *SmiRendezvous;
+extern VOID  *SmiRendezvous;
 
 EFI_STATUS
 SmmSetMemoryAttributes (
@@ -556,7 +556,7 @@ SmmCpuFeaturesInstallSmiHandler (
     Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = 0;
     Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)mSmiHandlerIdtrPtr;
     Fixup64Ptr[FIXUP64_HOB_START]        = (UINT64)(UINTN)mMmHobStart;
-  
+
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = FALSE;
     Fixup8Ptr[FIXUP8_gPatchXdSupported]  = TRUE;
   } else {
@@ -566,7 +566,7 @@ SmmCpuFeaturesInstallSmiHandler (
     Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&mXdSupported;
     Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
     Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)mSmiHandlerIdtrPtr;
-  
+
     Fixup8Ptr[FIXUP8_gPatchXdSupported]  = mXdSupported;
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;
   }
