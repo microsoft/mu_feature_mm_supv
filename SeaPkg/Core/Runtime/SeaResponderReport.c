@@ -605,27 +605,49 @@ SeaResponderReport (
   }
 
   // MM debug entry should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
-    Status = EFI_SECURITY_VIOLATION;
-    goto Exit;
-  }
+  if (MmiEntryStructHdr->HeaderVersion <= MMI_ENTRY_STRUCT_V4) {
+    Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
+    if (EFI_ERROR (Status) || !IsInside) {
+      DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
 
-  // MM debug exit should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], MmSupervisorBase, MmSupervisorImageSize));
-    Status = EFI_SECURITY_VIOLATION;
-    goto Exit;
+    // MM debug exit should be in the MM CORE region
+    Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], sizeof (UINT64), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
+    if (EFI_ERROR (Status) || !IsInside) {
+      DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT], MmSupervisorBase, MmSupervisorImageSize));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+  } else {
+    if (Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] != 0) {
+      DEBUG ((DEBUG_ERROR, "%a MM debug entry 0x%p is not valid for header version < 0x0002!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+
+    if (Fixup64Ptr[FIXUP64_SMM_DBG_EXIT] != 0) {
+      DEBUG ((DEBUG_ERROR, "%a MM debug exit 0x%p is not valid for header version < 0x0002!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
   }
 
   // MM IDTR should be in the MM CORE region
-  Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
-  if (EFI_ERROR (Status) || !IsInside) {
-    DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
-    Status = EFI_SECURITY_VIOLATION;
-    goto Exit;
+  if (MmiEntryStructHdr->HeaderVersion <= MMI_ENTRY_STRUCT_V4) {
+    Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
+    if (EFI_ERROR (Status) || !IsInside) {
+      DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+  } else {
+    if (!IsBufferInsideMmram (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR))) {
+      DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p is not inside MMRAM for header version < 0x0002!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR]));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
   }
 
   // The MMI entry stub is checked.

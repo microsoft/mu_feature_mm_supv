@@ -61,7 +61,6 @@ extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
 extern SMM_CPU_PRIVATE_DATA         *gSmmCpuPrivate;
 extern UINTN                        mSmmMpSyncDataSize;
 extern LIST_ENTRY                   mDiscoveredList;
-extern UINTN                        mMmiEntrySize;
 
 EFI_STATUS
 EFIAPI
@@ -821,7 +820,7 @@ CreateArbitraryHob (
   PassDownData->MmSupvFirmwarePolicyBuffer     = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
   PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
 
-  PassDownData->MmiEntrypointSize = mMmiEntrySize;
+  PassDownData->MmiEntrypointSize = GetSmiHandlerSize ();
 
   *Length = *Length - NewLength;
 

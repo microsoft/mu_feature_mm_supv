@@ -516,7 +516,8 @@ SetupSmiEntryExit (
   }
 
   if (mSmmInitialized == NULL) {
-    mSmmInitialized = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
+    mSmmInitialized = (volatile BOOLEAN *)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (BOOLEAN) * mMaxNumberOfCpus));
+    ZeroMem ((VOID *)(UINTN)mSmmInitialized, sizeof (BOOLEAN) * mMaxNumberOfCpus);
   }
 
   ASSERT (mSmmInitialized != NULL);

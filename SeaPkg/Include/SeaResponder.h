@@ -39,6 +39,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define FIXUP8_OFFSET6_RSVD                      6
 #define FIXUP8_OFFSET7_RSVD
 
+#define MMI_ENTRY_STRUCT_V4       4
 #define MMI_ENTRY_STRUCT_VERSION  5
 
 #define SEA_SPEC_VERSION_MAJOR  1
