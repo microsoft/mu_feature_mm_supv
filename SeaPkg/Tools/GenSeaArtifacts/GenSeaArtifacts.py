@@ -18,6 +18,8 @@ import json
 from pathlib import Path
 import shutil
 
+import pefile
+
 from edk2toolext.environment.plugintypes.uefi_helper_plugin import IUefiHelperPlugin
 from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
@@ -107,7 +109,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
 
             # MM supervisor core hash patching
             mm_supv_file = mm_supervisor_build_dir / "MmSupervisorCore.efi"
-            mm_supv_core_hash = calculate_file_hash(mm_supv_file)
+            mm_supv_core_hash = calculate_loadable_image_hash(mm_supv_file)
             hex_bytes = bytes.fromhex(mm_supv_core_hash)
             with open(temp_hash_dir, 'wb') as f:
                 f.write(hex_bytes)
@@ -333,3 +335,47 @@ def calculate_file_hash(file: Path, offset: int = 0, length: int = -1):
                 length -= len(data)
             hasher.update(data)
     return hasher.hexdigest()
+
+
+def calculate_loadable_image_hash(file: Path):
+    """Calculates the hash of a PE/COFF image over only the bytes a loader can reproduce.
+
+    Each section's raw data is padded out to FileAlignment, but a loader only copies
+    min(VirtualSize, SizeOfRawData) bytes, so that padding never reaches memory. Linkers do
+    not agree on what to leave there: MSVC link.exe writes zeros, while lld-link fills the
+    gaps and the file-alignment tail of executable sections with 0xCC. Code that reconstructs the file
+    image from memory, such as the SEA load reversion, can only produce zeros there, so the
+    padding is zeroed before hashing to keep the reference limited to what is attestable.
+
+    Args:
+        file: Path to the PE/COFF image.
+
+    Returns:
+        The hash of the canonicalized image.
+
+    Raises:
+        FileNotFoundError: The file does not exist
+        ValueError: The file is not a PE/COFF image, or a section extends past its end
+    """
+    if not file.exists():
+        raise FileNotFoundError(file)
+
+    data = bytearray(file.read_bytes())
+    try:
+        image = pefile.PE(data=data, fast_load=True)
+    except pefile.PEFormatError as error:
+        raise ValueError(f"{file} is not a valid PE/COFF image: {error}") from error
+
+    for index, section in enumerate(image.sections):
+        virtual_size = section.Misc_VirtualSize
+        raw_size = section.SizeOfRawData
+        raw_offset = section.PointerToRawData
+        if virtual_size == 0 or raw_size <= virtual_size:
+            continue
+        start = raw_offset + virtual_size
+        end = raw_offset + raw_size
+        if end > len(data):
+            raise ValueError(f"{file} section {index} extends past the end of the file.")
+        data[start:end] = bytes(end - start)
+
+    return hashlib.new(HASH_ALGORITHM, data).hexdigest()
