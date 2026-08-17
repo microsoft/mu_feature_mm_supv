@@ -26,6 +26,7 @@ from edk2toollib.utility_functions import RunCmd, RunPythonScript
 
 HASH_ALGORITHM = "sha256"
 AUX_CONFIG_NAME = "AuxConfig.toml"
+MM_SUPERVISOR_CORE_NAME = "MmSupervisorCore"
 
 
 class GenSeaArtifacts(IUefiHelperPlugin):
@@ -44,7 +45,8 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         mm_supervisor_build_dir: Path,
         mmi_file_path: Path,
         out_path: Path,
-        workspace=None
+        workspace=None,
+        supervisor_name=MM_SUPERVISOR_CORE_NAME,
     ):
         """Generates SEA artifacts.
 
@@ -63,13 +65,14 @@ class GenSeaArtifacts(IUefiHelperPlugin):
             mmi_file_path: Path to MmiEntrySea.bin file.
             out_path: Path to place all generated artifacts.
             workspace: Path to the workspace. If not provided, the current directory is used.
+            supervisor_name: Name of the supervisor. If not provided, a default name is used.
         """
         try:
             inc_file_path = out_path / "MmArtifacts.dsc.inc"
             temp_hash_dir = out_path / "temp_hash.bin"
             temp_out_dir = out_path / "temp_out.inc"
 
-            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, out_path, workspace=workspace)
+            aux_path = generate_aux_file(aux_config_path, mm_supervisor_build_dir, scopes, out_path, workspace=workspace, supervisor_name=supervisor_name)
 
             # Copy the aux configuration file to the same directory as the aux file.
             shutil.copy2(aux_config_path, out_path / AUX_CONFIG_NAME)
@@ -108,7 +111,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
                 o.write("gEfiSeaPkgTokenSpaceGuid.PcdMmiEntryBinSize|0x%08X" % os.path.getsize(mmi_file_path))
 
             # MM supervisor core hash patching
-            mm_supv_file = mm_supervisor_build_dir / "MmSupervisorCore.efi"
+            mm_supv_file = mm_supervisor_build_dir / f"{supervisor_name}.efi"
             mm_supv_core_hash = calculate_loadable_image_hash(mm_supv_file)
             hex_bytes = bytes.fromhex(mm_supv_core_hash)
             with open(temp_hash_dir, 'wb') as f:
@@ -244,21 +247,22 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
     @staticmethod
-    def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, pecoff_validation_lib_build_dir: Path, workspace = None):
+    def generate_test_aux_binary(output_path: Path, mm_supervisor_build_dir: Path, pecoff_validation_lib_build_dir: Path, workspace = None, supervisor_name=MM_SUPERVISOR_CORE_NAME):
         """Generates the test-aux binary.
 
         Args:
             output_path (Path): Path to place the test-aux binary
             mm_supervisor_build_dir (Path): Path to the MM Supervisor build output.
-            sea_build_dir (Path): Path to the Sea Package build output.
+            pecoff_validation_lib_build_dir (Path): Path to the PECOFF validation library build output.
             workspace (Path): Path to the workspace. If not provided, the current directory is used.
+            supervisor_name: Name of the supervisor. If not provided, a default name is used.
         """
 
         manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
         os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(pecoff_validation_lib_build_dir)
-        os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.pdb")
-        os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / "MmSupervisorCore.efi")
+        os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / f"{supervisor_name}.pdb")
+        os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / f"{supervisor_name}.efi")
         os.environ['RUSTC_BOOTSTRAP'] = str("1")
 
         args = 'build --release'
@@ -276,7 +280,7 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         return 0
 
 
-def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path, workspace = None):
+def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scopes: list[str], output_dir: Path, workspace = None, supervisor_name=MM_SUPERVISOR_CORE_NAME):
     """Generates the auxiliary file for the MmsupervisorCore.
 
     Args:
@@ -284,18 +288,19 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
         mm_supervisor_build_dir: Path to the MM Supervisor build output.
         scopes: A list of scopes to activate for rule filtering. See create-aux --help for more information.
         output_dir: Path to place the artifacts.
+        supervisor_name: Name of the supervisor. If not provided, a default name is used.
 
     Raises:
         RuntimeError: if create-aux fails
     """
 
-    output_path = output_dir / 'MmSupervisorCore.aux'
+    output_path = output_dir / f'{supervisor_name}.aux'
     manifest_path = Path(workspace if workspace else Path(__file__).parent) / "Cargo.toml"
 
     args = f"run --manifest-path {str(manifest_path)}"
     args += " --bin create-aux --"
-    args += f" --pdb {str(mm_supervisor_build_dir / 'MmSupervisorCore.pdb')}"
-    args += f" --efi {str(mm_supervisor_build_dir / 'MmSupervisorCore.efi')}"
+    args += f" --pdb {str(mm_supervisor_build_dir / f'{supervisor_name}.pdb')}"
+    args += f" --efi {str(mm_supervisor_build_dir / f'{supervisor_name}.efi')}"
     args += f" --output {str(output_path)}"
     args += f" --config {str(aux_config_path)}"
     for scope in scopes: 
