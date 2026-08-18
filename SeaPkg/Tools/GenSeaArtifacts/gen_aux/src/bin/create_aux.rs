@@ -79,10 +79,43 @@ fn main() -> Result<()> {
     if config.config.no_missing_rules {
         let missing = report.segments(|s| !s.covered());
         if !missing.is_empty() {
-            log::error!(
-                "The following symbols are missing rules in the config file: {:#?}",
-                missing
-            );
+            log::error!("The following regions are not covered by any rule:");
+            for segment in missing.iter() {
+                let size = segment.end() - segment.start();
+                if segment.symbol().is_empty() {
+                    // Nothing names this region, so report what it holds. A region that is not
+                    // zero is not padding, whatever the absence of a name might suggest.
+                    let content = metadata
+                        .loaded_image_range(segment.start(), segment.end())
+                        .map(|bytes| {
+                            bytes
+                                .iter()
+                                .take(16)
+                                .map(|byte| format!("{:02X}", byte))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        })
+                        .unwrap_or_default();
+                    log::error!(
+                        "  [{:#x}..{:#x}] ({:#x} bytes) is named by neither the PDB file nor the \
+                         linker map, and holds [{}{}]. Add a rule for the symbol that owns it; if \
+                         the PDB file does not name it, supply a linker map with `--map`.",
+                        segment.start(),
+                        segment.end(),
+                        size,
+                        content,
+                        if size > 16 { " ..." } else { "" }
+                    );
+                } else {
+                    log::error!(
+                        "  [{:#x}..{:#x}] ({:#x} bytes) {}",
+                        segment.start(),
+                        segment.end(),
+                        size,
+                        segment.symbol()
+                    );
+                }
+            }
             return Err(anyhow::anyhow!(
                 "Missing rules in the config file. See the log for details."
             ));
