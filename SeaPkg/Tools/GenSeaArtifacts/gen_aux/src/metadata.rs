@@ -131,12 +131,11 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         let symbol = self.find_symbol(&rule.symbol).clone();
         self.validate_rule(&symbol, rule)?;
 
+        let extent = self.rule_extent(&symbol, rule)?;
+
         let mut ret = Vec::new();
 
-        let type_information = &mut self.pdb.type_information()?;
-        let element_count = symbol.type_info.element_count();
-
-        for i in 0..element_count {
+        for i in 0..extent.count {
             if !rule
                 .array
                 .as_ref()
@@ -147,24 +146,12 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 continue;
             }
 
-            let mut offset = 0;
-            let mut size = symbol.type_info.element_size();
-
-            if let Some(field) = &rule.field {
-                let (field_offset, total_size) = Symbol::find_field_offset_and_size(
-                    type_information,
-                    &symbol.type_info.type_id().unwrap(),
-                    field,
-                    symbol.name(),
-                )?;
-                offset += field_offset;
-                size = total_size;
-            }
+            let size = extent.size;
 
             let validation_type = if rule
                 .array
                 .as_ref()
-                .is_some_and(|a| a.sentinel && i == element_count - 1)
+                .is_some_and(|a| a.sentinel && i == extent.count - 1)
             {
                 file::ValidationType::Content {
                     content: vec![0; size as usize],
@@ -174,7 +161,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             };
 
             let entry = file::ImageValidationEntryHeader {
-                offset: symbol.address(i) + offset,
+                offset: symbol.address + extent.field_offset + extent.stride * i as u32,
                 size,
                 validation_type,
                 ..Default::default()
@@ -184,9 +171,13 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 [entry.offset as usize..(entry.offset + entry.size) as usize]
                 .to_vec();
 
+            // The index belongs to whichever array the rule iterates: the array member named by
+            // `array.field`, or the symbol itself.
             let mut name = rule.symbol.clone();
-            if element_count > 1 {
-                name += format!("[{}]", i).as_str();
+            match rule.array.as_ref().and_then(|array| array.field.as_deref()) {
+                Some(array_field) => name += format!(".{}[{}]", array_field, i).as_str(),
+                None if extent.count > 1 => name += format!("[{}]", i).as_str(),
+                None => {}
             }
             if let Some(field) = &rule.field {
                 name += format!(".{}", field).as_str();
@@ -309,21 +300,119 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         Some((offset / symbol.type_info.element_size()) as usize)
     }
 
+    /// Returns the offset of a rule's field within its symbol, along with the field's type.
+    fn resolve_field(&mut self, symbol: &Symbol, field: &str) -> Result<(u32, TypeInfo)> {
+        let type_id = symbol.type_info.type_id().ok_or_else(|| {
+            anyhow!(
+                "Symbol [{}] has no type information. Cannot resolve field [{}].",
+                symbol.name(),
+                field
+            )
+        })?;
+
+        let info = self.pdb.type_information()?;
+        Symbol::find_field(&info, &type_id, field, symbol.name())
+    }
+
+    /// Returns what a rule iterates over, and how large each entry it produces is.
+    ///
+    /// A rule produces one entry per element of the symbol, validating the same field within each.
+    /// A rule that names [config::Array::field] iterates that array member of the symbol instead,
+    /// so the elements of a nested array can be validated individually.
+    fn rule_extent(&mut self, symbol: &Symbol, rule: &config::Rule) -> Result<RuleExtent> {
+        if let Some(array_field) = rule.array.as_ref().and_then(|array| array.field.as_deref()) {
+            return self.array_field_extent(symbol, array_field, rule.field.as_deref());
+        }
+
+        let stride = symbol.type_info.element_size();
+        let count = symbol.type_info.element_count();
+
+        let Some(field) = &rule.field else {
+            return Ok(RuleExtent {
+                field_offset: 0,
+                stride,
+                size: stride,
+                count,
+            });
+        };
+
+        let (field_offset, field_type) = self.resolve_field(symbol, field)?;
+
+        Ok(RuleExtent {
+            field_offset,
+            stride,
+            size: field_type.total_size(),
+            count,
+        })
+    }
+
+    /// Returns the extent of a rule that iterates an array member of its symbol.
+    ///
+    /// `field`, when given, selects the same field within every element of that array. Without it
+    /// each entry covers a whole element.
+    fn array_field_extent(
+        &mut self,
+        symbol: &Symbol,
+        array_field: &str,
+        field: Option<&str>,
+    ) -> Result<RuleExtent> {
+        // A single `index` cannot address two levels of array, so the symbol has to be the one
+        // value that holds the array being iterated.
+        if symbol.type_info.element_count() > 1 {
+            return Err(anyhow!(
+                "Invalid Rule Configuration: Symbol {}: `array.field` cannot be used because the symbol is itself an array.",
+                symbol.name()
+            ));
+        }
+
+        let (array_offset, array_type) = self.resolve_field(symbol, array_field)?;
+
+        if array_type.element_count() <= 1 {
+            return Err(anyhow!(
+                "Invalid Rule Configuration: Symbol {}: `array.field` [{}] is not an array.",
+                symbol.name(),
+                array_field
+            ));
+        }
+
+        let extent = RuleExtent {
+            field_offset: array_offset,
+            stride: array_type.element_size(),
+            size: array_type.element_size(),
+            count: array_type.element_count(),
+        };
+
+        let Some(field) = field else {
+            return Ok(extent);
+        };
+
+        // `TypeInfo` records an array as a repeat of its element type, so this is the type a field
+        // named alongside `array.field` is resolved against.
+        let element_type = array_type.type_id().ok_or_else(|| {
+            anyhow!(
+                "Array field [{}] of symbol [{}] has no element type information. Cannot resolve field [{}].",
+                array_field,
+                symbol.name(),
+                field
+            )
+        })?;
+
+        let info = self.pdb.type_information()?;
+        let (offset, field_type) = Symbol::find_field(&info, &element_type, field, symbol.name())?;
+
+        Ok(RuleExtent {
+            field_offset: array_offset + offset,
+            size: field_type.total_size(),
+            ..extent
+        })
+    }
+
     fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
+        let extent = self.rule_extent(symbol, rule)?;
+
         // If the rule is a content rule, make sure that the content size matches the symbol size.
         if let config::Validation::Content { content } = &rule.validation {
-            let size = match &rule.field {
-                Some(field) => {
-                    let (_, size) = Symbol::find_field_offset_and_size(
-                        &self.pdb.type_information()?,
-                        &symbol.type_info.type_id().unwrap(),
-                        field,
-                        symbol.name(),
-                    )?;
-                    size
-                }
-                None => symbol.type_info.element_size(),
-            };
+            let size = extent.size;
 
             if content.len() != size as usize {
                 let name = if let Some(field) = &rule.field {
@@ -340,7 +429,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             }
         }
 
-        let element_count = symbol.type_info.element_count();
+        let element_count = extent.count;
 
         if element_count == 1 && rule.array.is_some() {
             return Err(anyhow!(
@@ -591,6 +680,18 @@ pub struct Section {
     pub symbols: Vec<Symbol>,
 }
 
+/// What a rule iterates over, and how large each entry it produces is.
+struct RuleExtent {
+    /// Offset of the field within the symbol, or zero when the rule targets the symbol itself.
+    field_offset: u32,
+    /// Distance between consecutive entries.
+    stride: u32,
+    /// Size of each entry.
+    size: u32,
+    /// Number of entries the rule can produce.
+    count: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub address: u32,
@@ -690,6 +791,20 @@ impl Symbol {
         attribute: &str,
         symbol: &str,
     ) -> Result<(u32, u32)> {
+        let (offset, type_info) = Self::find_field(info, id, attribute, symbol)?;
+        Ok((offset, type_info.total_size()))
+    }
+
+    /// Returns the offset of a field within its symbol, along with the type of the field.
+    ///
+    /// The type is returned rather than just a size so that a rule can tell an array field from a
+    /// single value and iterate its elements.
+    fn find_field(
+        info: &TypeInformation,
+        id: &TypeIndex,
+        attribute: &str,
+        symbol: &str,
+    ) -> Result<(u32, TypeInfo)> {
         Self::find_field_offset_and_size_at(info, id, attribute, symbol, 0)
     }
 
@@ -703,7 +818,7 @@ impl Symbol {
         attribute: &str,
         symbol: &str,
         depth: u32,
-    ) -> Result<(u32, u32)> {
+    ) -> Result<(u32, TypeInfo)> {
         const MAX_WRAPPER_DEPTH: u32 = 32;
 
         let mut parts = attribute.splitn(2, '.');
@@ -747,7 +862,7 @@ impl Symbol {
                         )?;
                         return Ok((member.offset as u32 + offset, size));
                     }
-                    let size = TypeInfo::from_type_index(info, member.field_type)?.total_size();
+                    let size = TypeInfo::from_type_index(info, member.field_type)?;
                     return Ok((member.offset as u32, size));
                 }
                 members.push((
@@ -1201,6 +1316,7 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
+                field: None,
                 sentinel: false,
                 index: Some(1usize..=2usize),
             }),
@@ -1257,6 +1373,7 @@ mod test {
             symbol: "mMmSupvPoolLists".to_string(),
             validation: config::Validation::None,
             array: Some(Array {
+                field: None,
                 sentinel: true,
                 index: None,
             }),
@@ -1511,12 +1628,13 @@ mod test {
     }
 
     #[test]
-    fn test_validate_rule_when_array_field_but_symbol_not_array() {
+    fn test_validate_rule_when_array_config_but_symbol_not_array() {
         let mut metadata = build_metadata();
 
         let rule = Rule {
             symbol: "mUnblockedMemoryList".to_string(),
             array: Some(Array {
+                field: None,
                 sentinel: false,
                 index: Some(1..=2),
             }),
@@ -1543,6 +1661,7 @@ mod test {
         let rule = Rule {
             symbol: "mReservedVectorsData".to_string(),
             array: Some(Array {
+                field: None,
                 sentinel: true,
                 index: Some(1..=2),
             }),
@@ -1569,6 +1688,7 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
+                field: None,
                 sentinel: false,
                 index: Some(99..=99),
             }),
