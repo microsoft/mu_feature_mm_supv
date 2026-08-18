@@ -24,7 +24,35 @@ state. Any rule specified in the configuration file will be 1. Reverted and 2. V
 ## Usability
 
 Check the tool's help information by using the command `cargo run -- -h` or if the tool is already compiled, `gen_aux -h`.
-It will provide you a list of options and a brief description of each option
+It will provide you a list of options and a brief description of each option.
+
+### Supported toolchains
+
+Auxiliary file generation requires PDB debug information, so supervisor binaries must be built with MSVC or CLANGPDB.
+GCC and CLANGDWARF are not currently supported. Linker map files are optional and can supplement the PDB information.
+
+### Linker maps
+
+Both `create-aux` and `create-config` accept an optional `--map <path>` argument alongside `--pdb`
+and `--efi`. Use a map from the same build as the image and PDB. The supported format is the MSVC-style
+map emitted by `/MAP`; the distinct `/lldmap` format is not supported.
+
+The map recovers symbols in writable sections that the PDB does not describe, including optimized,
+split statics. PDB symbols take precedence. Adjacent pieces are grouped into a recovered symbol, and
+rules can select a piece by its zero-based index:
+
+``` toml
+[[rule]]
+symbol = "log::LOGGER"
+field = "0"
+validation.type = "pointer"
+```
+
+Maps do not provide type information or exact sizes. Piece extents are inferred from neighboring
+addresses; the final piece of a split symbol uses the preceding piece's extent, capped at the next
+map symbol. Recovery also clips extents at PDB symbols and section boundaries. A trailing, non-split
+symbol without a successor is omitted because its extent cannot be inferred. Check recovered extents
+against the image when defining rules, particularly for unequal-sized pieces and alignment gaps.
 
 ## The Configuration File
 
