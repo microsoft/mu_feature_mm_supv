@@ -10,10 +10,10 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::{collections::HashMap, fmt::Formatter, fs::File, io::Cursor, ops::Range, path::PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context as _, Result};
 use pdb::{
-    AddressMap, DataSymbol, FallibleIterator, Item, PrimitiveKind, Source, TypeData, TypeIndex,
-    TypeInformation, PDB,
+    AddressMap, DataSymbol, FallibleIterator, Item, ItemFinder, PrimitiveKind, Source, TypeData,
+    TypeIndex, TypeInformation, PDB,
 };
 
 use crate::{config, file, report};
@@ -43,6 +43,77 @@ impl<'t> Aggregate<'t> {
             fields,
             forward_reference: properties.forward_reference(),
         })
+    }
+}
+
+/// The PDB type stream together with an index over it.
+///
+/// Looking a type up by index needs an index of the stream, and building that index means reading
+/// every record. Building it once and passing it around keeps a single lookup from costing a full
+/// pass over what is usually the largest stream in the file.
+pub struct Types<'t, 's> {
+    info: &'t TypeInformation<'s>,
+    finder: ItemFinder<'t, TypeIndex>,
+}
+
+impl<'t, 's> Types<'t, 's> {
+    /// Indexes the type stream.
+    pub fn new(info: &'t TypeInformation<'s>) -> Result<Self> {
+        let mut finder = info.finder();
+        let mut iter = info.iter();
+        while iter.next()?.is_some() {
+            finder.update(&iter);
+        }
+
+        Ok(Self { info, finder })
+    }
+
+    /// Returns a type using the type index. If the type is a class or union with size 0, it will
+    /// check for a shadow definition with the real information, returning that instead.
+    fn find(&self, index: TypeIndex) -> Result<Item<'t, TypeIndex>> {
+        let data = self.finder.find(index)?;
+        let item = data.parse()?;
+
+        // Anything that is not a zero-size forward reference is returned as-is. That includes a
+        // size-0 complete definition, which is a genuine zero-sized type rather than a stand-in.
+        let type_name = match Aggregate::new(&item) {
+            Some(aggregate) if aggregate.size == 0 && aggregate.forward_reference => {
+                aggregate.name.to_string().to_string()
+            }
+            _ => return Ok(data),
+        };
+
+        // The record was a size-0 forward reference, so it should have a shadow definition
+        // carrying the real information.
+        if let Some(item) = self.find_aggregate(&type_name, |a| a.size != 0) {
+            return Ok(item);
+        }
+
+        // The forward reference may describe a type whose real definition is genuinely zero
+        // sized, such as an empty aggregate or Rust's `PhantomData`. No non-zero-sized definition
+        // can exist for those, so accept a complete (non-forward-reference) definition instead. A
+        // forward reference with no definition at all matches neither and falls through to the
+        // error below, so a genuinely missing type is not masked.
+        if let Some(item) = self.find_aggregate(&type_name, |a| !a.forward_reference) {
+            return Ok(item);
+        }
+
+        Err(anyhow!("Symbol {} was found, but size was 0", type_name))
+    }
+
+    /// Scans the type stream for a class or union named `name` that satisfies `accept`.
+    fn find_aggregate(
+        &self,
+        name: &str,
+        accept: impl Fn(&Aggregate) -> bool,
+    ) -> Option<Item<'t, TypeIndex>> {
+        let mut iter = self.info.iter();
+        iter.find(|item| {
+            let data = item.parse()?;
+            Ok(Aggregate::new(&data).is_some_and(|a| a.name.to_string() == name && accept(&a)))
+        })
+        .ok()
+        .flatten()
     }
 }
 
@@ -129,9 +200,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         rule: &config::Rule,
     ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
         let symbol = self.find_symbol(&rule.symbol).clone();
-        self.validate_rule(&symbol, rule)?;
-
-        let extent = self.rule_extent(&symbol, rule)?;
+        let extent = self.validate_rule(&symbol, rule)?;
 
         let mut ret = Vec::new();
 
@@ -210,20 +279,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         let mut address = symbol.address;
 
         if let Some(field) = &key.field {
-            let type_information = &mut self.pdb.type_information()?;
-            let type_id = symbol.type_info.type_id().ok_or_else(|| {
-                anyhow!(
-                    "Symbol [{}] has no type information. Cannot resolve field [{}].",
-                    symbol.name(),
-                    field
-                )
-            })?;
-            let (field_offset, _) = Symbol::find_field_offset_and_size(
-                type_information,
-                &type_id,
-                field,
-                symbol.name(),
-            )?;
+            let (field_offset, _) = self.resolve_field(&symbol, field)?;
             address += field_offset;
         }
 
@@ -235,6 +291,8 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
     /// 1. Padding between sections
     /// 2. Padding between symbols
     /// 3. Padding between fields of a class
+    ///
+    /// A region qualifies only if nothing names it *and* it is zero in the image.
     pub fn create_padding_entries(
         &mut self,
         report: &report::Coverage,
@@ -244,6 +302,41 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         ret.extend(self.build_field_padding_entries(report)?);
 
         Ok(ret)
+    }
+
+    /// Returns whether the image is all zeros over the given region.
+    fn is_zero_in_image(&self, start: u32, end: u32) -> bool {
+        self.loaded_image_range(start, end)
+            .is_some_and(|content| content.iter().all(|byte| *byte == 0))
+    }
+
+    /// Returns whether the layout of `symbol` leaves `[start, end)` unassigned to any member.
+    fn is_layout_padding(&self, types: &Types<'_, '_>, symbol: &str, start: u32, end: u32) -> bool {
+        let symbol = self.find_symbol(symbol);
+        let Some(type_id) = symbol.type_info.type_id() else {
+            // Without debug information there is no layout to consult, so nothing can be shown to
+            // be padding.
+            return false;
+        };
+
+        if start < symbol.address {
+            return false;
+        }
+
+        // An array symbol repeats a single element, so the question is answered within whichever
+        // element the region falls in. A region straddling elements is storage.
+        let stride = symbol.type_info.element_size();
+        let base = if symbol.type_info.element_count() > 1 && stride != 0 {
+            let first = (start - symbol.address) / stride;
+            if (end - 1 - symbol.address) / stride != first {
+                return false;
+            }
+            symbol.address + first * stride
+        } else {
+            symbol.address
+        };
+
+        Symbol::range_is_unassigned(types, type_id, base, start, end, 0)
     }
 
     /// Names regions the PDB file leaves unnamed, using a linker map file.
@@ -373,13 +466,9 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
     /// Returns whether any symbol from the PDB file occupies any part of the given range.
     fn pdb_symbol_overlaps(&self, range: &Range<u32>) -> bool {
-        self.sections
-            .iter()
-            .flat_map(|section| section.symbols.iter())
-            .any(|symbol| {
-                let end = symbol.address + symbol.type_info.total_size();
-                symbol.address < range.end && range.start < end
-            })
+        self.symbols().any(|symbol| {
+            symbol.address < range.end && range.start < symbol.address + symbol.size()
+        })
     }
 
     /// Returns the unloaded image bytes.
@@ -392,54 +481,20 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         self.loaded_image.len()
     }
 
+    /// Returns the loaded image bytes over the given region, if it lies within the image.
+    pub fn loaded_image_range(&self, start: u32, end: u32) -> Option<&[u8]> {
+        self.loaded_image.get(start as usize..end as usize)
+    }
+
     /// Provides the general symbol information for the symbol containing the given address.
     pub fn symbol_from_address(&self, address: &u32) -> Option<&Symbol> {
-        self.sections
-            .iter()
-            .flat_map(|section| section.symbols.iter())
-            .find(|symbol| {
-                (symbol.address..symbol.address + symbol.type_info.total_size()).contains(address)
-            })
+        self.symbols()
+            .find(|symbol| (symbol.address..symbol.address + symbol.size()).contains(address))
     }
 
     /// Returns the context associated with the given address, if any.
     pub fn context_from_address(&self, address: &u32) -> Option<&Context> {
         self.context_map.get(address)
-    }
-
-    pub fn symbol_fields(&mut self, symbol: &str) -> Option<Vec<String>> {
-        let info = self.pdb.type_information().ok()?;
-        let symbol = self.find_symbol(symbol);
-        let data = TypeInfo::find_type(&info, symbol.type_info.type_id()?).ok()?;
-
-        // Get the class, return None if it is not a class.
-        let Some(pdb::TypeData::Class(class)) = data.parse().ok() else {
-            return None;
-        };
-
-        // Get the fields of the class, return None if there are no fields.
-        let fields = TypeInfo::find_type(&info, class.fields?).ok()?;
-        let Some(pdb::TypeData::FieldList(data)) = fields.parse().ok() else {
-            return None;
-        };
-
-        let names = data
-            .fields
-            .iter()
-            .map(|field| field.name().unwrap_or_default().to_string().to_string())
-            .collect::<Vec<_>>();
-
-        Some(names)
-    }
-
-    /// If the symbol is an array, returns the index of the element at the given address.
-    fn symbol_idx(&mut self, symbol: &str, address: u32) -> Option<usize> {
-        let symbol = self.find_symbol(symbol);
-        if symbol.type_info.element_count() == 1 {
-            return None;
-        }
-        let offset = address - symbol.address;
-        Some((offset / symbol.type_info.element_size()) as usize)
     }
 
     /// Returns the offset of a rule's field within its symbol, along with the field's type.
@@ -454,6 +509,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         };
 
         let info = self.pdb.type_information()?;
+        let info = Types::new(&info)?;
         Symbol::find_field(&info, &type_id, field, symbol.name())
     }
 
@@ -546,6 +602,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         })?;
 
         let info = self.pdb.type_information()?;
+        let info = Types::new(&info)?;
         let (offset, field_type) =
             Symbol::find_field(&info, &element_type, element_field, symbol.name())?;
 
@@ -556,7 +613,8 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         })
     }
 
-    fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
+    /// Validates a rule against the symbol it targets, returning the extent it will iterate.
+    fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<RuleExtent> {
         let extent = self.rule_extent(symbol, rule)?;
 
         // If the rule is a content rule, make sure that the content size matches the symbol size.
@@ -603,7 +661,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             }
         }
 
-        Ok(())
+        Ok(extent)
     }
 
     fn build_validation_type(
@@ -639,9 +697,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
     /// Returns the symbol with the given name from the PDB file.
     fn find_symbol(&self, symbol: &str) -> &Symbol {
-        self.sections
-            .iter()
-            .flat_map(|section| section.symbols.iter())
+        self.symbols()
             .filter(|s| s.name == symbol)
             // We may find multiple symbols; typically the actual symbol and a label. This filters to return the
             // actual symbol if we happen to have found both.
@@ -673,6 +729,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
     fn fill_sections(&mut self) -> Result<()> {
         let address_map = self.pdb.address_map()?;
         let type_information = self.pdb.type_information()?;
+        let type_information = Types::new(&type_information)?;
 
         let symbol_table = self.pdb.global_symbols()?;
         let mut symbols = symbol_table.iter();
@@ -766,84 +823,63 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         Ok(report
             .segments(|s| !s.covered() && s.symbol().is_empty())
             .iter()
-            .map(|segment| {
-                let content = vec![0; (segment.end() - segment.start()) as usize];
-                let entry = file::ImageValidationEntryHeader {
-                    offset: segment.start(),
-                    size: segment.end() - segment.start(),
-                    validation_type: file::ValidationType::Content {
-                        content: content.clone(),
-                    },
-                    ..Default::default()
-                };
-                (entry, content)
-            })
+            // Only a region that is actually zero is padding. Anything else holds real data and
+            // is left uncovered, to be reported as missing a rule.
+            .filter(|segment| self.is_zero_in_image(segment.start(), segment.end()))
+            .map(|segment| zero_content_entry(segment.start(), segment.end()))
             .collect())
     }
 
+    /// Creates zero content rules for the gaps a type's layout leaves between its members.
+    ///
+    /// Whether a region is padding is decided from the type, not from which rules happen to
+    /// exist, so covering only some fields of a struct still lets the alignment gaps around them
+    /// be recognized. A region is padding only when no member occupies it at any level of
+    /// nesting, and only when it is actually zero in the image.
     fn build_field_padding_entries(
         &mut self,
         report: &report::Coverage,
     ) -> Result<Vec<(file::ImageValidationEntryHeader, Vec<u8>)>> {
         let mut ret = Vec::new();
-        let symbols = report.segments(|s| !s.covered() && !s.symbol().is_empty());
+        let uncovered = report
+            .segments(|s| !s.covered() && !s.symbol().is_empty())
+            .iter()
+            .map(|segment| (segment.symbol().to_string(), segment.start(), segment.end()))
+            .collect::<Vec<_>>();
 
-        // For each symbol that is not covered, if that symbol is a class and all fields are covered, then the missing
-        // segment must be padding between fields, so we can add an entry for it.
-        for uncovered in symbols {
-            if let Some(fields) = self.symbol_fields(uncovered.symbol()) {
-                // We must also consider that the symbol is an array where the elements are the underlying class. In
-                // This case, we need to check all fields for the specific index are covered before we can properly add
-                // any padding.
-                let idx = self.symbol_idx(uncovered.symbol(), uncovered.start());
-                let covered = fields.iter().all(|field| {
-                    let expected = match idx {
-                        Some(idx) => format!("{}[{}].{}", uncovered.symbol(), idx, field),
-                        None => format!("{}.{}", uncovered.symbol(), field),
-                    };
-                    !report
-                        .segments(|s| field_name_matches(s.symbol(), &expected))
-                        .is_empty()
-                });
+        let info = self.pdb.type_information()?;
+        let types = Types::new(&info)?;
 
-                if covered {
-                    ret.push((
-                        file::ImageValidationEntryHeader {
-                            offset: uncovered.start(),
-                            size: uncovered.end() - uncovered.start(),
-                            validation_type: file::ValidationType::Content {
-                                content: vec![0; (uncovered.end() - uncovered.start()) as usize],
-                            },
-                            ..Default::default()
-                        },
-                        vec![0; (uncovered.end() - uncovered.start()) as usize],
-                    ));
-                }
+        for (symbol, start, end) in uncovered {
+            // Manufacturing a zero rule for a region that is not zero would both fail at runtime
+            // and revert real bytes to zero, so those are left uncovered and reported instead.
+            if !self.is_zero_in_image(start, end) {
+                continue;
             }
+
+            if !self.is_layout_padding(&types, &symbol, start, end) {
+                continue;
+            }
+
+            ret.push(zero_content_entry(start, end));
         }
 
         Ok(ret)
     }
 }
 
-fn field_name_matches(actual: &str, expected: &str) -> bool {
-    if actual == expected {
-        return true;
-    }
-
-    let Some(indexed_field) = actual
-        .strip_prefix(expected)
-        .and_then(|suffix| suffix.strip_prefix('['))
-    else {
-        return false;
+/// Builds a rule requiring `[start, end)` to be all zeros.
+fn zero_content_entry(start: u32, end: u32) -> (file::ImageValidationEntryHeader, Vec<u8>) {
+    let content = vec![0; (end - start) as usize];
+    let entry = file::ImageValidationEntryHeader {
+        offset: start,
+        size: end - start,
+        validation_type: file::ValidationType::Content {
+            content: content.clone(),
+        },
+        ..Default::default()
     };
-    let Some((index, suffix)) = indexed_field.split_once(']') else {
-        return false;
-    };
-
-    !index.is_empty()
-        && index.bytes().all(|byte| byte.is_ascii_digit())
-        && (suffix.is_empty() || suffix.starts_with('.'))
+    (entry, content)
 }
 
 pub struct Section {
@@ -882,17 +918,11 @@ impl Symbol {
         &self.name
     }
 
-    pub fn address(&self, index: usize) -> u32 {
-        self.address + (self.type_info.element_size() * index as u32)
-    }
-
     fn from_pdb_symbol(
         symbol: pdb::Symbol<'_>,
         address_map: &AddressMap<'_>,
-        type_information: &TypeInformation<'_>,
+        type_information: &Types<'_, '_>,
     ) -> Result<Option<Self>> {
-        // let address_map = pdb.address_map()?;
-        // let type_information = pdb.type_information()?;
         Ok(match symbol.parse() {
             Ok(pdb::SymbolData::Public(data)) if data.function => {
                 Some(Self::from_public(data, address_map))
@@ -958,7 +988,7 @@ impl Symbol {
     fn from_data(
         symbol: DataSymbol<'_>,
         address_map: &AddressMap<'_>,
-        type_info: &TypeInformation,
+        type_info: &Types<'_, '_>,
     ) -> Result<Self> {
         let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
         let type_info = TypeInfo::from_type_index(type_info, symbol.type_index)?;
@@ -998,36 +1028,25 @@ impl Symbol {
         }
     }
 
-    /// Returns the offset and size of a field in a class or union.
-    fn find_field_offset_and_size(
-        info: &TypeInformation,
-        id: &TypeIndex,
-        attribute: &str,
-        symbol: &str,
-    ) -> Result<(u32, u32)> {
-        let (offset, type_info) = Self::find_field(info, id, attribute, symbol)?;
-        Ok((offset, type_info.total_size()))
-    }
-
-    /// Returns the offset of a field within its symbol, along with the type of the field.
+    /// Returns the offset of a field within a class or union, along with the type of the field.
     ///
     /// The type is returned rather than just a size so that a rule can tell an array field from a
     /// single value and iterate its elements.
     fn find_field(
-        info: &TypeInformation,
+        info: &Types<'_, '_>,
         id: &TypeIndex,
         attribute: &str,
         symbol: &str,
     ) -> Result<(u32, TypeInfo)> {
-        Self::find_field_offset_and_size_at(info, id, attribute, symbol, 0)
+        Self::find_field_at(info, id, attribute, symbol, 0)
     }
 
     /// Walks a dotted field path, transparently descending through wrapper types.
     ///
     /// `depth` counts only the wrapper layers that were skipped implicitly, and exists solely to
     /// stop a malformed PDB from producing an unbounded descent.
-    fn find_field_offset_and_size_at(
-        info: &TypeInformation,
+    fn find_field_at(
+        info: &Types<'_, '_>,
         id: &TypeIndex,
         attribute: &str,
         symbol: &str,
@@ -1039,13 +1058,12 @@ impl Symbol {
         let name = parts.next().unwrap_or("");
         let remaining = parts.next().unwrap_or("");
 
-        let aggregate =
-            Aggregate::new(&TypeInfo::find_type(info, *id)?.parse()?).ok_or_else(|| {
-                anyhow!(
-                    "Symbol [{}] is not a class or union. Cannot get fields.",
-                    symbol
-                )
-            })?;
+        let aggregate = Aggregate::new(&info.find(*id)?.parse()?).ok_or_else(|| {
+            anyhow!(
+                "Symbol [{}] is not a class or union. Cannot get fields.",
+                symbol
+            )
+        })?;
 
         // Theoretically unreachable as you cannot have a struct defined without fields in C.
         let field_list = aggregate
@@ -1053,38 +1071,19 @@ impl Symbol {
             .ok_or_else(|| anyhow!("Symbol [{}] is a class, but has no fields.", symbol))?;
         let parent_size = aggregate.size;
 
-        let TypeData::FieldList(fields) = TypeInfo::find_type(info, field_list)?.parse()? else {
-            // Theoretically unreachable, unless the pdb file is malformed or there is a bug in the
-            // pdb crate code.
-            return Err(anyhow::anyhow!(
-                "UNEXPECTED: Symbol [{}] fields are not a field list.",
-                symbol
-            ));
-        };
+        let members = Self::collect_members(info, field_list)
+            .with_context(|| format!("Symbol [{}] has an unreadable field list.", symbol))?;
 
-        let mut members = Vec::new();
-        for field in fields.fields {
-            if let TypeData::Member(member) = field {
-                if member.name.to_string() == name {
-                    if !remaining.is_empty() {
-                        let (offset, size) = Self::find_field_offset_and_size_at(
-                            info,
-                            &member.field_type,
-                            remaining,
-                            symbol,
-                            depth,
-                        )?;
-                        return Ok((member.offset as u32 + offset, size));
-                    }
-                    let size = TypeInfo::from_type_index(info, member.field_type)?;
-                    return Ok((member.offset as u32, size));
-                }
-                members.push((
-                    member.name.to_string().to_string(),
-                    member.offset,
-                    member.field_type,
-                ));
+        if let Some((_, offset, field_type)) = members.iter().find(|(member, ..)| member == name) {
+            if !remaining.is_empty() {
+                let (inner, field_type) =
+                    Self::find_field_at(info, field_type, remaining, symbol, depth)?;
+                return Ok((*offset as u32 + inner, field_type));
             }
+            return Ok((
+                *offset as u32,
+                TypeInfo::from_type_index(info, *field_type)?,
+            ));
         }
 
         // Nothing matched at this level. A record whose single populated member starts at offset
@@ -1094,13 +1093,7 @@ impl Symbol {
         // newtypes. Explicit paths still work, because this runs only after an exact match fails.
         if depth < MAX_WRAPPER_DEPTH {
             if let Some(inner) = Self::transparent_wrapper_member(info, &members, parent_size) {
-                return Self::find_field_offset_and_size_at(
-                    info,
-                    &inner,
-                    attribute,
-                    symbol,
-                    depth + 1,
-                );
+                return Self::find_field_at(info, &inner, attribute, symbol, depth + 1);
             }
         }
 
@@ -1116,6 +1109,50 @@ impl Symbol {
         ))
     }
 
+    /// Collects the `(name, offset, type)` of every member of a field list.
+    ///
+    /// A field list too large for one record is continued in another, so the chain is followed to
+    /// its end; a member in a later record is no less a member.
+    fn collect_members(
+        info: &Types<'_, '_>,
+        field_list: TypeIndex,
+    ) -> Result<Vec<(String, u64, TypeIndex)>> {
+        // Bound the walk so a malformed PDB cannot produce an unbounded chain.
+        const MAX_CONTINUATIONS: u32 = 1024;
+
+        let mut members = Vec::new();
+        let mut next = Some(field_list);
+
+        for _ in 0..MAX_CONTINUATIONS {
+            let Some(index) = next else {
+                return Ok(members);
+            };
+
+            let TypeData::FieldList(fields) = info.find(index)?.parse()? else {
+                // Theoretically unreachable, unless the pdb file is malformed or there is a bug in
+                // the pdb crate code.
+                return Err(anyhow!("UNEXPECTED: Type {:?} is not a field list.", index));
+            };
+
+            for field in fields.fields {
+                if let TypeData::Member(member) = field {
+                    members.push((
+                        member.name.to_string().to_string(),
+                        member.offset,
+                        member.field_type,
+                    ));
+                }
+            }
+
+            next = fields.continuation;
+        }
+
+        Err(anyhow!(
+            "UNEXPECTED: Field list continuation chain is longer than {} records.",
+            MAX_CONTINUATIONS
+        ))
+    }
+
     /// Returns the type of the sole data-carrying member if `members` describes a transparent
     /// wrapper, meaning exactly one member that begins at offset 0 and covers the full
     /// `parent_size`. Members are only disregarded when they are provably zero sized, so a
@@ -1124,7 +1161,7 @@ impl Symbol {
     /// Returns `None` whenever the shape is ambiguous or a member size cannot be resolved, so an
     /// unrecognized layout reports the original "field not found" error rather than guessing.
     fn transparent_wrapper_member(
-        info: &TypeInformation,
+        info: &Types<'_, '_>,
         members: &[(String, u64, TypeIndex)],
         parent_size: u64,
     ) -> Option<TypeIndex> {
@@ -1153,6 +1190,108 @@ impl Symbol {
         payload
     }
 
+    /// Returns whether `[start, end)` is left unassigned by the layout of the type at `base`.
+    ///
+    /// Anything that cannot be resolved is reported as storage, so an unrecognized layout is never
+    /// silently validated as zeros.
+    fn range_is_unassigned(
+        info: &Types<'_, '_>,
+        id: TypeIndex,
+        base: u32,
+        start: u32,
+        end: u32,
+        depth: u32,
+    ) -> bool {
+        // Bound the walk so a malformed PDB cannot produce an unbounded descent.
+        const MAX_LAYOUT_DEPTH: u32 = 32;
+
+        if depth >= MAX_LAYOUT_DEPTH || start >= end || start < base {
+            return false;
+        }
+
+        let Ok(data) = info.find(id).and_then(|item| Ok(item.parse()?)) else {
+            return false;
+        };
+
+        match data {
+            TypeData::Class(class) => class.fields.is_some_and(|fields| {
+                Self::range_is_unassigned_in_fields(info, fields, base, start, end, depth)
+            }),
+            TypeData::Union(union) => {
+                Self::range_is_unassigned_in_fields(info, union.fields, base, start, end, depth)
+            }
+            TypeData::Array(_) => {
+                let Ok(array) = TypeInfo::from_type_index(info, id) else {
+                    return false;
+                };
+                let stride = array.element_size();
+                if stride == 0 {
+                    return false;
+                }
+                let first = (start - base) / stride;
+                if (end - 1 - base) / stride != first {
+                    // Straddles elements, so it is storage rather than padding inside one.
+                    return false;
+                }
+                let Some(element) = array.type_id() else {
+                    return false;
+                };
+                Self::range_is_unassigned(
+                    info,
+                    element,
+                    base + first * stride,
+                    start,
+                    end,
+                    depth + 1,
+                )
+            }
+            // A scalar occupies every one of its bytes.
+            _ => false,
+        }
+    }
+
+    /// Walks a field list, deciding whether `[start, end)` belongs to any of its members.
+    fn range_is_unassigned_in_fields(
+        info: &Types<'_, '_>,
+        fields: TypeIndex,
+        base: u32,
+        start: u32,
+        end: u32,
+        depth: u32,
+    ) -> bool {
+        let Ok(members) = Self::collect_members(info, fields) else {
+            return false;
+        };
+
+        for (_, offset, field_type) in members {
+            let Ok(member_type) = TypeInfo::from_type_index(info, field_type) else {
+                return false;
+            };
+
+            let member_start = base + offset as u32;
+            let member_end = member_start + member_type.total_size();
+
+            if member_end <= start || member_start >= end {
+                continue;
+            }
+
+            if member_start <= start && end <= member_end {
+                // Inside this member, so the question moves down a level. Union members overlap,
+                // so every member containing the region has to agree that it is padding.
+                if !Self::range_is_unassigned(info, field_type, member_start, start, end, depth + 1)
+                {
+                    return false;
+                }
+                continue;
+            }
+
+            // Straddles a member boundary, so it is storage.
+            return false;
+        }
+
+        true
+    }
+
     /// Returns whether `index` refers to a type that provably occupies no storage.
     ///
     /// Only a complete aggregate definition that records a size of zero qualifies. A computed
@@ -1160,14 +1299,13 @@ impl Symbol {
     /// the size is merely unknown: `PrimitiveKind::NoType`, and arrays whose declared byte length
     /// is smaller than one element. Forward references are rejected as well, since their size is
     /// a placeholder rather than a statement about the real definition.
-    fn is_provably_zero_sized(info: &TypeInformation, index: TypeIndex) -> bool {
+    fn is_provably_zero_sized(info: &Types<'_, '_>, index: TypeIndex) -> bool {
         // Bound the walk so a malformed PDB cannot produce an unbounded modifier chain.
         const MAX_MODIFIER_DEPTH: u32 = 32;
 
         let mut index = index;
         for _ in 0..MAX_MODIFIER_DEPTH {
-            let Ok(data) = TypeInfo::find_type(info, index).and_then(|item| Ok(item.parse()?))
-            else {
+            let Ok(data) = info.find(index).and_then(|item| Ok(item.parse()?)) else {
                 return false;
             };
             match data {
@@ -1249,16 +1387,12 @@ impl TypeInfo {
     }
 
     /// Creates a new TypeInfo from the given type index.
-    pub fn from_type_index(info: &TypeInformation, index: TypeIndex) -> Result<Self> {
-        Self::from_type_data(info, Self::find_type(info, index)?.parse()?, index)
+    pub fn from_type_index(info: &Types<'_, '_>, index: TypeIndex) -> Result<Self> {
+        Self::from_type_data(info, info.find(index)?.parse()?, index)
     }
 
     /// Creates a new TypeInfo from the given type data.
-    pub fn from_type_data(
-        info: &TypeInformation,
-        data: TypeData,
-        index: TypeIndex,
-    ) -> Result<Self> {
+    pub fn from_type_data(info: &Types<'_, '_>, data: TypeData, index: TypeIndex) -> Result<Self> {
         // A class and a union are both sized aggregates; only their member layout differs.
         if let Some(aggregate) = Aggregate::new(&data) {
             return Ok(TypeInfo::one(aggregate.size as u32, Some(index)));
@@ -1325,61 +1459,6 @@ impl TypeInfo {
                 return Err(anyhow!("Unhandled TypeData for C Code: {:?}", data));
             }
         })
-    }
-
-    /// Returns a type using the type index. If the type is a class or union with size 0, it will
-    /// check for a shadow definition with the real information, returning that instead.
-    fn find_type<'a>(info: &'a TypeInformation, index: TypeIndex) -> Result<Item<'a, TypeIndex>> {
-        let mut iter = info.iter();
-        let mut finder = info.finder();
-
-        while (iter.next()?).is_some() {
-            finder.update(&iter)
-        }
-
-        let data = finder.find(index)?;
-        let item = data.parse()?;
-
-        // Anything that is not a zero-size forward reference is returned as-is. That includes a
-        // size-0 complete definition, which is a genuine zero-sized type rather than a stand-in.
-        let type_name = match Aggregate::new(&item) {
-            Some(aggregate) if aggregate.size == 0 && aggregate.forward_reference => {
-                aggregate.name.to_string().to_string()
-            }
-            _ => return Ok(data),
-        };
-
-        // The record was a size-0 forward reference, so it should have a shadow definition
-        // carrying the real information.
-        if let Some(item) = Self::find_aggregate(info, &type_name, |a| a.size != 0) {
-            return Ok(item);
-        }
-
-        // The forward reference may describe a type whose real definition is genuinely zero
-        // sized, such as an empty aggregate or Rust's `PhantomData`. No non-zero-sized definition
-        // can exist for those, so accept a complete (non-forward-reference) definition instead. A
-        // forward reference with no definition at all matches neither and falls through to the
-        // error below, so a genuinely missing type is not masked.
-        if let Some(item) = Self::find_aggregate(info, &type_name, |a| !a.forward_reference) {
-            return Ok(item);
-        }
-
-        Err(anyhow!("Symbol {} was found, but size was 0", type_name))
-    }
-
-    /// Scans the type stream for a class or union named `name` that satisfies `accept`.
-    fn find_aggregate<'a>(
-        info: &'a TypeInformation,
-        name: &str,
-        accept: impl Fn(&Aggregate) -> bool,
-    ) -> Option<Item<'a, TypeIndex>> {
-        let mut iter = info.iter();
-        iter.find(|item| {
-            let data = item.parse()?;
-            Ok(Aggregate::new(&data).is_some_and(|a| a.name.to_string() == name && accept(&a)))
-        })
-        .ok()
-        .flatten()
     }
 
     /// Returns the size of a primitive type in bytes.
@@ -1827,30 +1906,6 @@ mod test {
     }
 
     #[test]
-    fn test_field_name_matches_indexed_array_field() {
-        let expected = "mStructure.ArrayField";
-
-        assert!(field_name_matches(expected, expected));
-        assert!(field_name_matches("mStructure.ArrayField[0]", expected));
-        assert!(field_name_matches(
-            "mStructure.ArrayField[12].Member",
-            expected
-        ));
-        assert!(!field_name_matches(
-            "mStructure.ArrayFieldOther[0].Member",
-            expected
-        ));
-        assert!(!field_name_matches(
-            "mStructure.ArrayField.Member",
-            expected
-        ));
-        assert!(!field_name_matches(
-            "mStructure.ArrayField[index].Member",
-            expected
-        ));
-    }
-
-    #[test]
     fn test_validate_rule_content() {
         let mut metadata = build_metadata();
 
@@ -2149,7 +2204,8 @@ mod test {
     fn test_type_info_from_type_data_primitives() {
         // Test the TypeInfo::from_type_data method with basic primitive types
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
         let index = TypeIndex(1);
 
         // Test with a primitive type (I32)
@@ -2221,10 +2277,11 @@ mod test {
     fn test_type_info_from_type_data_bitfield() {
         // Test the TypeInfo::from_type_data method with a class type
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         // Grab an idx we know exists, that we can use later.
-        let idx = type_info.finder().max_index();
+        let idx = info.finder().max_index();
         let size = TypeInfo::from_type_index(type_info, idx)
             .unwrap()
             .total_size();
@@ -2244,10 +2301,11 @@ mod test {
     fn test_type_info_from_type_data_fieldlist() {
         // Test the TypeInfo::from_type_data method with a field list type
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         // Grab an idx we know exists, that we can use later.
-        let idx = type_info.finder().max_index();
+        let idx = info.finder().max_index();
         let size = TypeInfo::from_type_index(type_info, idx)
             .unwrap()
             .total_size();
@@ -2275,10 +2333,11 @@ mod test {
     fn test_type_info_from_type_data_argument_list() {
         // Test the TypeInfo::from_type_data method with an argument list type
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         // Grab an idx we know exists, that we can use later.
-        let idx = type_info.finder().max_index();
+        let idx = info.finder().max_index();
         let size = TypeInfo::from_type_index(type_info, idx)
             .unwrap()
             .total_size();
@@ -2301,7 +2360,8 @@ mod test {
             name: "".into(),
         });
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let result = TypeInfo::from_type_data(type_info, data, index);
         assert!(result.is_err_and(|err| err
@@ -2324,9 +2384,10 @@ mod test {
     }
 
     #[test]
-    fn test_symbol_find_field_offset_and_size_simple() {
+    fn test_symbol_find_field_simple() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let symbol = "mRootMmiEntry";
         let field = "AllEntries";
@@ -2336,8 +2397,8 @@ mod test {
             .type_id()
             .unwrap();
 
-        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
-        let Ok((offset, size)) = result else {
+        let result = Symbol::find_field(type_info, &type_index, field, symbol);
+        let Ok((offset, field_type)) = result else {
             panic!(
                 "Failed to find field offset and size for {}.{}",
                 symbol, field
@@ -2345,13 +2406,14 @@ mod test {
         };
 
         assert_eq!(offset, 0x8); // AllEntries follows a UINTN, which is 8 bytes in size.
-        assert_eq!(size, 0x10); // AllEntries is a LIST_ENTRY, which is a struct with 2 pointers, so 8 bytes each.
+        assert_eq!(field_type.total_size(), 0x10); // AllEntries is a LIST_ENTRY, which is a struct with 2 pointers, so 8 bytes each.
     }
 
     #[test]
-    fn test_symbol_find_field_offset_and_size_recurse() {
+    fn test_symbol_find_field_recurse() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let symbol = "mRootMmiEntry";
         let field = "AllEntries.BackLink";
@@ -2361,8 +2423,8 @@ mod test {
             .type_id()
             .unwrap();
 
-        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
-        let Ok((offset, size)) = result else {
+        let result = Symbol::find_field(type_info, &type_index, field, symbol);
+        let Ok((offset, field_type)) = result else {
             panic!(
                 "Failed to find field offset and size for {}.{}",
                 symbol, field
@@ -2372,13 +2434,14 @@ mod test {
         // ForwardLink follows a UINTN, which is 8 bytes in size. BackLink is the second field in LIST_ENTRY, where the
         // first is ForwardLink, a pointer (8 bytes). Due to this, the offset should be 16 bytes.
         assert_eq!(offset, 0x10);
-        assert_eq!(size, 0x8); // BackLink is a pointer, so 8 bytes in size.
+        assert_eq!(field_type.total_size(), 0x8); // BackLink is a pointer, so 8 bytes in size.
     }
 
     #[test]
-    fn test_symbol_find_field_offset_and_size_not_attribute() {
+    fn test_symbol_find_field_not_attribute() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let symbol = "mRootMmiEntry";
         let field = "NonExistentField";
@@ -2388,7 +2451,7 @@ mod test {
             .type_id()
             .unwrap();
 
-        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        let result = Symbol::find_field(type_info, &type_index, field, symbol);
         assert!(result.is_err_and(|err| err
             .to_string()
             .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")));
@@ -2399,19 +2462,16 @@ mod test {
     #[test]
     fn test_symbol_find_field_offset_and_size_through_union() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
         let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
 
-        let (offset, size) = Symbol::find_field_offset_and_size(
-            type_info,
-            &type_index,
-            "HeapGuardPolicy.Data",
-            "gMmMps",
-        )
-        .expect("a field behind a union should resolve");
+        let (offset, field_type) =
+            Symbol::find_field(type_info, &type_index, "HeapGuardPolicy.Data", "gMmMps")
+                .expect("a field behind a union should resolve");
 
         assert_eq!(offset, 0x2);
-        assert_eq!(size, 0x1);
+        assert_eq!(field_type.total_size(), 0x1);
     }
 
     /// Union members overlap, so two members of the same union report the same offset while
@@ -2419,37 +2479,30 @@ mod test {
     #[test]
     fn test_symbol_find_field_offset_and_size_union_members_overlap() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
         let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
 
-        let data = Symbol::find_field_offset_and_size(
-            type_info,
-            &type_index,
-            "HeapGuardPoolType.Data",
-            "gMmMps",
-        )
-        .expect("union member should resolve");
-        let fields = Symbol::find_field_offset_and_size(
-            type_info,
-            &type_index,
-            "HeapGuardPoolType.Fields",
-            "gMmMps",
-        )
-        .expect("union member should resolve");
+        let data = Symbol::find_field(type_info, &type_index, "HeapGuardPoolType.Data", "gMmMps")
+            .expect("union member should resolve");
+        let fields =
+            Symbol::find_field(type_info, &type_index, "HeapGuardPoolType.Fields", "gMmMps")
+                .expect("union member should resolve");
 
         assert_eq!(data.0, 0x4);
         assert_eq!(fields.0, data.0);
-        assert_ne!(fields.1, data.1);
+        assert_ne!(fields.1.total_size(), data.1.total_size());
     }
 
     /// A path may continue into a struct that lives behind a union.
     #[test]
     fn test_symbol_find_field_offset_and_size_through_union_into_struct() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
         let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
 
-        let (offset, _) = Symbol::find_field_offset_and_size(
+        let (offset, _) = Symbol::find_field(
             type_info,
             &type_index,
             "HeapGuardPolicy.Fields.MmPageGuard",
@@ -2462,9 +2515,10 @@ mod test {
     }
 
     #[test]
-    fn test_symbol_find_field_offset_and_size_not_class() {
+    fn test_symbol_find_field_not_class() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let symbol = "mMapDepth";
         let field = "AllEntries";
@@ -2474,7 +2528,7 @@ mod test {
             .type_id()
             .unwrap();
 
-        let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
+        let result = Symbol::find_field(type_info, &type_index, field, symbol);
         assert!(result.is_err_and(|err| err
             .to_string()
             .contains("Symbol [mMapDepth] is not a class or union. Cannot get fields.")));
@@ -2485,7 +2539,8 @@ mod test {
     #[test]
     fn test_transparent_wrapper_member_accepts_a_sole_full_width_payload() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let payload = metadata
             .find_symbol("mMapDepth")
@@ -2508,7 +2563,8 @@ mod test {
     #[test]
     fn test_transparent_wrapper_member_refuses_anything_ambiguous() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         let payload = metadata
             .find_symbol("mMapDepth")
@@ -2555,11 +2611,12 @@ mod test {
     #[test]
     fn test_symbol_find_field_refuses_to_guess_through_an_ambiguous_union() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
         let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
 
         // `MmPageGuard` lives under `HeapGuardPolicy.Fields`, and skipping `Fields` is a guess.
-        let error = Symbol::find_field_offset_and_size(
+        let error = Symbol::find_field(
             type_info,
             &type_index,
             "HeapGuardPolicy.MmPageGuard",
@@ -2612,7 +2669,8 @@ mod test {
     #[test]
     fn test_symbol_is_provably_zero_sized_rejects_types_that_occupy_storage() {
         let mut metadata = build_metadata();
-        let type_info = &metadata.pdb.type_information().unwrap();
+        let info = metadata.pdb.type_information().unwrap();
+        let type_info = &Types::new(&info).unwrap();
 
         // An aggregate that holds data is never treated as empty, so the transparent wrapper
         // descent can never step over it.
