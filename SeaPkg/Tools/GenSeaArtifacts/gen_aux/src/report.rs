@@ -91,6 +91,64 @@ impl Coverage {
         self.segments.iter().filter(|seg| filter(seg)).collect()
     }
 
+    /// Checks final coverage, returning a diagnostic when missing rules are allowed.
+    pub fn check_rules<'a, S: Source<'a> + 'a>(
+        &self,
+        metadata: &PdbMetadata<'a, S>,
+        no_missing_rules: bool,
+    ) -> Result<Option<String>> {
+        let missing = self.segments(|segment| !segment.covered());
+        if missing.is_empty() {
+            return Ok(None);
+        }
+
+        let mut lines = vec!["The following regions are not covered by any rule:".to_string()];
+        for segment in missing {
+            let size = segment.end() - segment.start();
+            let description = if segment.symbol().is_empty() {
+                let bytes = metadata
+                    .loaded_image_range(segment.start(), segment.end())
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Uncovered region [{:#x}..{:#x}] lies outside the loaded image.",
+                            segment.start(),
+                            segment.end()
+                        )
+                    })?;
+                let content = bytes
+                    .iter()
+                    .take(16)
+                    .map(|byte| format!("{:02X}", byte))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                format!(
+                    "is named by neither the PDB file nor the linker map, and holds [{}{}]. \
+                     Add a rule for the symbol that owns it; if the PDB file does not name it, \
+                     supply a matching linker map to create-aux with `--map` or embed it when \
+                     building test-aux.",
+                    content,
+                    if size > 16 { " ..." } else { "" }
+                )
+            } else {
+                segment.symbol().to_string()
+            };
+            lines.push(format!(
+                "  [{:#x}..{:#x}] ({:#x} bytes) {}",
+                segment.start(),
+                segment.end(),
+                size,
+                description
+            ));
+        }
+
+        let diagnostic = lines.join("\n");
+        if no_missing_rules {
+            return Err(anyhow!("Missing rules in the config file.\n{}", diagnostic));
+        }
+
+        Ok(Some(diagnostic))
+    }
+
     /// Writes the report to a file
     pub fn to_file(&self, path: std::path::PathBuf) -> anyhow::Result<()> {
         let mut file = std::fs::File::create(path)?;
@@ -945,5 +1003,81 @@ mod tests {
         let Ok(_) = Coverage::build(&aux_file, &mut metadata) else {
             panic!("Failed to build report");
         };
+    }
+
+    #[test]
+    fn test_check_rules_reports_named_regions_and_honors_missing_rules_setting() {
+        let mut metadata = create_metadata();
+        let report = Coverage::build(&AuxFile::default(), &mut metadata).unwrap();
+
+        let error = report.check_rules(&metadata, true).unwrap_err().to_string();
+        assert!(error.contains("Missing rules in the config file."));
+        assert!(error.contains("gMpInformation2HobGuid"));
+        let warning = report.check_rules(&metadata, false).unwrap().unwrap();
+        assert!(warning.contains("gMpInformation2HobGuid"));
+    }
+
+    #[test]
+    fn test_check_rules_reports_nonzero_unnamed_region_after_padding_generation() {
+        let mut metadata = create_metadata();
+        let report = Coverage::build(&AuxFile::default(), &mut metadata).unwrap();
+        let image = include_bytes!("../resources/test/example.efi");
+        let pe = goblin::pe::PE::parse(image).unwrap();
+        let (start, end, raw_offset) = report
+            .segments(|segment| !segment.covered() && segment.symbol().is_empty())
+            .into_iter()
+            .find_map(|segment| {
+                pe.sections.iter().find_map(|section| {
+                    let offset = segment.start().checked_sub(section.virtual_address)?;
+                    if offset < section.size_of_raw_data {
+                        Some((
+                            segment.start(),
+                            segment.end(),
+                            (section.pointer_to_raw_data + offset) as usize,
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .expect("fixture should contain unnamed writable bytes backed by the image");
+        let mut image = image.to_vec();
+        image[raw_offset] = 0xa5;
+        let pdb = include_bytes!("../resources/test/example.pdb");
+        let mut metadata = PdbMetadata::<'_, Cursor<_>>::new(pdb, &image).unwrap();
+        let mut aux = AuxFile::default();
+        let report = Coverage::build(&aux, &mut metadata).unwrap();
+
+        for (entry, data) in metadata.create_padding_entries(&report).unwrap() {
+            assert!(entry.offset + entry.size <= start || entry.offset >= end);
+            aux.add_entry(entry, &data);
+        }
+        aux.finalize();
+        let report = Coverage::build(&aux, &mut metadata).unwrap();
+
+        let error = report.check_rules(&metadata, true).unwrap_err().to_string();
+        assert!(error.contains(&format!("[{:#x}..{:#x}]", start, end)));
+        assert!(error.contains("holds [A5"));
+        assert!(error.contains("named by neither the PDB file nor the linker map"));
+        let warning = report.check_rules(&metadata, false).unwrap().unwrap();
+        assert!(warning.contains("holds [A5"));
+
+        for segment in report.segments(|segment| !segment.covered()) {
+            let data = metadata
+                .loaded_image_range(segment.start(), segment.end())
+                .unwrap();
+            aux.add_entry(
+                ImageValidationEntryHeader {
+                    offset: segment.start(),
+                    size: segment.end() - segment.start(),
+                    ..Default::default()
+                },
+                data,
+            );
+        }
+        aux.finalize();
+        let report = Coverage::build(&aux, &mut metadata).unwrap();
+        assert!(report.check_rules(&metadata, true).unwrap().is_none());
+        assert!(report.check_rules(&metadata, false).unwrap().is_none());
     }
 }
