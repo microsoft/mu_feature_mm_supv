@@ -8,6 +8,12 @@ PeCoffValidationLib. This is done by reading the following environment variables
 `TEST_AUX_PECOFF_VALIDATION_LIB_DIR`: The directory containing the PeCoffValidationLib to link against
 `TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH`: The exact path to the MmSupervisorCore.pdb
 `TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH`: The exact path to the MmSupervisorCore.efi
+`TEST_AUX_MM_SUPERVISOR_CORE_MAP_PATH`: Optional path to the matching MSVC-style `/MAP` linker map.
+Leave unset when no supported map is available; an empty map is embedded instead.
+
+The map must be from the same build as the PDB and EFI used by `create-aux`. It is embedded at
+compile time, so rebuild `test-aux` when changing these inputs. The `GenSeaArtifacts` plugin forwards
+the supervisor map automatically when one is present. The distinct `/lldmap` format is not supported.
 
 The intent is that the executable is uploaded with all other build artifacts via the `GenSeaArtifacts` stuart plugin,
 therefore compiling these directly into the binary makes the tool easier to use when the time comes. The tool has a
@@ -18,6 +24,12 @@ simple interface with the following two arguments:
    necessary to properly test the aux file.
 
 ## Configuration
+
+The auxiliary configuration's `no_missing_rules` setting is enforced before running validation tests.
+When it is `true`, any region left uncovered after padding generation is an error. When it is `false`,
+the tool prints a warning and runs the available tests; uncovered regions are not tested. Unnamed,
+nonzero reference-image bytes are reported with their addresses and contents even though no
+validation entry exists for them.
 
 As mentioned above, the `-c`, `--config` argument is to pass in a configuration file that contains the information from
 a run log of the given mm supervisor core.
