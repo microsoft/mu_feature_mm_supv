@@ -13,6 +13,9 @@ struct Args {
     /// Path to the efi file to parse.
     #[arg(short, long)]
     efi: PathBuf,
+    /// Path to a linker map file, used to recover symbols the PDB file does not name.
+    #[arg(short, long)]
+    map: Option<PathBuf>,
     /// Path to the output auxiliary file.
     #[arg(short, long)]
     output: Option<PathBuf>,
@@ -43,6 +46,9 @@ fn main() -> Result<()> {
     simple_logger::init_with_level(level)?;
 
     let mut metadata = PdbMetadata::<File>::new(args.pdb, args.efi.clone())?;
+    if let Some(map) = args.map {
+        metadata.add_map_symbols(&std::fs::read_to_string(map)?);
+    }
 
     let mut config: ConfigFile = ConfigFile::from_file(args.config)?;
     config.filter_by_scopes(&args.scopes)?;
