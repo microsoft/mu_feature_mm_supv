@@ -76,17 +76,8 @@ fn main() -> Result<()> {
     aux.finalize();
     let report = Coverage::build(&aux, &mut metadata)?;
 
-    if config.config.no_missing_rules {
-        let missing = report.segments(|s| !s.covered());
-        if !missing.is_empty() {
-            log::error!(
-                "The following symbols are missing rules in the config file: {:#?}",
-                missing
-            );
-            return Err(anyhow::anyhow!(
-                "Missing rules in the config file. See the log for details."
-            ));
-        }
+    if let Some(warning) = report.check_rules(&metadata, config.config.no_missing_rules)? {
+        eprintln!("Warning: {}", warning);
     }
 
     let output = args.output.unwrap_or(args.efi.with_extension("aux"));

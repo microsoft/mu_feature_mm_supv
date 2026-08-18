@@ -200,8 +200,15 @@ no_missing_rules = true
 
 #### no_missing_rules
 
-`no_missing_rules = true/false` config option tells the tool to stop processing if there is a symbol that does not
-currently have a rule created.
+`no_missing_rules = true` makes both `create-aux` and `test-aux` stop if any region remains uncovered
+after explicit rules and automatic padding rules have been applied. This includes unnamed, nonzero
+regions that cannot be validated as zero padding. The diagnostic includes addresses, sizes, and a
+preview of unnamed bytes from the reference image.
+
+With `no_missing_rules = false` (the default), both tools warn about uncovered regions and continue.
+Uncovered regions have no validation entries; passing the remaining tests does not demonstrate
+complete coverage. Supply a matching linker map and explicit rules for recovered symbols where
+debug information is missing.
 
 ## Adding a new rule
 
