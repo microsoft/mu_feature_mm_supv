@@ -246,6 +246,142 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         Ok(ret)
     }
 
+    /// Names regions the PDB file leaves unnamed, using a linker map file.
+    ///
+    /// The compiler drops the debug information for some statics, most notably `&dyn Trait`
+    /// statics, which the optimizer splits into one global per pointer. Those regions are
+    /// indistinguishable from padding in the PDB file alone, so they are silently validated as
+    /// zeros. The linker still names every piece, so the map is consulted to tell a real static
+    /// apart from genuine padding.
+    ///
+    /// The map is only ever used as a cross check against what the PDB file treats as padding. A
+    /// symbol is taken from the map only when it lies in a writable section and no PDB symbol
+    /// overlaps any part of it, so debug information always wins and an existing symbol can never
+    /// be displaced, resized or contradicted. Supplying no map leaves behavior unchanged.
+    pub fn add_map_symbols(&mut self, map: &str) {
+        let entries = crate::map::parse(map);
+
+        let mut additions: Vec<(usize, Symbol)> = Vec::new();
+        for entry in entries {
+            // Map sections are numbered from one.
+            let Some(index) = entry.section.checked_sub(1) else {
+                continue;
+            };
+            let Some(section) = self.sections.get(index) else {
+                continue;
+            };
+
+            // Only writable sections are validated symbol by symbol; everything else is covered
+            // wholesale and has no padding entries to cross check.
+            if !section.writable {
+                continue;
+            }
+
+            let address = section.range.start + entry.offset;
+            if !section.range.contains(&address) {
+                continue;
+            }
+
+            // A map records no sizes, so the size carried here is inferred from the distance to
+            // the next symbol and is only an upper bound. The PDB file knows exactly where the
+            // next described symbol begins, so the region is clipped to the unnamed gap it sits
+            // in. That keeps an over-inferred size from swallowing bytes that belong to something
+            // else, or alignment padding that must stay validated as zero.
+            let gap_end = self.gap_end_from(address, section.range.end);
+            let size = entry.size.min(gap_end.saturating_sub(address));
+            if size == 0 {
+                continue;
+            }
+            if size != entry.size {
+                log::debug!(
+                    "Clipped [{}] at {:#x} from {:#x} to {:#x} bytes to fit the unnamed gap.",
+                    entry.name,
+                    address,
+                    entry.size,
+                    size
+                );
+            }
+
+            let range = address..address + size;
+            if !section.range.contains(&(range.end - 1)) {
+                continue;
+            }
+
+            // Anything the PDB file describes, in whole or in part, is left alone.
+            if self.pdb_symbol_overlaps(&range) {
+                continue;
+            }
+
+            // Two map symbols must not claim the same bytes either.
+            if additions
+                .iter()
+                .any(|(_, s)| s.address < range.end && range.start < s.address + s.size())
+            {
+                continue;
+            }
+
+            log::debug!(
+                "Recovered symbol [{}] at {:#x} ({:#x} bytes) from the linker map.",
+                entry.name,
+                address,
+                size
+            );
+
+            additions.push((
+                index,
+                Symbol {
+                    address,
+                    name: entry.name,
+                    type_info: TypeInfo::one(size, None),
+                    // Clipping the symbol clips its pieces, so a piece can never describe bytes
+                    // outside the gap the symbol was trimmed to.
+                    pieces: entry
+                        .pieces
+                        .iter()
+                        .filter(|(offset, _)| *offset < size)
+                        .map(|(offset, piece)| (*offset, (*piece).min(size - offset)))
+                        .collect(),
+                },
+            ));
+        }
+
+        let added = additions.len();
+        for (index, symbol) in additions {
+            self.sections[index].symbols.push(symbol);
+        }
+        log::info!("Recovered {} symbol(s) from the linker map.", added);
+    }
+
+    /// Returns every symbol known across all sections.
+    fn symbols(&self) -> impl Iterator<Item = &Symbol> {
+        self.sections
+            .iter()
+            .flat_map(|section| section.symbols.iter())
+    }
+
+    /// Returns where the unnamed gap containing `address` ends.
+    ///
+    /// That is the start of the next symbol the PDB file describes, or the end of the section if
+    /// no described symbol follows.
+    fn gap_end_from(&self, address: u32, section_end: u32) -> u32 {
+        self.symbols()
+            .map(|symbol| symbol.address)
+            .filter(|start| *start > address && *start <= section_end)
+            .min()
+            .unwrap_or(section_end)
+    }
+
+    /// Returns whether any symbol from the PDB file occupies any part of the given range.
+    fn pdb_symbol_overlaps(&self, range: &Range<u32>) -> bool {
+        self.sections
+            .iter()
+            .flat_map(|section| section.symbols.iter())
+            .any(|symbol| {
+                let end = symbol.address + symbol.type_info.total_size();
+                symbol.address < range.end && range.start < end
+            })
+    }
+
     /// Returns the unloaded image bytes.
     pub fn unloaded_image(&self) -> &[u8] {
         &self.unloaded_image
@@ -307,14 +443,15 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
     }
 
     /// Returns the offset of a rule's field within its symbol, along with the field's type.
+    ///
+    /// Debug information is used whenever the symbol has it. A symbol recovered from a linker map
+    /// does not, because a map records only names and addresses, so its field is instead the
+    /// index of one of the pieces the optimizer split it into.
     fn resolve_field(&mut self, symbol: &Symbol, field: &str) -> Result<(u32, TypeInfo)> {
-        let type_id = symbol.type_info.type_id().ok_or_else(|| {
-            anyhow!(
-                "Symbol [{}] has no type information. Cannot resolve field [{}].",
-                symbol.name(),
-                field
-            )
-        })?;
+        let Some(type_id) = symbol.type_info.type_id() else {
+            let (offset, size) = symbol.piece(field)?;
+            return Ok((offset, TypeInfo::one(size, None)));
+        };
 
         let info = self.pdb.type_information()?;
         Symbol::find_field(&info, &type_id, field, symbol.name())
@@ -523,6 +660,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 Section {
                     name: section.name().to_string(),
                     range,
+                    writable: section.characteristics.write(),
                     symbols: vec![],
                 }
             })
@@ -711,6 +849,8 @@ fn field_name_matches(actual: &str, expected: &str) -> bool {
 pub struct Section {
     pub name: String,
     range: Range<u32>,
+    /// Whether the section is writable, and so subject to validation.
+    writable: bool,
     pub symbols: Vec<Symbol>,
 }
 
@@ -731,6 +871,10 @@ pub struct Symbol {
     pub address: u32,
     pub name: String,
     type_info: TypeInfo,
+    /// The `(offset, size)` of each piece a linker map recorded for this symbol.
+    ///
+    /// Empty for a symbol described by the PDB file, whose fields come from its type instead.
+    pieces: Vec<(u32, u32)>,
 }
 
 impl Symbol {
@@ -766,6 +910,38 @@ impl Symbol {
         self.type_info.total_size()
     }
 
+    /// Returns the offset and size of one of the pieces a linker map recorded for this symbol.
+    ///
+    /// A map records no field names, so the pieces the optimizer split the symbol into are
+    /// addressed by index. A symbol that was not split has a single piece covering all of it.
+    fn piece(&self, field: &str) -> Result<(u32, u32)> {
+        if self.pieces.is_empty() {
+            return Err(anyhow!(
+                "Symbol [{}] has neither debug information nor linker map pieces, so field [{}] cannot be resolved.",
+                self.name,
+                field
+            ));
+        }
+
+        let index = field.parse::<usize>().map_err(|_| {
+            anyhow!(
+                "Symbol [{}] is described by a linker map, which records no field names. Address one of its {} piece(s) by index, such as `field = '0'`, rather than [{}].",
+                self.name,
+                self.pieces.len(),
+                field
+            )
+        })?;
+
+        self.pieces.get(index).copied().ok_or_else(|| {
+            anyhow!(
+                "Symbol [{}] has {} linker map piece(s), so piece [{}] does not exist.",
+                self.name,
+                self.pieces.len(),
+                index
+            )
+        })
+    }
+
     fn from_public(symbol: pdb::PublicSymbol<'_>, address_map: &AddressMap<'_>) -> Self {
         let address = symbol.offset.to_rva(address_map).unwrap_or_default().0;
         let type_info = TypeInfo::one(POINTER_LENGTH as u32, None);
@@ -775,6 +951,7 @@ impl Symbol {
             address,
             name,
             type_info,
+            pieces: Vec::new(),
         }
     }
 
@@ -791,6 +968,7 @@ impl Symbol {
             address,
             name,
             type_info,
+            pieces: Vec::new(),
         })
     }
 
@@ -803,6 +981,7 @@ impl Symbol {
             address,
             name,
             type_info,
+            pieces: Vec::new(),
         }
     }
 
@@ -815,6 +994,7 @@ impl Symbol {
             address,
             name,
             type_info,
+            pieces: Vec::new(),
         }
     }
 
@@ -2391,6 +2571,42 @@ mod test {
         assert!(error.contains("Field [MmPageGuard] not found"));
         assert!(error.contains("Data"), "{}", error);
         assert!(error.contains("Fields"), "{}", error);
+    }
+
+    #[test]
+    fn test_symbol_piece_addresses_linker_map_pieces() {
+        let symbol = Symbol {
+            address: 0x34320,
+            name: "log::LOGGER".to_string(),
+            type_info: TypeInfo::one(0x10, None),
+            pieces: vec![(0x0, 0x8), (0x8, 0x8)],
+        };
+
+        assert_eq!(symbol.piece("0").unwrap(), (0x0, 0x8));
+        assert_eq!(symbol.piece("1").unwrap(), (0x8, 0x8));
+
+        // A map has no field names, so anything that is not an index has to be rejected rather
+        // than silently resolving to the wrong bytes.
+        assert!(symbol
+            .piece("pointer")
+            .is_err_and(|e| e.to_string().contains("records no field names")));
+        assert!(symbol
+            .piece("2")
+            .is_err_and(|e| e.to_string().contains("does not exist")));
+    }
+
+    #[test]
+    fn test_symbol_piece_requires_pieces() {
+        let symbol = Symbol {
+            address: 0x1000,
+            name: "no_debug_info".to_string(),
+            type_info: TypeInfo::one(0x8, None),
+            pieces: Vec::new(),
+        };
+
+        assert!(symbol.piece("0").is_err_and(|e| e
+            .to_string()
+            .contains("neither debug information nor linker map")));
     }
 
     #[test]
