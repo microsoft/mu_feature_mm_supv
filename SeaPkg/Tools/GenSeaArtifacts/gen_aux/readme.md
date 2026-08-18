@@ -182,6 +182,13 @@ validation.type = "guid"
 validation.guid = [0x0, 0x0, 0x0, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]]
 ```
 
+### Automatic padding rules
+
+Automatic zero-content rules require zero bytes in the reference image. For gaps inside a typed
+object, the PDB layout must also establish that no member occupies the region. Inherited storage
+is not padding; layouts containing inheritance that the padding walker cannot resolve remain
+uncovered and require an explicit rule, such as a rule covering the whole containing object.
+
 ### config
 
 The below configuration options reside in a top level `[config]` section of the configuration file.
