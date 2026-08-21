@@ -77,6 +77,8 @@ pub struct Key {
     pub signature: [char; 4],
     /// The offset
     pub symbol: String,
+    /// The field inside the symbol that the key should point at. Optional.
+    pub field: Option<String>,
 }
 
 /// A struct representing a rule that should be applied to a symbol in the auxiliary file.
