@@ -41,11 +41,13 @@ symbol and add them to the the header (`IMAGE_VALIDATION_DATA_HEADER`).
 [[key]]
 signature = 'Required[[char; 4]]'
 symbol = 'Optional[String]'
+field = 'Optional[String]'
 offset = 'Optional[u32]'
 ```
 
 - `signature`: The 4 byte signature used by the firmware to determine how to use the offset (i.e. ['F', 'P', 'O', 'L'])
 - `symbol`: Used to calculate the offset value. Mutually exclusive to `offset`
+- `field`: Updates the offset to point at this field within `symbol`, rather than the symbol itself.
 - `offset`: The offset used by the firmware. Mutually exclusive to `symbol`
 
 ### rule
