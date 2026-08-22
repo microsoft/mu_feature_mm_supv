@@ -11,9 +11,9 @@
 # This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
 
 # release/202511 (Non Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-03-23T19-03-02 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 567c67d760b57fc036b0dae53c77f700 | 2026-08-22T00-06-08 | ad2e52e130d77544d9461913ce69983b22410559
 # release/202511 (Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 2d0cfa04356a3778273ce8aaf123fbdd | 2026-03-23T19-03-36 | 1617810253e428d5455fe5fdb304789416564fa3
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 567c67d760b57fc036b0dae53c77f700 | 2026-08-22T00-24-26 | 65fa6f67751c273bc8312513dfb223f296e558ed
 
 # release/202502 (Non Secure)
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-21-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
