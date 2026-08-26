@@ -6,8 +6,11 @@
 #  SPDX-License-Identifier: BSD-2-Clause-Patent
 #
 ##
+# release/202608
+#Track : 00000002 | UefiCpuPkg/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLibStm.inf | fa9292551143daf7e1a2d3e4a76c3735 | 2026-08-25T22-50-59 | 6c5ace9abbe6adc05c1a64faaae65d1d66751401
 
-#Override : 00000002 | UefiCpuPkg/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLibStm.inf | 25e0e8142525fe1e23af3fcb5d9c98d7 | 2024-02-27T23-39-08 | e9e34593db8b2e4506164ef123ccae4f5a9c699f
+# release/202511
+#Track : 00000002 | UefiCpuPkg/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLibStm.inf | 25e0e8142525fe1e23af3fcb5d9c98d7 | 2024-02-27T23-39-08 | e9e34593db8b2e4506164ef123ccae4f5a9c699f
 
 [Defines]
   INF_VERSION                    = 0x00010005
