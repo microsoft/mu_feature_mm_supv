@@ -406,14 +406,12 @@ StrDecimalToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINTN          Result;
   RETURN_STATUS  Status;
 
   Status = StrDecimalToUintnS (String, (CHAR16 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -459,14 +457,12 @@ StrDecimalToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINT64         Result;
   RETURN_STATUS  Status;
 
   Status = StrDecimalToUint64S (String, (CHAR16 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -513,14 +509,12 @@ StrHexToUintn (
   IN      CONST CHAR16  *String
   )
 {
-  UINTN  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINTN          Result;
   RETURN_STATUS  Status;
 
   Status = StrHexToUintnS (String, (CHAR16 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -567,14 +561,12 @@ StrHexToUint64 (
   IN      CONST CHAR16  *String
   )
 {
-  UINT64  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINT64         Result;
   RETURN_STATUS  Status;
 
   Status = StrHexToUint64S (String, (CHAR16 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -1015,14 +1007,12 @@ AsciiStrDecimalToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINTN          Result;
   RETURN_STATUS  Status;
 
   Status = AsciiStrDecimalToUintnS (String, (CHAR8 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -1064,14 +1054,12 @@ AsciiStrDecimalToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINT64         Result;
   RETURN_STATUS  Status;
 
   Status = AsciiStrDecimalToUint64S (String, (CHAR8 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -1117,14 +1105,12 @@ AsciiStrHexToUintn (
   IN      CONST CHAR8  *String
   )
 {
-  UINTN  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINTN          Result;
   RETURN_STATUS  Status;
 
   Status = AsciiStrHexToUintnS (String, (CHAR8 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
@@ -1170,14 +1156,12 @@ AsciiStrHexToUint64 (
   IN      CONST CHAR8  *String
   )
 {
-  UINT64  Result;
-  // MU_CHANGE Start - CodeQL Change
+  UINT64         Result;
   RETURN_STATUS  Status;
 
   Status = AsciiStrHexToUint64S (String, (CHAR8 **)NULL, &Result);
   if (Status == RETURN_INVALID_PARAMETER) {
     Result = 0;
-    // MU_CHANGE End - CodeQL Change
   }
 
   return Result;
