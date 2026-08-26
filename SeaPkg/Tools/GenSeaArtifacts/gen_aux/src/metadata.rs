@@ -690,8 +690,24 @@ impl Symbol {
         attribute: &str,
         symbol: &str,
     ) -> Result<(u32, u32)> {
+        Self::find_field_offset_and_size_at(info, id, attribute, symbol, 0)
+    }
+
+    /// Walks a dotted field path, transparently descending through wrapper types.
+    ///
+    /// `depth` counts only the wrapper layers that were skipped implicitly, and exists solely to
+    /// stop a malformed PDB from producing an unbounded descent.
+    fn find_field_offset_and_size_at(
+        info: &TypeInformation,
+        id: &TypeIndex,
+        attribute: &str,
+        symbol: &str,
+        depth: u32,
+    ) -> Result<(u32, u32)> {
+        const MAX_WRAPPER_DEPTH: u32 = 32;
+
         let mut parts = attribute.splitn(2, '.');
-        let attribute = parts.next().unwrap_or("");
+        let name = parts.next().unwrap_or("");
         let remaining = parts.next().unwrap_or("");
 
         let aggregate =
@@ -706,6 +722,7 @@ impl Symbol {
         let field_list = aggregate
             .fields
             .ok_or_else(|| anyhow!("Symbol [{}] is a class, but has no fields.", symbol))?;
+        let parent_size = aggregate.size;
 
         let TypeData::FieldList(fields) = TypeInfo::find_type(info, field_list)?.parse()? else {
             // Theoretically unreachable, unless the pdb file is malformed or there is a bug in the
@@ -716,29 +733,124 @@ impl Symbol {
             ));
         };
 
+        let mut members = Vec::new();
         for field in fields.fields {
             if let TypeData::Member(member) = field {
-                if member.name.to_string() == attribute {
+                if member.name.to_string() == name {
                     if !remaining.is_empty() {
-                        let (offset, size) = Self::find_field_offset_and_size(
+                        let (offset, size) = Self::find_field_offset_and_size_at(
                             info,
                             &member.field_type,
                             remaining,
                             symbol,
+                            depth,
                         )?;
                         return Ok((member.offset as u32 + offset, size));
                     }
                     let size = TypeInfo::from_type_index(info, member.field_type)?.total_size();
                     return Ok((member.offset as u32, size));
                 }
+                members.push((
+                    member.name.to_string().to_string(),
+                    member.offset,
+                    member.field_type,
+                ));
+            }
+        }
+
+        // Nothing matched at this level. A record whose single populated member starts at offset
+        // 0 and spans the whole parent contributes a name and no storage, so descend through it
+        // and retry; config paths then only name the fields a reader would recognize. Rust
+        // produces this shape constantly via `UnsafeCell`, `ManuallyDrop`, `MaybeUninit` and
+        // newtypes. Explicit paths still work, because this runs only after an exact match fails.
+        if depth < MAX_WRAPPER_DEPTH {
+            if let Some(inner) = Self::transparent_wrapper_member(info, &members, parent_size) {
+                return Self::find_field_offset_and_size_at(
+                    info,
+                    &inner,
+                    attribute,
+                    symbol,
+                    depth + 1,
+                );
             }
         }
 
         Err(anyhow::anyhow!(
-            "Field [{}] not found in symbol [{}]",
-            attribute,
-            symbol
+            "Field [{}] not found in symbol [{}]. Available fields at this level: [{}]",
+            name,
+            symbol,
+            members
+                .iter()
+                .map(|(name, ..)| name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
         ))
+    }
+
+    /// Returns the type of the sole data-carrying member if `members` describes a transparent
+    /// wrapper, meaning exactly one member that begins at offset 0 and covers the full
+    /// `parent_size`. Members are only disregarded when they are provably zero sized, so a
+    /// member that occupies storage can never be stepped over.
+    ///
+    /// Returns `None` whenever the shape is ambiguous or a member size cannot be resolved, so an
+    /// unrecognized layout reports the original "field not found" error rather than guessing.
+    fn transparent_wrapper_member(
+        info: &TypeInformation,
+        members: &[(String, u64, TypeIndex)],
+        parent_size: u64,
+    ) -> Option<TypeIndex> {
+        if parent_size == 0 {
+            return None;
+        }
+
+        let mut payload = None;
+        for (_, offset, field_type) in members {
+            if Self::is_provably_zero_sized(info, *field_type) {
+                continue;
+            }
+            if payload.is_some() {
+                return None;
+            }
+            // Any member that is not provably empty must account for the whole parent, otherwise
+            // this is a real aggregate and stepping through it would skip storage.
+            let size = TypeInfo::from_type_index(info, *field_type)
+                .ok()?
+                .total_size();
+            if *offset != 0 || size as u64 != parent_size {
+                return None;
+            }
+            payload = Some(*field_type);
+        }
+        payload
+    }
+
+    /// Returns whether `index` refers to a type that provably occupies no storage.
+    ///
+    /// Only a complete aggregate definition that records a size of zero qualifies. A computed
+    /// size of zero is deliberately not accepted, because several type encodings yield zero when
+    /// the size is merely unknown: `PrimitiveKind::NoType`, and arrays whose declared byte length
+    /// is smaller than one element. Forward references are rejected as well, since their size is
+    /// a placeholder rather than a statement about the real definition.
+    fn is_provably_zero_sized(info: &TypeInformation, index: TypeIndex) -> bool {
+        // Bound the walk so a malformed PDB cannot produce an unbounded modifier chain.
+        const MAX_MODIFIER_DEPTH: u32 = 32;
+
+        let mut index = index;
+        for _ in 0..MAX_MODIFIER_DEPTH {
+            let Ok(data) = TypeInfo::find_type(info, index).and_then(|item| Ok(item.parse()?))
+            else {
+                return false;
+            };
+            match data {
+                // Qualifiers do not change the size of the underlying type.
+                TypeData::Modifier(modifier) => index = modifier.underlying_type,
+                data => {
+                    return Aggregate::new(&data)
+                        .is_some_and(|a| a.size == 0 && !a.forward_reference)
+                }
+            }
+        }
+        false
     }
 }
 
@@ -901,8 +1013,6 @@ impl TypeInfo {
 
         // Anything that is not a zero-size forward reference is returned as-is. That includes a
         // size-0 complete definition, which is a genuine zero-sized type rather than a stand-in.
-        // Unions are forward referenced the same way classes are; without following them the
-        // `fields` index of the forward reference is used, which does not point at a field list.
         let type_name = match Aggregate::new(&item) {
             Some(aggregate) if aggregate.size == 0 && aggregate.forward_reference => {
                 aggregate.name.to_string().to_string()
@@ -913,6 +1023,15 @@ impl TypeInfo {
         // The record was a size-0 forward reference, so it should have a shadow definition
         // carrying the real information.
         if let Some(item) = Self::find_aggregate(info, &type_name, |a| a.size != 0) {
+            return Ok(item);
+        }
+
+        // The forward reference may describe a type whose real definition is genuinely zero
+        // sized, such as an empty aggregate or Rust's `PhantomData`. No non-zero-sized definition
+        // can exist for those, so accept a complete (non-forward-reference) definition instead. A
+        // forward reference with no definition at all matches neither and falls through to the
+        // error below, so a genuinely missing type is not masked.
+        if let Some(item) = Self::find_aggregate(info, &type_name, |a| !a.forward_reference) {
             return Ok(item);
         }
 
@@ -1939,5 +2058,123 @@ mod test {
         assert!(result.is_err_and(|err| err
             .to_string()
             .contains("Symbol [mMapDepth] is not a class or union. Cannot get fields.")));
+    }
+
+    /// The descent only fires for a record that is unambiguously a pass-through: one payload, at
+    /// offset 0, covering the whole parent.
+    #[test]
+    fn test_transparent_wrapper_member_accepts_a_sole_full_width_payload() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let payload = metadata
+            .find_symbol("mMapDepth")
+            .type_info
+            .type_id()
+            .unwrap();
+        let width = TypeInfo::from_type_index(type_info, payload)
+            .unwrap()
+            .total_size() as u64;
+
+        let members = vec![("value".to_string(), 0u64, payload)];
+        assert_eq!(
+            Symbol::transparent_wrapper_member(type_info, &members, width),
+            Some(payload)
+        );
+    }
+
+    /// Anything that is not provably a pass-through is refused, so a descent can never move a
+    /// path onto storage the author did not name.
+    #[test]
+    fn test_transparent_wrapper_member_refuses_anything_ambiguous() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        let payload = metadata
+            .find_symbol("mMapDepth")
+            .type_info
+            .type_id()
+            .unwrap();
+        let width = TypeInfo::from_type_index(type_info, payload)
+            .unwrap()
+            .total_size() as u64;
+
+        // Two members that both carry data: which one to follow is a guess, so neither is taken.
+        let two = vec![
+            ("a".to_string(), 0u64, payload),
+            ("b".to_string(), 0u64, payload),
+        ];
+        assert_eq!(
+            Symbol::transparent_wrapper_member(type_info, &two, width),
+            None
+        );
+
+        // Sole member, but it does not start the parent, so bytes precede it.
+        let offset = vec![("value".to_string(), 1u64, payload)];
+        assert_eq!(
+            Symbol::transparent_wrapper_member(type_info, &offset, width),
+            None
+        );
+
+        // Sole member at offset 0, but it does not span the parent, so bytes follow it.
+        let short = vec![("value".to_string(), 0u64, payload)];
+        assert_eq!(
+            Symbol::transparent_wrapper_member(type_info, &short, width + 1),
+            None
+        );
+
+        // A parent of unknown size proves nothing about its members.
+        assert_eq!(
+            Symbol::transparent_wrapper_member(type_info, &short, 0),
+            None
+        );
+    }
+
+    /// A C bitfield union has two full width members, so the descent cannot choose between them.
+    /// The failure names what was available rather than silently landing on one of them.
+    #[test]
+    fn test_symbol_find_field_refuses_to_guess_through_an_ambiguous_union() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+        let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
+
+        // `MmPageGuard` lives under `HeapGuardPolicy.Fields`, and skipping `Fields` is a guess.
+        let error = Symbol::find_field_offset_and_size(
+            type_info,
+            &type_index,
+            "HeapGuardPolicy.MmPageGuard",
+            "gMmMps",
+        )
+        .expect_err("an ambiguous union must not be descended through");
+
+        let error = error.to_string();
+        assert!(error.contains("Field [MmPageGuard] not found"));
+        assert!(error.contains("Data"), "{}", error);
+        assert!(error.contains("Fields"), "{}", error);
+    }
+
+    #[test]
+    fn test_symbol_is_provably_zero_sized_rejects_types_that_occupy_storage() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+
+        // An aggregate that holds data is never treated as empty, so the transparent wrapper
+        // descent can never step over it.
+        let class_index = metadata
+            .find_symbol("mRootMmiEntry")
+            .type_info
+            .type_id()
+            .unwrap();
+        assert!(!Symbol::is_provably_zero_sized(type_info, class_index));
+
+        // Non-aggregates are rejected as well. Several encodings report a computed size of zero
+        // when the size is merely unknown, so only an explicit zero-sized aggregate definition
+        // counts as proof.
+        let scalar_index = metadata
+            .find_symbol("mMapDepth")
+            .type_info
+            .type_id()
+            .unwrap();
+        assert!(!Symbol::is_provably_zero_sized(type_info, scalar_index));
     }
 }
