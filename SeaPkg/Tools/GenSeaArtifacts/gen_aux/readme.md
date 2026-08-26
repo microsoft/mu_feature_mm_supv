@@ -72,13 +72,8 @@ remarks = 'Optional[String]'
 
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
 - `symbol`: Determines the address and size for the rule
-- `field`: Updates the address and size to be that of the field, rather than the symbol itself. A symbol recovered
-from a linker map has no field names, because a map records only names and addresses, so its `field` is instead the
-index of one of the pieces the optimizer split it into, such as `'0'`. A `&dyn Trait` static, for example, is split
-into piece `0` for the data pointer and piece `1` for the vtable pointer.
-- `array.field`: Names an array member of the symbol, for when the array is nested inside the symbol rather than being
-the symbol itself. The rule then iterates that member, `array.index` refers to it, and `field` names a field of its
-element type. Without this the rule iterates the symbol's own elements, and `field` names a field of those.
+- `field`: Updates the address and size to be that of the field, rather than the symbol itself.
+- `array.field`: Names a member inside a structure that is an array. This could be used in conjunction with `field` to validate a "field" inside this array.
 - `array.index`: Only apply the rule to the specified index of the array, or inclusive range.
 - `array.sentinel`: Apply content rule to only the final rule such that its content must be all zeros.
 - `validation.type`: The type of validation to perform on this symbol. Different values may also require additional configuration
