@@ -20,6 +20,32 @@ use crate::{config, file, report};
 
 const POINTER_LENGTH: u64 = 8;
 
+/// A class or union record reduced to the parts this module needs, so one code path handles both.
+struct Aggregate<'t> {
+    name: pdb::RawString<'t>,
+    size: u64,
+    /// A class may have no field list; a union always has one.
+    fields: Option<TypeIndex>,
+    forward_reference: bool,
+}
+
+impl<'t> Aggregate<'t> {
+    fn new(data: &TypeData<'t>) -> Option<Self> {
+        let (name, size, fields, properties) = match data {
+            TypeData::Class(c) => (c.name, c.size, c.fields, c.properties),
+            TypeData::Union(u) => (u.name, u.size, Some(u.fields), u.properties),
+            _ => return None,
+        };
+
+        Some(Self {
+            name,
+            size,
+            fields,
+            forward_reference: properties.forward_reference(),
+        })
+    }
+}
+
 /// Additional context associated with a rule
 pub struct Context {
     pub name: String,
@@ -657,7 +683,7 @@ impl Symbol {
         }
     }
 
-    /// Returns the offset and size of a field in a class.
+    /// Returns the offset and size of a field in a class or union.
     fn find_field_offset_and_size(
         info: &TypeInformation,
         id: &TypeIndex,
@@ -667,54 +693,52 @@ impl Symbol {
         let mut parts = attribute.splitn(2, '.');
         let attribute = parts.next().unwrap_or("");
         let remaining = parts.next().unwrap_or("");
-        match TypeInfo::find_type(info, *id)?.parse()? {
-            TypeData::Class(class) => {
-                if let Some(fields) = class.fields {
-                    if let pdb::TypeData::FieldList(fields) =
-                        TypeInfo::find_type(info, fields)?.parse()?
-                    {
-                        for field in fields.fields {
-                            if let TypeData::Member(member) = field {
-                                if member.name.to_string() == attribute {
-                                    let size = TypeInfo::from_type_index(info, member.field_type)?
-                                        .total_size();
-                                    if !remaining.is_empty() {
-                                        let (offset, size) = Self::find_field_offset_and_size(
-                                            info,
-                                            &member.field_type,
-                                            remaining,
-                                            symbol,
-                                        )?;
-                                        return Ok((member.offset as u32 + offset, size));
-                                    }
-                                    return Ok((member.offset as u32, size));
-                                }
-                            }
-                        }
-                        return Err(anyhow::anyhow!(
-                            "Field [{}] not found in symbol [{}]",
-                            attribute,
-                            symbol
-                        ));
-                    }
-                    // Theoretically unreachable, unless the pdb file is malformed or there is a bug in the pdb crate
-                    // code.
-                    return Err(anyhow::anyhow!(
-                        "UNEXPECTED: Symbol [{}] fields are not a field list.",
-                        symbol
-                    ));
-                }
-                // Theoretically unreachable as you cannot have a struct defined without fields in C.
-                Err(anyhow::anyhow!(
-                    "Symbol [{}] is a class, but has no fields.",
+
+        let aggregate =
+            Aggregate::new(&TypeInfo::find_type(info, *id)?.parse()?).ok_or_else(|| {
+                anyhow!(
+                    "Symbol [{}] is not a class or union. Cannot get fields.",
                     symbol
-                ))
-            }
-            _ => Err(anyhow::anyhow!(
-                "Symbol [{}] is not a class. Cannot get class fields.",
+                )
+            })?;
+
+        // Theoretically unreachable as you cannot have a struct defined without fields in C.
+        let field_list = aggregate
+            .fields
+            .ok_or_else(|| anyhow!("Symbol [{}] is a class, but has no fields.", symbol))?;
+
+        let TypeData::FieldList(fields) = TypeInfo::find_type(info, field_list)?.parse()? else {
+            // Theoretically unreachable, unless the pdb file is malformed or there is a bug in the
+            // pdb crate code.
+            return Err(anyhow::anyhow!(
+                "UNEXPECTED: Symbol [{}] fields are not a field list.",
                 symbol
-            )),
+            ));
+        };
+
+        for field in fields.fields {
+            if let TypeData::Member(member) = field {
+                if member.name.to_string() == attribute {
+                    if !remaining.is_empty() {
+                        let (offset, size) = Self::find_field_offset_and_size(
+                            info,
+                            &member.field_type,
+                            remaining,
+                            symbol,
+                        )?;
+                        return Ok((member.offset as u32 + offset, size));
+                    }
+                    let size = TypeInfo::from_type_index(info, member.field_type)?.total_size();
+                    return Ok((member.offset as u32, size));
+                }
+            }
         }
+
+        Err(anyhow::anyhow!(
+            "Field [{}] not found in symbol [{}]",
+            attribute,
+            symbol
+        ))
     }
 }
 
@@ -794,6 +818,11 @@ impl TypeInfo {
         data: TypeData,
         index: TypeIndex,
     ) -> Result<Self> {
+        // A class and a union are both sized aggregates; only their member layout differs.
+        if let Some(aggregate) = Aggregate::new(&data) {
+            return Ok(TypeInfo::one(aggregate.size as u32, Some(index)));
+        }
+
         Ok(match data {
             TypeData::Primitive(prim) => {
                 if prim.indirection.is_some() {
@@ -802,7 +831,6 @@ impl TypeInfo {
                     TypeInfo::one(Self::get_size_from_primitive(prim.kind), Some(index))
                 }
             }
-            TypeData::Class(class) => TypeInfo::one(class.size as u32, Some(index)),
             TypeData::VirtualFunctionTablePointer(_) => {
                 TypeInfo::one(POINTER_LENGTH as u32, Some(index))
             }
@@ -822,10 +850,13 @@ impl TypeInfo {
                 let element = TypeInfo::from_type_index(info, arr.element_type)?;
                 let element_size = element.element_size();
                 // Guard against a zero-sized element type.
-                let count = if element_size == 0 { 1 } else { total_size / element_size as usize };
+                let count = if element_size == 0 {
+                    1
+                } else {
+                    total_size / element_size as usize
+                };
                 TypeInfo::many(element_size, count, element.type_id())
             }
-            pdb::TypeData::Union(union) => TypeInfo::one(union.size as u32, Some(index)),
             // We don't have a good way to deal with bit-fields in this code, so we just return the size of the
             // underlying type. This is a limitation of the current implementation because the size we set is in bytes,
             // but the size of a particular bit-field is in bits. If we ever wish to make a rule for individual
@@ -855,8 +886,8 @@ impl TypeInfo {
         })
     }
 
-    /// Returns a type using the type index. If the type is a class with size 0, it will
-    /// check for a shadow class with the real information, returning that instead.
+    /// Returns a type using the type index. If the type is a class or union with size 0, it will
+    /// check for a shadow definition with the real information, returning that instead.
     fn find_type<'a>(info: &'a TypeInformation, index: TypeIndex) -> Result<Item<'a, TypeIndex>> {
         let mut iter = info.iter();
         let mut finder = info.finder();
@@ -868,43 +899,39 @@ impl TypeInfo {
         let data = finder.find(index)?;
         let item = data.parse()?;
 
-        // Return the item as-is if it is anything other than a class, or if it
-        // is a class that is not a zero-size forward reference.
-        let class_name;
-        if let TypeData::Class(d) = item {
-            if d.size != 0 {
-                return Ok(data);
+        // Anything that is not a zero-size forward reference is returned as-is. That includes a
+        // size-0 complete definition, which is a genuine zero-sized type rather than a stand-in.
+        // Unions are forward referenced the same way classes are; without following them the
+        // `fields` index of the forward reference is used, which does not point at a field list.
+        let type_name = match Aggregate::new(&item) {
+            Some(aggregate) if aggregate.size == 0 && aggregate.forward_reference => {
+                aggregate.name.to_string().to_string()
             }
-            // A size-0 class that is a complete definition (not a forward
-            // reference) is a genuine zero-sized type. Return it as-is.
-            if !d.properties.forward_reference() {
-                return Ok(data);
-            }
-            class_name = d.name.to_string().to_string();
-        } else {
-            return Ok(data);
-        }
+            _ => return Ok(data),
+        };
 
-        // The type was a size-0 forward-reference class, so it should have a
-        // shadow class with the real information.
-        let mut iter = info.iter();
-        let item = iter.find(|item| {
-            let item = item.parse()?;
-            if let Some(name) = item.name() {
-                if name.to_string() == class_name {
-                    if let TypeData::Class(data) = item {
-                        if data.size != 0 {
-                            return Ok(true);
-                        }
-                    }
-                }
-            }
-            Ok(false)
-        });
-        if let Ok(Some(item)) = item {
+        // The record was a size-0 forward reference, so it should have a shadow definition
+        // carrying the real information.
+        if let Some(item) = Self::find_aggregate(info, &type_name, |a| a.size != 0) {
             return Ok(item);
         }
-        Err(anyhow!("Symbol {} was found, but size was 0", class_name))
+
+        Err(anyhow!("Symbol {} was found, but size was 0", type_name))
+    }
+
+    /// Scans the type stream for a class or union named `name` that satisfies `accept`.
+    fn find_aggregate<'a>(
+        info: &'a TypeInformation,
+        name: &str,
+        accept: impl Fn(&Aggregate) -> bool,
+    ) -> Option<Item<'a, TypeIndex>> {
+        let mut iter = info.iter();
+        iter.find(|item| {
+            let data = item.parse()?;
+            Ok(Aggregate::new(&data).is_some_and(|a| a.name.to_string() == name && accept(&a)))
+        })
+        .ok()
+        .flatten()
     }
 
     /// Returns the size of a primitive type in bytes.
@@ -1828,6 +1855,73 @@ mod test {
             .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")));
     }
 
+    /// `gMmMps.HeapGuardPolicy` is a C union of a raw byte and a bitfield struct, both at offset
+    /// 0 within the union, which itself sits at offset 0x2 of the symbol.
+    #[test]
+    fn test_symbol_find_field_offset_and_size_through_union() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+        let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
+
+        let (offset, size) = Symbol::find_field_offset_and_size(
+            type_info,
+            &type_index,
+            "HeapGuardPolicy.Data",
+            "gMmMps",
+        )
+        .expect("a field behind a union should resolve");
+
+        assert_eq!(offset, 0x2);
+        assert_eq!(size, 0x1);
+    }
+
+    /// Union members overlap, so two members of the same union report the same offset while
+    /// keeping their own sizes.
+    #[test]
+    fn test_symbol_find_field_offset_and_size_union_members_overlap() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+        let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
+
+        let data = Symbol::find_field_offset_and_size(
+            type_info,
+            &type_index,
+            "HeapGuardPoolType.Data",
+            "gMmMps",
+        )
+        .expect("union member should resolve");
+        let fields = Symbol::find_field_offset_and_size(
+            type_info,
+            &type_index,
+            "HeapGuardPoolType.Fields",
+            "gMmMps",
+        )
+        .expect("union member should resolve");
+
+        assert_eq!(data.0, 0x4);
+        assert_eq!(fields.0, data.0);
+        assert_ne!(fields.1, data.1);
+    }
+
+    /// A path may continue into a struct that lives behind a union.
+    #[test]
+    fn test_symbol_find_field_offset_and_size_through_union_into_struct() {
+        let mut metadata = build_metadata();
+        let type_info = &metadata.pdb.type_information().unwrap();
+        let type_index = metadata.find_symbol("gMmMps").type_info.type_id().unwrap();
+
+        let (offset, _) = Symbol::find_field_offset_and_size(
+            type_info,
+            &type_index,
+            "HeapGuardPolicy.Fields.MmPageGuard",
+            "gMmMps",
+        )
+        .expect("a field of a struct behind a union should resolve");
+
+        // The union sits at 0x2, and both the struct and its first bitfield start at 0.
+        assert_eq!(offset, 0x2);
+    }
+
     #[test]
     fn test_symbol_find_field_offset_and_size_not_class() {
         let mut metadata = build_metadata();
@@ -1844,6 +1938,6 @@ mod test {
         let result = Symbol::find_field_offset_and_size(type_info, &type_index, field, symbol);
         assert!(result.is_err_and(|err| err
             .to_string()
-            .contains("Symbol [mMapDepth] is not a class. Cannot get class fields.")));
+            .contains("Symbol [mMapDepth] is not a class or union. Cannot get fields.")));
     }
 }
