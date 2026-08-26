@@ -22,8 +22,12 @@
   FILE_GUID                      = 2907CB61-CDD4-423C-857A-13A79E246A1D
   MODULE_TYPE                    = PEIM
   VERSION_STRING                 = 1.0
+  
+# release/202511
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | b80aef678589a19e353855758352a923 | 2026-08-25T22-52-17 | 6c5ace9abbe6adc05c1a64faaae65d1d66751401
 
-#Override : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 5f60bd756d3416f0452bbcdda2cbbaeb | 2025-02-25T18-06-46 | 81e778fe4164c0d1bd06614ba6acf28799457f4f
+# release/202511
+#Track : 00000002 | MdeModulePkg/Universal/CapsulePei/CapsuleX64.inf | 5f60bd756d3416f0452bbcdda2cbbaeb | 2025-02-25T18-06-46 | 81e778fe4164c0d1bd06614ba6acf28799457f4f
 
 #
 # The following information is for reference only and not required by the build tools.

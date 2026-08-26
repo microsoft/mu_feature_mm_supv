@@ -446,8 +446,8 @@ InternalLongJump (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a decmial character.
-  @retval FALSE If the Char is not a decmial character.
+  @retval TRUE  If the Char is a decimal character.
+  @retval FALSE If the Char is not a decimal character.
 
 **/
 BOOLEAN
@@ -485,8 +485,8 @@ InternalHexCharToUintn (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a hexadecmial character.
-  @retval FALSE If the Char is not a hexadecmial character.
+  @retval TRUE  If the Char is a hexadecimal character.
+  @retval FALSE If the Char is not a hexadecimal character.
 
 **/
 BOOLEAN
@@ -504,8 +504,8 @@ InternalIsHexaDecimalDigitCharacter (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a decmial character.
-  @retval FALSE If the Char is not a decmial character.
+  @retval TRUE  If the Char is a decimal character.
+  @retval FALSE If the Char is not a decimal character.
 
 **/
 BOOLEAN
@@ -524,8 +524,8 @@ InternalAsciiIsDecimalDigitCharacter (
 
   @param  Char  The character to check against.
 
-  @retval TRUE  If the Char is a hexadecmial character.
-  @retval FALSE If the Char is not a hexadecmial character.
+  @retval TRUE  If the Char is a hexadecimal character.
+  @retval FALSE If the Char is not a hexadecimal character.
 
 **/
 BOOLEAN
@@ -849,6 +849,32 @@ EFIAPI
 InternalX86RdRand64  (
   OUT     UINT64  *Rand
   );
+
+  #if defined (MDE_CPU_X64)
+
+/**
+  Write FS base register.
+
+  @param FsBase  Value to write to FS base register.
+**/
+VOID
+EFIAPI
+InternalX86WriteFsBase (
+  UINT64  FsBase
+  );
+
+/**
+  Read FS base register.
+
+  @return  Value of FS base register.
+**/
+UINT64
+EFIAPI
+InternalX86ReadFsBase (
+  VOID
+  );
+
+  #endif
 
 #else
 
