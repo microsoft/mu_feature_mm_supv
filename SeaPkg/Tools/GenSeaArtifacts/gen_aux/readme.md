@@ -73,7 +73,8 @@ remarks = 'Optional[String]'
 - `scope`: If specified, the rule is only applied when this scope is active. Otherwise it is always applied.
 - `symbol`: Determines the address and size for the rule
 - `field`: Updates the address and size to be that of the field, rather than the symbol itself.
-- `array.field`: Names a member inside a structure that is an array. This could be used in conjunction with `field` to validate a "field" inside this array.
+- `array.field`: Names a member inside a structure that is an array. This could be used in conjunction with `field` to validate
+a "field" inside this array.
 - `array.index`: Only apply the rule to the specified index of the array, or inclusive range.
 - `array.sentinel`: Apply content rule to only the final rule such that its content must be all zeros.
 - `validation.type`: The type of validation to perform on this symbol. Different values may also require additional configuration
