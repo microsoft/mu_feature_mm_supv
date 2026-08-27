@@ -516,7 +516,7 @@ PeCoffImageValidationMemAttr (
   }
 
   // Check if the memory attributes of the target image meet the requirements
-  if (((MemAttr & MemAttrHdr->TargetMemoryAttributeMustHave) != MemAttrHdr->TargetMemoryAttributeMustHave) &&
+  if (((MemAttr & MemAttrHdr->TargetMemoryAttributeMustHave) != MemAttrHdr->TargetMemoryAttributeMustHave) ||
       ((MemAttr & MemAttrHdr->TargetMemoryAttributeMustNotHave) != 0))
   {
     DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%p: 0x%x attribute 0x%x violated aux file specification must have 0x%x and must not have 0x%x\n", __func__, Hdr, Hdr->Size, MemAttr, MemAttrHdr->TargetMemoryAttributeMustHave, MemAttrHdr->TargetMemoryAttributeMustNotHave));
