@@ -857,7 +857,7 @@ PeCoffImageDiffValidation (
 
   // Here we basically treats the MsegBase as the target image. Because the validation function reaches into
   // the "target image buffer" to validate the _content_ at "the target address + offset".
-  Status  = PeCoffImageValidationMemAttr (&MsegBase, &(MsegMemAttr.Header), PageTableBase);
+  Status = PeCoffImageValidationMemAttr (&MsegBase, &(MsegMemAttr.Header), PageTableBase);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to validate MSEG memory attributes - %r\n", __func__, Status));
     return Status;
