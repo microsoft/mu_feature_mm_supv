@@ -53,4 +53,8 @@
   PeCoffExtraActionLib
   PeCoffValidationLib
   BaseMemoryLib
+  PcdLib
+
+[FeaturePcd]
+  gEfiSeaPkgTokenSpaceGuid.PcdImageValidationFailFast   ## CONSUMES
 

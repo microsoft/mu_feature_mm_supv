@@ -35,6 +35,7 @@
 #include <Library/SafeIntLib.h>
 #include <Library/PeCoffValidationLib.h>
 #include <Library/PeCoffLibNegative.h>
+#include <Library/PcdLib.h>
 #include <IndustryStandard/PeImage.h>
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/Cpuid.h>
@@ -816,7 +817,7 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   UINTN                          Index;
   EFI_STATUS                     Status;
-  EFI_STATUS                     FinalStatus;
+  EFI_STATUS                     FirstErrorStatus;
   UINTN                          ViolationCount;
   EFI_PHYSICAL_ADDRESS           MsegBase;
   UINTN                          MsegSize;
@@ -865,7 +866,7 @@ PeCoffImageDiffValidation (
     return Status;
   }
 
-  FinalStatus              = EFI_SUCCESS;
+  FirstErrorStatus         = EFI_SUCCESS;
   ViolationCount           = 0;
   ImageValidationEntryHdr  = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
   OriginalImageLoadAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(UINT8 *)OriginalImageBaseAddress;
@@ -874,7 +875,10 @@ PeCoffImageDiffValidation (
     if ((UINT8 *)(ImageValidationEntryHdr) >= ((UINT8 *)ImageValidationHdr + ImageValidationHdr->Size)) {
       DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8 *)ImageValidationHdr + ImageValidationHdr->Size));
       ViolationCount++;
-      FinalStatus = EFI_COMPROMISED_DATA;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_COMPROMISED_DATA;
+      }
+
       // The entry stream cannot be parsed any further.
       break;
     }
@@ -882,7 +886,10 @@ PeCoffImageDiffValidation (
     if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
       DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%x exceeds target image limit 0x%x\n", __func__, ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size, TargetImageSize));
       ViolationCount++;
-      FinalStatus = EFI_INVALID_PARAMETER;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_INVALID_PARAMETER;
+      }
+
       break;
     }
 
@@ -897,9 +904,20 @@ PeCoffImageDiffValidation (
         ImageValidationHdr->Size
         ));
       ViolationCount++;
-      FinalStatus = EFI_COMPROMISED_DATA;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_COMPROMISED_DATA;
+      }
+
       break;
     }
+
+    DEBUG ((
+      DEBUG_VERBOSE,
+      "%a: Evaluating symbol at offset: 0x%x in the target image with rule type: 0x%x\n",
+      __func__,
+      ImageValidationEntryHdr->Offset,
+      ImageValidationEntryHdr->ValidationType
+      ));
 
     // All validation has been updated to reference the original image.  PeCoffLoaderRevertRelocateImage will
     // touch up various parts of the image that will include some pointers causing parts of the TargetImage to
@@ -945,13 +963,13 @@ PeCoffImageDiffValidation (
 
     if (EFI_ERROR (Status)) {
       ViolationCount++;
-      if (!EFI_ERROR (FinalStatus)) {
-        FinalStatus = Status;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = Status;
       }
 
       DEBUG ((
         DEBUG_ERROR,
-        "Validation Error #%d! Entry index: 0x%x offset: 0x%x rule type: 0x%x - %r\n",
+        "Validation Error #%Ld! Entry index: 0x%Lx offset: 0x%x rule type: 0x%x - %r\n",
         ViolationCount,
         Index,
         ImageValidationEntryHdr->Offset,
@@ -960,6 +978,10 @@ PeCoffImageDiffValidation (
         ));
 
       if (NextImageValidationEntryHdr == NULL) {
+        break;
+      }
+
+      if (FeaturePcdGet (PcdImageValidationFailFast)) {
         break;
       }
     } else {
@@ -975,8 +997,8 @@ PeCoffImageDiffValidation (
     ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
 
-  if (EFI_ERROR (FinalStatus)) {
-    DEBUG ((DEBUG_ERROR, "Validation Error! %d violation(s) detected. Dumping Info...\n", ViolationCount));
+  if (EFI_ERROR (FirstErrorStatus)) {
+    DEBUG ((DEBUG_ERROR, "Validation Error! %Ld violation(s) detected. Dumping Info...\n", ViolationCount));
     DEBUG ((DEBUG_ERROR, "  MsegBase = \"0x%p\"\n", MsegBase));
     DEBUG ((DEBUG_ERROR, "  MsegSize = \"0x%x\"\n", MsegSize));
     DEBUG ((DEBUG_ERROR, "  MmSupervisorBase = \"0x%x\"\n", OriginalImageLoadAddress));
@@ -984,5 +1006,5 @@ PeCoffImageDiffValidation (
     DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
   }
 
-  return FinalStatus;
+  return FirstErrorStatus;
 }
