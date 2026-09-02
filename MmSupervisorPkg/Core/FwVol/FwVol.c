@@ -145,7 +145,13 @@ Returns:
       Status          = FfsFindSectionData (EFI_SECTION_PE32, InnerFileHeader, &Pe32Data, &Pe32DataSize);
       DEBUG ((DEBUG_INFO, "Find PE data - 0x%x\n", Pe32Data));
       DepexStatus = FfsFindSectionData (EFI_SECTION_MM_DEPEX, InnerFileHeader, &Depex, &DepexSize);
-      if (!EFI_ERROR (DepexStatus)) {
+      if (DepexStatus == EFI_NOT_FOUND) {
+        // FfsFindSectionData does not set DepexSize when the section is absent.
+        Depex     = NULL;
+        DepexSize = 0;
+      }
+
+      if (!EFI_ERROR (Status)) {
         // Set the FV header to be NULL here since the original header will not be available anyway.
         MmAddToDriverList (NULL, Pe32Data, Pe32DataSize, Depex, DepexSize, &InnerFileHeader->Name);
       }

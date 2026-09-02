@@ -375,9 +375,6 @@ MmGetDepexSectionAndPreProccess (
       //
       DriverEntry->DepexProtocolError = TRUE;
     } else {
-      //
-      // If no Depex assume depend on all architectural protocols
-      //
       DriverEntry->Depex              = NULL;
       DriverEntry->Dependent          = TRUE;
       DriverEntry->DepexProtocolError = FALSE;
@@ -787,8 +784,14 @@ MmAddToDriverList (
   DriverEntry->Pe32DataSize = Pe32DataSize;
   DriverEntry->DepexSize    = DepexSize;
 
-  DriverEntry->Depex = AllocateCopyPool (DepexSize, Depex);
-  ASSERT (DriverEntry->Depex != NULL);
+  //
+  // Depex is NULL for a module without an MM DEPEX section. AllocateZeroPool
+  // above already left DriverEntry->Depex NULL for that case.
+  //
+  if (Depex != NULL) {
+    DriverEntry->Depex = AllocateCopyPool (DepexSize, Depex);
+    ASSERT (DriverEntry->Depex != NULL);
+  }
 
   MmGetDepexSectionAndPreProccess (DriverEntry);
 
