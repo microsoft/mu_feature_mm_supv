@@ -11,9 +11,9 @@
 ##
 
 # release/202511 (Non Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 567c67d760b57fc036b0dae53c77f700 | 2026-08-22T00-06-08 | ad2e52e130d77544d9461913ce69983b22410559
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 3956b3bf91e0fb0acbb39e88df240816 | 2026-09-02T19-27-12 | a5197f87e628b31215ef10a64b9cc1962169ad35
 # release/202511 (Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 567c67d760b57fc036b0dae53c77f700 | 2026-08-22T00-24-26 | 65fa6f67751c273bc8312513dfb223f296e558ed
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 3956b3bf91e0fb0acbb39e88df240816 | 2026-09-02T19-24-35 | 765de7129b9ca8672842900da24aec20ce6bb93c
 
 # release/202502 (Non Secure)
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-21-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
