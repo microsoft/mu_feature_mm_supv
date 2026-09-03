@@ -41,7 +41,7 @@ extern SEA_HOST_CONTEXT_COMMON  mHostContextCommon;
       }                            \
     } while (FALSE)
 #else
-#define DEBUG(Expression)
+#define SAFE_DEBUG(Expression)
 #endif
 
 /**

@@ -35,6 +35,7 @@
 #include <Library/SafeIntLib.h>
 #include <Library/PeCoffValidationLib.h>
 #include <Library/PeCoffLibNegative.h>
+#include <Library/PcdLib.h>
 #include <IndustryStandard/PeImage.h>
 #include <Register/Intel/ArchitecturalMsr.h>
 #include <Register/Intel/Cpuid.h>
@@ -816,6 +817,8 @@ PeCoffImageDiffValidation (
   IMAGE_VALIDATION_ENTRY_HEADER  *NextImageValidationEntryHdr;
   UINTN                          Index;
   EFI_STATUS                     Status;
+  EFI_STATUS                     FirstErrorStatus;
+  UINTN                          ViolationCount;
   EFI_PHYSICAL_ADDRESS           MsegBase;
   UINTN                          MsegSize;
   IMAGE_VALIDATION_MEM_ATTR      MsegMemAttr;
@@ -863,18 +866,31 @@ PeCoffImageDiffValidation (
     return Status;
   }
 
+  FirstErrorStatus         = EFI_SUCCESS;
+  ViolationCount           = 0;
   ImageValidationEntryHdr  = (IMAGE_VALIDATION_ENTRY_HEADER *)((UINTN)ImageValidationHdr + ImageValidationHdr->OffsetToFirstEntry);
   OriginalImageLoadAddress = (EFI_PHYSICAL_ADDRESS)(UINTN)(UINT8 *)OriginalImageBaseAddress;
   for (Index = 0; Index < ImageValidationHdr->EntryCount; Index++) {
     // TODO: Safe integer arithmetic
     if ((UINT8 *)(ImageValidationEntryHdr) >= ((UINT8 *)ImageValidationHdr + ImageValidationHdr->Size)) {
       DEBUG ((DEBUG_ERROR, "%a: Current header 0x%p exceeds the reference data limit 0x%x\n", __func__, ImageValidationEntryHdr, (UINT8 *)ImageValidationHdr + ImageValidationHdr->Size));
-      return EFI_COMPROMISED_DATA;
+      ViolationCount++;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_COMPROMISED_DATA;
+      }
+
+      // The entry stream cannot be parsed any further.
+      break;
     }
 
     if (ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size > TargetImageSize) {
       DEBUG ((DEBUG_ERROR, "%a: Current entry range 0x%x exceeds target image limit 0x%x\n", __func__, ImageValidationEntryHdr->Offset + ImageValidationEntryHdr->Size, TargetImageSize));
-      return EFI_INVALID_PARAMETER;
+      ViolationCount++;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_INVALID_PARAMETER;
+      }
+
+      break;
     }
 
     // Ensure this entry's default value does not overflow the Auxiliary file buffer.
@@ -887,11 +903,16 @@ PeCoffImageDiffValidation (
         ImageValidationEntryHdr->OffsetToDefault + ImageValidationEntryHdr->Size,
         ImageValidationHdr->Size
         ));
-      return EFI_COMPROMISED_DATA;
+      ViolationCount++;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = EFI_COMPROMISED_DATA;
+      }
+
+      break;
     }
 
     DEBUG ((
-      DEBUG_INFO,
+      DEBUG_VERBOSE,
       "%a: Evaluating symbol at offset: 0x%x in the target image with rule type: 0x%x\n",
       __func__,
       ImageValidationEntryHdr->Offset,
@@ -928,7 +949,9 @@ PeCoffImageDiffValidation (
         break;
       default:
         Status = EFI_INVALID_PARAMETER;
-        // Does not support unknown validation type
+        // Does not support unknown validation type, the size of this entry is unknown so the
+        // location of the next entry cannot be computed.
+        NextImageValidationEntryHdr = NULL;
         DEBUG ((
           DEBUG_ERROR,
           "%a: Entry validation type not supported 0x%x\n",
@@ -939,25 +962,49 @@ PeCoffImageDiffValidation (
     }
 
     if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "Validation Error! Dumping Info...\n"));
-      DEBUG ((DEBUG_ERROR, "  MsegBase = \"0x%p\"\n", MsegBase));
-      DEBUG ((DEBUG_ERROR, "  MsegSize = \"0x%x\"\n", MsegSize));
-      DEBUG ((DEBUG_ERROR, "  MmSupervisorBase = \"0x%x\"\n", OriginalImageLoadAddress));
-      DEBUG ((DEBUG_ERROR, "  MmSupervisor:\n"));
-      DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
-      break;
-    }
+      ViolationCount++;
+      if (!EFI_ERROR (FirstErrorStatus)) {
+        FirstErrorStatus = Status;
+      }
 
-    // We should not do this when the above validation fails
-    if (ImageValidationEntryHdr->OffsetToDefault == MAX_UINT32) {
-      // If OffsetToDefault is MAX_UINT32, then zero the memory rather that copy
-      ZeroMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+      DEBUG ((
+        DEBUG_ERROR,
+        "Validation Error #%Ld! Entry index: 0x%Lx offset: 0x%x rule type: 0x%x - %r\n",
+        ViolationCount,
+        Index,
+        ImageValidationEntryHdr->Offset,
+        ImageValidationEntryHdr->ValidationType,
+        Status
+        ));
+
+      if (NextImageValidationEntryHdr == NULL) {
+        break;
+      }
+
+      if (FeaturePcdGet (PcdImageValidationFailFast)) {
+        break;
+      }
     } else {
-      CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+      // We should not do this when the above validation fails
+      if (ImageValidationEntryHdr->OffsetToDefault == MAX_UINT32) {
+        // If OffsetToDefault is MAX_UINT32, then zero the memory rather that copy
+        ZeroMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, ImageValidationEntryHdr->Size);
+      } else {
+        CopyMem ((UINT8 *)TargetImage + ImageValidationEntryHdr->Offset, (UINT8 *)ImageValidationHdr + ImageValidationEntryHdr->OffsetToDefault, ImageValidationEntryHdr->Size);
+      }
     }
 
     ImageValidationEntryHdr = NextImageValidationEntryHdr;
   }
 
-  return Status;
+  if (EFI_ERROR (FirstErrorStatus)) {
+    DEBUG ((DEBUG_ERROR, "Validation Error! %Ld violation(s) detected. Dumping Info...\n", ViolationCount));
+    DEBUG ((DEBUG_ERROR, "  MsegBase = \"0x%p\"\n", MsegBase));
+    DEBUG ((DEBUG_ERROR, "  MsegSize = \"0x%x\"\n", MsegSize));
+    DEBUG ((DEBUG_ERROR, "  MmSupervisorBase = \"0x%x\"\n", OriginalImageLoadAddress));
+    DEBUG ((DEBUG_ERROR, "  MmSupervisor:\n"));
+    DUMP_HEX (DEBUG_ERROR, 0, OriginalImageBaseAddress, TargetImageSize, "    ");
+  }
+
+  return FirstErrorStatus;
 }
