@@ -167,6 +167,13 @@ where
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Array {
+    /// The path to an array member of the symbol, for when the array is nested inside the symbol
+    /// rather than being the symbol itself.
+    ///
+    /// [Rule::field] then names a field of the array's element type, so `index` always refers to
+    /// this array. Leave unset when the symbol is itself an array.
+    #[serde(default)]
+    pub field: Option<String>,
     /// The last index of the array is a sentinel value, thus creating a different validation rule for the last index.
     #[serde(default)]
     pub sentinel: bool,
