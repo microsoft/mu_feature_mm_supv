@@ -188,13 +188,13 @@ class Settings(CiBuildSettingsManager, UpdateSettingsManager, PrEvalSettingsMana
             {
                 "Path": "MU_BASECORE",
                 "Url": "https://github.com/microsoft/mu_basecore.git",
-                "Branch": "release/202511",
+                "Branch": "release/202608",
                 "Recurse": {"CIFile": ".pytool/CISettings.py"}
             },
             {
                 "Path": "Common/MU_PLUS",
                 "Url": "https://github.com/microsoft/mu_plus.git",
-                "Branch": "release/202511"
+                "Branch": "release/202608"
             }
         ]
 
