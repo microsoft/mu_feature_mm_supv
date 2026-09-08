@@ -651,7 +651,9 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                         Some(idx) => format!("{}[{}].{}", uncovered.symbol(), idx, field),
                         None => format!("{}.{}", uncovered.symbol(), field),
                     };
-                    !report.segments(|s| s.symbol() == expected).is_empty()
+                    !report
+                        .segments(|s| field_name_matches(s.symbol(), &expected))
+                        .is_empty()
                 });
 
                 if covered {
@@ -672,6 +674,26 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
         Ok(ret)
     }
+}
+
+fn field_name_matches(actual: &str, expected: &str) -> bool {
+    if actual == expected {
+        return true;
+    }
+
+    let Some(indexed_field) = actual
+        .strip_prefix(expected)
+        .and_then(|suffix| suffix.strip_prefix('['))
+    else {
+        return false;
+    };
+    let Some((index, suffix)) = indexed_field.split_once(']') else {
+        return false;
+    };
+
+    !index.is_empty()
+        && index.bytes().all(|byte| byte.is_ascii_digit())
+        && (suffix.is_empty() || suffix.starts_with('.'))
 }
 
 pub struct Section {
@@ -1544,6 +1566,30 @@ mod test {
             metadata.create_padding_entries(&coverage).unwrap().len(),
             40
         );
+    }
+
+    #[test]
+    fn test_field_name_matches_indexed_array_field() {
+        let expected = "mStructure.ArrayField";
+
+        assert!(field_name_matches(expected, expected));
+        assert!(field_name_matches("mStructure.ArrayField[0]", expected));
+        assert!(field_name_matches(
+            "mStructure.ArrayField[12].Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayFieldOther[0].Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayField.Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayField[index].Member",
+            expected
+        ));
     }
 
     #[test]
