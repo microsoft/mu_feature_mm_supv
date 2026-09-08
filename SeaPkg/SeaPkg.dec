@@ -57,6 +57,15 @@
   # The SHA256 hash of the MM supervisor core EFI binary file
   gEfiSeaPkgTokenSpaceGuid.PcdMmSupervisorCoreHash|{0x0}|VOID*|0x00000004
 
+[PcdsFeatureFlag]
+  # Controls how image validation reacts to a failing rule.
+  #
+  # When TRUE, validation stops at the first violation, which is the behavior
+  # wanted in production. When FALSE, validation keeps walking the remaining
+  # rules so that a single boot reports every violation, which is only useful
+  # while authoring or repairing an auxiliary file.
+  gEfiSeaPkgTokenSpaceGuid.PcdImageValidationFailFast|TRUE|BOOLEAN|0x00000005
+
 [Ppis]
   ## MSEG Identified PPI
   #
