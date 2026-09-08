@@ -164,7 +164,7 @@ where
 }
 
 /// Configuration for a symbol that is an array of an underlying type.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Array {
     /// The path to an array member of the symbol, for when the array is nested inside the symbol

@@ -1316,9 +1316,8 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
-                field: None,
-                sentinel: false,
                 index: Some(1usize..=2usize),
+                ..Default::default()
             }),
             validation: config::Validation::None,
             ..Default::default()
@@ -1373,9 +1372,8 @@ mod test {
             symbol: "mMmSupvPoolLists".to_string(),
             validation: config::Validation::None,
             array: Some(Array {
-                field: None,
                 sentinel: true,
-                index: None,
+                ..Default::default()
             }),
             ..Default::default()
         };
@@ -1634,9 +1632,8 @@ mod test {
         let rule = Rule {
             symbol: "mUnblockedMemoryList".to_string(),
             array: Some(Array {
-                field: None,
-                sentinel: false,
                 index: Some(1..=2),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 16],
@@ -1661,9 +1658,9 @@ mod test {
         let rule = Rule {
             symbol: "mReservedVectorsData".to_string(),
             array: Some(Array {
-                field: None,
                 sentinel: true,
                 index: Some(1..=2),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 96],
@@ -1688,9 +1685,8 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
-                field: None,
-                sentinel: false,
                 index: Some(99..=99),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 16],
