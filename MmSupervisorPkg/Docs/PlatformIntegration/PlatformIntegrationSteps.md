@@ -219,10 +219,8 @@ Regions that need to be accessed must be requested to be unblocked by the MM Sup
 
 ### Platform DSC statements
 
-1. Add the DSC sections below.
-
-> Note: There might be other silicon specific drivers/libraries a platform will need for these sections, i.e. SPI
-flash drivers, SW MMI dispatcher drivers, etc.
+1. Add the DSC sections below. This is the basic setup required, but platforms may require additional
+drivers for proper function.
 
 ``` bash
 [PcdsFixedAtBuild]
@@ -232,71 +230,92 @@ flash drivers, SW MMI dispatcher drivers, etc.
   # it will be treated as one of the normal types of CPU faults.
   gEfiMdePkgTokenSpaceGuid.PcdStackCookieExceptionVector              | 0x0F
 
-[LibraryClasses.IA32]
-  MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
-  SmmRelocationLib|UefiCpuPkg/Library/SmmRelocationLib/SmmRelocationLib.inf
+[LibraryClasses.IA32.PEIM, LibraryClasses.X64.PEIM]
+  # Replace instances of UefiCpuPkg/Library/MmUnblockMemoryLib/MmUnblockMemoryLib.inf with Mm Supervisor Version
+  MmSupervisorUnblockMemoryLib  |MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibPei.inf
 
+  # Replace instances of MdePkg/Library/MmUnblockMemoryLib/MmUnblockMemoryLibNull.inf
 [LibraryClasses.X64]
-  MmSupervisorUnblockMemoryLib|MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf
+  MmSupervisorUnblockMemoryLib  |MmSupervisorPkg/Library/MmSupervisorUnblockMemoryLib/MmSupervisorUnblockMemoryLibDxe.inf
 
 [LibraryClasses.X64.MM_CORE_STANDALONE]
-  PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
-  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-  # Note: Make sure ACPI timer is properly programmed at load time
-  TimerLib|PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
-  ExtractGuidedSectionLib|MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
-  FvLib|StandaloneMmPkg/Library/FvLib/FvLib.inf
-  HobLib|StandaloneMmPkg/Library/StandaloneMmCoreHobLib/StandaloneMmCoreHobLib.inf
-  MemoryAllocationLib|StandaloneMmPkg/Library/StandaloneMmCoreMemoryAllocationLib/StandaloneMmCoreMemoryAllocationLib.inf
-  MemLib|MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
-  ReportStatusCodeLib|MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
-  StandaloneMmCoreEntryPoint|StandaloneMmPkg/Library/StandaloneMmCoreEntryPoint/StandaloneMmCoreEntryPoint.inf
-  CpuExceptionHandlerLib|UefiCpuPkg/Library/CpuExceptionHandlerLib/SmmCpuExceptionHandlerLib.inf
-  DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
-  # Note: This API will be removed from core soon, leave the empty shell here
-  SmmCpuPlatformHookLib|UefiCpuPkg/Library/SmmCpuPlatformHookLibNull/SmmCpuPlatformHookLibNull.inf
-  IhvMmSaveStateSupervisionLib|MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
-  MmSupervisorCoreInitLib|MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
+
+  # Mm Supervisor only supports FixedatBuild/PatchableInModule PCDs
+  PcdLib                        |MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
+
+  # Library classes coming from MmSupervisorPkg 
+  IhvMmSaveStateSupervisionLib  |MmSupervisorPkg/Library/IhvMmSaveStateSupervisionLib/IhvMmSaveStateSupervisionLib.inf
+  MemLib                        |MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorCoreMemLib.inf
+  MemoryAllocationLib           |StandaloneMmPkg/Library/StandaloneMmCoreMemoryAllocationLib/StandaloneMmCoreMemoryAllocationLib.inf
+  MmSupervisorCoreInitLib       |MmSupervisorPkg/Library/BaseMmSupervisorCoreInitLibNull/BaseMmSupervisorCoreInitLibNull.inf
+
+  # Library Classes coming from UefiCpuPkg
+  CpuExceptionHandlerLib        |UefiCpuPkg/Library/CpuExceptionHandlerLib/SmmCpuExceptionHandlerLib.inf
+  SmmCpuPlatformHookLib         |UefiCpuPkg/Library/SmmCpuPlatformHookLibNull/SmmCpuPlatformHookLibNull.inf
+
+  # Library Classes coming from StandaloneMmPkg
+  HobLib                        |StandaloneMmPkg/Library/StandaloneMmCoreHobLib/StandaloneMmCoreHobLib.inf
+  FvLib                         |StandaloneMmPkg/Library/FvLib/FvLib.inf
+  StandaloneMmCoreEntryPoint    |StandaloneMmPkg/Library/StandaloneMmCoreEntryPoint/StandaloneMmCoreEntryPoint.inf
+
+  # Library Classes coming from MdePkg
+  DevicePathLib                 |MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
+  ExtractGuidedSectionLib       |MdePkg/Library/BaseExtractGuidedSectionLib/BaseExtractGuidedSectionLib.inf
+  ReportStatusCodeLib           |MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
+
+  # Note: If chosen timer lib is platform dependent, and needs to be initialized before
+  #  MmSupervisor is executed.
+  TimerLib                      |PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
+
 
 [LibraryClasses.X64.MM_STANDALONE]
-  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
-  TimerLib|PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
-  MmServicesTableLib|MmSupervisorPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf
-  MemoryAllocationLib|StandaloneMmPkg/Library/StandaloneMmMemoryAllocationLib/StandaloneMmMemoryAllocationLib.inf
-  HobLib|MmSupervisorPkg/Library/StandaloneMmHobLibSyscall/StandaloneMmHobLibSyscall.inf
-  ReportStatusCodeLib|MdeModulePkg/Library/SmmReportStatusCodeLib/StandaloneMmReportStatusCodeLib.inf
-  HwResetSystemLib|PcAtChipsetPkg/Library/ResetSystemLib/ResetSystemLib.inf
-  StandaloneMmDriverEntryPoint|MmSupervisorPkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverEntryPoint.inf
-  PcdLib|MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
-  BaseCryptLib|CryptoPkg/Library/BaseCryptLib/SmmCryptLib.inf
-  OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
-  IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
-  AdvLoggerAccessLib|MdeModulePkg/Library/AdvLoggerAccessLibNull/AdvLoggerAccessLib.inf
-  DevicePathLib|MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
-  LockBoxLib|MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxStandaloneMmLib.inf
-  MemLib|MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorMemLibSyscall.inf
-  Tcg2PhysicalPresenceLib|SecurityPkg/Library/SmmTcg2PhysicalPresenceLib/StandaloneMmTcg2PhysicalPresenceLib.inf
-  PlatformSecureLib|SecurityPkg/Library/PlatformSecureLibNull/PlatformSecureLibNull.inf
+  BaseLib                       |MmSupervisorPkg/Library/BaseLibSysCall/BaseLib.inf
+  HobLib                        |MmSupervisorPkg/Library/StandaloneMmHobLibSyscall/StandaloneMmHobLibSyscall.inf
+  IoLib                         |MmSupervisorPkg/Library/BaseIoLibIntrinsicSysCall/BaseIoLibIntrinsic.inf
+  MemLib                        |MmSupervisorPkg/Library/MmSupervisorMemLib/MmSupervisorMemLibSyscall.inf
+  MmServicesTableLib            |MmSupervisorPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf  
+  StandaloneMmDriverEntryPoint  |MmSupervisorPkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverEntryPoint.inf
+  SysCallLib                    |MmSupervisorPkg/Library/SysCallLib/SysCallLib.inf
 
-  BaseLib|MmSupervisorPkg/Library/BaseLibSysCall/BaseLib.inf
-  IoLib|MmSupervisorPkg/Library/BaseIoLibIntrinsicSysCall/BaseIoLibIntrinsic.inf
-  SysCallLib|MmSupervisorPkg/Library/SysCallLib/SysCallLib.inf
+  MemoryAllocationLib           |StandaloneMmPkg/Library/StandaloneMmMemoryAllocationLib/StandaloneMmMemoryAllocationLib.inf
+
+  LockBoxLib                    |MdeModulePkg/Library/SmmLockBoxLib/SmmLockBoxStandaloneMmLib.inf
+  ReportStatusCodeLib           |MdeModulePkg/Library/SmmReportStatusCodeLib/StandaloneMmReportStatusCodeLib.inf
+
+  DevicePathLib                 |MdePkg/Library/UefiDevicePathLib/UefiDevicePathLibStandaloneMm.inf
+  PcdLib                        |MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
+
+  BaseCryptLib                  |CryptoPkg/Library/BaseCryptLib/SmmCryptLib.inf
+  OpensslLib                    |CryptoPkg/Library/OpensslLib/OpensslLib.inf
+  IntrinsicLib                  |CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
+
+  # Note: This needs to be a platform chosen ResetSystemLib (which should act as HwResetSystemLib instance)
+  #  MmSupervisor is executed.
+  HwResetSystemLib              |PcAtChipsetPkg/Library/ResetSystemLib/ResetSystemLib.inf
+
+  PlatformSecureLib             |SecurityPkg/Library/PlatformSecureLibNull/PlatformSecureLibNull.inf
+  Tcg2PhysicalPresenceLib       |SecurityPkg/Library/SmmTcg2PhysicalPresenceLib/StandaloneMmTcg2PhysicalPresenceLib.inf
+
+  # Note: This needs to be the platform's chosen TimerLib instance
+  TimerLib                      |PcAtChipsetPkg/Library/AcpiTimerLib/StandaloneAcpiTimerLib.inf
 
   # This library instance is only necessary if performance tracing is enabled in MM code.
-  PerformanceLib|MdeModulePkg/Library/SmmPerformanceLib/StandaloneMmPerformanceLib.inf
+  PerformanceLib                |MdeModulePkg/Library/SmmPerformanceLib/StandaloneMmPerformanceLib.inf
 
+# Note: If PEI is x64, change these drivers to x64.
 [Components.IA32]
   MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
-!if $(PEI_MM_IPL_ENABLED) == TRUE
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
-!endif
 
 [Components.X64]
-!if $(PEI_MM_IPL_ENABLED) == TRUE
-  # Note: MmIplX64Relay is a 64-bit PEI module.
+  # Note: MmIplX64Relay is a 64-bit PEI module used to support X64 MM Supervisor from 
+  #  IA32 PEI phase. 
   #       - Any libraries linked to this module should not make 32-bit PEI assumptions
   #       - Any libraries linked to this module should not use PEI Services
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplX64Relay.inf
+
+  # Runtime Dxe Driver which verifies Communicaiton is working during Dxe phase and provide 
+  #  MM Communcation Buffers during Dxe phase.
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf {
     <LibraryClasses>
       NULL|StandaloneMmPkg/Library/VariableMmDependency/VariableMmDependency.inf
@@ -306,19 +325,24 @@ flash drivers, SW MMI dispatcher drivers, etc.
       #       produced in order to publish the variable.
       NULL|MmSupervisorPkg/Library/DxeMmSupervisorVersionPublicationLib/DxeMmSupervisorVersionPublicationLib.inf
   }
-!endif
+
+  # Supports MM Unblock requests during Dxe phase. 
   MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
+
   MmSupervisorPkg/Core/MmSupervisorCore.inf {
     <LibraryClasses>
       # Note that this should be whatever suits the target platform + MM standalone conversion for constructor input arguments
       SmmCpuFeaturesLib|$(PLATFORM_SI_PACKAGE)/Library/SmmCpuFeaturesLib/SmmCpuFeaturesLib.inf
   }
+
+  # Main communication funnel which allows Ring3 (Standalone MM drivers) to request access to Ring0 data.
   MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf {
     <LibraryClasses>
       # Because the Ring 3 Broker is the first MM_STANDALONE driver to load. The MM Performance protocol will
       # not be installed yet.
       PerformanceLib|MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
   }
+
   # Note: The following driver is only necessary if performance tracing is enabled in MM code.
   MmSupervisorPkg/Drivers/MmSupervisorRing3Performance/MmSupervisorRing3Performance.inf {
     <LibraryClasses>
@@ -327,56 +351,46 @@ flash drivers, SW MMI dispatcher drivers, etc.
       PerformanceLib|MdeModulePkg/Library/SmmCorePerformanceLib/StandaloneMmCorePerformanceLib.inf
   }
 
-  MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterStandaloneMm.inf
-  UefiCpuPkg/CpuIo2Smm/CpuIo2StandaloneMm.inf
-  MdeModulePkg/Universal/Variable/RuntimeDxe/VariableStandaloneMm.inf {
-    <LibraryClasses>
-      NULL|MdeModulePkg/Universal/Variable/UefiVariablePolicy/Library/VarCheckPolicyLib/VarCheckPolicyLibStandaloneMm.inf
-      NULL|MdeModulePkg/Library/VarCheckUefiLib/VarCheckUefiLib.inf
-  }
-  MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteStandaloneMm.inf
-  MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableSmm/FirmwarePerformanceStandaloneMm.inf
-  SecurityPkg/Tcg/Tcg2Acpi/Tcg2Acpi.inf
-  SecurityPkg/Tcg/Tcg2StandaloneMm/Tcg2StandaloneMm.inf {
-    <LibraryClasses>
-      Tpm2DeviceLib|SecurityPkg/Library/Tpm2DeviceLibDTpm/Tpm2DeviceLibDTpmStandaloneMm.inf
-  }
-
-  # Optional
-  MsCorePkg/Universal/StatusCodeHandler/Serial/StandaloneMm/SerialStatusCodeHandlerStandaloneMm.inf
-  MsWheaPkg/MsWheaReport/Smm/MsWheaReportStandaloneMm.inf
-  MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
 
 [BuildOptions.common.EDKII.MM_STANDALONE, BuildOptions.common.EDKII.MM_CORE_STANDALONE]
-  #DLink flags to cut out project names from binaries
+  # DLink flags to cut out project names from binaries
+  # Note: 4K alignment is required to support memory protections. 
+  # As the projects proceed, this may not be required anymore, but verify the project.
   MSFT:*_*_*_DLINK_FLAGS = /ALIGN:4096
 ```
 
-1. Remove the DSC sections below.
+1. Remove the INFs listed below from the Platform DSC, if they exist.
 
 ``` bash
 [Components.X64]
+
+  # SMM Drivers and Ipl and Core drivers
   # MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf
   # MdeModulePkg/Core/PiSmmCore/PiSmmIpl.inf
+
+  # Functionality for this is part of MmSupervisorCore so it has Ring 0 access
   # UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf
 
-  # MdeModulePkg/Universal/ReportStatusCodeRouter/Smm/ReportStatusCodeRouterSmm.inf
-  # MdeModulePkg/Universal/Acpi/FirmwarePerformanceDataTableSmm/FirmwarePerformanceSmm.inf
-  # UefiCpuPkg/CpuIo2Smm/CpuIo2Smm.inf
-  # MdeModulePkg/Universal/Variable/RuntimeDxe/VariableSmm.inf
-  # UefiCpuPkg/PiSmmCommunication/PiSmmCommunicationSmm.inf
-  # MsCorePkg/Universal/StatusCodeHandler/Serial/Smm/SerialStatusCodeHandlerSmm.inf
-  # SecurityPkg/Tcg/Tcg2Smm/Tcg2Smm.inf
-  # MdeModulePkg/Universal/SmmCommunicationBufferDxe/SmmCommunicationBufferDxe.inf
-  # MdeModulePkg/Universal/FaultTolerantWriteDxe/FaultTolerantWriteSmm.inf
+  # StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
+  # StandaloneMmPkg/Drivers/MmCommunicationNotifyDxe/MmCommunicationNotifyDxe.inf
+  # StandaloneMmPkg/Drivers/MmCommunicationDxe/MmCommunicationDxe.inf
+
+  # Functionality for this is part of MmSupervisorCore so it has Ring 0 access
+  # UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuStandaloneMm.inf
+
+  # Modules of type DXE_SMM_DRIVER will not be dispatched, they can all be removed.
+
 ```
 
-1. Given that current Standalone MM environment does not support dynamic PCDs, the SMM drivers currently consuming
-dynamic PCDs need to be configured to avoid this.
+1. Given that current Standalone MM environment does not support dynamic PCDs, the SMM drivers consuming
+dynamic PCDs need to be configured to avoid this. Switching to fixed at build or patchable in module
+can be used.
 
 1. Be aware that if the platform previously loaded the MM IPL in DXE, the MM initialization drivers such as the
 MM Control driver might assume the environment is not initialized and clear registers that were set up in the PEI
 phase. Modify the drivers as appropriate to avoid losing initialization performed in PEI.
+
+1. PiSmmCpuDxeSmm functionality is absorbed into the MmSupervisorCore. The PiSmmCpuDxeSmm is no longer required.
 
 ### Platform FDF statements
 
@@ -387,23 +401,18 @@ Note: There might be other silicon specific drivers a platform will need for the
 ``` bash
 [FV.YOUR_PEI_FV]
   INF  MmSupervisorPkg/Drivers/MmCommunicationBuffer/MmCommunicationBufferPei.inf
-!if $(PEI_MM_IPL_ENABLED) == TRUE
   INF  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
-!endif
 
 [FV.YOUR_POST_MEM_PEI_FV]
-!if $(PEI_MM_IPL_ENABLED) == TRUE
+  # MmIplX64Relay is only required if PEI is IA32
   INF  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplX64Relay.inf
   INF  MmSupervisorPkg/Core/MmSupervisorCore.inf
   FILE FREEFORM = gMmSupervisorPolicyFileGuid {
     SECTION RAW = $(POLICY_BIN_PATH)
   }
-!endif
 
 [FV.YOUR_DXE_FV]
-!if $(PEI_MM_IPL_ENABLED) == TRUE
   INF  MmSupervisorPkg/Drivers/MmPeiLaunchers/MmDxeSupport.inf
-!endif
   INF  MmSupervisorPkg/Drivers/StandaloneMmUnblockMem/StandaloneMmUnblockMem.inf
   INF  MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
 
@@ -526,3 +535,84 @@ to use a privileged instruction or function that is intentionally left out by th
 __These functions will not work in a non-privileged context even if the build errors are resolved__ but can be resolved by
 either filing a github issue that extends the syscall interface to support the needed function or by finding an alternative
 implementation that does not require privileged access.
+
+#### Runtime Failures
+
+After integrating the Mm Supervisor, verifying that the Standalone MM drivers function correctly is the next step.
+This becomes a process of building the platform firmware, and attempting to execute it. Some of the more common
+errors are detailed below.
+
+##### The resource HOB range [0x0, 0xNNNN] overlaps with MMRAM range
+
+A resource descriptor HOB's address space overlaps with the MM addresses. This points to the resource descriptor
+HOBs being incorrect because resources described should not have any overlap with the MM memory ranges.
+
+##### Non-MM memory region starts with <> clashes with range <>
+
+There are multilple resource descriptor hobs that overlap their memory ranges.
+Resource descriptor HOBs are intended to describe system memory. From the system’s perspective, there should
+never be overlapping descriptor HOBs. For example, if a flash device is reported as an MMIO resource
+descriptor HOB and an APIC is mapped within that same MMIO range, the APIC’s MMIO descriptor HOB adds
+no value and only creates confusion. While programmers may benefit from knowing the detailed breakdown
+of individual MMIO ranges, the system only needs to know the start and end addresses of the MMIO region.
+
+##### Variable Services never become available during DXE
+
+In a supervised mm system, the variable services MM handler becomes available during the PEI timeframe.
+The VariableRuntimeSmmDxe driver requires gSmmVariableWriteGuid and gEfiSmmVariableProtocolGuid to be
+installed for callbacks in VariableSmmRuntimeDxe to provide the variable services.
+
+Since variable mm handlers are available from the start of PEI, the NULL library VariableMmDependency is
+expected to be linked into a DXE driver (MmSupportDxe is recommend) that will provide these protocols.
+
+##### Exception with Access SMM communication forbidden address
+
+MM Supervisor is strict about memory accesses. To access memory outside of the MM environment,
+the memory needs to be unblocked. Similarly, for MMIO regions, the MM Supervisor needs to be
+aware of the MMIO regions. MMIO regions should be reported to the system through
+resources descriptor hobs.
+
+For the exception below, there is a clear message about the address that resulted
+in an access violation. A debugger can be used to step through the code to find what resource
+is missing an appropiate unblock or resource descriptor hob. Knowledge of the platform's
+memory regions is also beneficial understand what resources is at the offending address.
+
+``` bash
+!!!! X64 Exception Type - 0E(#PF - Page-Fault)  CPU Apic ID - 00000000 !!!!
+ExceptionData - 0000000000000004  I:0 R:0 U:1 W:0 P:0 PK:0 SS:0 SGX:0
+RIP  - 00000000DD5AC03A, CS  - 000000000000005B, RFLAGS - 0000000000010046
+RAX  - 0000000000000000, RCX - 00001000000FD010, RDX - 00000FFFF0000000
+RBX  - 00001000000FD010, RSP - 00000000DF74BED0, RBP - 00000000DF87B900
+RSI  - 8000000000000000, RDI - 00000000DF66E818
+R8   - 00000000DF66E800, R9  - 0000000000000000, R10 - 80000000DF724001
+R11  - 00000000DF87B840, R12 - 0000000000000000, R13 - 0000000076726473
+R14  - 0000000000000040, R15 - 0000006300000000
+DS   - 0000000000000053, ES  - 0000000000000053, FS  - 0000000000000053
+GS   - 0000000000000053, SS  - 0000000000000053
+CR0  - 0000000080010033, CR2 - 00001000000FD010, CR3 - 00000000DF704000
+CR4  - 0000000000101E68, CR8 - 0000000000000000
+DR0  - 0000000000000000, DR1 - 0000000000000000, DR2 - 0000000000000000
+DR3  - 0000000000000000, DR6 - 00000000FFFF0FF0, DR7 - 0000000000000400
+GDTR - 00000000DF724000 000000000000007F, LDTR - 0000000000000000
+IDTR - 00000000DF738000 00000000000001FF,   TR - 0000000000000070
+FXSAVE_STATE - 00000000DF86AC60
+Access SMM communication forbidden address (0x1000000FD010)!
+```
+
+The platform can compile drivers with optimizations enabled, which can complicate
+debugging efforts. Is it possible to modify a single Inf file to disable optimizations
+and simplify debugging. This can be done for msvc through the below addition to the Inf.
+
+``` bash
+[BuildOptions]
+  MSFT:*_*_*_CC_FLAGS = /Od
+```
+
+If it would be beneficial to view the assembly that is generated from the source code,
+the following can be added to the Inf as well, and msvc will generate .cod files in the
+associated build folder corresponding to the source file name.
+
+``` bash
+[BuildOptions]
+  MSFT:*_*_*_CC_FLAGS = /FAs
+```
