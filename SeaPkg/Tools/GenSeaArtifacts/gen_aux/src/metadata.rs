@@ -171,16 +171,22 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 [entry.offset as usize..(entry.offset + entry.size) as usize]
                 .to_vec();
 
-            // The index belongs to whichever array the rule iterates: the array member named by
-            // `array.field`, or the symbol itself.
             let mut name = rule.symbol.clone();
-            match rule.array.as_ref().and_then(|array| array.field.as_deref()) {
-                Some(array_field) => name += format!(".{}[{}]", array_field, i).as_str(),
-                None if extent.count > 1 => name += format!("[{}]", i).as_str(),
-                None => {}
-            }
-            if let Some(field) = &rule.field {
-                name += format!(".{}", field).as_str();
+            if let Some(array) = &rule.array {
+                if let Some(field) = &rule.field {
+                    name += format!(".{}", field).as_str();
+                }
+                name += format!("[{}]", i).as_str();
+                if let Some(field) = &array.field {
+                    name += format!(".{}", field).as_str();
+                }
+            } else {
+                if extent.count > 1 {
+                    name += format!("[{}]", i).as_str();
+                }
+                if let Some(field) = &rule.field {
+                    name += format!(".{}", field).as_str();
+                }
             }
             self.context_map.insert(
                 entry.offset,
@@ -316,18 +322,27 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
     /// Returns what a rule iterates over, and how large each entry it produces is.
     ///
-    /// A rule produces one entry per element of the symbol, validating the same field within each.
-    /// A rule that names [config::Array::field] iterates that array member of the symbol instead,
-    /// so the elements of a nested array can be validated individually.
+    /// A rule with array configuration iterates either the array named by [config::Rule::field],
+    /// or the symbol itself when that field is unset. [config::Array::field] optionally selects a
+    /// field within each array element.
     fn rule_extent(&mut self, symbol: &Symbol, rule: &config::Rule) -> Result<RuleExtent> {
-        if let Some(array_field) = rule.array.as_ref().and_then(|array| array.field.as_deref()) {
-            return self.array_field_extent(symbol, array_field, rule.field.as_deref());
+        if let Some(array) = &rule.array {
+            return match rule.field.as_deref() {
+                Some(field) => self.field_array_extent(symbol, field, array.field.as_deref()),
+                None => self.symbol_extent(symbol, array.field.as_deref()),
+            };
         }
 
+        self.symbol_extent(symbol, rule.field.as_deref())
+    }
+
+    /// Returns the extent of a symbol, optionally selecting the same field in each element when
+    /// the symbol is an array.
+    fn symbol_extent(&mut self, symbol: &Symbol, field: Option<&str>) -> Result<RuleExtent> {
         let stride = symbol.type_info.element_size();
         let count = symbol.type_info.element_count();
 
-        let Some(field) = &rule.field else {
+        let Some(field) = field else {
             return Ok(RuleExtent {
                 field_offset: 0,
                 stride,
@@ -346,32 +361,30 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         })
     }
 
-    /// Returns the extent of a rule that iterates an array member of its symbol.
+    /// Returns the extent of a rule that iterates the array named by `field` within its symbol.
     ///
-    /// `field`, when given, selects the same field within every element of that array. Without it
-    /// each entry covers a whole element.
-    fn array_field_extent(
+    /// `element_field`, when given, selects the same field within every element of that array.
+    /// Without it each entry covers a whole element.
+    fn field_array_extent(
         &mut self,
         symbol: &Symbol,
-        array_field: &str,
-        field: Option<&str>,
+        field: &str,
+        element_field: Option<&str>,
     ) -> Result<RuleExtent> {
-        // A single `index` cannot address two levels of array, so the symbol has to be the one
-        // value that holds the array being iterated.
         if symbol.type_info.element_count() > 1 {
             return Err(anyhow!(
-                "Invalid Rule Configuration: Symbol {}: `array.field` cannot be used because the symbol is itself an array.",
+                "Invalid Rule Configuration: Symbol {}: `field` cannot name an array because the symbol is itself an array.",
                 symbol.name()
             ));
         }
 
-        let (array_offset, array_type) = self.resolve_field(symbol, array_field)?;
+        let (array_offset, array_type) = self.resolve_field(symbol, field)?;
 
         if array_type.element_count() <= 1 {
             return Err(anyhow!(
-                "Invalid Rule Configuration: Symbol {}: `array.field` [{}] is not an array.",
+                "Invalid Rule Configuration: Symbol {}: `field` [{}] is not an array.",
                 symbol.name(),
-                array_field
+                field
             ));
         }
 
@@ -382,23 +395,22 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             count: array_type.element_count(),
         };
 
-        let Some(field) = field else {
+        let Some(element_field) = element_field else {
             return Ok(extent);
         };
 
-        // `TypeInfo` records an array as a repeat of its element type, so this is the type a field
-        // named alongside `array.field` is resolved against.
         let element_type = array_type.type_id().ok_or_else(|| {
             anyhow!(
                 "Array field [{}] of symbol [{}] has no element type information. Cannot resolve field [{}].",
-                array_field,
+                field,
                 symbol.name(),
-                field
+                element_field
             )
         })?;
 
         let info = self.pdb.type_information()?;
-        let (offset, field_type) = Symbol::find_field(&info, &element_type, field, symbol.name())?;
+        let (offset, field_type) =
+            Symbol::find_field(&info, &element_type, element_field, symbol.name())?;
 
         Ok(RuleExtent {
             field_offset: array_offset + offset,
@@ -1350,6 +1362,72 @@ mod test {
             .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
 
         assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn test_build_entries_with_array_element_field() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            array: Some(Array {
+                field: Some("ForwardLink".to_string()),
+                index: Some(1usize..=2usize),
+                ..Default::default()
+            }),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .expect("array element field should produce entries");
+
+        assert_eq!(entries.len(), 2);
+        assert!(entries
+            .iter()
+            .all(|entry| entry.0.size == POINTER_LENGTH as u32));
+        assert_eq!(
+            metadata
+                .context_from_address(&entries[0].0.offset)
+                .unwrap()
+                .name,
+            "mMmSupvPoolLists[1].ForwardLink"
+        );
+    }
+
+    #[test]
+    fn test_build_entries_with_nested_array_element_field() {
+        let mut metadata = build_metadata();
+        let symbol_address = metadata.find_symbol("gSmiMtrrs").address;
+
+        let rule = Rule {
+            symbol: "gSmiMtrrs".to_string(),
+            field: Some("Variables.Mtrr".to_string()),
+            array: Some(Array {
+                field: Some("Mask".to_string()),
+                index: Some(1usize..=2usize),
+                ..Default::default()
+            }),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .expect("nested array element field should produce entries");
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].0.offset, symbol_address + 0x70);
+        assert_eq!(entries[1].0.offset, symbol_address + 0x80);
+        assert!(entries.iter().all(|entry| entry.0.size == 8));
+        assert_eq!(
+            metadata
+                .context_from_address(&entries[0].0.offset)
+                .unwrap()
+                .name,
+            "gSmiMtrrs.Variables.Mtrr[1].Mask"
+        );
     }
 
     #[test]

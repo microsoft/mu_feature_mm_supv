@@ -90,6 +90,9 @@ pub struct Rule {
     /// The symbol that the rule is associated with.
     pub symbol: String,
     /// The field inside the symbol that the rule is associated with.
+    ///
+    /// When array configuration is present, this field names the array to iterate. Leave unset
+    /// when the symbol itself is the array.
     pub field: Option<String>,
     /// The scope that the rule is associated with. If the rule has no scope, it is always applied.
     pub scope: Option<String>,
@@ -163,15 +166,13 @@ where
     Ok(reviewers)
 }
 
-/// Configuration for a symbol that is an array of an underlying type.
+/// Configuration for selecting elements from an array.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Array {
-    /// The path to an array member of the symbol, for when the array is nested inside the symbol
-    /// rather than being the symbol itself.
+    /// The field inside each array element that the rule is associated with.
     ///
-    /// [Rule::field] then names a field of the array's element type, so `index` always refers to
-    /// this array. Leave unset when the symbol is itself an array.
+    /// Leave unset when the rule applies to each whole array element.
     #[serde(default)]
     pub field: Option<String>,
     /// The last index of the array is a sentinel value, thus creating a different validation rule for the last index.
