@@ -17,31 +17,31 @@ For more general background about the steps necessary to integrate the MM Superv
 ## SEA PEI Modules
 
 | PEI Module | Location |
-| ---| ---|
+| --- | --- |
 | MsegSmramPei | SeaPkg/Drivers/MsegSmramPei/MsegSmramPei.inf |
 
 ## SEA Standalone MM Core Libraries
 
 | Library | Location |
-| --- | ---|
+| --- | --- |
 | SmmCpuFeaturesLib | SeaPkg/Library/SmmCpuFeaturesLib/StandaloneMmCpuFeaturesLibStm.inf |
 
 ## SEA Standalone MM Entry Point
 
 | MM Component | Location |
-| ---| ---|
+| --- | --- |
 | MmiEntrySea | SeaPkg/MmiEntrySea/MmiEntrySea.inf |
 
 ## SEA Core
 
 | MM Component | Location |
-| ---| ---|
+| --- | --- |
 | SeaCore | SeaPkg/Core/Stm.inf |
 
 ## SEA Libraries
 
 | Library | Location |
-| --- | ---|
+| --- | --- |
 | BaseCryptLib | SeaPkg/Library/BaseCryptLibMbedTls/BaseCryptLib.inf |
 | BasePeCoffLibNegative | SeaPkg/Library/BasePeCoffLibNegative/BasePeCoffLibNegative.inf |
 | BasePeCoffValidationLib | SeaPkg/Library/BasePeCoffValidationLib/BasePeCoffValidationLib.inf |
@@ -56,5 +56,5 @@ For more general background about the steps necessary to integrate the MM Superv
 ## SEA Validation Test Application
 
 | Application | Location |
-| --- | ---|
+| --- | --- |
 | ResponderValidationTestApp | SeaPkg/Tests/ResponderValidationTest/ResponderValidationTestApp.inf |

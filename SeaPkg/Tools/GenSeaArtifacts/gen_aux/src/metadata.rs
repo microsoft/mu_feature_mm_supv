@@ -131,12 +131,11 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         let symbol = self.find_symbol(&rule.symbol).clone();
         self.validate_rule(&symbol, rule)?;
 
+        let extent = self.rule_extent(&symbol, rule)?;
+
         let mut ret = Vec::new();
 
-        let type_information = &mut self.pdb.type_information()?;
-        let element_count = symbol.type_info.element_count();
-
-        for i in 0..element_count {
+        for i in 0..extent.count {
             if !rule
                 .array
                 .as_ref()
@@ -147,24 +146,12 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 continue;
             }
 
-            let mut offset = 0;
-            let mut size = symbol.type_info.element_size();
-
-            if let Some(field) = &rule.field {
-                let (field_offset, total_size) = Symbol::find_field_offset_and_size(
-                    type_information,
-                    &symbol.type_info.type_id().unwrap(),
-                    field,
-                    symbol.name(),
-                )?;
-                offset += field_offset;
-                size = total_size;
-            }
+            let size = extent.size;
 
             let validation_type = if rule
                 .array
                 .as_ref()
-                .is_some_and(|a| a.sentinel && i == element_count - 1)
+                .is_some_and(|a| a.sentinel && i == extent.count - 1)
             {
                 file::ValidationType::Content {
                     content: vec![0; size as usize],
@@ -174,7 +161,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             };
 
             let entry = file::ImageValidationEntryHeader {
-                offset: symbol.address(i) + offset,
+                offset: symbol.address + extent.field_offset + extent.stride * i as u32,
                 size,
                 validation_type,
                 ..Default::default()
@@ -185,11 +172,21 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                 .to_vec();
 
             let mut name = rule.symbol.clone();
-            if element_count > 1 {
+            if let Some(array) = &rule.array {
+                if let Some(field) = &rule.field {
+                    name += format!(".{}", field).as_str();
+                }
                 name += format!("[{}]", i).as_str();
-            }
-            if let Some(field) = &rule.field {
-                name += format!(".{}", field).as_str();
+                if let Some(field) = &array.field {
+                    name += format!(".{}", field).as_str();
+                }
+            } else {
+                if extent.count > 1 {
+                    name += format!("[{}]", i).as_str();
+                }
+                if let Some(field) = &rule.field {
+                    name += format!(".{}", field).as_str();
+                }
             }
             self.context_map.insert(
                 entry.offset,
@@ -309,21 +306,125 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
         Some((offset / symbol.type_info.element_size()) as usize)
     }
 
+    /// Returns the offset of a rule's field within its symbol, along with the field's type.
+    fn resolve_field(&mut self, symbol: &Symbol, field: &str) -> Result<(u32, TypeInfo)> {
+        let type_id = symbol.type_info.type_id().ok_or_else(|| {
+            anyhow!(
+                "Symbol [{}] has no type information. Cannot resolve field [{}].",
+                symbol.name(),
+                field
+            )
+        })?;
+
+        let info = self.pdb.type_information()?;
+        Symbol::find_field(&info, &type_id, field, symbol.name())
+    }
+
+    /// Returns what a rule iterates over, and how large each entry it produces is.
+    ///
+    /// A rule with array configuration iterates either the array named by [config::Rule::field],
+    /// or the symbol itself when that field is unset. [config::Array::field] optionally selects a
+    /// field within each array element.
+    fn rule_extent(&mut self, symbol: &Symbol, rule: &config::Rule) -> Result<RuleExtent> {
+        if let Some(array) = &rule.array {
+            return match rule.field.as_deref() {
+                Some(field) => self.field_array_extent(symbol, field, array.field.as_deref()),
+                None => self.symbol_extent(symbol, array.field.as_deref()),
+            };
+        }
+
+        self.symbol_extent(symbol, rule.field.as_deref())
+    }
+
+    /// Returns the extent of a symbol, optionally selecting the same field in each element when
+    /// the symbol is an array.
+    fn symbol_extent(&mut self, symbol: &Symbol, field: Option<&str>) -> Result<RuleExtent> {
+        let stride = symbol.type_info.element_size();
+        let count = symbol.type_info.element_count();
+
+        let Some(field) = field else {
+            return Ok(RuleExtent {
+                field_offset: 0,
+                stride,
+                size: stride,
+                count,
+            });
+        };
+
+        let (field_offset, field_type) = self.resolve_field(symbol, field)?;
+
+        Ok(RuleExtent {
+            field_offset,
+            stride,
+            size: field_type.total_size(),
+            count,
+        })
+    }
+
+    /// Returns the extent of a rule that iterates the array named by `field` within its symbol.
+    ///
+    /// `element_field`, when given, selects the same field within every element of that array.
+    /// Without it each entry covers a whole element.
+    fn field_array_extent(
+        &mut self,
+        symbol: &Symbol,
+        field: &str,
+        element_field: Option<&str>,
+    ) -> Result<RuleExtent> {
+        if symbol.type_info.element_count() > 1 {
+            return Err(anyhow!(
+                "Invalid Rule Configuration: Symbol {}: `field` cannot name an array because the symbol is itself an array.",
+                symbol.name()
+            ));
+        }
+
+        let (array_offset, array_type) = self.resolve_field(symbol, field)?;
+
+        if array_type.element_count() <= 1 {
+            return Err(anyhow!(
+                "Invalid Rule Configuration: Symbol {}: `field` [{}] is not an array.",
+                symbol.name(),
+                field
+            ));
+        }
+
+        let extent = RuleExtent {
+            field_offset: array_offset,
+            stride: array_type.element_size(),
+            size: array_type.element_size(),
+            count: array_type.element_count(),
+        };
+
+        let Some(element_field) = element_field else {
+            return Ok(extent);
+        };
+
+        let element_type = array_type.type_id().ok_or_else(|| {
+            anyhow!(
+                "Array field [{}] of symbol [{}] has no element type information. Cannot resolve field [{}].",
+                field,
+                symbol.name(),
+                element_field
+            )
+        })?;
+
+        let info = self.pdb.type_information()?;
+        let (offset, field_type) =
+            Symbol::find_field(&info, &element_type, element_field, symbol.name())?;
+
+        Ok(RuleExtent {
+            field_offset: array_offset + offset,
+            size: field_type.total_size(),
+            ..extent
+        })
+    }
+
     fn validate_rule(&mut self, symbol: &Symbol, rule: &crate::config::Rule) -> Result<()> {
+        let extent = self.rule_extent(symbol, rule)?;
+
         // If the rule is a content rule, make sure that the content size matches the symbol size.
         if let config::Validation::Content { content } = &rule.validation {
-            let size = match &rule.field {
-                Some(field) => {
-                    let (_, size) = Symbol::find_field_offset_and_size(
-                        &self.pdb.type_information()?,
-                        &symbol.type_info.type_id().unwrap(),
-                        field,
-                        symbol.name(),
-                    )?;
-                    size
-                }
-                None => symbol.type_info.element_size(),
-            };
+            let size = extent.size;
 
             if content.len() != size as usize {
                 let name = if let Some(field) = &rule.field {
@@ -340,7 +441,7 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             }
         }
 
-        let element_count = symbol.type_info.element_count();
+        let element_count = extent.count;
 
         if element_count == 1 && rule.array.is_some() {
             return Err(anyhow!(
@@ -562,7 +663,9 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
                         Some(idx) => format!("{}[{}].{}", uncovered.symbol(), idx, field),
                         None => format!("{}.{}", uncovered.symbol(), field),
                     };
-                    !report.segments(|s| s.symbol() == expected).is_empty()
+                    !report
+                        .segments(|s| field_name_matches(s.symbol(), &expected))
+                        .is_empty()
                 });
 
                 if covered {
@@ -585,10 +688,42 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
     }
 }
 
+fn field_name_matches(actual: &str, expected: &str) -> bool {
+    if actual == expected {
+        return true;
+    }
+
+    let Some(indexed_field) = actual
+        .strip_prefix(expected)
+        .and_then(|suffix| suffix.strip_prefix('['))
+    else {
+        return false;
+    };
+    let Some((index, suffix)) = indexed_field.split_once(']') else {
+        return false;
+    };
+
+    !index.is_empty()
+        && index.bytes().all(|byte| byte.is_ascii_digit())
+        && (suffix.is_empty() || suffix.starts_with('.'))
+}
+
 pub struct Section {
     pub name: String,
     range: Range<u32>,
     pub symbols: Vec<Symbol>,
+}
+
+/// What a rule iterates over, and how large each entry it produces is.
+struct RuleExtent {
+    /// Offset of the field within the symbol, or zero when the rule targets the symbol itself.
+    field_offset: u32,
+    /// Distance between consecutive entries.
+    stride: u32,
+    /// Size of each entry.
+    size: u32,
+    /// Number of entries the rule can produce.
+    count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -690,6 +825,20 @@ impl Symbol {
         attribute: &str,
         symbol: &str,
     ) -> Result<(u32, u32)> {
+        let (offset, type_info) = Self::find_field(info, id, attribute, symbol)?;
+        Ok((offset, type_info.total_size()))
+    }
+
+    /// Returns the offset of a field within its symbol, along with the type of the field.
+    ///
+    /// The type is returned rather than just a size so that a rule can tell an array field from a
+    /// single value and iterate its elements.
+    fn find_field(
+        info: &TypeInformation,
+        id: &TypeIndex,
+        attribute: &str,
+        symbol: &str,
+    ) -> Result<(u32, TypeInfo)> {
         Self::find_field_offset_and_size_at(info, id, attribute, symbol, 0)
     }
 
@@ -703,7 +852,7 @@ impl Symbol {
         attribute: &str,
         symbol: &str,
         depth: u32,
-    ) -> Result<(u32, u32)> {
+    ) -> Result<(u32, TypeInfo)> {
         const MAX_WRAPPER_DEPTH: u32 = 32;
 
         let mut parts = attribute.splitn(2, '.');
@@ -747,7 +896,7 @@ impl Symbol {
                         )?;
                         return Ok((member.offset as u32 + offset, size));
                     }
-                    let size = TypeInfo::from_type_index(info, member.field_type)?.total_size();
+                    let size = TypeInfo::from_type_index(info, member.field_type)?;
                     return Ok((member.offset as u32, size));
                 }
                 members.push((
@@ -1201,8 +1350,8 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
-                sentinel: false,
                 index: Some(1usize..=2usize),
+                ..Default::default()
             }),
             validation: config::Validation::None,
             ..Default::default()
@@ -1213,6 +1362,72 @@ mod test {
             .unwrap_or_else(|e| panic!("Failed to build entries: [{}]", e));
 
         assert_eq!(entries.len(), 2);
+    }
+
+    #[test]
+    fn test_build_entries_with_array_element_field() {
+        let mut metadata = build_metadata();
+
+        let rule = Rule {
+            symbol: "mMmSupvPoolLists".to_string(),
+            array: Some(Array {
+                field: Some("ForwardLink".to_string()),
+                index: Some(1usize..=2usize),
+                ..Default::default()
+            }),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .expect("array element field should produce entries");
+
+        assert_eq!(entries.len(), 2);
+        assert!(entries
+            .iter()
+            .all(|entry| entry.0.size == POINTER_LENGTH as u32));
+        assert_eq!(
+            metadata
+                .context_from_address(&entries[0].0.offset)
+                .unwrap()
+                .name,
+            "mMmSupvPoolLists[1].ForwardLink"
+        );
+    }
+
+    #[test]
+    fn test_build_entries_with_nested_array_element_field() {
+        let mut metadata = build_metadata();
+        let symbol_address = metadata.find_symbol("gSmiMtrrs").address;
+
+        let rule = Rule {
+            symbol: "gSmiMtrrs".to_string(),
+            field: Some("Variables.Mtrr".to_string()),
+            array: Some(Array {
+                field: Some("Mask".to_string()),
+                index: Some(1usize..=2usize),
+                ..Default::default()
+            }),
+            validation: config::Validation::None,
+            ..Default::default()
+        };
+
+        let entries = metadata
+            .build_entries(&rule)
+            .expect("nested array element field should produce entries");
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].0.offset, symbol_address + 0x70);
+        assert_eq!(entries[1].0.offset, symbol_address + 0x80);
+        assert!(entries.iter().all(|entry| entry.0.size == 8));
+        assert_eq!(
+            metadata
+                .context_from_address(&entries[0].0.offset)
+                .unwrap()
+                .name,
+            "gSmiMtrrs.Variables.Mtrr[1].Mask"
+        );
     }
 
     #[test]
@@ -1258,7 +1473,7 @@ mod test {
             validation: config::Validation::None,
             array: Some(Array {
                 sentinel: true,
-                index: None,
+                ..Default::default()
             }),
             ..Default::default()
         };
@@ -1432,6 +1647,30 @@ mod test {
     }
 
     #[test]
+    fn test_field_name_matches_indexed_array_field() {
+        let expected = "mStructure.ArrayField";
+
+        assert!(field_name_matches(expected, expected));
+        assert!(field_name_matches("mStructure.ArrayField[0]", expected));
+        assert!(field_name_matches(
+            "mStructure.ArrayField[12].Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayFieldOther[0].Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayField.Member",
+            expected
+        ));
+        assert!(!field_name_matches(
+            "mStructure.ArrayField[index].Member",
+            expected
+        ));
+    }
+
+    #[test]
     fn test_validate_rule_content() {
         let mut metadata = build_metadata();
 
@@ -1511,14 +1750,14 @@ mod test {
     }
 
     #[test]
-    fn test_validate_rule_when_array_field_but_symbol_not_array() {
+    fn test_validate_rule_when_array_config_but_symbol_not_array() {
         let mut metadata = build_metadata();
 
         let rule = Rule {
             symbol: "mUnblockedMemoryList".to_string(),
             array: Some(Array {
-                sentinel: false,
                 index: Some(1..=2),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 16],
@@ -1545,6 +1784,7 @@ mod test {
             array: Some(Array {
                 sentinel: true,
                 index: Some(1..=2),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 96],
@@ -1569,8 +1809,8 @@ mod test {
         let rule = Rule {
             symbol: "mMmSupvPoolLists".to_string(),
             array: Some(Array {
-                sentinel: false,
                 index: Some(99..=99),
+                ..Default::default()
             }),
             validation: config::Validation::Content {
                 content: vec![0x0; 16],
