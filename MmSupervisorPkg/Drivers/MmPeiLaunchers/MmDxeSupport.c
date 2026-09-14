@@ -468,6 +468,9 @@ UpdateDxeCommunicateBuffer (
     goto Done;
   }
 
+  ZeroMem (NewMmCommSupvBufferStatus, sizeof (MM_COMM_BUFFER_STATUS));
+  ZeroMem (NewMmCommUserBufferStatus, sizeof (MM_COMM_BUFFER_STATUS));
+
   mCommunicateHeader = (EFI_SMM_COMMUNICATE_HEADER *)mMmSupvCommonBuffer;
 
   // The size of supervisor communication buffer should be much larger than this value below
