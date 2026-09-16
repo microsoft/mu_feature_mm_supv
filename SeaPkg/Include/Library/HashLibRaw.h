@@ -9,8 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef HASH_LIB_RAW_H_
-#define HASH_LIB_RAW_H_
+#pragma once
 
 /**
   Hash data and return the digest list.
@@ -28,5 +27,3 @@ HashOnly (
   IN UINTN                DataToHashLen,
   OUT TPML_DIGEST_VALUES  *DigestList
   );
-
-#endif

@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _SMX_H_
-#define _SMX_H_
+#pragma once
 
 #define TXT_PRIVATE_SPACE  0xFED20000
 #define TXT_PUBLIC_SPACE   0xFED30000
@@ -543,5 +542,3 @@ typedef union {
 #define TXT_EVTYPE_CAP_VALUE  (TXT_EVTYPE_BASE + 255)
 
 #pragma pack (pop)
-
-#endif

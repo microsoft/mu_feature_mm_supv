@@ -19,8 +19,7 @@
 
 **/
 
-#ifndef PECOFF_VALIDATION_LIB_H_
-#define PECOFF_VALIDATION_LIB_H_
+#pragma once
 
 /**
   Validates a specific region in the target image buffer denoted by [Hdr->Offset: Hdr->Offset + Hdr->Size]
@@ -152,5 +151,3 @@ PeCoffInspectImageMemory (
   IN UINT64                ImageSize,
   IN UINT64                PageTableBase
   );
-
-#endif // PECOFF_VALIDATION_LIB_H_

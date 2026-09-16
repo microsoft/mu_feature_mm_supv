@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef SEA_RESPONDER_H_
-#define SEA_RESPONDER_H_
+#pragma once
 
 // FixupOffsets
 #define SMM_ADDR_OFFSET  0
@@ -96,5 +95,3 @@ typedef struct {
 
 #define SEA_API_GET_CAPABILITIES  (BIT16 | BIT8 | 1)
 #define SEA_API_GET_RESOURCES     (BIT16 | BIT8 | 2)
-
-#endif // SEA_RESPONDER_H_

@@ -7,8 +7,7 @@
 
 **/
 
-#ifndef SEA_AUXILIARY_H_
-#define SEA_AUXILIARY_H_
+#pragma once
 
 #define IMAGE_VALIDATION_ENTRY_TYPE_NONE      0x00000000
 #define IMAGE_VALIDATION_ENTRY_TYPE_NON_ZERO  0x00000001
@@ -68,5 +67,3 @@ typedef struct {
 } IMAGE_VALIDATION_POINTER;
 
 #pragma pack()
-
-#endif // SEA_AUXILIARY_H_

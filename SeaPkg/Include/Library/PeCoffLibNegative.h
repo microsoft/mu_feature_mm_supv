@@ -24,8 +24,7 @@
 
 **/
 
-#ifndef BASE_PECOFF_LIB_NEGATIVE_H_
-#define BASE_PECOFF_LIB_NEGATIVE_H_
+#pragma once
 
 /**
   Applies relocation fixups to a PE/COFF image that was loaded with PeCoffLoaderLoadImage().
@@ -163,5 +162,3 @@ PeCoffImageDiffValidation (
   IN      CONST IMAGE_VALIDATION_DATA_HEADER  *ImageValidationEntryHdr,
   IN      EFI_PHYSICAL_ADDRESS                PageTableBase
   );
-
-#endif // BASE_PECOFF_LIB_NEGATIVE_H_

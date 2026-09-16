@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _STM_H_
-#define _STM_H_
+#pragma once
 
 #include <Uefi.h>
 #include <Library/BaseLib.h>
@@ -474,5 +473,3 @@ typedef struct _SEA_HOST_CONTEXT_COMMON {
 
 extern SEA_HOST_CONTEXT_COMMON   mHostContextCommon;
 extern SEA_GUEST_CONTEXT_COMMON  mGuestContextCommonNormal;
-
-#endif

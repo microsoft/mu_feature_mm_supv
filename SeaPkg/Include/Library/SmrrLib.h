@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef SMRR_LIB_H_
-#define SMRR_LIB_H_
+#pragma once
 
 /**
   Determine if MTRR registers must be configured to set SMRAM cache-ability
@@ -92,5 +91,3 @@ EFIAPI
 SmrrLibInitialization (
   VOID
   );
-
-#endif

@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _VMX_H_
-#define _VMX_H_
+#pragma once
 
 #include <x64/CpuArchSpecific.h>
 
@@ -691,5 +690,3 @@ typedef union {
 } IA32_VMX_MISC_MSR;
 
 #pragma pack (pop)
-
-#endif

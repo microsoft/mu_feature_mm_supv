@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _CPU_ARCH_SPECIFIC_H_
-#define _CPU_ARCH_SPECIFIC_H_
+#pragma once
 
 #pragma pack (push, 1)
 typedef struct _X86_REGISTER {
@@ -36,5 +35,3 @@ typedef struct _X86_REGISTER {
   IA32_FX_BUFFER    FxBuffer; // 128, X64 calling convention allow using XMM0~15
 } X86_REGISTER;
 #pragma pack (pop)
-
-#endif
