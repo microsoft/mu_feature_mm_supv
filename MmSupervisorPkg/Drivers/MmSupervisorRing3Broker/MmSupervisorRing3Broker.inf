@@ -11,9 +11,9 @@
 # This module contains an instance of protocol/handle from StandaloneMmCore and pool memory + guard management from PiSmmCore.
 
 # release/202511 (Non Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 3956b3bf91e0fb0acbb39e88df240816 | 2026-09-02T19-27-12 | a5197f87e628b31215ef10a64b9cc1962169ad35
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 44eb5f957974d085da1713ed592e5d02 | 2026-09-16T19-53-00 | 84a498f97db07a9ca8292ab2dcc1551ce44a3120
 # release/202511 (Secure)
-#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 3956b3bf91e0fb0acbb39e88df240816 | 2026-09-02T19-24-35 | 765de7129b9ca8672842900da24aec20ce6bb93c
+#Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | 44eb5f957974d085da1713ed592e5d02 | 2026-09-16T19-53-00 | 84a498f97db07a9ca8292ab2dcc1551ce44a3120
 
 # release/202502 (Non Secure)
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-21-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
@@ -21,9 +21,9 @@
 #Track : 00000002 | StandaloneMmPkg/Core/StandaloneMmCore.inf | c80945fbcea5c11226d4f179c83292f2 | 2026-03-23T19-22-00 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
 
 # release/202511 (Non Secure)
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-03-23T19-05-01 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c32dd5254244d8edacc1ceb519d2fee0 | 2026-09-16T19-28-51 | 84a498f97db07a9ca8292ab2dcc1551ce44a3120
 # release/202511 (Secure)
-#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 0a403969919049fff1ee3f261a660f68 | 2026-03-23T19-05-20 | 1617810253e428d5455fe5fdb304789416564fa3
+#Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | c32dd5254244d8edacc1ceb519d2fee0 | 2026-09-16T19-28-51 | 84a498f97db07a9ca8292ab2dcc1551ce44a3120
 
 # release/202502 (Non Secure)
 #Track : 00000002 | MdeModulePkg/Core/PiSmmCore/PiSmmCore.inf | 74f77f7353733f32e136e79be24e75c9 | 2026-03-23T19-24-41 | 40548b12d821a8bce209f8b5559c3b230b226d50
