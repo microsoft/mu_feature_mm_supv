@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _MM_SUPV_TELEMETRY_H_
-#define _MM_SUPV_TELEMETRY_H_
+#pragma once
 
 /**
   Routine for error reporting inside supervisor exception handlers.
@@ -42,5 +41,3 @@ EFI_STATUS
 CoalesceLooseExceptionHandlers (
   VOID
   );
-
-#endif // _MM_SUPV_TELEMETRY_H_

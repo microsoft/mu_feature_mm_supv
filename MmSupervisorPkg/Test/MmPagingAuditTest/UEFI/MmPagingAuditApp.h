@@ -8,8 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef MM_PAGING_AUDIT_APP_H_
-#define MM_PAGING_AUDIT_APP_H_
+#pragma once
 
 #define MAX_STRING_SIZE  0x1000
 
@@ -58,5 +57,3 @@ WriteBufferToFile (
   IN       VOID    *Buffer,
   IN       UINTN   BufferSize
   );
-
-#endif // MM_PAGING_AUDIT_APP_H_

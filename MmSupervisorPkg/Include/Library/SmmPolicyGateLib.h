@@ -8,8 +8,7 @@
 
 **/
 
-#ifndef __SMM_POLICY_GATE_H__
-#define __SMM_POLICY_GATE_H__
+#pragma once
 
 /**
   Given an IO port address and size, determine if the request is allowed by
@@ -107,5 +106,3 @@ IsSaveStateWriteAllowed (
   IN SMM_SUPV_SECURE_POLICY_DATA_V1_0  *SmmSecurityPolicy,
   IN UINT32                            SaveStateMapField
   );
-
-#endif

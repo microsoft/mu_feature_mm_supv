@@ -7,8 +7,7 @@
 
 **/
 
-#ifndef _MM_SUPV_REQUEST_H_
-#define _MM_SUPV_REQUEST_H_
+#pragma once
 
 /**
   Routine used to validate and unblock requested region to be accessible in MM
@@ -94,5 +93,3 @@ EFI_STATUS
 ProcessUpdateCommBufferRequest (
   IN MM_SUPERVISOR_COMM_UPDATE_BUFFER  *UpdateCommBuffer
   );
-
-#endif // _MM_SUPV_REQUEST_H_

@@ -5,8 +5,7 @@
  * SPDX-License-Identifier: BSD-2-Clause-Patent
  **/
 
-#ifndef _SMM_SECURE_POLICY_H_
-#define _SMM_SECURE_POLICY_H_
+#pragma once
 
 #define SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_MEM          1
 #define SMM_SUPV_SECURE_POLICY_DESCRIPTOR_TYPE_IO           2
@@ -317,4 +316,3 @@ typedef struct {
 } SMM_SUPV_SECURE_POLICY_DATA_V1_0;
 
 #pragma pack (pop)
-#endif

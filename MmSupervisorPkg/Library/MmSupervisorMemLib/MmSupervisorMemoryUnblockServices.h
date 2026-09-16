@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef MM_SUPV_MEM_UNBLOCK_SERVICES_
-#define MM_SUPV_MEM_UNBLOCK_SERVICES_
+#pragma once
 
 /**
   Helper function to check if range requested is within boundary of unblocked lists.
@@ -27,5 +26,3 @@ IsWithinUnblockedRegion (
   IN EFI_PHYSICAL_ADDRESS  Buffer,
   IN UINT64                Length
   );
-
-#endif // MM_SUPV_MEM_UNBLOCK_SERVICES_

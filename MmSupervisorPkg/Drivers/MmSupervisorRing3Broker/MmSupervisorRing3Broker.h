@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef _STANDALONE_RING3_SHIM_H_
-#define _STANDALONE_RING3_SHIM_H_
+#pragma once
 
 #define EFI_HANDLE_SIGNATURE  SIGNATURE_32('h','n','d','l')
 
@@ -304,5 +303,3 @@ MmEndOfDxeHandler (
   IN OUT VOID        *CommBuffer      OPTIONAL,
   IN OUT UINTN       *CommBufferSize  OPTIONAL
   );
-
-#endif

@@ -7,8 +7,7 @@
 
 **/
 
-#ifndef __MM_COMM_REGION_HOB_H__
-#define __MM_COMM_REGION_HOB_H__
+#pragma once
 
 #define MM_COMM_REGION_HOB_GUID \
   { 0xd4ffc718, 0xfb82, 0x4274, { 0x9a, 0xfc, 0xaa, 0x8b, 0x1e, 0xef, 0x52, 0x93 } }
@@ -26,5 +25,3 @@ typedef struct {
 } MM_COMM_REGION_HOB;
 
 extern EFI_GUID  gMmCommonRegionHobGuid;
-
-#endif

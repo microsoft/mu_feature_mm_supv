@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef __MM_SUPV_TELEMETRY_DATA_H__
-#define __MM_SUPV_TELEMETRY_DATA_H__
+#pragma once
 
 #define MM_SUPV_TELEMETRY_SIGNATURE  SIGNATURE_32('M','S','V','T')
 
@@ -22,5 +21,3 @@ typedef struct {
   EFI_SYSTEM_CONTEXT_X64    ExceptionData;
   // UINT8*                 ExtraData
 } MM_SUPV_TELEMETRY_DATA;
-
-#endif

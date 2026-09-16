@@ -9,8 +9,7 @@
 
 **/
 
-#ifndef MM_USER_MEM_H_
-#define MM_USER_MEM_H_
+#pragma once
 
 //
 // Pool management
@@ -68,5 +67,3 @@ typedef enum {
 
 extern LIST_ENTRY  mMmMemoryMap;
 extern LIST_ENTRY  mMmPoolLists[MmPoolTypeMax][MAX_POOL_INDEX];
-
-#endif

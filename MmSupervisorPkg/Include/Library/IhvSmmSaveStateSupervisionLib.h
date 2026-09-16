@@ -8,8 +8,7 @@
 
 **/
 
-#ifndef __IHV_SMM_SAVE_STATE_SUPERVISION_LIB__
-#define __IHV_SMM_SAVE_STATE_SUPERVISION_LIB__
+#pragma once
 
 #define SMM_SAVE_STATE_CPU_DATA_VERSION_1  1
 typedef struct {
@@ -61,5 +60,3 @@ IhvSmmSaveStateRead (
   IN EFI_MM_SAVE_STATE_REGISTER           Register,
   IN UINTN                                Width
   );
-
-#endif // !defined (__IHV_SMM_SAVE_STATE_SUPERVISION_LIB__)

@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef _SYSCALL_MMI_HANDLER_PROFILE_H_
-#define _SYSCALL_MMI_HANDLER_PROFILE_H_
+#pragma once
 
 /**
   Initialize MmiHandler profile feature for user space.
@@ -16,5 +15,3 @@ VOID
 MmUserInitializeSmiHandlerProfile (
   VOID
   );
-
-#endif

@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef X64_LOADER_H_
-#define X64_LOADER_H_
+#pragma once
 
 /**
   Locates the X64Relay image entry point, and execute it in long mode.
@@ -25,5 +24,3 @@ SetMmFoundationInX64Relay (
   IN  STANDALONE_MM_FOUNDATION_ENTRY_POINT  MmEntryPoint,
   IN  VOID                                  *HobStart
   );
-
-#endif // X64_LOADER_H_

@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef MM_SUPV_TEST_H_
-#define MM_SUPV_TEST_H_
+#pragma once
 
 /**
  * @brief      Dispatches tasks when called each (of 3) times by the app.
@@ -39,5 +38,3 @@ EFIAPI
 InitializeMmSupervisorTestAgents (
   VOID
   );
-
-#endif // MM_SUPV_TEST_H_

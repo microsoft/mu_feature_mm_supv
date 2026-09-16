@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _MM_SUPV_REQUEST_DATA_H_
-#define _MM_SUPV_REQUEST_DATA_H_
+#pragma once
 
 #include <Guid/MmCommonRegion.h>
 
@@ -103,5 +102,3 @@ typedef struct _COMM_UPDATE_BUFFER {
 
  **/
 #define   MM_SUPERVISOR_REQUEST_MAX_SUPPORTED  MM_SUPERVISOR_REQUEST_COMM_UPDATE
-
-#endif // _MM_SUPV_REQUEST_DATA_H_

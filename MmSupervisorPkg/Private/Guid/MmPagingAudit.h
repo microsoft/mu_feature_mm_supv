@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef MM_PAGING_AUDIT_H_
-#define MM_PAGING_AUDIT_H_
+#pragma once
 
 #pragma pack(1)
 
@@ -212,5 +211,3 @@ typedef struct _SMM_PAGE_AUDIT_UNIFIED_COMM_BUFFER {
 { 0x59b149, 0x1117, 0x47dc, { 0x80, 0xbb, 0x11, 0x25, 0xe9, 0x8b, 0x41, 0x8c } };
 
 extern EFI_GUID  gMmPagingAuditMmiHandlerGuid;
-
-#endif // MM_PAGING_AUDIT_H_
