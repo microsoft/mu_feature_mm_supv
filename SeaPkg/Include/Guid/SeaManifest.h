@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef SEA_MANIFEST_H_
-#define SEA_MANIFEST_H_
+#pragma once
 
 #define SEA_RIM_FILE_GUID \
   { 0x442adad1, 0x5d9c, 0x46ea, { 0xb5, 0x38, 0xc7, 0xb1, 0x74, 0x0f, 0x83, 0x92 } }
@@ -17,5 +16,3 @@
 
 extern EFI_GUID  gSeaManifestConfigurationTableGuid;
 extern EFI_GUID  gSeaRimFileGuid;
-
-#endif

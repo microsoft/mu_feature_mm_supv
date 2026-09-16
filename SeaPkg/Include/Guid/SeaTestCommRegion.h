@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef SEA_TEST_COMM_REGION_H_
-#define SEA_TEST_COMM_REGION_H_
+#pragma once
 
 #define SEA_VAL_TEST_HANDLER_GUID \
    { 0x2f5df5d9, 0xa4c1, 0x4f6d, { 0xb5, 0x34, 0x4, 0xdd, 0x9b, 0x49, 0x59, 0x9f } }
@@ -25,5 +24,3 @@ typedef struct {
 } SEA_TEST_COMM_OUTPUT_REGION;
 
 extern EFI_GUID  gSeaValidationTestHandlerGuid;
-
-#endif

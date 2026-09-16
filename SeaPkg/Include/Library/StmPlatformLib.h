@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _STM_PLATFORM_LIB_H_
-#define _STM_PLATFORM_LIB_H_
+#pragma once
 
 /**
   This is STM platform hook to set MSR bitmap.
@@ -55,5 +54,3 @@ StmPlatformLibMsrWrite (
   IN UINT32  MsrIndex,
   IN UINT64  Data
   );
-
-#endif

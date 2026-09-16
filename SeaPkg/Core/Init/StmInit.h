@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _STM_INIT_H_
-#define _STM_INIT_H_
+#pragma once
 
 #include "Stm.h"
 
@@ -82,5 +81,3 @@ InitializeNormalVmcs (
   IN UINT64   *Vmcs,
   IN BOOLEAN  IncrementGuestRip
   );
-
-#endif

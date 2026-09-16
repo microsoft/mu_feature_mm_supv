@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _CPU_DEF_H_
-#define _CPU_DEF_H_
+#pragma once
 
 #define MEMORY_TYPE_UC  0
 #define MEMORY_TYPE_WC  1
@@ -273,5 +272,3 @@ typedef struct {
 } TASK_STATE_64;
 
 #pragma pack (pop)
-
-#endif
