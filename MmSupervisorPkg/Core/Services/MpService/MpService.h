@@ -8,8 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _MM_CORE_MP_H_
-#define _MM_CORE_MP_H_
+#pragma once
 
 #include <Protocol/MpService.h>
 #include <Protocol/SmmConfiguration.h>
@@ -242,5 +241,3 @@ VOID
 SmmWaitForApArrival (
   VOID
   );
-
-#endif //_MM_CORE_MP_H_

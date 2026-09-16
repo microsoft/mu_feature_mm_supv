@@ -8,8 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _RELOCATE_H_
-#define _RELOCATE_H_
+#pragma once
 
 #include <PiMm.h>
 
@@ -732,5 +731,3 @@ VOID
 PostRelocationRun (
   VOID
   );
-
-#endif

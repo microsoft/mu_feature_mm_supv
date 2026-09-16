@@ -10,8 +10,7 @@
 
 **/
 
-#ifndef MM_IPL_PEI_COMMON_HEADER_
-#define MM_IPL_PEI_COMMON_HEADER_
+#pragma once
 
 //
 // 8 extra pages for PF handler.
@@ -138,7 +137,5 @@ EFI_STATUS
   SWITCH_32_TO_64_CONTEXT  *EntrypointContext,
   SWITCH_64_TO_32_CONTEXT  *ReturnContext
   );
-
-#endif
 
 #endif

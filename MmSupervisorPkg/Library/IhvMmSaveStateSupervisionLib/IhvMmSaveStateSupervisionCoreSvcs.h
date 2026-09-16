@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef IHV_MM_SAVE_STATE_CORE_SVCS_H_
-#define IHV_MM_SAVE_STATE_CORE_SVCS_H_
+#pragma once
 
 /**
   Read information from the CPU save state.
@@ -32,5 +31,3 @@ SmmReadSaveState (
   IN UINTN                       CpuIndex,
   OUT VOID                       *Buffer
   );
-
-#endif // IHV_MM_SAVE_STATE_CORE_SVCS_H_

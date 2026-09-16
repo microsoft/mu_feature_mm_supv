@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef _SYSCALL_MM_CPU_RING3_SHIM_H_
-#define _SYSCALL_MM_CPU_RING3_SHIM_H_
+#pragma once
 
 extern EFI_MM_CPU_PROTOCOL  mMmCpu;
 
@@ -20,5 +19,3 @@ SysCallMmReadSaveState (
   IN UINTN                       CpuIndex,
   OUT VOID                       *Buffer
   );
-
-#endif

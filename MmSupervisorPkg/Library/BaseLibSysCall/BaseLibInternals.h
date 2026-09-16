@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef __BASE_LIB_INTERNALS__
-#define __BASE_LIB_INTERNALS__
+#pragma once
 
 #include <Base.h>
 #include <Library/BaseLib.h>
@@ -877,7 +876,5 @@ InternalX86ReadFsBase (
   #endif
 
 #else
-
-#endif
 
 #endif

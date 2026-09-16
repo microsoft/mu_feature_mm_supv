@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _SMM_PROFILE_INTERNAL_H_
-#define _SMM_PROFILE_INTERNAL_H_
+#pragma once
 
 #include <Protocol/SmmReadyToLock.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
@@ -49,5 +48,3 @@ VOID
 SmiDefaultPFHandler (
   VOID
   );
-
-#endif // _SMM_PROFILE_H_

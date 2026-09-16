@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef __MM_PROT_REGION_HOB_H__
-#define __MM_PROT_REGION_HOB_H__
+#pragma once
 
 #define MM_PROT_REGION_HOB_GUID \
   { 0x6c0792ac, 0x13d7, 0x431b, { 0xa4, 0x89, 0x3, 0x2f, 0x4a, 0xf9, 0x73, 0x80 } }
@@ -25,5 +24,3 @@ typedef struct {
   EFI_PHYSICAL_ADDRESS    MmProtectedRegionAddr;
   UINT64                  MmProtectedRegionPages;
 } MM_PROT_REGION_HOB;
-
-#endif

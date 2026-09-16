@@ -8,8 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _MM_SUPV_POLICY_H_
-#define _MM_SUPV_POLICY_H_
+#pragma once
 
 #include <SmmSecurePolicy.h>
 
@@ -126,5 +125,3 @@ EFIAPI
 DumpSmmPolicyData (
   SMM_SUPV_SECURE_POLICY_DATA_V1_0  *Data
   );
-
-#endif // _MM_SUPV_POLICY_H_

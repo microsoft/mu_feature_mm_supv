@@ -9,8 +9,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _HEAPGUARD_H_
-#define _HEAPGUARD_H_
+#pragma once
 
 //
 // Following macros are used to define and access the guarded memory bitmap
@@ -404,5 +403,3 @@ MmEntryPointMemoryManagementHook (
   );
 
 extern BOOLEAN  mOnGuarding;
-
-#endif

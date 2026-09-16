@@ -8,8 +8,7 @@
 
 **/
 
-#ifndef _MM_SUPV_COMMUNICATION_H_
-#define _MM_SUPV_COMMUNICATION_H_
+#pragma once
 
 #define MM_SUPERVISOR_COMMUNICATION_PPI_GUID \
   { \
@@ -65,5 +64,3 @@ struct _MM_SUPERVISOR_COMMUNICATION_PPI {
 };
 
 #pragma pack()
-
-#endif

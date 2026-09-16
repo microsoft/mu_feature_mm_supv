@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _SMM_PROFILE_H_
-#define _SMM_PROFILE_H_
+#pragma once
 
 #include "SmmProfileInternal.h"
 
@@ -46,5 +45,3 @@ GetCpuIndex (
 // The flag indicates if execute-disable is supported by processor.
 //
 extern BOOLEAN  mXdSupported;
-
-#endif // _SMM_PROFILE_H_

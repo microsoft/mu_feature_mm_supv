@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef MM_SUPERVISOR_CORE_INIT_LIB_H_
-#define MM_SUPERVISOR_CORE_INIT_LIB_H_
+#pragma once
 
 /**
   Perform any custom initialization needed by the MM Supervisor Core.
@@ -26,5 +25,3 @@ EFIAPI
 MmSupervisorCoreEntryInit (
   VOID
   );
-
-#endif // MM_SUPERVISOR_CORE_INIT_LIB_H_

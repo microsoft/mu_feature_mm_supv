@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef MM_POLICY_MEASUREMENT_LEVELS_H_
-#define MM_POLICY_MEASUREMENT_LEVELS_H_
+#pragma once
 
 typedef struct {
   UINT16    IoPortNumber;
@@ -36,5 +35,3 @@ Memory:
 #define SMM_POLICY_LEVEL_30  30
 
 #define MAX_SUPPORTED_LEVEL  30
-
-#endif // MM_POLICY_MEASUREMENT_LEVELS_H_
