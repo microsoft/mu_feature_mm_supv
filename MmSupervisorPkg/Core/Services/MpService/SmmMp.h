@@ -7,8 +7,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _SMM_MP_PROTOCOL_H_
-#define _SMM_MP_PROTOCOL_H_
+#pragma once
 
 #include <Protocol/MmMp.h>
 
@@ -281,5 +280,3 @@ SmmMpWaitForProcedure (
   IN CONST EFI_MM_MP_PROTOCOL  *This,
   IN       MM_COMPLETION       Token
   );
-
-#endif

@@ -8,8 +8,7 @@ AMD I/O Virtualization Technology (IOMMU) Specification 48882—Rev 3.00
 
 **/
 
-#ifndef _IVRS_TABLE_H_
-#define _IVRS_TABLE_H_
+#pragma once
 
 #define IVHD_TYPE_10H  0x10
 #define IVHD_TYPE_11H  0x11
@@ -114,5 +113,3 @@ typedef PACKED struct {
 } EFI_ACPI_IVRS_HEADER;
 
 #pragma pack()
-
-#endif

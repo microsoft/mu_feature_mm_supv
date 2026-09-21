@@ -11,8 +11,7 @@
 
 **/
 
-#ifndef _MM_PRIVILEGE_MGMT_H_
-#define _MM_PRIVILEGE_MGMT_H_
+#pragma once
 
 #include <Library/SynchronizationLib.h>
 
@@ -210,5 +209,3 @@ UpdateCpl0StackPtrForGs (
   IN UINTN                 CpuIndex,
   IN EFI_PHYSICAL_ADDRESS  Cpl0StackPtr
   );
-
-#endif

@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef STM_API_INTERNAL_H_
-#define STM_API_INTERNAL_H_
+#pragma once
 
 // definition in STM spec
 
@@ -87,5 +86,3 @@ typedef struct _STM_SMM_CPU_STATE {
 } STM_SMM_CPU_STATE;
 
 #pragma pack (pop)
-
-#endif // STM_API_INTERNAL_H_

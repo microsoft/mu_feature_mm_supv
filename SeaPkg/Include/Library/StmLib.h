@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _STM_LIB_H_
-#define _STM_LIB_H_
+#pragma once
 
 #include <x64/Vmx.h>
 #include <x64/Smx.h>
@@ -678,5 +677,3 @@ AsmVmCall (
   IN UINT32  Ecx,
   IN UINT32  Edx
   );
-
-#endif

@@ -9,8 +9,7 @@
 
 **/
 
-#ifndef _MM_SCRATCH_PAGE_ALLOC_H_
-#define _MM_SCRATCH_PAGE_ALLOC_H_
+#pragma once
 
 #define MM_SUPERVISOR_PAGE_ALLOCATION_PROTOCOL_GUID \
   { \
@@ -45,5 +44,3 @@ VOID *
 struct _MM_ALLOCATE_SCRATCH_PAGE {
   ALLOCATE_SCRATCH_PAGE    MmAllocateScratchPages;
 };
-
-#endif

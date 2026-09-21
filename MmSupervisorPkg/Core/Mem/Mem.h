@@ -9,8 +9,7 @@
 
 **/
 
-#ifndef _MM_CORE_MEM_H_
-#define _MM_CORE_MEM_H_
+#pragma once
 
 #include <Library/CpuPageTableLib.h>
 
@@ -681,5 +680,3 @@ VerifyRequestUserCommBuffer (
   IN  VOID   *CommBuffer,
   IN  UINTN  CommBufferSize
   );
-
-#endif

@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef _SMM_STM_H_
-#define _SMM_STM_H_
+#pragma once
 
 #include <Protocol/SmMonitorInit.h>
 
@@ -94,5 +93,3 @@ VOID *
 GetStmResource (
   VOID
   );
-
-#endif

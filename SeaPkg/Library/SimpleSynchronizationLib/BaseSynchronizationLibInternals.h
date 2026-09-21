@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef __BASE_SYNCHRONIZATION_LIB_INTERNALS__
-#define __BASE_SYNCHRONIZATION_LIB_INTERNALS__
+#pragma once
 
 #include <Base.h>
 #include <Library/SynchronizationLib.h>
@@ -107,5 +106,3 @@ InternalSyncCompareExchange64 (
   IN      UINT64           CompareValue,
   IN      UINT64           ExchangeValue
   );
-
-#endif

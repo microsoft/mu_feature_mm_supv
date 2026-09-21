@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef __SYS_CALL_LIB__
-#define __SYS_CALL_LIB__
+#pragma once
 
 #define CPL_BITMASK           (BIT1 | BIT0)
 #define SYSCALL_REQUIRED_CPL  3
@@ -80,5 +79,3 @@ BOOLEAN
 NeedSysCall (
   VOID
   );
-
-#endif // !defined (__SYS_CALL_LIB__)

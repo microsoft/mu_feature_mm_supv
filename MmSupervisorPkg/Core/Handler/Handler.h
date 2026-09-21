@@ -7,8 +7,7 @@
 
 **/
 
-#ifndef _MM_SUPV_HANDLER_H_
-#define _MM_SUPV_HANDLER_H_
+#pragma once
 
 /**
   Initialize MmiHandler profile feature.
@@ -83,5 +82,3 @@ ProcessUserHandlerUnreg (
   IN EFI_PHYSICAL_ADDRESS  Arg2,
   IN EFI_PHYSICAL_ADDRESS  Arg3
   );
-
-#endif //_MM_SUPV_HANDLER_H_

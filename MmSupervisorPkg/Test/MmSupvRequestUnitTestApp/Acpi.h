@@ -10,8 +10,7 @@ for purpose of easy ACPI table parsing
 
 **/
 
-#ifndef __ACPI_UNIT_TEST_H__
-#define __ACPI_UNIT_TEST_H__
+#pragma once
 
 #pragma pack(1)
 
@@ -38,5 +37,3 @@ GetAcpiTable (
   IN  UINT32  AcpiSignature,
   OUT VOID    **AcpiTable
   );
-
-#endif // __ACPI_UNIT_TEST_H__

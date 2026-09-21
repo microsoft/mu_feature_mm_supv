@@ -9,8 +9,7 @@
 
 **/
 
-#ifndef _MM_CORE_H_
-#define _MM_CORE_H_
+#pragma once
 
 #include <PiMm.h>
 #include <StandaloneMm.h>
@@ -1091,5 +1090,3 @@ InternalIsBufferOverlapped (
   IN UINT8  *Buff2,
   IN UINTN  Size2
   );
-
-#endif

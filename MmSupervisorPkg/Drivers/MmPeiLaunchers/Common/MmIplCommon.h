@@ -7,8 +7,7 @@
 
 **/
 
-#ifndef MM_IPL_COMMON_H_
-#define MM_IPL_COMMON_H_
+#pragma once
 
 //
 // Function prototypes from produced protocols
@@ -129,5 +128,3 @@ extern EFI_MM_COMMUNICATE_HEADER  *mCommunicateHeader;
 
 extern MM_COMM_BUFFER_STATUS  *mMmCommSupvBufferStatus;
 extern MM_COMM_BUFFER_STATUS  *mMmCommUserBufferStatus;
-
-#endif // MM_IPL_COMMON_H_

@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef CPU_FEATURES_LIB_H_
-#define CPU_FEATURES_LIB_H_
+#pragma once
 
 #include <Guid/SmmBaseHob.h>
 #include <Library/SmmCpuFeaturesLib.h>
@@ -33,7 +32,7 @@ SmmCpuFeaturesLibStmConstructor (
 /**
   Performs library initialization.
 
-  This initialization function contains common functionality shared betwen all
+  This initialization function contains common functionality shared between all
   library instance constructors.
 
 **/
@@ -65,5 +64,3 @@ UINT32
 GetCpuMaxLogicalProcessorNumber (
   VOID
   );
-
-#endif

@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef MM_SUPERVISOR_VER_H_
-#define MM_SUPERVISOR_VER_H_
+#pragma once
 
 #define MM_SUPERVISOR_VER_VENDOR_GUID \
   { 0xD4ADFC6F, 0x2F58, 0x4BCF, { 0xA8, 0x87, 0x05, 0xEF, 0xB4, 0x7D, 0x42, 0x99 }}
@@ -28,5 +27,3 @@
 #define MM_SUPERVISOR_VER_VAR_MAX_CHAR_COUNT  (2 + 1 + 4 + 1)
 
 extern EFI_GUID  gMmSupervisorVerVendorGuid;
-
-#endif

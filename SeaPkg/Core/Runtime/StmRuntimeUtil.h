@@ -12,8 +12,7 @@
 
 **/
 
-#ifndef _STM_RUNTIME_UTIL_H_
-#define _STM_RUNTIME_UTIL_H_
+#pragma once
 
 /**
   Helper function to check if two ranges overlap.
@@ -113,5 +112,3 @@ SeaResponderReport (
   IN OUT VOID               *PolicyBuffer OPTIONAL,
   IN OUT UINTN              *PolicyBufferSize
   );
-
-#endif

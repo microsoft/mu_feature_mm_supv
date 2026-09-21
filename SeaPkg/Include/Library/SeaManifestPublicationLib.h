@@ -6,8 +6,7 @@
 
 **/
 
-#ifndef SEA_MANIFEST_PUBLICATION_LIB_H_
-#define SEA_MANIFEST_PUBLICATION_LIB_H_
+#pragma once
 
 /**
   Publish the SEA Manifest so it can be located by an operating system.
@@ -31,5 +30,3 @@ PublishSeaManifest (
   IN  VOID   *SeaManifest        OPTIONAL,
   IN  UINTN  *SeaManifestSize    OPTIONAL
   );
-
-#endif // SEA_MANIFEST_PUBLICATION_LIB_H_

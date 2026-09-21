@@ -6,8 +6,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 **/
 
-#ifndef _CPU_SERVICE_H_
-#define _CPU_SERVICE_H_
+#pragma once
 
 #include <Protocol/SmmCpuService.h>
 
@@ -103,5 +102,3 @@ VOID
 SmmCpuUpdate (
   VOID
   );
-
-#endif

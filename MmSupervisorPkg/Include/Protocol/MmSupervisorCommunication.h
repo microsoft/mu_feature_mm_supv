@@ -9,8 +9,7 @@
 
 **/
 
-#ifndef _MM_SUPV_COMMUNICATION_H_
-#define _MM_SUPV_COMMUNICATION_H_
+#pragma once
 
 #define MM_SUPERVISOR_COMMUNICATION_PROTOCOL_GUID \
   { \
@@ -66,5 +65,3 @@ struct _MM_SUPERVISOR_COMMUNICATION_PROTOCOL {
 };
 
 #pragma pack()
-
-#endif
