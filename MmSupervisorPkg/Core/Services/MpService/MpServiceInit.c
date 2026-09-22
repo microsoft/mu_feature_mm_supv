@@ -19,7 +19,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Library/MmMemoryProtectionHobLib.h> // MU_CHANGE
 
-
 //
 // SMM CPU Private Data structure that contains SMM Configuration Protocol
 // along its supporting fields.
@@ -44,7 +43,7 @@ SMM_CPU_PRIVATE_DATA  mSmmCpuPrivateData = {
   NULL,                                         // SmmCoreEntry
   {
     NULL,  // SmmConfiguration.SmramReservedRegions
-    NULL                            // SmmConfiguration.RegisterSmmEntry
+    NULL   // SmmConfiguration.RegisterSmmEntry
   },
   NULL,                                         // pointer to Ap Wrapper Func array
   { NULL, NULL },                               // List_Entry for Tokens.

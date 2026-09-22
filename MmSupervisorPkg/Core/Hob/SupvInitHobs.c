@@ -57,7 +57,7 @@ extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 // agree exactly or the cursor drifts, so neither open-codes the arithmetic.
 //
 #define MODULE_ALLOC_HOB_SIZE  ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8)
-#define GUID_HOB_SIZE(DataSize)  ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + (DataSize), 8)
+#define GUID_HOB_SIZE(DataSize)    ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + (DataSize), 8)
 #define DEPEX_HOB_SIZE(DepexSize)  GUID_HOB_SIZE (sizeof (MM_SUPV_DEPEX_HOB_DATA) + (DepexSize))
 
 /**
@@ -70,7 +70,7 @@ STATIC
 VOID
 HobBuilderAdvance (
   IN OUT MM_SUPV_INIT_HOB_BUILDER  *Builder,
-  IN     UINT64               Consumed
+  IN     UINT64                    Consumed
   )
 {
   // Every HOB is padded to 8 bytes, so the cursor must stay aligned.
@@ -140,9 +140,9 @@ HobAppendGuid (
 STATIC
 EFI_STATUS
 HobAppendModuleAllocation (
-  IN OUT MM_SUPV_INIT_HOB_BUILDER    *Builder,
-  IN     CONST EFI_GUID              *ModuleName,
-  IN     CONST EFI_MM_DRIVER_ENTRY   *DriverEntry
+  IN OUT MM_SUPV_INIT_HOB_BUILDER   *Builder,
+  IN     CONST EFI_GUID             *ModuleName,
+  IN     CONST EFI_MM_DRIVER_ENTRY  *DriverEntry
   )
 {
   EFI_HOB_MEMORY_ALLOCATION_MODULE  *ModuleHob;
@@ -375,14 +375,14 @@ PrepareRuntimeMmramHob (
   IN OUT MM_SUPV_INIT_HOB_BUILDER  *Builder
   )
 {
-  LIST_ENTRY  *Link;
-  MEMORY_MAP  *CurrentEntry;
-  MEMORY_MAP  *NextEntry;
-  UINTN  TotalHobSize;
-  UINTN  PayloadSize;
-  UINT32  Count;
+  LIST_ENTRY                      *Link;
+  MEMORY_MAP                      *CurrentEntry;
+  MEMORY_MAP                      *NextEntry;
+  UINTN                           TotalHobSize;
+  UINTN                           PayloadSize;
+  UINT32                          Count;
   EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *SmramHobBlock;
-  BOOLEAN  Swapped;
+  BOOLEAN                         Swapped;
 
   if (Builder == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -461,7 +461,7 @@ SupvInitHobsInit (
   EFI_PHYSICAL_ADDRESS  RegionBase;
   UINT64                MmramHobSize;
   UINTN                 CopiedSize;
-  EFI_PEI_HOB_POINTERS  Hob;  
+  EFI_PEI_HOB_POINTERS  Hob;
   EFI_GUID              *HobGuid;
   UINTN                 HobSize;
 
@@ -479,7 +479,7 @@ SupvInitHobsInit (
   //
   MmramHobSize = 0;
   ZeroMem (Builder, sizeof (*Builder));
-  Status       = PrepareRuntimeMmramHob (Builder);
+  Status = PrepareRuntimeMmramHob (Builder);
   if (Status != EFI_BUFFER_TOO_SMALL) {
     DEBUG ((DEBUG_ERROR, "%a Failed to get MM Supervisor allocation hob size - %r\n", __func__, Status));
     ASSERT (FALSE);
@@ -563,14 +563,14 @@ SupvInitHobsAddModuleAllocations (
 
   DEBUG ((DEBUG_INFO, "%a\n", __func__));
 
-  Status = HobAppendModuleAllocation (Builder,  &gMmSupervisorCoreGuid, mMmCoreDriverEntry);
-  if (EFI_ERROR(Status)) {
+  Status = HobAppendModuleAllocation (Builder, &gMmSupervisorCoreGuid, mMmCoreDriverEntry);
+  if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to append module allocation HOB for MM Core\n", __func__));
     return Status;
   }
 
   Status = HobAppendModuleAllocation (Builder, &gMmSupervisorUserGuid, mMmUserDriverEntry);
-  if (EFI_ERROR(Status)) {
+  if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a: Failed to append module allocation HOB for MM User\n", __func__));
     return Status;
   }
@@ -579,7 +579,7 @@ SupvInitHobsAddModuleAllocations (
     DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
 
     Status = HobAppendModuleAllocation (Builder, &DriverEntry->FileName, DriverEntry);
-    if (EFI_ERROR(Status)) {
+    if (EFI_ERROR (Status)) {
       DEBUG ((DEBUG_ERROR, "%a: Failed to append module allocation HOB for %g\n", __func__, &DriverEntry->FileName));
       return Status;
     }
@@ -680,7 +680,7 @@ SupvInitHobsAddMmramDescriptors (
 {
   EFI_STATUS  Status;
 
-  Status   = PrepareRuntimeMmramHob (Builder);
+  Status = PrepareRuntimeMmramHob (Builder);
   if (EFI_ERROR (Status)) {
     DEBUG ((
       DEBUG_ERROR,

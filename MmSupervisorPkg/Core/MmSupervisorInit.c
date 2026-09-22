@@ -868,9 +868,9 @@ MmSupervisorMain (
   IN VOID  *HobStart
   )
 {
-  EFI_STATUS            Status;
-  EFI_PHYSICAL_ADDRESS  StandaloneBfvAddress;
-  MM_SUPV_INIT_HOB_BUILDER   HobBuilder;
+  EFI_STATUS                Status;
+  EFI_PHYSICAL_ADDRESS      StandaloneBfvAddress;
+  MM_SUPV_INIT_HOB_BUILDER  HobBuilder;
 
   MmSupervisorCoreEntryInit ();
 

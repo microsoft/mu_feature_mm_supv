@@ -100,8 +100,8 @@ EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
 
-extern LIST_ENTRY  mDiscoveredList;
-extern EFI_MM_DRIVER_ENTRY   *mMmUserDriverEntry;
+extern LIST_ENTRY           mDiscoveredList;
+extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 
 //
 // Global variable to keep track current available memory used as page table.
