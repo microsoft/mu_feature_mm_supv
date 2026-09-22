@@ -1,4 +1,4 @@
-/** @file
+﻿/** @file
   MM Core Main Entry Point
 
   Copyright (c) 2009 - 2025, Intel Corporation. All rights reserved.<BR>
@@ -11,10 +11,7 @@
 #include "Relocate/Relocate.h"
 #include "Mem/Mem.h"
 #include "Mem/HeapGuard.h"
-// #include "PrivilegeMgmt/PrivilegeMgmt.h"
-// #include "Telemetry/Telemetry.h"
-#include <Guid/PassDown.h>
-#include <Guid/DepexStruc.h>
+#include "Hob/SupvInitHobs.h"
 
 #include <Protocol/MmBase.h>
 #include <Protocol/PiPcd.h>
@@ -56,7 +53,7 @@ MmLoadButNotDispatch (
   );
 
 // TODO: This should not be here.
-#include "Services/MpService/MpService_init.h"
+#include "Services/MpService/MpService.h"
 extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
 extern SMM_CPU_PRIVATE_DATA         *gSmmCpuPrivate;
 extern UINTN                        mSmmMpSyncDataSize;
@@ -68,11 +65,6 @@ MmLoadImage (
   IN OUT EFI_MM_DRIVER_ENTRY           *DriverEntry,
   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
   );
-
-// //
-// // Globals used to initialize the protocol
-// //
-// EFI_HANDLE  mMmCpuHandle = NULL;
 
 //
 // Physical pointer to MM_COMM_BUFFER structure shared between MM IPL and the MM Core
@@ -344,17 +336,6 @@ PrepareCommonBuffers (
 
   DEBUG ((DEBUG_INFO, "%a - User communication buffer status is at 0x%p\n", __func__, mMmCommUserMailboxBufferStatus));
 
-  // Status = MmAllocatePages (
-  //            AllocateAnyPages,
-  //            EfiRuntimeServicesData,
-  //            DEFAULT_SUPV_TO_USER_BUFFER_PAGE,
-  //            (EFI_PHYSICAL_ADDRESS *)&SupervisorToUserDataBuffer
-  //            );
-  // ASSERT_EFI_ERROR (Status);
-  // if (EFI_ERROR (Status)) {
-  //   DEBUG ((DEBUG_ERROR, "%a - Failed to allocate supervisor to user buffer, cannot continue...\n", __func__));
-  //   goto Exit;
-  // }
   Status = EFI_SUCCESS;
 
 Exit:
@@ -405,26 +386,6 @@ InternalIsBufferOverlapped (
   }
 
   return TRUE;
-}
-
-UINTN
-GetHobListSize (
-  IN VOID  *HobStart
-  )
-{
-  EFI_PEI_HOB_POINTERS  Hob;
-
-  ASSERT (HobStart != NULL);
-
-  Hob.Raw = (UINT8 *)HobStart;
-  while (!END_OF_HOB_LIST (Hob)) {
-    Hob.Raw = GET_NEXT_HOB (Hob);
-  }
-
-  //
-  // Need plus END_OF_HOB_LIST
-  //
-  return (UINTN)Hob.Raw - (UINTN)HobStart + sizeof (EFI_HOB_GENERIC_HEADER);
 }
 
 /**
@@ -647,194 +608,6 @@ DiscoverStandaloneMmDriversInFvHobs (
   return EFI_SUCCESS;
 }
 
-EFI_STATUS
-EFIAPI
-PrepareMmSupervisorHobs (
-  IN  EFI_PHYSICAL_ADDRESS  MmHobStart,
-  OUT UINT64                *MmHobSize
-  );
-
-EFI_STATUS
-CreateMemoryAllocationModuleHob (
-  IN EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN OUT UINT64            *Length
-  )
-{
-  UINTN                             NewLength;
-  EFI_HOB_MEMORY_ALLOCATION_MODULE  *MmCoreModuleHob;
-  LIST_ENTRY                        *Link;
-  EFI_MM_DRIVER_ENTRY               *DriverEntry;
-
-  EFI_HOB_GUID_TYPE       *DepexHob;
-  MM_SUPV_DEPEX_HOB_DATA  *DepexHobData;
-  EFI_PHYSICAL_ADDRESS    OriginalBase = BaseAddress;
-
-  if ((BaseAddress == 0) || (Length == NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  DEBUG ((DEBUG_INFO, "%a\n", __func__));
-
-  NewLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8) * 2; // For MM Core and MM User
-  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
-    DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
-    NewLength  += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-    NewLength  += ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
-  }
-
-  if (*Length < NewLength) {
-    *Length = NewLength;
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  OriginalBase = BaseAddress;
-
-  // First Module Hob for MM Core
-  MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
-  CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(mMmCoreDriverEntry->ImageBuffer);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
-  ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
-
-  CopyGuid (&MmCoreModuleHob->ModuleName, &gMmSupervisorCoreGuid);
-  MmCoreModuleHob->EntryPoint = mMmCoreDriverEntry->ImageEntryPoint;
-
-  MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-  MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-  MmCoreModuleHob->Header.Reserved  = 0;
-
-  // Move to next HOB location
-  BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-
-  // Second Module Hob for MM User
-  MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
-  CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(mMmUserDriverEntry->ImageBuffer);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage);
-  MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
-  ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
-
-  CopyGuid (&MmCoreModuleHob->ModuleName, &gMmSupervisorUserGuid);
-  MmCoreModuleHob->EntryPoint = mMmUserDriverEntry->ImageEntryPoint;
-
-  MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-  MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-  MmCoreModuleHob->Header.Reserved  = 0;
-
-  // Move to next HOB location
-  BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-
-  // Other Module Hobs for Discovered Drivers
-  for (Link = mDiscoveredList.ForwardLink; Link != &mDiscoveredList; Link = Link->ForwardLink) {
-    DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
-
-    MmCoreModuleHob = (EFI_HOB_MEMORY_ALLOCATION_MODULE *)(UINTN)BaseAddress;
-    CopyGuid (&MmCoreModuleHob->MemoryAllocationHeader.Name, &gMmSupervisorHobMemoryAllocModuleGuid);
-    MmCoreModuleHob->MemoryAllocationHeader.MemoryBaseAddress = (EFI_PHYSICAL_ADDRESS)(DriverEntry->ImageBuffer);
-    MmCoreModuleHob->MemoryAllocationHeader.MemoryLength      = EFI_PAGES_TO_SIZE (DriverEntry->NumberOfPage);
-    MmCoreModuleHob->MemoryAllocationHeader.MemoryType        = EfiReservedMemoryType;
-    ZeroMem (MmCoreModuleHob->MemoryAllocationHeader.Reserved, sizeof (MmCoreModuleHob->MemoryAllocationHeader.Reserved));
-
-    CopyGuid (&MmCoreModuleHob->ModuleName, &DriverEntry->FileName);
-    MmCoreModuleHob->EntryPoint = DriverEntry->ImageEntryPoint;
-
-    MmCoreModuleHob->Header.HobType   = EFI_HOB_TYPE_MEMORY_ALLOCATION;
-    MmCoreModuleHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-    MmCoreModuleHob->Header.Reserved  = 0;
-
-    // Move to next HOB location
-    BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8);
-
-    // Create DEPEX HOB for Discovered Driver
-    DepexHob = (EFI_HOB_GUID_TYPE *)(UINTN)BaseAddress;
-    CopyGuid (&DepexHob->Name, &gMmSupervisorDepexHobGuid);
-    DepexHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
-    DepexHob->Header.HobLength = (UINT16)ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
-    DepexHob->Header.Reserved  = 0;
-
-    DepexHobData = (MM_SUPV_DEPEX_HOB_DATA *)(DepexHob + 1);
-    CopyGuid (&DepexHobData->Name, &DriverEntry->FileName);
-    DepexHobData->Length = DriverEntry->DepexSize;
-    if (DriverEntry->DepexSize != 0) {
-      CopyMem (DepexHobData->Data, DriverEntry->Depex, DriverEntry->DepexSize);
-    }
-
-    // Move to next HOB location
-    BaseAddress += ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_DEPEX_HOB_DATA) + DriverEntry->DepexSize, 8);
-  }
-
-  ASSERT ((UINTN)(BaseAddress - OriginalBase) == NewLength);
-
-  *Length = *Length - NewLength;
-
-  return EFI_SUCCESS;
-}
-
-EFI_STATUS
-CreateArbitraryHob (
-  IN EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN OUT UINT64            *Length
-  )
-{
-  UINTN                       NewLength;
-  EFI_HOB_GUID_TYPE           *GuidedHob;
-  MM_SUPV_PASS_DOWN_HOB_DATA  *PassDownData;
-
-  if ((BaseAddress == 0) || (Length == NULL)) {
-    return EFI_INVALID_PARAMETER;
-  }
-
-  NewLength = ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_PASS_DOWN_HOB_DATA), 8);
-
-  if (*Length < NewLength) {
-    *Length = NewLength;
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  // First Module Hob for MM Core
-  GuidedHob = (EFI_HOB_GUID_TYPE *)(UINTN)BaseAddress;
-  CopyGuid (&GuidedHob->Name, &gMmSupervisorPassDownHobGuid);
-  GuidedHob->Header.HobLength = ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + sizeof (MM_SUPV_PASS_DOWN_HOB_DATA), 8);
-  GuidedHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
-  GuidedHob->Header.Reserved  = 0;
-
-  PassDownData           = (MM_SUPV_PASS_DOWN_HOB_DATA *)(GuidedHob + 1);
-  PassDownData->Revision = MM_SUPV_PASS_DOWN_HOB_REVISION;
-  PassDownData->Reserved = 0;
-  //
-  // Pass the per-CPU SMBASE array pointer directly.
-  //
-  PassDownData->SmBase = (EFI_PHYSICAL_ADDRESS)(UINTN)mCpuHotPlugData.SmBase;
-
-  // PassDownData->MmSupvCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].PhysicalStart;
-  // PassDownData->MmSupvCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_SUPERVISOR_BUFFER_T];
-  // PassDownData->MmSupvCommBufferSize = mMmSupervisorAccessBuffer[MM_SUPERVISOR_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
-
-  // PassDownData->MmUserCommBuffer = (EFI_PHYSICAL_ADDRESS)mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].PhysicalStart;
-  // PassDownData->MmUserCommBufferInternal = (EFI_PHYSICAL_ADDRESS)mInternalCommBufferCopy[MM_USER_BUFFER_T];
-  // PassDownData->MmUserCommBufferSize = mMmSupervisorAccessBuffer[MM_USER_BUFFER_T].NumberOfPages * EFI_PAGE_SIZE;
-
-  // PassDownData->MmSupvStatusBuffer = (EFI_PHYSICAL_ADDRESS)mMmCommMailboxBufferStatus;
-
-  // PassDownData->MmSupvToUserBuffer = (EFI_PHYSICAL_ADDRESS)SupervisorToUserDataBuffer;
-  // PassDownData->MmSupvToUserBufferSize = EFI_PAGES_TO_SIZE (DEFAULT_SUPV_TO_USER_BUFFER_PAGE);
-
-  PassDownData->MmInitializedBuffer = (EFI_PHYSICAL_ADDRESS)mSmmInitialized;
-
-  PassDownData->MmSupervisorCpl3StackBase        = (EFI_PHYSICAL_ADDRESS)mSmmCpl3StackArrayBase;
-  PassDownData->MmSupervisorCpl3PerCoreStackSize = mSmmStackSize;
-
-  PassDownData->MmSupvFirmwarePolicyBuffer     = (EFI_PHYSICAL_ADDRESS)FirmwarePolicy;
-  PassDownData->MmSupvFirmwarePolicyBufferSize = FirmwarePolicy->Size;
-
-  PassDownData->MmiEntrypointSize = GetSmiHandlerSize ();
-
-  *Length = *Length - NewLength;
-
-  return EFI_SUCCESS;
-}
-
 INTN
 EFIAPI
 CompareMmramRangeCpuStart (
@@ -966,14 +739,6 @@ InitializePolicy (
     goto Done;
   }
 
-  // // Prepare the buffer for Mem policy snapshot, it will be compared against when non-MM entity requested
-  // Status = AllocateMemForPolicySnapshot (&MemPolicySnapshot);
-  // if (EFI_ERROR (Status)) {
-  //   DEBUG ((DEBUG_ERROR, "%a Failed to allocate buffer for memory policy snapshot - %r\n", __func__, Status));
-  //   ASSERT_EFI_ERROR (Status);
-  //   goto Done;
-  // }
-
   Status = SecurityPolicyCheck (FirmwarePolicy);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Policy check failed on policy blob from firmware - %r\n", __func__, Status));
@@ -986,38 +751,30 @@ Done:
 }
 
 /**
-  The Entry Point for MM Core
+  Publish the MMRAM ranges described by the inbound HOB list and bring up the
+  core memory services on top of them.
 
-  Install DXE Protocols and reload MM Core into MMRAM and register MM Core
-  EntryPoint on the MMI vector.
+  Leaves mMmramRanges holding a private, CpuStart-sorted copy of the ranges.
 
-  Note: This function is called for both DXE invocation and MMRAM invocation.
+  @param[in]  HobStart  Start of the inbound HOB list.
 
-  @param  HobStart       A pointer to the start of the HOB list.
-
-  @retval EFI_SUCCESS    The entry point is executed successfully.
-  @retval Other          Some error occurred when executing this entry point.
-
+  @retval EFI_SUCCESS           Memory services are up and mMmramRanges is populated.
+  @retval EFI_UNSUPPORTED       No MMRAM descriptor HOB was found.
+  @retval EFI_NOT_FOUND         The MMRAM descriptor HOB was malformed.
+  @retval EFI_OUT_OF_RESOURCES  Failed to allocate the private copy of the ranges.
 **/
+STATIC
 EFI_STATUS
-EFIAPI
-MmSupervisorMain (
+InitializeMmramRanges (
   IN VOID  *HobStart
   )
 {
-  EFI_STATUS  Status;
-  UINTN       Index;
-  // VOID                            *Registration;
   EFI_HOB_GUID_TYPE               *MmramRangesHob;
   EFI_MMRAM_HOB_DESCRIPTOR_BLOCK  *MmramRangesHobData;
   EFI_MMRAM_DESCRIPTOR            *MmramRanges;
   EFI_MMRAM_DESCRIPTOR            MmDescDummy;
   UINTN                           MmramRangeCount;
-  EFI_PHYSICAL_ADDRESS            StandaloneBfvAddress;
-
-  MmSupervisorCoreEntryInit ();
-
-  DEBUG ((DEBUG_INFO, "MmMain - 0x%x\n", HobStart));
+  UINTN                           Index;
 
   //
   // Extract the MMRAM ranges from the MMRAM descriptor HOB
@@ -1026,16 +783,14 @@ MmSupervisorMain (
   if (MmramRangesHob == NULL) {
     MmramRangesHob = GetFirstGuidHob (&gEfiSmmSmramMemoryGuid);
     if (MmramRangesHob == NULL) {
-      Status =  EFI_UNSUPPORTED;
-      goto Exit;
+      return EFI_UNSUPPORTED;
     }
   }
 
   MmramRangesHobData = GET_GUID_HOB_DATA (MmramRangesHob);
   if (MmramRangesHobData == NULL) {
     ASSERT (MmramRangesHobData != NULL);
-    Status =  EFI_NOT_FOUND;
-    goto Exit;
+    return EFI_NOT_FOUND;
   }
 
   MmramRanges     = MmramRangesHobData->Descriptor;
@@ -1043,8 +798,7 @@ MmSupervisorMain (
   if ((MmramRanges == NULL) || (MmramRangeCount == 0)) {
     ASSERT (MmramRanges);
     ASSERT (MmramRangeCount);
-    Status =  EFI_NOT_FOUND;
-    goto Exit;
+    return EFI_NOT_FOUND;
   }
 
   //
@@ -1077,8 +831,7 @@ MmSupervisorMain (
   DEBUG ((DEBUG_INFO, "mMmramRanges - 0x%x\n", mMmramRanges));
   if (mMmramRanges == NULL) {
     ASSERT (mMmramRanges != NULL);
-    Status = EFI_OUT_OF_RESOURCES;
-    goto Exit;
+    return EFI_OUT_OF_RESOURCES;
   }
 
   CopyMem (mMmramRanges, (VOID *)(UINTN)MmramRanges, mMmramRangeCount * sizeof (EFI_MMRAM_DESCRIPTOR));
@@ -1092,6 +845,42 @@ MmSupervisorMain (
     &MmDescDummy
     );
 
+  return EFI_SUCCESS;
+}
+
+/**
+  The Entry Point for MM Core
+
+  Install DXE Protocols and reload MM Core into MMRAM and register MM Core
+  EntryPoint on the MMI vector.
+
+  Note: This function is called for both DXE invocation and MMRAM invocation.
+
+  @param  HobStart       A pointer to the start of the HOB list.
+
+  @retval EFI_SUCCESS    The entry point is executed successfully.
+  @retval Other          Some error occurred when executing this entry point.
+
+**/
+EFI_STATUS
+EFIAPI
+MmSupervisorMain (
+  IN VOID  *HobStart
+  )
+{
+  EFI_STATUS            Status;
+  EFI_PHYSICAL_ADDRESS  StandaloneBfvAddress;
+  MM_SUPV_INIT_HOB_BUILDER   HobBuilder;
+
+  MmSupervisorCoreEntryInit ();
+
+  DEBUG ((DEBUG_INFO, "MmMain - 0x%x\n", HobStart));
+
+  Status = InitializeMmramRanges (HobStart);
+  if (EFI_ERROR (Status)) {
+    goto Exit;
+  }
+
   ProcessLibraryConstructorList (HobStart, &gMmCoreMmst);
 
   //
@@ -1103,80 +892,11 @@ MmSupervisorMain (
     goto Exit;
   }
 
-  EFI_PHYSICAL_ADDRESS  MmSupervisorHobStart;
-  UINTN                 MmSupervisorHobSize;
-  UINTN                 InitialMmHobSize;
-  UINTN                 RemainingSize;
-
   //
-  // Install HobList
+  // Stand up the supervisor HOB list. The steps below append to it as the data
+  // they describe becomes available, so it is terminated last.
   //
-  DEBUG ((DEBUG_INFO, "gHobList - 0x%p\n", gHobList));
-  InitialMmHobSize = GetHobListSize (gHobList);
-  DEBUG ((DEBUG_INFO, "HobSize - 0x%x\n", InitialMmHobSize));
-
-  MmSupervisorHobSize = 0;
-  Status              = PrepareMmSupervisorHobs (0, &MmSupervisorHobSize);
-  if (Status != EFI_BUFFER_TOO_SMALL) {
-    DEBUG ((DEBUG_ERROR, "%a Failed to get MM Supervisor allocation hob size - Status %d\n", __func__, Status));
-    ASSERT (FALSE);
-    PANIC ("Failed to prepare MM Supervisor hobs");
-  }
-
-  mMmHobSize = InitialMmHobSize + MmSupervisorHobSize;
-
-  // Note: Allocate an extra page to avoid Hob overlapping with other memory
-  // This page is supposed to cover all the subsequent allocations during hob creation, page table setup, allocation module hob, etc.
-  mMmHobSize  = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
-  mMmHobSize += EFI_PAGE_SIZE;
-
-  Status = (EFI_PHYSICAL_ADDRESS)(UINTN)MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &MmSupervisorHobStart);
-  if (EFI_ERROR (Status)) {
-    PANIC ("Failed to allocate MM Supervisor hob memory");
-  } else {
-    DEBUG ((DEBUG_INFO, "%a Allocated MM Supervisor Hob at 0x%p with size 0x%x\n", __func__, (VOID *)(UINTN)MmSupervisorHobStart, mMmHobSize));
-  }
-
-  // Copy existing hob list to MM Supervisor hob
-  mMmHobStart = (VOID *)(UINTN)MmSupervisorHobStart;
-
-  ZeroMem ((VOID *)(UINTN)MmSupervisorHobStart, (UINTN)mMmHobSize);
-  RemainingSize = mMmHobSize;
-
-  // Copy existing hob list
-  EFI_PEI_HOB_POINTERS  Hob;
-
-  InitialMmHobSize = 0;
-  Hob.Raw          = (UINT8 *)gHobList;
-  while (!END_OF_HOB_LIST (Hob)) {
-    UINTN  HobSize;
-    HobSize = GET_HOB_LENGTH (Hob);
-    if (InitialMmHobSize + ALIGN_VALUE (HobSize, 8) > mMmHobSize) {
-      DEBUG ((DEBUG_ERROR, "%a MM Supervisor Hob size 0x%x is not enough to copy existing hob list, need at least 0x%x\n", __func__, mMmHobSize, InitialMmHobSize + ALIGN_VALUE (HobSize, 8)));
-      ASSERT (FALSE);
-      PANIC ("MM Supervisor Hob size insufficient");
-    }
-
-    // Filter out the MmRam Hob as we will recreate it later
-    if (GET_HOB_TYPE (Hob) == EFI_HOB_TYPE_GUID_EXTENSION) {
-      EFI_GUID  *HobGuid;
-      HobGuid = &((EFI_HOB_GUID_TYPE *)Hob.Raw)->Name;
-      if (CompareGuid (HobGuid, &gEfiMmPeiMmramMemoryReserveGuid) ||
-          CompareGuid (HobGuid, &gEfiSmmSmramMemoryGuid))
-      {
-        DEBUG ((DEBUG_INFO, "%a Skip Copying MmRam Hob Type 0x%x Size 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize));
-        Hob.Raw = GET_NEXT_HOB (Hob);
-        continue;
-      }
-    }
-
-    DEBUG ((DEBUG_INFO, "%a Copy Hob Type 0x%x Size 0x%x into offset 0x%x\n", __func__, GET_HOB_TYPE (Hob), HobSize, InitialMmHobSize));
-    CopyMem ((VOID *)((UINTN)MmSupervisorHobStart + InitialMmHobSize), (VOID *)Hob.Raw, HobSize);
-    InitialMmHobSize += ALIGN_VALUE (HobSize, 8);
-    Hob.Raw           = GET_NEXT_HOB (Hob);
-  }
-
-  RemainingSize -= ALIGN_VALUE (InitialMmHobSize, 8);
+  SupvInitHobsInit (&HobBuilder);
 
   Status = SetupSmiEntryExit ();
   if (EFI_ERROR (Status)) {
@@ -1188,8 +908,13 @@ MmSupervisorMain (
 
   MmLoadButNotDispatch ();
 
-  // Add memory allocation module hob for core and user modules
-  CreateMemoryAllocationModuleHob ((EFI_PHYSICAL_ADDRESS)(MmSupervisorHobStart + ALIGN_VALUE (InitialMmHobSize, 8)), &RemainingSize);
+  // Describes the core, the user module and every driver loaded above
+  Status = SupvInitHobsAddModuleAllocations (&HobBuilder);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to add module allocations - Status %d\n", __func__, Status));
+    ASSERT (FALSE);
+    goto Exit;
+  }
 
   Status = PrepareCommonBuffers ();
   if (EFI_ERROR (Status)) {
@@ -1200,22 +925,19 @@ MmSupervisorMain (
 
   InitializePolicy (StandaloneBfvAddress);
 
-  CreateArbitraryHob ((EFI_PHYSICAL_ADDRESS)(MmSupervisorHobStart + ALIGN_VALUE (mMmHobSize - RemainingSize, 8)), &RemainingSize);
-
-  LockMmCoreBeforeExit (MmSupervisorHobStart + mMmHobSize - RemainingSize, &RemainingSize);
-
-  // Adding the end of HOB list
-  VOID  *EndHob = (VOID *)(MmSupervisorHobStart + mMmHobSize - RemainingSize);
-
-  if (RemainingSize < ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8)) {
-    DEBUG ((DEBUG_ERROR, "%a MM Supervisor Hob size 0x%x is not enough to add end of hob list, need at least 0x%x\n", __func__, mMmHobSize, ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8)));
+  // Describes what the supervisor set up for the runtime to pick up
+  Status = SupvInitHobsAddPassDown (&HobBuilder);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to add pass down HOB - Status %d\n", __func__, Status));
     ASSERT (FALSE);
-    PANIC ("MM Supervisor Hob size insufficient for end hob");
+    goto Exit;
   }
 
-  ((EFI_HOB_GENERIC_HEADER *)EndHob)->HobType   = EFI_HOB_TYPE_END_OF_HOB_LIST;
-  ((EFI_HOB_GENERIC_HEADER *)EndHob)->HobLength = (UINT16)ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8);
-  ((EFI_HOB_GENERIC_HEADER *)EndHob)->Reserved  = 0;
+  LockMmCoreBeforeExit ();
+
+  // The lock step is the last thing to allocate, so the memory map is now final
+  SupvInitHobsAddMmramDescriptors (&HobBuilder);
+  SupvInitHobsFinalize (&HobBuilder);
 
   mCoreInitializationComplete = TRUE;
 

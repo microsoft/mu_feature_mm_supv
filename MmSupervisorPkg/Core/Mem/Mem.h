@@ -145,6 +145,21 @@ typedef struct {
   UINTN    FreePages;
 } PAGE_TABLE_POOL;
 
+#define MEMORY_MAP_SIGNATURE  SIGNATURE_32 ('m', 'm', 'a', 'p')
+
+typedef struct {
+  UINTN              Signature;
+  LIST_ENTRY         Link;
+
+  BOOLEAN            FromStack;
+  BOOLEAN            IsSupervisorPage;
+  EFI_MEMORY_TYPE    Type;
+  UINT64             Start;
+  UINT64             End;
+} MEMORY_MAP;
+
+extern LIST_ENTRY  gMemoryMap;
+
 //
 // Copy of the PcdPteMemoryEncryptionAddressOrMask
 //
@@ -556,21 +571,6 @@ Helper function to mark common buffer range as accessible from inside MM
 EFI_STATUS
 EFIAPI
 SetCommonBufferRegionAttribute (
-  VOID
-  );
-
-/*
-  Per-build pass that locks down the MM Supervisor Core image region.
-
-  Defined separately in SmmCpuMemoryManagement_core.c and
-  SmmCpuMemoryManagement_init.c so that only the symbol appropriate for the
-  current INF is linked in.  The shared SmmCpuMemoryManagement.c (a separate
-  translation unit in both builds) calls this function, so a public prototype
-  is required here.
-*/
-VOID
-EFIAPI
-PatchMmSupervisorCoreRegion (
   VOID
   );
 
