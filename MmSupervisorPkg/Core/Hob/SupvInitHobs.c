@@ -459,7 +459,6 @@ SupvInitHobsInit (
 {
   EFI_STATUS            Status;
   EFI_PHYSICAL_ADDRESS  RegionBase;
-  UINT64                MmramHobSize;
   UINTN                 CopiedSize;
   EFI_PEI_HOB_POINTERS  Hob;
   EFI_GUID              *HobGuid;
@@ -477,7 +476,6 @@ SupvInitHobsInit (
   // plus a page of slack to cover everything allocated while the list is being
   // built (page tables, module hobs, common buffers, ...).
   //
-  MmramHobSize = 0;
   ZeroMem (Builder, sizeof (*Builder));
   Status = PrepareRuntimeMmramHob (Builder);
   if (Status != EFI_BUFFER_TOO_SMALL) {
