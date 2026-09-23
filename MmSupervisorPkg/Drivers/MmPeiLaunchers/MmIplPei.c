@@ -361,7 +361,6 @@ MmIplDispatchMmDrivers (
   //
   Size   = sizeof (CommunicateHeader);
   Status = SmmCommunicationCommunicateWorker (FALSE, &CommunicateHeader, &Size);
-  ASSERT_EFI_ERROR (Status);
 
   return Status;
 }
@@ -1424,7 +1423,10 @@ MmIplPeiEntry (
   // Dispatch StandaloneMm drivers in MM
   //
   Status = MmIplDispatchMmDrivers ();
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    // If this is using C supervisor, the warning is expected.
+    DEBUG ((DEBUG_WARN, "Failed to communicate with MM core: %r\n", Status));
+  }
 
   return EFI_SUCCESS;
 }
