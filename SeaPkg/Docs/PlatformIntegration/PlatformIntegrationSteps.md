@@ -334,7 +334,6 @@ The changes below assume that the platform has already integrated the C based MM
   # MmSupervisorPkg/Core/MmSupervisorCore.inf
 
   # Add the following components
-  StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   SeaPkg/MmiEntrySea/MmiEntrySea.inf
   MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
@@ -355,13 +354,11 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
 [FV.YOUR_POST_MEM_PEI_FV]
   # Remove the following entries
   #
-  # INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   # INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
   # INF MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   # INF  MmSupervisorPkg/Core/MmSupervisorCore.inf
 
-  INF StandaloneMmPkg/Drivers/StandaloneMmIplPei/StandaloneMmIplPei.inf
-  INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmPeiSupport.inf
+  INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   INF MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
 
   FILE MM_CORE_STANDALONE = gMmSupervisorCoreGuid {
