@@ -13,6 +13,9 @@ struct Args {
     /// Path to the efi file to parse.
     #[arg(short, long)]
     efi: PathBuf,
+    /// Path to a linker map file, used to recover symbols the PDB file does not name.
+    #[arg(short, long)]
+    map: Option<PathBuf>,
     /// Path to the output auxiliary file.
     #[arg(short, long)]
     output: Option<PathBuf>,
@@ -43,6 +46,9 @@ fn main() -> Result<()> {
     simple_logger::init_with_level(level)?;
 
     let mut metadata = PdbMetadata::<File>::new(args.pdb, args.efi.clone())?;
+    if let Some(map) = args.map {
+        metadata.add_map_symbols(&std::fs::read_to_string(map)?);
+    }
 
     let mut config: ConfigFile = ConfigFile::from_file(args.config)?;
     config.filter_by_scopes(&args.scopes)?;
@@ -70,17 +76,8 @@ fn main() -> Result<()> {
     aux.finalize();
     let report = Coverage::build(&aux, &mut metadata)?;
 
-    if config.config.no_missing_rules {
-        let missing = report.segments(|s| !s.covered());
-        if !missing.is_empty() {
-            log::error!(
-                "The following symbols are missing rules in the config file: {:#?}",
-                missing
-            );
-            return Err(anyhow::anyhow!(
-                "Missing rules in the config file. See the log for details."
-            ));
-        }
+    if let Some(warning) = report.check_rules(&metadata, config.config.no_missing_rules)? {
+        eprintln!("Warning: {}", warning);
     }
 
     let output = args.output.unwrap_or(args.efi.with_extension("aux"));
