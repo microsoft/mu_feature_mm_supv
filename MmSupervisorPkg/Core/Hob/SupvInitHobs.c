@@ -38,16 +38,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate/Relocate.h"
 #include "SupvInitHobs.h"
 
-//
-// Signature shared by the producers that report the bytes still available.
-//
-typedef
-EFI_STATUS
-(*MM_SUPV_HOB_PRODUCER) (
-  IN     EFI_PHYSICAL_ADDRESS  BaseAddress,
-  IN OUT UINT64                *Length
-  );
-
 extern LIST_ENTRY           mDiscoveredList;
 extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 
