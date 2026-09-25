@@ -48,7 +48,6 @@ extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 //
 #define MODULE_ALLOC_HOB_SIZE  ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8)
 #define GUID_HOB_SIZE(DataSize)    ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + (DataSize), 8)
-#define DEPEX_HOB_SIZE(DepexSize)  GUID_HOB_SIZE (sizeof (MM_SUPV_DEPEX_HOB_DATA) + (DepexSize))
 
 /**
   Move the builder past a HOB that consumed the given number of bytes.
