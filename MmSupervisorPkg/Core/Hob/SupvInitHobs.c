@@ -65,20 +65,33 @@ extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 
   @param[in,out]  Builder   The HOB builder to advance.
   @param[in]      Consumed  Bytes written at the current cursor.
+
+  @retval EFI_SUCCESS           The builder was successfully advanced.
+  @retval EFI_BUFFER_TOO_SMALL  The builder could not be advanced due to insufficient remaining space or misalignment.
 **/
 STATIC
-VOID
+EFI_STATUS
 HobBuilderAdvance (
   IN OUT MM_SUPV_INIT_HOB_BUILDER  *Builder,
   IN     UINT64                    Consumed
   )
 {
   // Every HOB is padded to 8 bytes, so the cursor must stay aligned.
-  ASSERT ((Consumed & 0x7) == 0);
-  ASSERT (Consumed <= Builder->Remaining);
+  if (Consumed & 0x7) {
+    // Alignment is messed up, this should never happen.
+    ASSERT ((Consumed & 0x7) == 0);
+    return EFI_BUFFER_TOO_SMALL;
+  }
+
+  if (Consumed > Builder->Remaining) {
+    // Consumed more than remaining, this should never happen.
+    ASSERT (Consumed <= Builder->Remaining);
+    return EFI_BUFFER_TOO_SMALL;
+  }
 
   Builder->Cursor    += Consumed;
   Builder->Remaining -= Consumed;
+  return EFI_SUCCESS;
 }
 
 /**
@@ -91,7 +104,8 @@ HobBuilderAdvance (
   @param[in]      Name      GUID naming the HOB.
   @param[in]      DataSize  Bytes of payload to reserve after the header.
 
-  @return  Pointer to the zeroed payload, immediately after the HOB header.
+  @retval NULL  The HOB could not be appended due to insufficient space or an excessively large size.
+  @retval VOID*  Pointer to the zeroed payload, immediately after the HOB header.
 **/
 STATIC
 VOID *
@@ -104,13 +118,17 @@ HobAppendGuid (
   EFI_HOB_GUID_TYPE  *GuidHob;
   UINTN              HobSize;
   VOID               *Data;
+  EFI_STATUS         Status;
 
   if ((Builder == NULL) || (Builder->Remaining < GUID_HOB_SIZE (DataSize))) {
     return NULL;
   }
 
   HobSize = GUID_HOB_SIZE (DataSize);
-  ASSERT (HobSize <= MAX_UINT16);
+  if (HobSize > MAX_UINT16) {
+    ASSERT (HobSize <= MAX_UINT16);
+    return NULL;
+  }
 
   GuidHob                   = (EFI_HOB_GUID_TYPE *)(UINTN)Builder->Cursor;
   GuidHob->Header.HobType   = EFI_HOB_TYPE_GUID_EXTENSION;
@@ -122,7 +140,10 @@ HobAppendGuid (
   Data = (VOID *)(GuidHob + 1);
   ZeroMem (Data, HobSize - sizeof (EFI_HOB_GUID_TYPE));
 
-  HobBuilderAdvance (Builder, HobSize);
+  Status = HobBuilderAdvance (Builder, HobSize);
+  if (EFI_ERROR (Status)) {
+    return NULL;
+  }
 
   return Data;
 }
@@ -136,6 +157,9 @@ HobAppendGuid (
   @param[in,out]  Cursor       Where to write. Advanced past the HOB on return.
   @param[in]      ModuleName   GUID identifying the module.
   @param[in]      DriverEntry  Entry supplying the image base, page count and entry point.
+
+  @retval EFI_SUCCESS            The module allocation HOB was successfully appended.
+  @retval EFI_BUFFER_TOO_SMALL   The HOB region is too small to hold the module allocation HOB.
 **/
 STATIC
 EFI_STATUS
@@ -146,6 +170,7 @@ HobAppendModuleAllocation (
   )
 {
   EFI_HOB_MEMORY_ALLOCATION_MODULE  *ModuleHob;
+  EFI_STATUS                         Status;
 
   if (Builder->Remaining < MODULE_ALLOC_HOB_SIZE) {
     return EFI_BUFFER_TOO_SMALL;
@@ -165,7 +190,10 @@ HobAppendModuleAllocation (
   CopyGuid (&ModuleHob->ModuleName, ModuleName);
   ModuleHob->EntryPoint = DriverEntry->ImageEntryPoint;
 
-  HobBuilderAdvance (Builder, MODULE_ALLOC_HOB_SIZE);
+  Status = HobBuilderAdvance (Builder, MODULE_ALLOC_HOB_SIZE);
+  if (EFI_ERROR (Status)) {
+    return Status;
+  }
 
   return EFI_SUCCESS;
 }
@@ -381,6 +409,7 @@ PrepareRuntimeMmramHob (
   UINTN                           TotalHobSize;
   UINTN                           PayloadSize;
   UINT32                          Count;
+  UINT32                          PreCount;
   EFI_SMRAM_HOB_DESCRIPTOR_BLOCK  *SmramHobBlock;
   BOOLEAN                         Swapped;
 
@@ -410,7 +439,8 @@ PrepareRuntimeMmramHob (
   // Now that the memory map is sorted, count the EFI_MMRAM_DESCRIPTORs required
   // to describe the MMRAM layout (allocated sub-regions plus free gaps).
   // Absolutely no more allocation here!!!!
-  Count = SerializeMmramDescriptors (NULL);
+  Count    = SerializeMmramDescriptors (NULL);
+  PreCount = Count;
 
   PayloadSize = OFFSET_OF (EFI_SMRAM_HOB_DESCRIPTOR_BLOCK, Descriptor)
                 + (UINTN)Count * sizeof (EFI_MMRAM_DESCRIPTOR);
@@ -430,6 +460,10 @@ PrepareRuntimeMmramHob (
   // Populate the descriptors now that the block is allocated. The deterministic
   // walk yields the same count as the sizing pass above.
   Count = SerializeMmramDescriptors (SmramHobBlock->Descriptor);
+  if (Count != PreCount) {
+    ASSERT (Count == PreCount);
+    return EFI_ABORTED;
+  }
 
   SmramHobBlock->NumberOfSmmReservedRegions = Count;
 
@@ -544,6 +578,7 @@ SupvInitHobsInit (
   @retval EFI_SUCCESS            The module allocation HOBs were successfully appended.
   @retval EFI_BUFFER_TOO_SMALL   The HOB region is too small to hold the module allocation HOBs.
   @retval EFI_INVALID_PARAMETER  The Builder is NULL or invalid.
+  @retval EFI_OUT_OF_RESOURCES   The HOB region is too small to hold the module allocation HOBs and/or dependency HOBs.
 **/
 EFI_STATUS
 SupvInitHobsAddModuleAllocations (
@@ -613,6 +648,7 @@ SupvInitHobsAddModuleAllocations (
   @retval EFI_SUCCESS           The pass down HOB was successfully appended.
   @retval EFI_INVALID_PARAMETER One or more of the input parameters are invalid.
   @retval EFI_BUFFER_TOO_SMALL  The HOB region is too small to append the pass down HOB.
+  @retval EFI_OUT_OF_RESOURCES  The HOB region is too small to hold the pass down HOB.
 **/
 EFI_STATUS
 SupvInitHobsAddPassDown (
@@ -706,6 +742,7 @@ SupvInitHobsFinalize (
 {
   EFI_HOB_GENERIC_HEADER  *EndHob;
   UINT64                  HobLength;
+  EFI_STATUS              Status;
 
   HobLength = ALIGN_VALUE (sizeof (EFI_HOB_GENERIC_HEADER), 8);
   if (Builder->Remaining < HobLength) {
@@ -718,7 +755,10 @@ SupvInitHobsFinalize (
   EndHob->HobLength = (UINT16)HobLength;
   EndHob->Reserved  = 0;
 
-  HobBuilderAdvance (Builder, HobLength);
+  Status = HobBuilderAdvance (Builder, HobLength);
+  if (EFI_ERROR (Status)) {
+    PANIC ("Failed to advance MM Supervisor Hob builder for end hob");
+  }
 
   // The region is deliberately over-allocated, so report the real headroom.
   DEBUG ((

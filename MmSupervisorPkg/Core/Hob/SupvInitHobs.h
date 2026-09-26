@@ -57,6 +57,7 @@ SupvInitHobsInit (
   @retval EFI_SUCCESS            The module allocation HOBs were successfully appended.
   @retval EFI_BUFFER_TOO_SMALL   The HOB region is too small to hold the module allocation HOBs.
   @retval EFI_INVALID_PARAMETER  The Builder is NULL or invalid.
+  @retval EFI_OUT_OF_RESOURCES   The HOB region is too small to hold the module allocation HOBs and/or dependency HOBs.
 **/
 EFI_STATUS
 SupvInitHobsAddModuleAllocations (
@@ -75,6 +76,7 @@ SupvInitHobsAddModuleAllocations (
   @retval EFI_SUCCESS           The pass down HOB was successfully appended.
   @retval EFI_INVALID_PARAMETER One or more of the input parameters are invalid.
   @retval EFI_BUFFER_TOO_SMALL  The HOB region is too small to append the pass down HOB.
+  @retval EFI_OUT_OF_RESOURCES  The HOB region is too small to hold the pass down HOB.
 **/
 EFI_STATUS
 SupvInitHobsAddPassDown (
