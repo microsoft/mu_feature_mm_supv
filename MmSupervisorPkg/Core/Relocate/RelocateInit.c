@@ -104,14 +104,6 @@ EnableSmmExceptionTestMode (
   VOID
   );
 
-//
-// Protocol for other drivers to enable test mode.
-//
-SMM_EXCEPTION_TEST_PROTOCOL  mSmmExceptionTestProtocol = {
-  EnableSmmExceptionTestMode
-};
-EFI_HANDLE                   mSmmExceptionTestProtocolHandle = NULL;
-
 BOOLEAN  mSmmRebootOnException = TRUE;
 // MSCHANGE [END]
 
@@ -307,8 +299,6 @@ LockMmCoreBeforeExit (
   VOID
   )
 {
-  EFI_STATUS  Status;
-
   PERF_FUNCTION_BEGIN ();
 
   // This will stand for the initial locking, which will cover that:
@@ -340,11 +330,11 @@ LockMmCoreBeforeExit (
   // as not present
   SetNonSmmMemMapAttributes ();
 
-  // Unblock the common regions reported during PEI phase
-  SetCommonBufferRegionAttribute ();
-
   // Unblocked other requested regions reported during PEI phase
   SetUnblockRegionAttribute ();
+
+  // Unblock the common regions reported during PEI phase
+  SetCommonBufferRegionAttribute ();
 
   // Protect the requested regions reported during PEI phase
   SetProtectedRegionAttribute ();
@@ -353,9 +343,6 @@ LockMmCoreBeforeExit (
   // Mark critical region to be read-only in page table
   //
   SetMemMapAttributes ();
-
-  Status = LockFfsBuffer ();
-  ASSERT_EFI_ERROR (Status);
 
   if (IsRestrictedMemoryAccess ()) {
     //
@@ -371,6 +358,12 @@ LockMmCoreBeforeExit (
   SetPageTableBase (0);
   PERF_FUNCTION_END ();
 }
+
+//
+// LockMmCoreBeforeExit and SetupSmiEntryExit live in Relocate.c (Core build) and
+// RelocateInit.c (Init build) because their bodies diverge between the two
+// builds. Their signatures are identical, so MmSupervisorCore.h declares both.
+//
 
 /**
   Function to compare 2 SMM_BASE_HOB_DATA pointer based on ProcessorIndex.
@@ -409,7 +402,6 @@ SmBaseHobCompare (
   @retval EFI_OUT_OF_RESOURCES  Memory allocation failed.
   @retval EFI_NOT_FOUND         gSmmBaseHobGuid was never created.
 **/
-STATIC
 EFI_STATUS
 GetSmBase (
   IN  UINTN  MaxNumberOfCpus,
@@ -687,13 +679,13 @@ SetupSmiEntryExit (
   UINTN       TileSize;
   UINT8       *Stacks;
   UINT32      RegEax;
-  UINT32      RegEbx;
-  UINT32      RegEcx;
-  UINT32      RegEdx;
-  UINTN       FamilyId;
-  UINTN       ModelId;
-  UINT32      Cr3;
-  UINT8       *Cpl3Stacks;
+  // UINT32      RegEbx;
+  // UINT32      RegEcx;
+  UINT32  RegEdx;
+  UINTN   FamilyId;
+  UINTN   ModelId;
+  UINT32  Cr3;
+  UINT8   *Cpl3Stacks;
 
   PERF_FUNCTION_BEGIN ();
 
@@ -703,7 +695,7 @@ SetupSmiEntryExit (
 
   // If a feature lib has its own entry code we shouldn't fixup the addresses.
   if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-    PiSmmCpuSmiEntryFixupAddress ();
+    // PiSmmCpuSmiEntryFixupAddress ();
   }
 
   //
@@ -764,72 +756,8 @@ SetupSmiEntryExit (
 
   //
   // The CPU save state and code for the SMI entry point are tiled within an SMRAM
-  // allocated buffer.  The minimum size of this buffer for a uniprocessor system
-  // is 32 KB, because the entry point is SMBASE + 32KB, and CPU save state area
-  // just below SMBASE + 64KB.  If more than one CPU is present in the platform,
-  // then the SMI entry point and the CPU save state areas can be tiles to minimize
-  // the total amount SMRAM required for all the CPUs.  The tile size can be computed
-  // by adding the   // CPU save state size, any extra CPU specific context, and
-  // the size of code that must be placed at the SMI entry point to transfer
-  // control to a C function in the native SMM execution mode.  This size is
-  // rounded up to the nearest power of 2 to give the tile size for a each CPU.
-  // The total amount of memory required is the maximum number of CPUs that
-  // platform supports times the tile size.  The picture below shows the tiling,
-  // where m is the number of tiles that fit in 32KB.
-  //
-  //  +-----------------------------+  <-- 2^n offset from Base of allocated buffer
-  //  |   CPU m+1 Save State        |
-  //  +-----------------------------+
-  //  |   CPU m+1 Extra Data        |
-  //  +-----------------------------+
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU 2m  SMI Entry         |
-  //  +#############################+  <-- Base of allocated buffer + 64 KB
-  //  |   CPU m-1 Save State        |
-  //  +-----------------------------+
-  //  |   CPU m-1 Extra Data        |
-  //  +-----------------------------+
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU 2m-1 SMI Entry        |
-  //  +=============================+  <-- 2^n offset from Base of allocated buffer
-  //  |   . . . . . . . . . . . .   |
-  //  +=============================+  <-- 2^n offset from Base of allocated buffer
-  //  |   CPU 2 Save State          |
-  //  +-----------------------------+
-  //  |   CPU 2 Extra Data          |
-  //  +-----------------------------+
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU m+1 SMI Entry         |
-  //  +=============================+  <-- Base of allocated buffer + 32 KB
-  //  |   CPU 1 Save State          |
-  //  +-----------------------------+
-  //  |   CPU 1 Extra Data          |
-  //  +-----------------------------+
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU m SMI Entry           |
-  //  +#############################+  <-- Base of allocated buffer + 32 KB == CPU 0 SMBASE + 64 KB
-  //  |   CPU 0 Save State          |
-  //  +-----------------------------+
-  //  |   CPU 0 Extra Data          |
-  //  +-----------------------------+
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU m-1 SMI Entry         |
-  //  +=============================+  <-- 2^n offset from Base of allocated buffer
-  //  |   . . . . . . . . . . . .   |
-  //  +=============================+  <-- 2^n offset from Base of allocated buffer
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU 1 SMI Entry           |
-  //  +=============================+  <-- 2^n offset from Base of allocated buffer
-  //  |   Padding                   |
-  //  +-----------------------------+
-  //  |   CPU 0 SMI Entry           |
-  //  +#############################+  <-- Base of allocated buffer == CPU 0 SMBASE + 32 KB
+  // allocated buffer.  See Relocate_core.c for the diagram describing the tiled
+  // layout; the same algorithm is used here.
   //
 
   //
@@ -864,40 +792,14 @@ SetupSmiEntryExit (
     }
   }
 
+  // We will only allow 64bit processor to proceed at this point.
+  if (mSmmSaveStateRegisterLma == EFI_SMM_SAVE_STATE_REGISTER_LMA_32BIT) {
+    PANIC ("System only supports 64-bit processors");
+  }
+
   DEBUG ((DEBUG_INFO, "PcdControlFlowEnforcementPropertyMask = %d\n", PcdGet32 (PcdControlFlowEnforcementPropertyMask)));
   if (PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) {
-    AsmCpuid (CPUID_SIGNATURE, &RegEax, NULL, NULL, NULL);
-    if (RegEax >= CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS) {
-      AsmCpuidEx (CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS, CPUID_STRUCTURED_EXTENDED_FEATURE_FLAGS_SUB_LEAF_INFO, NULL, NULL, &RegEcx, &RegEdx);
-      DEBUG ((DEBUG_INFO, "CPUID[7/0] ECX - 0x%08x\n", RegEcx));
-      DEBUG ((DEBUG_INFO, "  CET_SS  - 0x%08x\n", RegEcx & CPUID_CET_SS));
-      DEBUG ((DEBUG_INFO, "  CET_IBT - 0x%08x\n", RegEdx & CPUID_CET_IBT));
-      if ((RegEcx & CPUID_CET_SS) == 0) {
-        mCetSupported = FALSE;
-        if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-          PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-        }
-      }
-
-      if (mCetSupported) {
-        AsmCpuidEx (CPUID_EXTENDED_STATE, CPUID_EXTENDED_STATE_SUB_LEAF, NULL, &RegEbx, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/1] EBX - 0x%08x, ECX - 0x%08x\n", RegEbx, RegEcx));
-        AsmCpuidEx (CPUID_EXTENDED_STATE, 11, &RegEax, NULL, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/11] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
-        AsmCpuidEx (CPUID_EXTENDED_STATE, 12, &RegEax, NULL, &RegEcx, NULL);
-        DEBUG ((DEBUG_INFO, "CPUID[D/12] EAX - 0x%08x, ECX - 0x%08x\n", RegEax, RegEcx));
-      }
-    } else {
-      mCetSupported = FALSE;
-      if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-        PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-      }
-    }
-  } else {
-    mCetSupported = FALSE;
-    if (SmmCpuFeaturesGetSmiHandlerSize () == 0) {
-      PatchInstructionX86 (mPatchCetSupported, mCetSupported, 1);
-    }
+    PANIC ("CET is not supported in StMM mode");
   }
 
   //
@@ -950,12 +852,6 @@ SetupSmiEntryExit (
   //
   ASSERT (mCpuHotPlugData.SmBase != NULL);
 
-  //
-  // Allocate buffer for pointers to array in  SMM_CPU_PRIVATE_DATA.
-  //
-  gSmmCpuPrivate->Operation = (SMM_CPU_OPERATION *)AllocatePool (sizeof (SMM_CPU_OPERATION) * mMaxNumberOfCpus);
-  ASSERT (gSmmCpuPrivate->Operation != NULL);
-
   gSmmCpuPrivate->CpuSaveStateSize = (UINTN *)AllocatePool (sizeof (UINTN) * mMaxNumberOfCpus);
   ASSERT (gSmmCpuPrivate->CpuSaveStateSize != NULL);
 
@@ -980,7 +876,7 @@ SetupSmiEntryExit (
   for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
     gSmmCpuPrivate->CpuSaveStateSize[Index] = sizeof (SMRAM_SAVE_STATE_MAP);
     gSmmCpuPrivate->CpuSaveState[Index]     = (VOID *)(mCpuHotPlugData.SmBase[Index] + SMRAM_SAVE_STATE_MAP_OFFSET);
-    gSmmCpuPrivate->Operation[Index]        = SmmCpuNone;
+    // gSmmCpuPrivate->Operation[Index]        = SmmCpuNone;
 
     if (Index < mNumberOfCpus) {
       mCpuHotPlugData.ApicId[Index] = gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId;
@@ -1005,18 +901,6 @@ SetupSmiEntryExit (
   //
   mSmmStackSize = EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (PcdGet32 (PcdCpuSmmStackSize)));
   if (FeaturePcdGet (PcdCpuSmmStackGuard)) {
-    //
-    // SMM Stack Guard Enabled
-    //   2 more pages is allocated for each processor, one is guard page and the other is known good stack.
-    //
-    // +--------------------------------------------------+-----+--------------------------------------------------+
-    // | Known Good Stack | Guard Page |     SMM Stack    | ... | Known Good Stack | Guard Page |     SMM Stack    |
-    // +--------------------------------------------------+-----+--------------------------------------------------+
-    // |ExceptionStackSize|    4K       PcdCpuSmmStackSize|     |ExceptionStackSize|    4K       PcdCpuSmmStackSize|
-    // |<---------------- mSmmStackSize ----------------->|     |<---------------- mSmmStackSize ----------------->|
-    // |                                                  |     |                                                  |
-    // |<------------------ Processor 0 ----------------->|     |<------------------ Processor n ----------------->|
-    //
     mSmmStackSize += (PcdGet32 (PcdMmSupervisorExceptionStackSize) + EFI_PAGES_TO_SIZE (1));
   }
 
@@ -1025,37 +909,8 @@ SetupSmiEntryExit (
     mSmmShadowStackSize = EFI_PAGES_TO_SIZE (EFI_SIZE_TO_PAGES (PcdGet32 (PcdCpuSmmShadowStackSize)));
 
     if (FeaturePcdGet (PcdCpuSmmStackGuard)) {
-      //
-      // SMM Stack Guard Enabled
-      // Append Shadow Stack after normal stack
-      //   2 more pages is allocated for each processor, one is guard page and the other is known good shadow stack.
-      //
-      // |= Stacks
-      // +--------------------------------------------------+---------------------------------------------------------------+
-      // | Known Good Stack | Guard Page |    SMM Stack     | Known Good Shadow Stack | Guard Page |    SMM Shadow Stack    |
-      // +--------------------------------------------------+---------------------------------------------------------------+
-      // |ExceptionStackSize|    4K      |PcdCpuSmmStackSize|    ExceptionStackSize   |    4K      |PcdCpuSmmShadowStackSize|
-      // |<---------------- mSmmStackSize ----------------->|<--------------------- mSmmShadowStackSize ------------------->|
-      // |                                                                                                                  |
-      // |<-------------------------------------------- Processor N ------------------------------------------------------->|
-      //
       mSmmShadowStackSize += (PcdGet32 (PcdMmSupervisorExceptionStackSize) + EFI_PAGES_TO_SIZE (1));
     } else {
-      //
-      // SMM Stack Guard Disabled (Known Good Stack is still required for potential stack switch.)
-      //   Append Shadow Stack after normal stack with 1 more page as known good shadow stack.
-      //   1 more pages is allocated for each processor, it is known good stack.
-      //
-      //
-      // |= Stacks
-      // +-------------------------------------+--------------------------------------------------+
-      // | Known Good Stack |    SMM Stack     | Known Good Shadow Stack |    SMM Shadow Stack    |
-      // +-------------------------------------+--------------------------------------------------+
-      // |ExceptionStackSize|PcdCpuSmmStackSize|    ExceptionStackSize   |PcdCpuSmmShadowStackSize|
-      // |<---------- mSmmStackSize ---------->|<--------------- mSmmShadowStackSize ------------>|
-      // |                                                                                        |
-      // |<-------------------------------- Processor N ----------------------------------------->|
-      //
       mSmmShadowStackSize += PcdGet32 (PcdMmSupervisorExceptionStackSize);
       mSmmStackSize       += PcdGet32 (PcdMmSupervisorExceptionStackSize);
     }
@@ -1126,10 +981,9 @@ SetupSmiEntryExit (
     }
   }
 
-  DEBUG ((DEBUG_INFO, "mXdSupported - 0x%x\n", mXdSupported));
-
   if (mSmmInitialized == NULL) {
-    mSmmInitialized = (BOOLEAN *)AllocateZeroPool (sizeof (BOOLEAN) * mMaxNumberOfCpus);
+    mSmmInitialized = (volatile BOOLEAN *)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (BOOLEAN) * mMaxNumberOfCpus));
+    ZeroMem ((VOID *)(UINTN)mSmmInitialized, sizeof (BOOLEAN) * mMaxNumberOfCpus);
   }
 
   ASSERT (mSmmInitialized != NULL);
@@ -1144,41 +998,9 @@ SetupSmiEntryExit (
   gSmmCpuPrivate->SmmReservedSmramRegion[0].SmramReservedSize  = 0;
 
   //
-  // Install the SMM Configuration Protocol onto a new handle on the handle database.
-  // The entire SMM Configuration Protocol is allocated from SMRAM, so only a pointer
-  // to an SMRAM address will be present in the handle database
-  //
-  Status = gMmCoreMmst.MmInstallProtocolInterface (
-                         &gSmmCpuPrivate->SmmCpuHandle,
-                         &gEfiSmmConfigurationProtocolGuid,
-                         EFI_NATIVE_INTERFACE,
-                         &gSmmCpuPrivate->SmmConfiguration
-                         );
-  ASSERT_EFI_ERROR (Status);
-
-  // MSCHANGE [BEGIN] - Add flag to enable "test mode" for the SMM protections.
-  //                    NOTE: "Test mode" will only be enabled in DEBUG builds.
-  if (FeaturePcdGet (PcdSmmExceptionTestModeSupport)) {
-    Status = gMmCoreMmst.MmInstallProtocolInterface (
-                           &mSmmExceptionTestProtocolHandle,
-                           &gSmmExceptionTestProtocolGuid,
-                           EFI_NATIVE_INTERFACE,
-                           &mSmmExceptionTestProtocol
-                           );
-    ASSERT_EFI_ERROR (Status);
-  }
-
-  // MSCHANGE [END]
-
-  //
   // Initialize global buffer for MM MP.
   //
   InitializeDataForMmMp ();
-
-  //
-  // Initialize Package First Thread Index Info.
-  //
-  InitPackageFirstThreadIndexInfo ();
 
   //
   // Initialize SMM Profile feature

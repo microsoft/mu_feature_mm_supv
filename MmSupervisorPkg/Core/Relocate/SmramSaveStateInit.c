@@ -14,7 +14,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <PiSmm.h>
 #include <SmmSecurePolicy.h>
-#include <SeaResponder.h>
 
 #include <Library/SmmCpuFeaturesLib.h>
 
@@ -27,7 +26,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include "Relocate.h"
 #include "Mem/Mem.h"
-#include "Services/MpService/MpService_init.h"
+#include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 
 UINT8  mSmmSaveStateRegisterLma;
