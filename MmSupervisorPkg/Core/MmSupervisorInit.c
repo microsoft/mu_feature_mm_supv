@@ -950,6 +950,7 @@ MmSupervisorMain (
 Exit:
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Standalone MM foundation not properly set, system may not boot - %r!\n", __func__, Status));
+    PANIC ("Standalone MM foundation not properly set, system may not boot!");
   }
 
   return Status;
