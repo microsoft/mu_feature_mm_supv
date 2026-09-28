@@ -47,7 +47,7 @@ extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 // agree exactly or the cursor drifts, so neither open-codes the arithmetic.
 //
 #define MODULE_ALLOC_HOB_SIZE  ALIGN_VALUE (sizeof (EFI_HOB_MEMORY_ALLOCATION_MODULE), 8)
-#define GUID_HOB_SIZE(DataSize)    ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + (DataSize), 8)
+#define GUID_HOB_SIZE(DataSize)  ALIGN_VALUE (sizeof (EFI_HOB_GUID_TYPE) + (DataSize), 8)
 
 /**
   Move the builder past a HOB that consumed the given number of bytes.
@@ -159,7 +159,7 @@ HobAppendModuleAllocation (
   )
 {
   EFI_HOB_MEMORY_ALLOCATION_MODULE  *ModuleHob;
-  EFI_STATUS                         Status;
+  EFI_STATUS                        Status;
 
   if (Builder->Remaining < MODULE_ALLOC_HOB_SIZE) {
     return EFI_BUFFER_TOO_SMALL;
