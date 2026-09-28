@@ -466,7 +466,7 @@ GetSmBase (
     GuidHob                = GetNextGuidHob (&gSmmBaseHobGuid, GET_NEXT_HOB (GuidHob));
   }
 
-  SmBaseBuffer = (UINTN *)AllocatePool (sizeof (UINTN) * (MaxNumberOfCpus));
+  SmBaseBuffer = (UINTN *)AllocatePages (EFI_SIZE_TO_PAGES (sizeof (UINTN) * (MaxNumberOfCpus)));
   ASSERT (SmBaseBuffer != NULL);
   if (SmBaseBuffer == NULL) {
     FreePool (SmBaseHobs);
@@ -918,6 +918,7 @@ SetupSmiEntryExit (
 
   Stacks = (UINT8 *)AllocatePages (gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * (EFI_SIZE_TO_PAGES (mSmmStackSize + mSmmShadowStackSize)));
   ASSERT (Stacks != NULL);
+  ZeroMem (Stacks, gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * (mSmmStackSize + mSmmShadowStackSize));
   mSmmStackArrayBase = (UINTN)Stacks;
   mSmmStackArrayEnd  = mSmmStackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * (mSmmStackSize + mSmmShadowStackSize) - 1;
 
