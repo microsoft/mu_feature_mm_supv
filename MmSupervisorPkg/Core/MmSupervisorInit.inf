@@ -35,50 +35,39 @@
 #  VALID_ARCHITECTURES           = X64
 
 [Sources]
-  # Init-only entry point and shared core header
   MmSupervisorInit.c
   MmSupervisorCore.h
 
-  # Init-side copies of files that diverge from Core/. These will be split into
-  # shared / *_core / *_init pieces in subsequent slices; for now they remain
-  # in their current location and are referenced via relative paths.
-  Dispatcher/Dispatcher.c
-  Dispatcher/Dispatcher_init.c
+  Dispatcher/DispatcherInit.c
 
   FwVol/FwVol.c
 
-  Mem/MemWrapper.c
-  Mem/MemWrapper_init.c
+  Hob/SupvInitHobs.c
+  Hob/SupvInitHobs.h
+
+  Mem/MemWrapperInit.c
   Mem/Page.c
-  Mem/Page_init.c
-  Mem/PageInternal.h
-  Mem/PageTbl.c
-  Mem/PageTbl_init.c
-  Mem/SmmCpuMemoryManagement.c
-  Mem/SmmCpuMemoryManagement_init.c
-  Mem/SmmProfile.c
-  Mem/SmmProfile_init.c
+  Mem/PageTblInit.c
+  Mem/SmmCpuMemoryManagementInit.c
+  Mem/SmmProfileInit.c
   Mem/SmmProfile.h
   Mem/SmmProfileInternal.h
 
-  Misc/SmmFuncsArch.c
-  Misc/SmmFuncsArch_init.c
+  Misc/SmmFuncsArchInit.c
 
-  Relocate/Relocate.c
-  Relocate/Relocate_init.c
+  Relocate/RelocateInit.c
   Relocate/Relocate.h
   # Relocate/SmiEntry.nasm
   Relocate/SmiException.nasm
-  Relocate/SmramSaveState_init.c
+  Relocate/SmramSaveStateInit.c
 
-  Services/CpuService/CpuService.c
   Services/CpuService/CpuService.h
-  Services/MpService/MpService_init.c
-  Services/MpService/MpService_init.h
+  Services/MpService/MpServiceInit.c
+  Services/MpService/MpService.h
 
   PrivilegeMgmt/PrivilegeMgmt.h
-  PrivilegeMgmt/CallGateTransfer.c
-  PrivilegeMgmt/SyscallSetup.c
+  PrivilegeMgmt/CallGateTransferInit.c
+  PrivilegeMgmt/SyscallSetupInit.c
 
   # Files that are byte-identical with Core/ — Init now consumes the Core
   # copies directly (the duplicate Init copies have been deleted).
@@ -100,7 +89,6 @@
   StandaloneMmPkg/StandaloneMmPkg.dec
   UefiCpuPkg/UefiCpuPkg.dec
   MmSupervisorPkg/MmSupervisorPkg.dec
-  SeaPkg/SeaPkg.dec
 
 [LibraryClasses]
   BaseLib
@@ -129,7 +117,6 @@
   SmmPolicyGateLib
   ImagePropertiesRecordLib
   MmMemoryProtectionHobLib ## MU_CHANGE
-  # IhvSmmSaveStateSupervisionLib
   SafeIntLib
   TimerLib
   PerformanceLib
@@ -234,7 +221,6 @@
 
   gMmSupervisorPassDownHobGuid                   ## PRODUCES ## A HOB that has everything
   gMmSupervisorDepexHobGuid                      ## PRODUCES ## A HOB for MmSupervisor driver depex
-  gMmiEntrySeaFileGuid
 
 [BuildOptions.common]
   #Subsystem version will be used as MmSupervisor driver version

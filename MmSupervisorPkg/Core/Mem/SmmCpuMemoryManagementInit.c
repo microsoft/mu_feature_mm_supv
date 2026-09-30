@@ -100,6 +100,9 @@ EFI_MEMORY_DESCRIPTOR  *mInitMemoryMap     = NULL;
 UINTN                  mInitDescriptorSize = 0;
 UINTN                  mInitMemoryMapSize  = 0;
 
+extern LIST_ENTRY           mDiscoveredList;
+extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
+
 //
 // Global variable to keep track current available memory used as page table.
 //
@@ -613,7 +616,7 @@ ConvertMemoryPageAttributes (
     // The only reason that PageTableMap returns RETURN_INVALID_PARAMETER here is to modify other attributes
     // of a non-present range but remains the non-present range still as non-present.
     //
-    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] is not permitted\n", BaseAddress, BaseAddress + Length));
+    DEBUG ((DEBUG_ERROR, "SMM ConvertMemoryPageAttributes: Only change EFI_MEMORY_XP/EFI_MEMORY_RO for non-present range in [0x%lx, 0x%lx] to %x is not permitted\n", BaseAddress, BaseAddress + Length, Attributes));
   }
 
   ASSERT_RETURN_ERROR (Status);
@@ -948,7 +951,7 @@ GenSmmPageTable (
     //
     // Mark the 4KB guard page between known good stack and smm stack as non-present
     //
-    for (Index = 0; Index < gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus; Index++) {
+    for (Index = 0; Index < mNumberOfCpus; Index++) {
       GuardPage = mSmmStackArrayBase + PcdGet32 (PcdMmSupervisorExceptionStackSize) + Index * (mSmmStackSize + mSmmShadowStackSize);
       Status    = ConvertMemoryPageAttributes (PageTable, PagingMode, GuardPage, EFI_PAGE_SIZE, EFI_MEMORY_RP, TRUE, NULL);
       ASSERT (Status == RETURN_SUCCESS);
@@ -968,136 +971,6 @@ GenSmmPageTable (
   SetPageTableBase (0);
 
   return (UINTN)PageTable;
-}
-
-/**
-  This function sets the read only attributes of GDT pages of currently executing CPU.
-
-  @retval EFI_SUCCESS           The attributes were set for the memory region.
-  @retval EFI_ACCESS_DENIED     The attributes for the memory resource range specified by
-                                BaseAddress and Length cannot be modified.
-  @retval EFI_INVALID_PARAMETER Length is zero.
-                                Attributes specified an illegal combination of attributes that
-                                cannot be set together.
-  @retval EFI_OUT_OF_RESOURCES  There are not enough system resources to modify the attributes of
-                                the memory resource range.
-  @retval EFI_UNSUPPORTED       The processor does not support one or more bytes of the memory
-                                resource range specified by BaseAddress and Length.
-                                The bit mask of attributes is not supported for the memory resource
-                                range specified by BaseAddress and Length.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmSetGdtReadOnlyForThisProcessor (
-  VOID
-  )
-{
-  EFI_STATUS       Status;
-  BOOLEAN          IsModified;
-  IA32_DESCRIPTOR  Gdtr;
-  UINTN            CpuIndex;
-  UINTN            PageTableBase;
-  BOOLEAN          EnablePML5Paging;
-
-  AsmReadGdtr (&Gdtr);
-
-  Status = SmmWhoAmI (NULL, &CpuIndex);
-  ASSERT_EFI_ERROR (Status);
-
-  ASSERT (Gdtr.Base == mGdtBuffer + CpuIndex * mGdtStepSize);
-  ASSERT (Gdtr.Limit < mGdtStepSize);
-  ASSERT (CpuIndex < mNumberOfCpus);
-  ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
-  ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
-
-  GetPageTable (&PageTableBase, &EnablePML5Paging);
-
-  Status = ConvertMemoryPageAttributes (
-             PageTableBase,
-             mPagingMode,
-             mGdtBuffer + CpuIndex * mGdtStepSize,
-             mGdtStepSize,
-             EFI_MEMORY_RO | EFI_MEMORY_SP,
-             TRUE,
-             &IsModified
-             );
-  if (!EFI_ERROR (Status)) {
-    if (IsModified) {
-      //
-      // Flush TLB for this CPU as last step
-      //
-      CpuFlushTlb ();
-    }
-  } else {
-    ASSERT_EFI_ERROR (Status);
-  }
-
-  return Status;
-}
-
-/**
-  This function clears the read only attributes of GDT pages of currently executing CPU.
-
-  @retval EFI_SUCCESS           The attributes were cleared for the memory region.
-  @retval EFI_ACCESS_DENIED     The attributes for the memory resource range specified by
-                                BaseAddress and Length cannot be modified.
-  @retval EFI_INVALID_PARAMETER Length is zero.
-                                Attributes specified an illegal combination of attributes that
-                                cannot be cleared together.
-  @retval EFI_OUT_OF_RESOURCES  There are not enough system resources to modify the attributes of
-                                the memory resource range.
-  @retval EFI_UNSUPPORTED       The processor does not support one or more bytes of the memory
-                                resource range specified by BaseAddress and Length.
-                                The bit mask of attributes is not supported for the memory resource
-                                range specified by BaseAddress and Length.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmClearGdtReadOnlyForThisProcessor (
-  VOID
-  )
-{
-  EFI_STATUS       Status;
-  BOOLEAN          IsModified;
-  IA32_DESCRIPTOR  Gdtr;
-  UINTN            CpuIndex;
-  UINTN            PageTableBase;
-
-  AsmReadGdtr (&Gdtr);
-
-  Status = SmmWhoAmI (NULL, &CpuIndex);
-  ASSERT_EFI_ERROR (Status);
-
-  ASSERT (Gdtr.Base == mGdtBuffer + CpuIndex * mGdtStepSize);
-  ASSERT (Gdtr.Limit < mGdtStepSize);
-  ASSERT (CpuIndex < mNumberOfCpus);
-  ASSERT (mNumberOfCpus * mGdtStepSize == mGdtBufferSize);
-  ASSERT ((mGdtStepSize & EFI_PAGE_MASK) == 0);
-
-  GetPageTable (&PageTableBase, NULL);
-  Status = ConvertMemoryPageAttributes (
-             PageTableBase,
-             mPagingMode,
-             mGdtBuffer + CpuIndex * mGdtStepSize,
-             mGdtStepSize,
-             EFI_MEMORY_RO,
-             FALSE,
-             &IsModified
-             );
-  if (!EFI_ERROR (Status)) {
-    if (IsModified) {
-      //
-      // Flush TLB for this CPU as last step
-      //
-      CpuFlushTlb ();
-    }
-  } else {
-    ASSERT_EFI_ERROR (Status);
-  }
-
-  return Status;
 }
 
 /**
@@ -1123,40 +996,6 @@ SetShadowStack (
   mIsShadowStack = FALSE;
 
   return Status;
-}
-
-/**
-  Retrieves a pointer to the system configuration table from the SMM System Table
-  based on a specified GUID.
-
-  @param[in]   TableGuid       The pointer to table's GUID type.
-  @param[out]  Table           The pointer to the table associated with TableGuid in the EFI System Table.
-
-  @retval EFI_SUCCESS     A configuration table matching TableGuid was found.
-  @retval EFI_NOT_FOUND   A configuration table matching TableGuid could not be found.
-
-**/
-EFI_STATUS
-EFIAPI
-SmmGetSystemConfigurationTable (
-  IN  EFI_GUID  *TableGuid,
-  OUT VOID      **Table
-  )
-{
-  UINTN  Index;
-
-  ASSERT (TableGuid != NULL);
-  ASSERT (Table != NULL);
-
-  *Table = NULL;
-  for (Index = 0; Index < gMmCoreMmst.NumberOfTableEntries; Index++) {
-    if (CompareGuid (TableGuid, &(gMmCoreMmst.MmConfigurationTable[Index].VendorGuid))) {
-      *Table = gMmCoreMmst.MmConfigurationTable[Index].VendorTable;
-      return EFI_SUCCESS;
-    }
-  }
-
-  return EFI_NOT_FOUND;
 }
 
 /**
@@ -1332,7 +1171,9 @@ PatchMmSupervisorCoreRegion (
   //
   // Patch MM Supervisor Core
   //
-  EFI_STATUS  Status;
+  EFI_STATUS           Status;
+  LIST_ENTRY           *Link;
+  EFI_MM_DRIVER_ENTRY  *DriverEntry;
 
   DEBUG ((DEBUG_INFO, "%a - Enter\n", __func__));
 
@@ -1350,11 +1191,50 @@ PatchMmSupervisorCoreRegion (
     CpuDeadLoop ();
   }
 
-  Status = SmmSetMemoryAttributes (
-             mMmCoreDriverEntry->ImageBuffer,
-             EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
-             EFI_MEMORY_SP
-             );
+  // Status = SmmSetMemoryAttributes (
+  //            mMmCoreDriverEntry->ImageBuffer,
+  //            EFI_PAGES_TO_SIZE (mMmCoreDriverEntry->NumberOfPage),
+  //            EFI_MEMORY_SP
+  //            );
+
+  FreePool (mMmCoreDriverEntry);
+  mMmCoreDriverEntry = NULL;
+
+  DEBUG ((DEBUG_INFO, "%a - User module - %r\n", __func__, Status));
+  //
+  // The range should have been set to RO/XP based on image record routines
+  // this is the last pass that makes sure the entire region is still in
+  // supervisor realm.
+  //
+  Status = SmmSetImagePageAttributes (mMmUserDriverEntry, FALSE);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a Failed to set image attribute for MM user %r!!!\n", __func__, Status));
+    // We should not continue with this configuration, either hang the system or reboot
+    ResetCold ();
+    // Should not be here
+    CpuDeadLoop ();
+  }
+
+  // Status = SmmClearMemoryAttributes (
+  //            mMmUserDriverEntry->ImageBuffer,
+  //            EFI_PAGES_TO_SIZE (mMmUserDriverEntry->NumberOfPage),
+  //            EFI_MEMORY_SP
+  //            );
+
+  FreePool (mMmUserDriverEntry);
+  mMmUserDriverEntry = NULL;
+
+  // Now handle the rest of discovered MM drivers
+  while (!IsListEmpty (&mDiscoveredList)) {
+    Link        = mDiscoveredList.ForwardLink;
+    DriverEntry = CR (Link, EFI_MM_DRIVER_ENTRY, Link, EFI_MM_DRIVER_ENTRY_SIGNATURE);
+
+    DEBUG ((DEBUG_INFO, "  Setting image attributes - %g\n", &DriverEntry->FileName));
+    SmmSetImagePageAttributes (DriverEntry, FALSE);
+
+    RemoveEntryList (&DriverEntry->Link);
+    FreePool (DriverEntry);
+  }
 
   if (FirmwarePolicy == NULL) {
     Status = EFI_SECURITY_VIOLATION;
@@ -1574,78 +1454,6 @@ SetMemMapAttributes (
   PatchMmUserSpecialPurposeRegion ();
 
   PERF_FUNCTION_END ();
-}
-
-/**
-  Return if a UEFI memory page should be marked as not present in SMM page table.
-  If the memory map entries type is
-  EfiLoaderCode/Data, EfiBootServicesCode/Data, EfiConventionalMemory,
-  EfiUnusableMemory, EfiACPIReclaimMemory, return TRUE.
-  Or return FALSE.
-
-  @param[in]  MemoryMap              A pointer to the memory descriptor.
-
-  @return TRUE  The memory described will be marked as not present in SMM page table.
-  @return FALSE The memory described will not be marked as not present in SMM page table.
-**/
-BOOLEAN
-IsUefiPageNotPresent (
-  IN EFI_MEMORY_DESCRIPTOR  *MemoryMap
-  )
-{
-  switch (MemoryMap->Type) {
-    case EfiLoaderCode:
-    case EfiLoaderData:
-    case EfiBootServicesCode:
-    case EfiBootServicesData:
-    case EfiConventionalMemory:
-    case EfiUnusableMemory:
-    case EfiACPIReclaimMemory:
-      return TRUE;
-    default:
-      return FALSE;
-  }
-}
-
-/**
-  Return if the Address is forbidden as SMM communication buffer.
-
-  @param[in] Address the address to be checked
-
-  @return TRUE  The address is forbidden as SMM communication buffer.
-  @return FALSE The address is allowed as SMM communication buffer.
-**/
-BOOLEAN
-IsSmmCommBufferForbiddenAddress (
-  IN UINT64  Address
-  )
-{
-  UINTN  Index;
-
-  // In this function, we only unblock those regions that are intentionally left open
-  for (Index = 0; Index < MM_OPEN_BUFFER_CNT; Index++) {
-    if (mMmSupervisorAccessBuffer[Index].PhysicalStart != 0) {
-      if ((Address >= mMmSupervisorAccessBuffer[Index].PhysicalStart) &&
-          (Address < mMmSupervisorAccessBuffer[Index].PhysicalStart + EFI_PAGES_TO_SIZE ((UINTN)mMmSupervisorAccessBuffer[Index].NumberOfPages)))
-      {
-        return FALSE;
-      }
-    }
-  }
-
-  if ((mMmCommSupvMailboxBufferStatus != NULL) &&
-      (Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus) &&
-      (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommSupvMailboxBufferStatus + ((sizeof (*mMmCommSupvMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
-  {
-    return FALSE;
-  } else if ((mMmCommUserMailboxBufferStatus != NULL) &&
-             (Address >= (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus) &&
-             (Address < (EFI_PHYSICAL_ADDRESS)(UINTN)mMmCommUserMailboxBufferStatus + ((sizeof (*mMmCommUserMailboxBufferStatus) + EFI_PAGE_SIZE -1) & ~(EFI_PAGE_SIZE -1))))
-  {
-    return FALSE;
-  }
-
-  return TRUE;
 }
 
 /**

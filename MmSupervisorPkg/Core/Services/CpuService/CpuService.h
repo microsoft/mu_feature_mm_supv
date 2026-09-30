@@ -90,4 +90,18 @@ SmmRegisterExceptionHandler (
   IN EFI_CPU_INTERRUPT_HANDLER     InterruptHandler
   );
 
+//
+// Internal function prototypes
+//
+
+/**
+  Update the SMM CPU list per the pending operation.
+
+  This function is called after return from SMI handlers.
+**/
+VOID
+SmmCpuUpdate (
+  VOID
+  );
+
 #endif
