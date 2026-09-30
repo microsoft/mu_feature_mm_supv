@@ -902,7 +902,7 @@ SmiDefaultPFHandler (
 }
 
 /**
-  ThePage Fault handler wrapper for SMM use.
+  The Page Fault handler wrapper for SMM use.
 
   @param  InterruptType    Defines the type of interrupt or exception that
                            occurred on the processor.This parameter is processor architecture specific.
