@@ -150,7 +150,6 @@ typedef struct {
 typedef struct {
   UINTN              Signature;
   LIST_ENTRY         Link;
-
   BOOLEAN            FromStack;
   BOOLEAN            IsSupervisorPage;
   EFI_MEMORY_TYPE    Type;
