@@ -36,10 +36,10 @@ Other key documents:
 Repository Philosophy
 =====================
 
-Like other Project MU feature repositories, the Project MU MM Supervisor feature repo does not strictly follow the
-EDKII releases, but instead has a continuous main branch which will periodically receive cherry-picks of needed changes
-from EDKII. For stable builds, release tags will be used instead to determine commit hashes at stable points in development.
-Release branches may be created as needed to facilitate a specific release with needed features, but this should be avoided.
+Unlike other Project MU feature repositories that uses a continuous main branch which periodically receives cherry-picks of
+needed changes from EDKII, the Project MU MM Supervisor feature repo follows the EDKII releases. For stable builds, release
+tags will be used instead to determine commit hashes at stable points in development. Release branches may be created as
+needed to facilitate a specific release with needed features, but this should be avoided.
 
 Consuming the MM Supervisor Feature Package
 ===========================================
