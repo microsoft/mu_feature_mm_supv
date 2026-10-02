@@ -32,6 +32,15 @@ use std::{
 
 const MM_SUPV_PDB: &[u8] = include_bytes!(env!("TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH"));
 const MM_SUPV_EFI: &[u8] = include_bytes!(env!("TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH"));
+const LINKER_MAP: &str = include_str!(env!("TEST_AUX_MM_SUPERVISOR_CORE_MAP_PATH"));
+
+/// Shown in place of a symbol name for a region nothing describes.
+///
+/// Such a region is only assumed to be padding, so it is not labelled as padding outright.
+const UNNAMED_REGION: &str = "<unnamed>";
+
+/// The size of a pointer in the validated image.
+const POINTER_LENGTH: usize = 8;
 
 // The external function signatures for the BasePeCoffValidationLib
 extern "C" {
@@ -119,7 +128,7 @@ fn main() -> Result<()> {
             let name = metadata
                 .context_from_address(&entry.offset)
                 .map(|c| c.name.clone())
-                .unwrap_or("Padding".to_string());
+                .unwrap_or(UNNAMED_REGION.to_string());
             (name, entry)
         })
         .collect::<Vec<_>>();
@@ -150,6 +159,14 @@ fn main() -> Result<()> {
     if !failed.is_empty() {
         println!("\nFailed Test Details:");
         test_suite.run_tests(&failed, true)?;
+
+        // A failure over a region nothing names says only that the region was not zero. Report
+        // what actually occupies it, so the symbol that needs a rule can be identified.
+        for (name, entry) in failed.iter() {
+            if name == UNNAMED_REGION {
+                test_suite.explain_unnamed_region(entry, &metadata);
+            }
+        }
     }
 
     Ok(())
@@ -170,6 +187,56 @@ struct TestSuite {
 }
 
 impl TestSuite {
+    /// Explains a failure over a region that neither the PDB file nor the linker map names.
+    ///
+    /// Such a region is assumed to be padding and required to be zero. When it is not zero the
+    /// failure alone says nothing about what went wrong, so the addresses stored in it are
+    /// resolved back to the symbols they point at. A static holding pointers into the image is
+    /// almost always a real variable that simply lost its name, and its contents identify it.
+    fn explain_unnamed_region(
+        &self,
+        entry: &ImageValidationEntryHeader,
+        metadata: &PdbMetadata<'static, Cursor<&'static [u8]>>,
+    ) {
+        let start = entry.offset as usize;
+        let Some(bytes) = self.mm_supv_core.get(start..start + entry.size as usize) else {
+            return;
+        };
+
+        println!("\nDiagnosis of {:#x}:", entry.offset);
+        println!(
+            "  Nothing names this region, so it was assumed to be padding and required to be zero."
+        );
+        println!("  It is not zero, so a real variable occupies it. Its contents resolve to:");
+
+        let image_end = self.mm_supv_address + metadata.image_size() as u64;
+        for (index, chunk) in bytes.chunks_exact(POINTER_LENGTH).enumerate() {
+            let value = u64::from_le_bytes(chunk.try_into().unwrap_or_default());
+            let offset = index * POINTER_LENGTH;
+
+            if value >= self.mm_supv_address && value < image_end {
+                let rva = (value - self.mm_supv_address) as u32;
+                let target = metadata
+                    .symbol_from_address(&rva)
+                    .map(|symbol| symbol.name().to_string())
+                    .unwrap_or_else(|| "not named".to_string());
+                println!(
+                    "    +{:#04x}: {:#018x}  ->  image +{:#x} [{}]",
+                    offset, value, rva, target
+                );
+            } else if value != 0 {
+                println!(
+                    "    +{:#04x}: {:#018x}  ->  outside the image",
+                    offset, value
+                );
+            }
+        }
+
+        println!("  Add a rule for the symbol that owns it. If the PDB file does not name that");
+        println!("  symbol, build test-aux against a supervisor linker map so the name can be");
+        println!("  recovered from it.");
+    }
+
     /// Creates a new instance of TestSuite from the provided configuration file and auxiliary file.
     pub fn new(config: &PathBuf, aux: Vec<u8>) -> Result<Self> {
         let config = CmdConfig::from_file(config)?;
@@ -315,6 +382,8 @@ pub fn build_aux(
     scopes: &[String],
 ) -> Result<(AuxFile, PdbMetadata<'static, Cursor<&'static [u8]>>)> {
     let mut metadata = PdbMetadata::<Cursor<&'static [u8]>>::new(MM_SUPV_PDB, MM_SUPV_EFI)?;
+    metadata.add_map_symbols(LINKER_MAP);
+
     let mut config = ConfigFile::from_file(config)?;
     config.filter_by_scopes(scopes)?;
 
@@ -338,6 +407,11 @@ pub fn build_aux(
     }
 
     aux.finalize();
+
+    let report = Coverage::build(&aux, &mut metadata)?;
+    if let Some(warning) = report.check_rules(&metadata, config.config.no_missing_rules)? {
+        eprintln!("Warning: {}", warning);
+    }
 
     Ok((aux, metadata))
 }

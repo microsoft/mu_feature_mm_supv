@@ -11,6 +11,7 @@
 
 pub mod config;
 pub mod file;
+pub mod map;
 pub mod metadata;
 pub mod report;
 
