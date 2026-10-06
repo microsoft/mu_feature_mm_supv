@@ -194,18 +194,10 @@ Base:
 
     add     rsp, -0x20
 
-    ; mov     rcx, rbx
-    ; mov     rax, [FIXUP64_SMM_DBG_ENTRY - _SmiEntryPoint + 0x8000 + rdi]    ;   call    ASM_PFX(CpuSmmDebugEntry)
-    ; call    rax
-
     mov     rcx, rbx
     mov     rdx, [FIXUP64_HOB_START - _SmiEntryPoint + 0x8000 + rdi]     ;   patched to mMmHobStart
     mov     rax, [FIXUP64_SMI_RDZ_ENTRY - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(SmiRendezvous)
     call    rax
-
-    ; mov     rcx, rbx
-    ; mov     rax, [FIXUP64_SMM_DBG_EXIT - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(CpuSmmDebugExit)
-    ; call    rax
 
     add     rsp, 0x20
 
