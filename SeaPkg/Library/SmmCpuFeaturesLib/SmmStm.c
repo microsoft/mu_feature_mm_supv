@@ -87,13 +87,23 @@ CpuSmmDebugExit (
   IN UINTN  CpuIndex
   );
 
-extern VOID  *SmiRendezvous;
-
 EFI_STATUS
 SmmSetMemoryAttributes (
   IN  EFI_PHYSICAL_ADDRESS  BaseAddress,
   IN  UINT64                Length,
   IN  UINT64                Attributes
+  );
+
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiRendezvousAddress (
+  VOID
+  );
+
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiHandlerIdtrAddress (
+  VOID
   );
 
 //
@@ -153,7 +163,6 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
 //
 // The IDTR gets its own page, shared by all CPUs, so it can be made read-only at ready-to-lock.
 //
-IA32_DESCRIPTOR  *mSmiHandlerIdtrPtr = NULL;
 IA32_DESCRIPTOR  *mGdtrPtr;
 
 //
@@ -481,6 +490,7 @@ SmmCpuFeaturesInstallSmiHandler (
   UINT64                         *Fixup64Ptr;
   UINT8                          *Fixup8Ptr;
   UINT32                         tSmiStack;
+  IA32_DESCRIPTOR                *SmiHandlerIdtrPtr = NULL;  
 
   CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &mPsdTemplate, sizeof (mPsdTemplate));
   Psd             = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET);
@@ -491,21 +501,15 @@ SmmCpuFeaturesInstallSmiHandler (
   // Initialize values in template before copy
   //
   tSmiStack = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
-  DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));
-  if (mSmiHandlerIdtrPtr == NULL) {
-    mSmiHandlerIdtrPtr = AllocatePages (1);
-    if (mSmiHandlerIdtrPtr == NULL) {
-      DEBUG ((DEBUG_ERROR, "[%a] - Failed to allocate MMI handler IDTR page.\n", __func__));
-      ASSERT (mSmiHandlerIdtrPtr != NULL);
-      return;
-    }
+  DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));  
 
-    ZeroMem (mSmiHandlerIdtrPtr, EFI_PAGE_SIZE);
-    mSmiHandlerIdtrPtr->Base  = IdtBase;
-    mSmiHandlerIdtrPtr->Limit = (UINT16)(IdtSize - 1);
+  SmiHandlerIdtrPtr = (IA32_DESCRIPTOR *)MmGetSmiHandlerIdtrAddress ();
+  if (SmiHandlerIdtrPtr->Base == 0) {
+    SmiHandlerIdtrPtr->Base  = IdtBase;
+    SmiHandlerIdtrPtr->Limit = (UINT16)(IdtSize - 1);
   } else {
-    ASSERT (mSmiHandlerIdtrPtr->Base == IdtBase);
-    ASSERT (mSmiHandlerIdtrPtr->Limit == (UINT16)(IdtSize - 1));
+    ASSERT (SmiHandlerIdtrPtr->Base == IdtBase);
+    ASSERT (SmiHandlerIdtrPtr->Limit == (UINT16)(IdtSize - 1));
   }
 
   //
@@ -548,13 +552,15 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0]          = (UINT32)(UINTN)tSmiStack;
   Fixup32Ptr[FIXUP32_MSR_SMM_BASE]               = SmBase;
 
+
+  Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)MmGetSmiHandlerIdtrAddress();
+  Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)MmGetSmiRendezvousAddress();
+
   if (SmiEntryStructHdrPtr->HeaderVersion > MMI_ENTRY_STRUCT_V4) {
     Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = 0;
     Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = 0;
-    Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)SmiRendezvous;
     Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = 0;
     Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = 0;
-    Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)mSmiHandlerIdtrPtr;
     Fixup64Ptr[FIXUP64_HOB_START]        = (UINT64)(UINTN)mMmHobStart;
 
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = FALSE;
@@ -562,10 +568,8 @@ SmmCpuFeaturesInstallSmiHandler (
   } else {
     Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = (UINT64)CpuSmmDebugEntry;
     Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = (UINT64)CpuSmmDebugExit;
-    Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)SmiRendezvous;
     Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&mXdSupported;
     Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
-    Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)mSmiHandlerIdtrPtr;
 
     Fixup8Ptr[FIXUP8_gPatchXdSupported]  = mXdSupported;
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;

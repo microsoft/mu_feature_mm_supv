@@ -293,6 +293,10 @@ Note: There might be other silicon specific drivers a platform will need for the
 
 This section describes the general guideline on platform integration instructions.
 
+For the initialization-to-runtime data contract, see
+[HOB Construction for Rust Supervisor Initialization](../../../MmSupervisorPkg/Docs/PlatformIntegration/SupervisorInitializationHobs.md).
+It describes the copied and generated HOBs, construction order, resource lifetimes, and current capacity calculation.
+
 #### Platform level library
 
 As the supervised MM is moving to work with standard Standalone MM IPL from EDK2, the requirements from EDK2 Standalone
@@ -322,7 +326,7 @@ The changes below assume that the platform has already integrated the C based MM
 1. Update the entries the DSC sections below: remove the commented entries and replace the new ones.
 
 ``` bash
-[LibraryClasses.X64.MM_CORE_STANDALONE]
+[LibraryClasses.X64.MM_STANDALONE]
   # Remove the following 3 entries for Standalone MM drivers
   #
   # MmServicesTableLib|MmSupervisorPkg/Library/StandaloneMmServicesTableLib/StandaloneMmServicesTableLib.inf
@@ -335,9 +339,6 @@ The changes below assume that the platform has already integrated the C based MM
   HobLib|StandaloneMmPkg/Library/StandaloneMmHobLib/StandaloneMmHobLib.inf
   StandaloneMmDriverEntryPoint|MdePkg/Library/StandaloneMmDriverEntryPoint/StandaloneMmDriverEntryPoint.inf
 
-  # This will be the new library classes platform needs to author
-  MmPlatformHobProducerLib|PlatformPkg/Library/MmPlatformHobProducerLib/MmPlatformHobProducerLib.inf
-
 [Components.X64]
   # Remove the following modules
   #
@@ -349,7 +350,7 @@ The changes below assume that the platform has already integrated the C based MM
   # Add the following components
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf
-  MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
+  MmSupervisorPkg/Core/MmSupervisorInit.inf
 ```
 
 Note that if you have any reference to Standalone MM drivers in the form of binary releases (i.e. crypto), please switch
@@ -360,9 +361,6 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
 1. Modify the FDF sections below.
 
 ``` bash
-[FV.YOUR_PEI_FV]
-  INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
-
 [FV.YOUR_POST_MEM_PEI_FV]
   # Remove the following entries
   #
@@ -371,14 +369,14 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
   # INF MmSupervisorPkg/Core/MmSupervisorCore.inf
 
   INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
-  INF MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
-  INF SeaPkg/MmiEntrySea/MmiEntrySeaV5.inf
+  INF MmSupervisorPkg/Core/MmSupervisorInit.inf
+  INF SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf
 
-  FILE MM_CORE_STANDALONE = gMmSupervisorCoreGuid {
+  FILE FREEFORM = gMmSupervisorCoreGuid {
     SECTION PE32 = path/to/binary_mm_supervisor.efi
     SECTION UI   = "MmSupervisorCore"
   }
-  FILE MM_CORE_STANDALONE = gMmSupervisorUserGuid {
+  FILE FREEFORM = gMmSupervisorUserGuid {
     SECTION PE32 = path/to/binary_mm_user.efi
     SECTION UI   = "MmUserCore"
   }

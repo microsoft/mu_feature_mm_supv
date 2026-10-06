@@ -366,6 +366,7 @@ SeaResponderReport (
   KEY_SYMBOL                        *KeySymbols;
   PE_COFF_LOADER_IMAGE_CONTEXT      ImageContext;
   IMAGE_VALIDATION_DATA_HEADER      *AuxFileHdr;
+  IA32_DESCRIPTOR                   *SupvIdtr;
 
   KEY_SYMBOL  *FirmwarePolicySymbol = NULL;
   KEY_SYMBOL  *PageTableSymbol      = NULL;
@@ -634,17 +635,27 @@ SeaResponderReport (
     }
   }
 
-  // MM IDTR should be in the MM CORE region
   if (MmiEntryStructHdr->HeaderVersion <= MMI_ENTRY_STRUCT_V4) {
+    // For header version <= 0x0004, no additional checks are needed for the IDTR.
     Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
     if (EFI_ERROR (Status) || !IsInside) {
-      DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY], MmSupervisorBase, MmSupervisorImageSize));
+      DEBUG ((DEBUG_ERROR, "%a MM hander IDT 0x%p: 0x%x does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize));
       Status = EFI_SECURITY_VIOLATION;
       goto Exit;
     }
   } else {
+    // IDTR should be inside MMRAM for header version >= 0x0005
     if (!IsBufferInsideMmram (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR))) {
-      DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p is not inside MMRAM for header version < 0x0002!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR]));
+      DEBUG ((DEBUG_ERROR, "%a MM hander IDTR 0x%p is not inside MMRAM for header version >= 0x0005!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR]));
+      Status = EFI_SECURITY_VIOLATION;
+      goto Exit;
+    }
+
+    // Additionally, the IDT range should be inside the supervisor image.
+    SupvIdtr = (IA32_DESCRIPTOR *)(Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR]);
+    Status = Range1InsideRange2 (SupvIdtr->Base, SupvIdtr->Limit + 1, MmSupervisorBase, MmSupervisorImageSize, &IsInside);
+    if (EFI_ERROR (Status) || !IsInside) {
+      DEBUG ((DEBUG_ERROR, "%a MM hander IDT 0x%p: 0x%x does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, SupvIdtr->Base, SupvIdtr->Limit + 1, MmSupervisorBase, MmSupervisorImageSize));
       Status = EFI_SECURITY_VIOLATION;
       goto Exit;
     }
