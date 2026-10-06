@@ -1,31 +1,8 @@
 /** @file
-  MM Driver Dispatcher.
+  Discover and load MM drivers for the separately built supervisor runtime.
 
-  Step #1 - When a FV protocol is added to the system every driver in the FV
-            is added to the mDiscoveredList. The Before, and After Depex are
-            pre-processed as drivers are added to the mDiscoveredList. If an Apriori
-            file exists in the FV those drivers are added to the
-            mScheduledQueue. The mFwVolList is used to make sure a
-            FV is only processed once.
-
-  Step #2 - Dispatch. Remove driver from the mScheduledQueue and load and
-            start it. After mScheduledQueue is drained check the
-            mDiscoveredList to see if any item has a Depex that is ready to
-            be placed on the mScheduledQueue.
-
-  Step #3 - Adding to the mScheduledQueue requires that you process Before
-            and After dependencies. This is done recursively as the call to add
-            to the mScheduledQueue checks for Before and recursively adds
-            all Befores. It then adds the item that was passed in and then
-            processess the After dependencies by recursively calling the routine.
-
-  Dispatcher Rules:
-  The rules for the dispatcher are similar to the DXE dispatcher.
-
-  The rules for DXE dispatcher are in chapter 10 of the DXE CIS. Figure 10-3
-  is the state diagram for the DXE dispatcher
-
-  Depex - Dependency Expresion.
+  Firmware volumes are processed once. Drivers and their dependency expressions
+  are collected for the runtime to dispatch after initialization.
 
   Copyright (c) 2014, Hewlett-Packard Development Company, L.P.
   Copyright (c) 2009 - 2014, Intel Corporation. All rights reserved.<BR>
@@ -38,21 +15,6 @@
 #include <PiMm.h>
 
 #include "MmSupervisorCore.h"
-#include "PrivilegeMgmt/PrivilegeMgmt.h"
-
-//
-// Function Prototypes
-//
-
-EFI_STATUS
-MmCoreFfsFindMmDriver (
-  IN  EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader
-  );
-
-VOID
-ProcessDepexBeforeDispatch (
-  IN EFI_MM_DRIVER_ENTRY  *DriverEntry
-  );
 
 //
 // The Driver List contains one copy of every driver that has been discovered.
@@ -61,26 +23,10 @@ ProcessDepexBeforeDispatch (
 LIST_ENTRY  mDiscoveredList = INITIALIZE_LIST_HEAD_VARIABLE (mDiscoveredList);
 
 //
-// Queue of drivers that are ready to dispatch. This queue is a subset of the
-// mDiscoveredList.list of EFI_MM_DRIVER_ENTRY.
-//
-LIST_ENTRY  mScheduledQueue = INITIALIZE_LIST_HEAD_VARIABLE (mScheduledQueue);
-
-//
 // List of firmware volume headers whose containing firmware volumes have been
-// parsed and added to the mFwDriverList.
+// parsed and added to the mDiscoveredList.
 //
 LIST_ENTRY  mFwVolList = INITIALIZE_LIST_HEAD_VARIABLE (mFwVolList);
-
-//
-// Flag for the MM Dispacher.  TRUE if dispatcher is executing.
-//
-BOOLEAN  gDispatcherRunning = FALSE;
-
-//
-// Flag for the MM Dispacher.  TRUE if there is one or more MM drivers ready to be dispatched
-//
-BOOLEAN  gRequestDispatch = FALSE;
 
 /**
   Loads an EFI image into SMRAM.
@@ -359,50 +305,9 @@ FvIsBeingProcessed (
   return KnownFwVol;
 }
 
-EFI_MM_DRIVER_ENTRY *
-MmInitDriverEntry (
-  IN EFI_FIRMWARE_VOLUME_HEADER  *FwVolHeader,
-  IN VOID                        *Pe32Data,
-  IN UINTN                       Pe32DataSize,
-  IN VOID                        *Depex,
-  IN UINTN                       DepexSize,
-  IN EFI_GUID                    *DriverName
-  )
-{
-  EFI_MM_DRIVER_ENTRY  *DriverEntry;
-
-  DEBUG ((DEBUG_INFO, "%a - %g (0x%08x)\n", __func__, DriverName, Pe32Data));
-
-  //
-  // Create the Driver Entry for the list. ZeroPool initializes lots of variables to
-  // NULL or FALSE.
-  //
-  DriverEntry = AllocateZeroPool (sizeof (EFI_MM_DRIVER_ENTRY));
-  ASSERT (DriverEntry != NULL);
-
-  DriverEntry->Signature = EFI_MM_DRIVER_ENTRY_SIGNATURE;
-  CopyGuid (&DriverEntry->FileName, DriverName);
-  DriverEntry->FwVolHeader  = FwVolHeader;
-  DriverEntry->Pe32Data     = Pe32Data;
-  DriverEntry->Pe32DataSize = Pe32DataSize;
-  DriverEntry->DepexSize    = DepexSize;
-
-  if (Depex != NULL) {
-    DriverEntry->Depex = AllocateCopyPool (DepexSize, Depex);
-    ASSERT (DriverEntry->Depex != NULL);
-  } else {
-    DriverEntry->Depex = NULL;
-  }
-
-  return DriverEntry;
-}
-
 /**
   Add an entry to the mDiscoveredList. Allocate memory to store the DriverEntry,
-  and initialize any state variables. Read the Depex from the FV and store it
-  in DriverEntry. Pre-process the Depex to set the Before and After state.
-  The Discovered list is never freed and contains booleans that represent the
-  other possible MM driver states.
+  and copy the dependency expression for the runtime to evaluate.
 
   @param  Fv                    Fv protocol, needed to read Depex info out of
                                 FLASH.
@@ -449,25 +354,14 @@ MmAddToDriverList (
   ASSERT (DriverEntry->Depex != NULL);
 
   InsertTailList (&mDiscoveredList, &DriverEntry->Link);
-  gRequestDispatch = TRUE;
 
   return EFI_SUCCESS;
 }
 
 /**
-  This is the main Dispatcher for MM and it exits when there are no more
-  drivers to run. Drain the mScheduledQueue and load and start a PE
-  image for each driver. Search the mDiscoveredList to see if any driver can
-  be placed on the mScheduledQueue. If no drivers are placed on the
-  mScheduledQueue exit the function.
+  Load every discovered MM driver without invoking its entry point.
 
-  @retval EFI_SUCCESS           All of the MM Drivers that could be dispatched
-                                have been run and the MM Entry Point has been
-                                registered.
-  @retval EFI_NOT_READY         The MM Driver that registered the MM Entry Point
-                                was just dispatched.
-  @retval EFI_NOT_FOUND         There are no MM Drivers available to be dispatched.
-  @retval EFI_ALREADY_STARTED   The MM Dispatcher is already running
+  @retval EFI_SUCCESS           All discovered MM drivers have been loaded.
 
 **/
 EFI_STATUS

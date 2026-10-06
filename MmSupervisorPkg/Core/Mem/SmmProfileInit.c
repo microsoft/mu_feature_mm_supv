@@ -30,30 +30,6 @@ BOOLEAN  mXdSupported = TRUE;
 BOOLEAN  mBtsSupported = TRUE;
 
 /**
-  Get CPU Index from APIC ID.
-
-**/
-UINTN
-GetCpuIndex (
-  VOID
-  )
-{
-  UINTN   Index;
-  UINT32  ApicId;
-
-  ApicId = GetApicId ();
-
-  for (Index = 0; Index < mMaxNumberOfCpus; Index++) {
-    if (gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId == ApicId) {
-      return Index;
-    }
-  }
-
-  ASSERT (FALSE);
-  return 0;
-}
-
-/**
   Update page table according to protected memory ranges and the 4KB-page mapped memory ranges.
 
 **/
