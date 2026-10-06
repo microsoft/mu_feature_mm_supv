@@ -87,6 +87,15 @@ extern CONST UINT16       gcSmiHandlerSize;
 //
 IA32_DESCRIPTOR  gSmiHandlerIdtr;
 
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiHandlerIdtrAddress (
+  VOID
+  )
+{
+  return (EFI_PHYSICAL_ADDRESS)&gSmiHandlerIdtr;
+}
+
 ///
 /// The mode of the CPU at the time an SMI occurs
 ///

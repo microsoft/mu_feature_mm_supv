@@ -44,6 +44,11 @@ For more general background about the steps necessary to integrate the MM Superv
 | MM Driver | Location |
 | --- | --- |
 | MmSupervisorCore | MmSupervisorPkg/Core/MmSupervisorCore.inf |
+| MmSupervisorInit | [MmSupervisorPkg/Core/MmSupervisorInit.inf](../../Core/MmSupervisorInit.inf) |
+
+For the separately built Rust supervisor, `MmSupervisorInit` prepares the environment instead of providing runtime
+services. For the handoff contract, see
+[HOB Construction for Rust Supervisor Initialization](SupervisorInitializationHobs.md).
 
 ## MM Standalone Mode MM Drivers
 

@@ -38,6 +38,9 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate/Relocate.h"
 #include "SupvInitHobs.h"
 
+// Estimated size for a new HOB, used to put in expanded MMRAM regions, new module allocation HOBs and depex.
+#define ESTIMATED_NEW_HOB_SIZE  EFI_PAGE_SIZE
+
 extern LIST_ENTRY           mDiscoveredList;
 extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 
@@ -509,7 +512,7 @@ SupvInitHobsInit (
 
   mMmHobSize  = GetHobListSize (gHobList) + (UINTN)Builder->Remaining;
   mMmHobSize  = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
-  mMmHobSize += EFI_PAGE_SIZE;  // Add an extra page of slack for allocations during HOB building
+  mMmHobSize += FixedPcdGet32 (PcdMmSupervisorHobSlackSize);  // Add some extra pages of slack for allocations during HOB building
 
   Status = MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &RegionBase);
   if (EFI_ERROR (Status)) {

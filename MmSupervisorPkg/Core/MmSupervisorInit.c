@@ -23,7 +23,7 @@
 #include <Library/SecurePolicyLib.h>
 
 PE_COFF_LOADER_IMAGE_CONTEXT      RuntimeSupvImageContext;
-VOID                              *SmiRendezvous;
+EFI_PHYSICAL_ADDRESS              mSmiRendezvous;
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *MemPolicySnapshot = NULL;
 
 EFI_STATUS
@@ -298,6 +298,15 @@ Exit:
   return Status;
 }
 
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiRendezvousAddress (
+  VOID
+  )
+{
+  return mSmiRendezvous;
+}
+
 /**
   Determine if two buffers overlap in memory.
 
@@ -523,7 +532,7 @@ DiscoverStandaloneMmDriversInFvHobs (
               PANIC ("Unable to load supervisor, FIMD!!!\n");
             }
 
-            SmiRendezvous = (VOID *)RuntimeSupvImageContext.EntryPoint;
+            mSmiRendezvous = RuntimeSupvImageContext.EntryPoint;
           } else if (CompareGuid (&FileHeader->Name, &gMmSupervisorUserGuid)) {
             Status = LoadStandaloneMmCoreImage (
                        FwVolHeader,

@@ -108,3 +108,9 @@
   #  to 8KB.
   #  @Prompt Stack size for MM supervisor exceptions.
   gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorExceptionStackSize|0x2000|UINT32|0x00000008
+
+  ## This PCD is used to specify the extra slack size for MM Supervisor HOB allocations during HOB building.
+  #  The default size is 1 page. When changing the value of this PCD, the platform developer should
+  #  make sure the memory size is large enough to accommodate the additional slack.
+  #  @Prompt Extra slack size for MM Supervisor HOB allocations.
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackSize|0x1000|UINT32|0x00000009
