@@ -1,5 +1,5 @@
 /** @file
-SMM MP service implementation
+SMM MP initialization and synchronization helpers
 
 Copyright (c) 2009 - 2024, Intel Corporation. All rights reserved.<BR>
 Copyright (c) 2017, AMD Incorporated. All rights reserved.<BR>
@@ -65,19 +65,6 @@ SMM_CPU_SEMAPHORES           mSmmCpuSemaphores;
 UINTN                        mSemaphoreSize;
 SPIN_LOCK                    *mPFLock = NULL;
 // SMM_CPU_SYNC_MODE            mCpuSmmSyncMode;
-BOOLEAN        mMachineCheckSupported = FALSE;
-MM_COMPLETION  mSmmStartupThisApToken;
-
-//
-// Processor specified by mPackageFirstThreadIndex[PackageIndex] will do the package-scope register check.
-//
-UINT32  *mPackageFirstThreadIndex = NULL;
-
-EFI_STATUS
-EFIAPI
-ProcedureWrapper (
-  IN     VOID  *Buffer
-  );
 
 /**
   Used for BSP to release all APs.
@@ -97,198 +84,6 @@ ReleaseAllAPs (
       SmmCpuSyncReleaseOneAp (mSmmMpSyncData->SyncContext, Index, gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu);
     }
   }
-}
-
-/**
-  Check whether the index of CPU perform the package level register
-  programming during System Management Mode initialization.
-
-  The index of Processor specified by mPackageFirstThreadIndex[PackageIndex]
-  will do the package-scope register programming.
-
-  @param[in] CpuIndex   Processor Index.
-
-  @retval TRUE  Perform the package level register programming.
-  @retval FALSE Don't perform the package level register programming.
-
-**/
-BOOLEAN
-IsPackageFirstThread (
-  IN UINTN  CpuIndex
-  )
-{
-  UINT32  PackageIndex;
-
-  PackageIndex =  gSmmCpuPrivate->ProcessorInfo[CpuIndex].Location.Package;
-
-  ASSERT (mPackageFirstThreadIndex != NULL);
-
-  //
-  // Set the value of mPackageFirstThreadIndex[PackageIndex].
-  // The package-scope register are checked by the first processor (CpuIndex) in Package.
-  //
-  // If mPackageFirstThreadIndex[PackageIndex] equals to (UINT32)-1, then update
-  // to current CpuIndex. If it doesn't equal to (UINT32)-1, don't change it.
-  //
-  if (mPackageFirstThreadIndex[PackageIndex] == (UINT32)-1) {
-    mPackageFirstThreadIndex[PackageIndex] = (UINT32)CpuIndex;
-  }
-
-  return (BOOLEAN)(mPackageFirstThreadIndex[PackageIndex] == CpuIndex);
-}
-
-/**
-  Returns the Number of SMM Delayed & Blocked & Disabled Thread Count.
-
-  @param[in,out] DelayedCount  The Number of SMM Delayed Thread Count.
-  @param[in,out] BlockedCount  The Number of SMM Blocked Thread Count.
-  @param[in,out] DisabledCount The Number of SMM Disabled Thread Count.
-
-**/
-VOID
-GetSmmDelayedBlockedDisabledCount (
-  IN OUT UINT32  *DelayedCount,
-  IN OUT UINT32  *BlockedCount,
-  IN OUT UINT32  *DisabledCount
-  )
-{
-  UINTN  Index;
-
-  for (Index = 0; Index < mNumberOfCpus; Index++) {
-    if (IsPackageFirstThread (Index)) {
-      if (DelayedCount != NULL) {
-        *DelayedCount += (UINT32)SmmCpuFeaturesGetSmmRegister (Index, SmmRegSmmDelayed);
-      }
-
-      if (BlockedCount != NULL) {
-        *BlockedCount += (UINT32)SmmCpuFeaturesGetSmmRegister (Index, SmmRegSmmBlocked);
-      }
-
-      if (DisabledCount != NULL) {
-        *DisabledCount += (UINT32)SmmCpuFeaturesGetSmmRegister (Index, SmmRegSmmEnable);
-      }
-    }
-  }
-}
-
-/**
-  Checks if all CPUs (except Blocked & Disabled) have checked in for this SMI run
-
-  @retval   TRUE  if all CPUs the have checked in.
-  @retval   FALSE  if at least one Normal AP hasn't checked in.
-
-**/
-BOOLEAN
-AllCpusInSmmExceptBlockedDisabled (
-  VOID
-  )
-{
-  UINT32  BlockedCount;
-  UINT32  DisabledCount;
-
-  BlockedCount  = 0;
-  DisabledCount = 0;
-
-  //
-  // Check to make sure the CPU arrival count is valid and not locked.
-  //
-  ASSERT (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) <= mNumberOfCpus);
-
-  //
-  // Check whether all CPUs in SMM.
-  //
-  if (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) == mNumberOfCpus) {
-    return TRUE;
-  }
-
-  //
-  // Check for the Blocked & Disabled Exceptions Case.
-  //
-  GetSmmDelayedBlockedDisabledCount (NULL, &BlockedCount, &DisabledCount);
-
-  //
-  // The CPU arrival count might be updated by all APs concurrently. The value
-  // can be dynamic changed. If some Aps enter the SMI after the BlockedCount &
-  // DisabledCount check, then the CPU arrival count will be increased, thus
-  // leading the retrieved CPU arrival count + BlockedCount + DisabledCount > mNumberOfCpus.
-  // since the BlockedCount & DisabledCount are local variable, it's ok here only for
-  // the checking of all CPUs In Smm.
-  //
-  if (SmmCpuSyncGetArrivedCpuCount (mSmmMpSyncData->SyncContext) + BlockedCount + DisabledCount >= mNumberOfCpus) {
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-/**
-  Has OS enabled Lmce in the MSR_IA32_MCG_EXT_CTL
-
-  @retval TRUE     Os enable lmce.
-  @retval FALSE    Os not enable lmce.
-
-**/
-BOOLEAN
-IsLmceOsEnabled (
-  VOID
-  )
-{
-  MSR_IA32_MCG_CAP_REGISTER          McgCap;
-  MSR_IA32_FEATURE_CONTROL_REGISTER  FeatureCtrl;
-  MSR_IA32_MCG_EXT_CTL_REGISTER      McgExtCtrl;
-
-  McgCap.Uint64 = AsmReadMsr64 (MSR_IA32_MCG_CAP);
-  if (McgCap.Bits.MCG_LMCE_P == 0) {
-    return FALSE;
-  }
-
-  FeatureCtrl.Uint64 = AsmReadMsr64 (MSR_IA32_FEATURE_CONTROL);
-  if (FeatureCtrl.Bits.LmceOn == 0) {
-    return FALSE;
-  }
-
-  McgExtCtrl.Uint64 = AsmReadMsr64 (MSR_IA32_MCG_EXT_CTL);
-  return (BOOLEAN)(McgExtCtrl.Bits.LMCE_EN == 1);
-}
-
-/**
-  Return if Local machine check exception signaled.
-
-  Indicates (when set) that a local machine check exception was generated. This indicates that the current machine-check event was
-  delivered to only the logical processor.
-
-  @retval TRUE    LMCE was signaled.
-  @retval FALSE   LMCE was not signaled.
-
-**/
-BOOLEAN
-IsLmceSignaled (
-  VOID
-  )
-{
-  MSR_IA32_MCG_STATUS_REGISTER  McgStatus;
-
-  McgStatus.Uint64 = AsmReadMsr64 (MSR_IA32_MCG_STATUS);
-  return (BOOLEAN)(McgStatus.Bits.LMCE_S == 1);
-}
-
-/**
-  Replace OS MTRR's with SMI MTRR's.
-
-  @param    CpuIndex             Processor Index
-
-**/
-VOID
-ReplaceOSMtrrs (
-  IN      UINTN  CpuIndex
-  )
-{
-  SmmCpuFeaturesDisableSmrr ();
-
-  //
-  // Replace all MTRRs registers
-  //
-  MtrrSetAllMtrrs (&gSmiMtrrs);
 }
 
 /**
@@ -346,81 +141,6 @@ IsPresentAp (
 {
   return ((CpuIndex != gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu) &&
           *(mSmmMpSyncData->CpuData[CpuIndex].Present));
-}
-
-/**
-  Clean up the status flags used during executing the procedure.
-
-  @param   CpuIndex      The AP index which calls this function.
-
-**/
-VOID
-ReleaseToken (
-  IN UINTN  CpuIndex
-  )
-{
-  PROCEDURE_TOKEN  *Token;
-
-  Token = mSmmMpSyncData->CpuData[CpuIndex].Token;
-
-  if (InterlockedDecrement (&Token->RunningApCount) == 0) {
-    ReleaseSpinLock (Token->SpinLock);
-  }
-
-  mSmmMpSyncData->CpuData[CpuIndex].Token = NULL;
-}
-
-/**
-  Free the tokens in the maintained list.
-
-**/
-VOID
-ResetTokens (
-  VOID
-  )
-{
-  //
-  // Reset the FirstFreeToken to the beginning of token list upon exiting SMI.
-  //
-  gSmmCpuPrivate->FirstFreeToken = GetFirstNode (&gSmmCpuPrivate->TokenList);
-}
-
-/**
-  Checks whether the input token is the current used token.
-
-  @param[in]  Token      This parameter describes the token that was passed into DispatchProcedure or
-                         BroadcastProcedure.
-
-  @retval TRUE           The input token is the current used token.
-  @retval FALSE          The input token is not the current used token.
-**/
-BOOLEAN
-IsTokenInUse (
-  IN SPIN_LOCK  *Token
-  )
-{
-  LIST_ENTRY       *Link;
-  PROCEDURE_TOKEN  *ProcToken;
-
-  if (Token == NULL) {
-    return FALSE;
-  }
-
-  Link = GetFirstNode (&gSmmCpuPrivate->TokenList);
-  //
-  // Only search used tokens.
-  //
-  while (Link != gSmmCpuPrivate->FirstFreeToken) {
-    ProcToken = PROCEDURE_TOKEN_FROM_LINK (Link);
-
-    if (ProcToken->SpinLock == Token) {
-      return TRUE;
-    }
-
-    Link = GetNextNode (&gSmmCpuPrivate->TokenList, Link);
-  }
-
-  return FALSE;
 }
 
 /**
@@ -520,31 +240,6 @@ GetFreeToken (
   AcquireSpinLock (NewToken->SpinLock);
 
   return NewToken;
-}
-
-/**
-  Checks status of specified AP.
-
-  This function checks whether the specified AP has finished the task assigned
-  by StartupThisAP(), and whether timeout expires.
-
-  @param[in]  Token             This parameter describes the token that was passed into DispatchProcedure or
-                                BroadcastProcedure.
-
-  @retval EFI_SUCCESS           Specified AP has finished task assigned by StartupThisAPs().
-  @retval EFI_NOT_READY         Specified AP has not finished task and timeout has not expired.
-**/
-EFI_STATUS
-IsApReady (
-  IN SPIN_LOCK  *Token
-  )
-{
-  if (AcquireSpinLockOrFail (Token)) {
-    ReleaseSpinLock (Token);
-    return EFI_SUCCESS;
-  }
-
-  return EFI_NOT_READY;
 }
 
 /**
@@ -746,47 +441,6 @@ CpuSmmDebugExit (
 }
 
 /**
-  Initialize PackageBsp Info. Processor specified by mPackageFirstThreadIndex[PackageIndex]
-  will do the package-scope register programming. Set default CpuIndex to (UINT32)-1, which
-  means not specified yet.
-
-**/
-VOID
-InitPackageFirstThreadIndexInfo (
-  VOID
-  )
-{
-  UINT32  Index;
-  UINT32  PackageId;
-  UINT32  PackageCount;
-
-  PackageId    = 0;
-  PackageCount = 0;
-
-  //
-  // Count the number of package, set to max PackageId + 1
-  //
-  for (Index = 0; Index < mNumberOfCpus; Index++) {
-    if (PackageId < gSmmCpuPrivate->ProcessorInfo[Index].Location.Package) {
-      PackageId = gSmmCpuPrivate->ProcessorInfo[Index].Location.Package;
-    }
-  }
-
-  PackageCount = PackageId + 1;
-
-  mPackageFirstThreadIndex = (UINT32 *)AllocatePool (sizeof (UINT32) * PackageCount);
-  ASSERT (mPackageFirstThreadIndex != NULL);
-  if (mPackageFirstThreadIndex == NULL) {
-    return;
-  }
-
-  //
-  // Set default CpuIndex to (UINT32)-1, which means not specified yet.
-  //
-  SetMem32 (mPackageFirstThreadIndex, sizeof (UINT32) * PackageCount, (UINT32)-1);
-}
-
-/**
   Allocate buffer for SpinLock and Wrapper function buffer.
 
 **/
@@ -859,8 +513,7 @@ InitializeSmmCpuSemaphores (
   SemaphoreAddr                         += ProcessorCount * SemaphoreSize;
   mSmmCpuSemaphores.SemaphoreCpu.Present = (BOOLEAN *)SemaphoreAddr;
 
-  mPFLock                       = mSmmCpuSemaphores.SemaphoreGlobal.PFLock;
-  mConfigSmmCodeAccessCheckLock = mSmmCpuSemaphores.SemaphoreGlobal.CodeAccessCheckLock;
+  mPFLock = mSmmCpuSemaphores.SemaphoreGlobal.PFLock;
 
   mSemaphoreSize = SemaphoreSize;
 }
@@ -956,15 +609,8 @@ InitializeMpServiceData (
   UINTN                           Index;
   UINT8                           *GdtTssTables;
   UINTN                           GdtTableStepSize;
-  CPUID_VERSION_INFO_EDX          RegEdx;
   UINT32                          MaxExtendedFunction;
   CPUID_VIR_PHY_ADDRESS_SIZE_EAX  VirPhyAddressSize;
-
-  //
-  // Determine if this CPU supports machine check
-  //
-  AsmCpuid (CPUID_VERSION_INFO, NULL, NULL, NULL, &RegEdx.Uint32);
-  mMachineCheckSupported = (BOOLEAN)(RegEdx.Bits.MCA == 1);
 
   //
   // Allocate memory for all locks and semaphores
