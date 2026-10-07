@@ -348,7 +348,7 @@ The changes below assume that the platform has already integrated the C based MM
 
   # Add the following components
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
-  SeaPkg/MmiEntrySea/MmiEntrySeaV5.inf
+  SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf
   MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
 ```
 
