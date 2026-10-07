@@ -148,10 +148,6 @@ EnableNxe:
     rdmsr
     or      ax, MSR_EFER_XD            ; enable NXE
     wrmsr
-    jmp     @XdDone
-@SkipXd:
-    sub     esp, 8
-@XdDone:
 
 ; Switch into @StmLongMode
     push    LONG_MODE_CS                ; push cs hardcore here
