@@ -369,7 +369,6 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
   # INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
   # INF MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   # INF MmSupervisorPkg/Core/MmSupervisorCore.inf
-  # INF SeaPkg/MmiEntrySea/MmiEntrySeaV5.inf
 
   INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   INF MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
