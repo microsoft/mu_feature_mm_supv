@@ -16,7 +16,7 @@
 
 [Defines]
   INF_VERSION                    = 0x0001001A
-  BASE_NAME                      = MmEntrySeaV5
+  BASE_NAME                      = MmiEntrySeaV5
   FILE_GUID                      = 82DFF9B5-CFAC-4AA9-844A-85D60ACDE8F6
   MODULE_TYPE                    = USER_DEFINED
   VERSION_STRING                 = 1.0
