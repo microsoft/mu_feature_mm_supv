@@ -24,13 +24,6 @@ CPU_HOT_PLUG_DATA  mCpuHotPlugData = {
   0                                             // SmrrSize
 };
 
-///
-/// Handle for the SMM CPU Protocol
-///
-EFI_HANDLE  mSmmCpuHandle = NULL;
-
-EFI_CPU_INTERRUPT_HANDLER  mExternalVectorTable[EXCEPTION_VECTOR_NUMBER];
-
 volatile BOOLEAN  *mSmmInitialized = NULL;
 UINT32            mBspApicId       = 0;
 
@@ -38,24 +31,15 @@ UINT32            mBspApicId       = 0;
 // SMM stack information
 //
 UINTN  mSmmStackArrayBase;
-UINTN  mSmmStackArrayEnd;
 UINTN  mSmmStackSize;
 
 UINTN  mSmmCpl3StackArrayBase;
-#if FeaturePcdGet (PcdMmSupervisorTestEnable)
-UINTN  mSmmCpl3StackArrayEnd;
-#endif
 
 UINTN    mSmmShadowStackSize;
 BOOLEAN  mCetSupported = TRUE;
 
 UINTN  mMaxNumberOfCpus = 0;
 UINTN  mNumberOfCpus    = 0;
-
-//
-// SMM ready to lock flag
-//
-BOOLEAN  mSmmReadyToLock = FALSE;
 
 //
 // Global used to cache PCD for SMM Code Access Check enable
@@ -68,44 +52,15 @@ BOOLEAN  mSmmCodeAccessCheckEnable = FALSE;
 UINT64  mAddressEncMask = 0;
 
 //
-// Spin lock used to serialize setting of SMM Code Access Check feature
-//
-SPIN_LOCK  *mConfigSmmCodeAccessCheckLock = NULL;
-
-//
 // Saved SMM ranges information
 //
 EFI_SMRAM_DESCRIPTOR  *mSmmCpuSmramRanges;
 UINTN                 mSmmCpuSmramRangeCount;
-//
-// MSCHANGE [BEGIN] - Add flag to enable "test mode" for the SMM protections.
-//                    NOTE: "Test mode" will only be enabled in DEBUG builds.
-// Flag to indicate exception handling should be in test mode.
-// This will cause exceptions to reset the system and/or log
-// additional telemetry.
-//
 
 // Driver-wide global variable to hold CR3 inside SMM
 UINT32  mSmmCr3;
 
-/**
-  Enable exception handling test mode.
-
-  NOTE: This should only work on debug builds, otherwise return EFI_UNSUPPORTED.
-
-  @retval EFI_SUCCESS            Test mode enabled.
-  @retval EFI_UNSUPPORTED        Test mode could not be enabled.
-
-**/
-EFI_STATUS
-EFIAPI
-// MU_CHANGE
-EnableSmmExceptionTestMode (
-  VOID
-  );
-
 BOOLEAN  mSmmRebootOnException = TRUE;
-// MSCHANGE [END]
 
 /**
   Initialize IDT to setup exception handlers for SMM.
@@ -155,91 +110,6 @@ InitializeSmmIdt (
 }
 
 /**
-  Search module name by input IP address and output it.
-
-  @param CallerIpAddress   Caller instruction pointer.
-
-**/
-VOID
-DumpModuleInfoByIp (
-  IN  UINTN  CallerIpAddress
-  )
-{
-  UINTN  Pe32Data;
-  VOID   *PdbPointer;
-
-  //
-  // Find Image Base
-  //
-  Pe32Data = PeCoffSearchImageBase (CallerIpAddress);
-  if (Pe32Data != 0) {
-    DEBUG ((DEBUG_ERROR, "It is invoked from the instruction before IP(0x%p)", (VOID *)CallerIpAddress));
-    PdbPointer = PeCoffLoaderGetPdbPointer ((VOID *)Pe32Data);
-    if (PdbPointer != NULL) {
-      DEBUG ((DEBUG_ERROR, " in module (%a)\n", PdbPointer));
-    }
-  }
-}
-
-/**
-  Initialize SMM environment.
-
-**/
-VOID
-EFIAPI
-InitializeSmm (
-  VOID
-  )
-{
-  UINT32   ApicId;
-  UINTN    Index;
-  BOOLEAN  IsBsp;
-
-  ApicId = GetApicId ();
-
-  IsBsp = (BOOLEAN)(mBspApicId == ApicId);
-
-  ASSERT (mNumberOfCpus <= mMaxNumberOfCpus);
-
-  for (Index = 0; Index < mNumberOfCpus; Index++) {
-    if (ApicId == (UINT32)gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId) {
-      PERF_CODE (
-        MpPerfBegin (Index, SMM_MP_PERF_PROCEDURE_ID (InitializeSmm));
-        );
-      //
-      // Initialize SMM specific features on the currently executing CPU
-      //
-      SmmCpuFeaturesInitializeProcessor (
-        Index,
-        IsBsp,
-        gSmmCpuPrivate->ProcessorInfo,
-        &mCpuHotPlugData
-        );
-
-      if (IsBsp) {
-        //
-        // Call memory management hook function to set all cached guard pages during initialization.
-        // This is only applicable to the first time in MMI, since all page allocation/free will
-        // set/unset the guard pages on the fly.
-        //
-        MmEntryPointMemoryManagementHook ();
-
-        // Set up the code access check before any handler was iterated
-        ConfigSmmCodeAccessCheck ();
-      }
-
-      PERF_CODE (
-        MpPerfEnd (Index, SMM_MP_PERF_PROCEDURE_ID (InitializeSmm));
-        );
-
-      return;
-    }
-  }
-
-  ASSERT (FALSE);
-}
-
-/**
   Issue SMI IPI (All Excluding Self SMM IPI + BSP SMM IPI) to execute first SMI init.
 **/
 VOID
@@ -282,16 +152,7 @@ SmmInitializeMemoryAttributesTable (
   );
 
 /**
-  SMM Ready To Lock event notification handler.
-
-  The CPU S3 data is copied to SMRAM for security and mSmmReadyToLock is set to
-  perform additional lock actions that must be performed from SMM on the next SMI.
-
-  @param[in] Protocol   Points to the protocol's unique identifier.
-  @param[in] Interface  Points to the interface instance.
-  @param[in] Handle     The handle on which the interface was installed.
-
-  @retval EFI_SUCCESS   Notification handler runs successfully.
+  Apply the initial memory protections before handing off to the runtime.
  **/
 VOID
 EFIAPI
@@ -920,7 +781,6 @@ SetupSmiEntryExit (
   ASSERT (Stacks != NULL);
   ZeroMem (Stacks, gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * (mSmmStackSize + mSmmShadowStackSize));
   mSmmStackArrayBase = (UINTN)Stacks;
-  mSmmStackArrayEnd  = mSmmStackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * (mSmmStackSize + mSmmShadowStackSize) - 1;
 
   DEBUG ((DEBUG_INFO, "Stacks                   - 0x%x\n", Stacks));
   DEBUG ((DEBUG_INFO, "mSmmStackSize            - 0x%x\n", mSmmStackSize));
@@ -942,9 +802,6 @@ SetupSmiEntryExit (
   }
 
   mSmmCpl3StackArrayBase = (UINTN)Cpl3Stacks;
- #if FeaturePcdGet (PcdMmSupervisorTestEnable)
-  mSmmCpl3StackArrayEnd = mSmmCpl3StackArrayBase + gSmmCpuPrivate->SmmCoreEntryContext.NumberOfCpus * mSmmStackSize - 1;
- #endif
 
   //
   // Initialize IDT
@@ -1140,178 +997,3 @@ FindSmramInfo (
 
   DEBUG ((DEBUG_INFO, "SMRR Base: 0x%x, SMRR Size: 0x%x\n", *SmrrBase, *SmrrSize));
 }
-
-/**
-Configure SMM Code Access Check feature on an AP.
-SMM Feature Control MSR will be locked after configuration.
-
-@param[in,out] Buffer  Pointer to private data buffer.
-**/
-VOID
-EFIAPI
-ConfigSmmCodeAccessCheckOnCurrentProcessor (
-  IN OUT VOID  *Buffer
-  )
-{
-  UINTN   CpuIndex;
-  UINT64  SmmFeatureControlMsr;
-  UINT64  NewSmmFeatureControlMsr;
-
-  //
-  // Retrieve the CPU Index from the context passed in
-  //
-  CpuIndex = *(UINTN *)Buffer;
-
-  //
-  // Get the current SMM Feature Control MSR value
-  //
-  SmmFeatureControlMsr = SmmCpuFeaturesGetSmmRegister (CpuIndex, SmmRegFeatureControl);
-
-  //
-  // Compute the new SMM Feature Control MSR value
-  //
-  NewSmmFeatureControlMsr = SmmFeatureControlMsr;
-  if (mSmmCodeAccessCheckEnable) {
-    NewSmmFeatureControlMsr |= SMM_CODE_CHK_EN_BIT;
-    if (FeaturePcdGet (PcdCpuSmmFeatureControlMsrLock)) {
-      NewSmmFeatureControlMsr |= SMM_FEATURE_CONTROL_LOCK_BIT;
-    }
-  }
-
-  //
-  // Only set the SMM Feature Control MSR value if the new value is different than the current value
-  //
-  if (NewSmmFeatureControlMsr != SmmFeatureControlMsr) {
-    SmmCpuFeaturesSetSmmRegister (CpuIndex, SmmRegFeatureControl, NewSmmFeatureControlMsr);
-  }
-
-  //
-  // Release the spin lock user to serialize the updates to the SMM Feature Control MSR
-  //
-  ReleaseSpinLock (mConfigSmmCodeAccessCheckLock);
-}
-
-/**
-Configure SMM Code Access Check feature for all processors.
-SMM Feature Control MSR will be locked after configuration.
-**/
-VOID
-ConfigSmmCodeAccessCheck (
-  VOID
-  )
-{
-  UINTN       Index;
-  EFI_STATUS  Status;
-
-  PERF_FUNCTION_BEGIN ();
-
-  //
-  // Check to see if the Feature Control MSR is supported on this CPU
-  //
-  Index = gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu;
-  if (!SmmCpuFeaturesIsSmmRegisterSupported (Index, SmmRegFeatureControl)) {
-    mSmmCodeAccessCheckEnable = FALSE;
-    PERF_FUNCTION_END ();
-    return;
-  }
-
-  //
-  // Check to see if the CPU supports the SMM Code Access Check feature
-  // Do not access this MSR unless the CPU supports the SmmRegFeatureControl
-  //
-  if ((AsmReadMsr64 (EFI_MSR_SMM_MCA_CAP) & SMM_CODE_ACCESS_CHK_BIT) == 0) {
-    mSmmCodeAccessCheckEnable = FALSE;
-    PERF_FUNCTION_END ();
-    return;
-  }
-
-  //
-  // Initialize the lock used to serialize the MSR programming in BSP and all APs
-  //
-  InitializeSpinLock (mConfigSmmCodeAccessCheckLock);
-
-  //
-  // Acquire Config SMM Code Access Check spin lock.  The BSP will release the
-  // spin lock when it is done executing ConfigSmmCodeAccessCheckOnCurrentProcessor().
-  //
-  AcquireSpinLock (mConfigSmmCodeAccessCheckLock);
-
-  //
-  // Enable SMM Code Access Check feature on the BSP.
-  //
-  ConfigSmmCodeAccessCheckOnCurrentProcessor (&Index);
-
-  //
-  // Enable SMM Code Access Check feature for the APs.
-  //
-  for (Index = 0; Index < gMmCoreMmst.NumberOfCpus; Index++) {
-    if (Index != gSmmCpuPrivate->SmmCoreEntryContext.CurrentlyExecutingCpu) {
-      if (gSmmCpuPrivate->ProcessorInfo[Index].ProcessorId == INVALID_APIC_ID) {
-        //
-        // If this processor does not exist
-        //
-        continue;
-      }
-
-      //
-      // Acquire Config SMM Code Access Check spin lock.  The AP will release the
-      // spin lock when it is done executing ConfigSmmCodeAccessCheckOnCurrentProcessor().
-      //
-      AcquireSpinLock (mConfigSmmCodeAccessCheckLock);
-
-      //
-      // Call SmmStartupThisAp() to enable SMM Code Access Check on an AP.
-      //
-      Status = gMmCoreMmst.MmStartupThisAp (ConfigSmmCodeAccessCheckOnCurrentProcessor, Index, &Index);
-      ASSERT_EFI_ERROR (Status);
-
-      //
-      // Wait for the AP to release the Config SMM Code Access Check spin lock.
-      //
-      while (!AcquireSpinLockOrFail (mConfigSmmCodeAccessCheckLock)) {
-        CpuPause ();
-      }
-
-      //
-      // Release the Config SMM Code Access Check spin lock.
-      //
-      ReleaseSpinLock (mConfigSmmCodeAccessCheckLock);
-    }
-  }
-
-  PERF_FUNCTION_END ();
-}
-
-// MSCHANGE [BEGIN] - Add flag to enable "test mode" for the SMM protections.
-//                    NOTE: "Test mode" will only be enabled in DEBUG builds.
-
-/**
-  Enable exception handling test mode.
-
-  NOTE: This should only work on debug builds, otherwise return EFI_UNSUPPORTED.
-
-  @retval EFI_SUCCESS            Test mode enabled.
-  @retval EFI_UNSUPPORTED        Test mode could not be enabled.
-
-**/
-EFI_STATUS
-EFIAPI
-// MU_CHANGE
-EnableSmmExceptionTestMode (
-  VOID
-  )
-{
-  EFI_STATUS  Status = EFI_UNSUPPORTED;
-
-  if (FeaturePcdGet (PcdSmmExceptionTestModeSupport)) {
-    // MU_CHANGE START
-    DEBUG ((DEBUG_INFO, "%a - Test mode enabled!\n", __func__));
-    // MU_CHANGE END
-    mSmmRebootOnException = TRUE;
-    Status                = EFI_SUCCESS;
-  }
-
-  return Status;
-}
-
-// MSCHANGE [END]

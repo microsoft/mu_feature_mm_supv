@@ -32,32 +32,15 @@ MmCoreFfsFindMmDriver (
   );
 
 /**
-  This is the main Dispatcher for MM and it exits when there are no more
-  drivers to run. Drain the mScheduledQueue and load and start a PE
-  image for each driver. Search the mDiscoveredList to see if any driver can
-  be placed on the mScheduledQueue. If no drivers are placed on the
-  mScheduledQueue exit the function.
+  Load every discovered MM driver without invoking its entry point.
 
-  @retval EFI_SUCCESS           All of the MM Drivers that could be dispatched
-                                have been run and the MM Entry Point has been
-                                registered.
-  @retval EFI_NOT_READY         The MM Driver that registered the MM Entry Point
-                                was just dispatched.
-  @retval EFI_NOT_FOUND         There are no MM Drivers available to be dispatched.
-  @retval EFI_ALREADY_STARTED   The MM Dispatcher is already running
+  @retval EFI_SUCCESS           All discovered MM drivers have been loaded.
 
 **/
 EFI_STATUS
 MmLoadButNotDispatch (
   VOID
   );
-
-// TODO: This should not be here.
-#include "Services/MpService/MpService.h"
-extern SMM_DISPATCHER_MP_SYNC_DATA  *mSmmMpSyncData;
-extern SMM_CPU_PRIVATE_DATA         *gSmmCpuPrivate;
-extern UINTN                        mSmmMpSyncDataSize;
-extern LIST_ENTRY                   mDiscoveredList;
 
 EFI_STATUS
 EFIAPI
@@ -105,7 +88,6 @@ EFI_MM_SYSTEM_TABLE  gMmCoreMmst = {
 
 EFI_MEMORY_DESCRIPTOR  mMmSupervisorAccessBuffer[MM_OPEN_BUFFER_CNT];
 
-EFI_SYSTEM_TABLE                  *mEfiSystemTable;
 UINTN                             mMmramRangeCount;
 EFI_MMRAM_DESCRIPTOR              *mMmramRanges;
 EFI_MM_DRIVER_ENTRY               *mMmCoreDriverEntry;
@@ -114,37 +96,6 @@ BOOLEAN                           mMmReadyToLockDone          = FALSE;
 BOOLEAN                           mCoreInitializationComplete = FALSE;
 VOID                              *mInternalCommBufferCopy[MM_OPEN_BUFFER_CNT];
 SMM_SUPV_SECURE_POLICY_DATA_V1_0  *FirmwarePolicy = NULL;
-
-/**
-  Place holder function until all the MM System Table Service are available.
-
-  Note: This function is only used by MMRAM invocation.  It is never used by DXE invocation.
-
-  @param  Arg1                   Undefined
-  @param  Arg2                   Undefined
-  @param  Arg3                   Undefined
-  @param  Arg4                   Undefined
-  @param  Arg5                   Undefined
-
-  @return EFI_NOT_AVAILABLE_YET
-
-**/
-EFI_STATUS
-EFIAPI
-MmEfiNotAvailableYetArg5 (
-  UINTN  Arg1,
-  UINTN  Arg2,
-  UINTN  Arg3,
-  UINTN  Arg4,
-  UINTN  Arg5
-  )
-{
-  //
-  // This function should never be executed.  If it does, then the architectural protocols
-  // have not been designed correctly.
-  //
-  return EFI_NOT_AVAILABLE_YET;
-}
 
 /**
 Function to extract common buffers to be used for both user handlers and supervisor handlers.
