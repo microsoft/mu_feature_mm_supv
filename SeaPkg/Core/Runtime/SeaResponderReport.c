@@ -636,7 +636,7 @@ SeaResponderReport (
   }
 
   if (MmiEntryStructHdr->HeaderVersion <= MMI_ENTRY_STRUCT_V4) {
-    // For header version <= 0x0004, no additional checks are needed for the IDTR.
+    // For header version <= 0x0004, the IDTR should be inside the MM supervisor region.
     Status = Range1InsideRange2 (Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize, &IsInside);
     if (EFI_ERROR (Status) || !IsInside) {
       DEBUG ((DEBUG_ERROR, "%a MM hander IDT 0x%p: 0x%x does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR], sizeof (IA32_DESCRIPTOR), MmSupervisorBase, MmSupervisorImageSize));
