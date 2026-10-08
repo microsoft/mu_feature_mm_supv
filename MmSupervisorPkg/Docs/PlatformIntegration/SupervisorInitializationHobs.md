@@ -15,7 +15,7 @@ runtime HOB handling or guarantee how an external runtime validates these record
 | [DispatcherInit.c](../../Core/Dispatcher/DispatcherInit.c) | Records discovered drivers and their DEPEX, then loads drivers without dispatching them. |
 | [SupvInitHobs.c](../../Core/Hob/SupvInitHobs.c) | Copies retained input HOBs and creates the runtime handoff records. |
 | [SupvInitHobs.h](../../Core/Hob/SupvInitHobs.h) | Defines the builder state and construction APIs. |
-| [PassDown.h](../../Include/Guid/PassDown.h) | Defines the revisioned initialization-resource payload. |
+| [PassDown.h](../../Include/Guid/PassDown.h) | Defines the revision'd initialization-resource payload. |
 | [DepexStruc.h](../../Include/Guid/DepexStruc.h) | Defines the per-driver dependency-expression payload. |
 | [MmSupervisorPkg.dec](../../MmSupervisorPkg.dec) | Declares the GUIDs identifying the new records and runtime modules. |
 
