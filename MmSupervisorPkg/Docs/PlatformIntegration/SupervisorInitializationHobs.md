@@ -194,17 +194,59 @@ MMRAM. It synthesizes the region flags rather than copying all input flags.
 `IsSupervisorPage` is logged but is not encoded in the output descriptors. The final MMRAM HOB describes allocation
 occupancy; it is not a complete privilege-ownership or page-permission policy.
 
-## Capacity calculation and current limitation
+## Capacity calculation and platform reserve
 
-The current initial reservation is:
+The initial reservation uses a platform-configurable fixed reserve:
 
 ```text
-capacity = AlignUp(inbound_list_bytes + early_mmram_hob_bytes, 4096) + 4096
+slack_bytes = FixedPcdGet32(PcdMmSupervisorHobSlackSize)
+capacity = AlignUp(inbound_list_bytes + early_mmram_hob_bytes, 4096) + slack_bytes
 ```
 
 `inbound_list_bytes` includes the original end marker and MMRAM HOBs, even though those records are not copied.
-`early_mmram_hob_bytes` is calculated before subsequent initialization allocations. The additional page and alignment
-slack are therefore estimates, not an exact sizing pass over every output record.
+`early_mmram_hob_bytes` is calculated before subsequent initialization allocations. The reserve covers the generated
+module/DEPEX records, pass-down record, end marker, and growth from the early memory map to the final map. It is a
+platform capacity choice, not an exact sizing pass, and does not require repeating discovery or image loading.
+
+### Configuring the reserve
+
+The PCD is declared in [MmSupervisorPkg.dec](../../MmSupervisorPkg.dec) and consumed by
+[MmSupervisorInit.inf](../../Core/MmSupervisorInit.inf):
+
+| Property | Value |
+| --- | --- |
+| Name | `gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackSize` |
+| Access method | `FixedAtBuild` |
+| Datum type | `UINT32` |
+| Units | Bytes, not pages |
+| Default | `0x1000` bytes (4 KiB, one page) |
+| Scope | Extra HOB-list capacity for `MmSupervisorInit`, not the total buffer size or the legacy C supervisor |
+
+For example, a platform DSC can reserve an additional 16 KiB:
+
+```ini
+[PcdsFixedAtBuild]
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackSize|0x4000
+```
+
+This example is not a recommended minimum for every platform. Choose sufficient headroom for the supported driver
+set, dependency expressions, CPU resources, and allocation fragmentation. Increasing the reserve consumes additional
+MMRAM; the buffer is not shrunk after construction.
+
+Prefer a multiple of `EFI_PAGE_SIZE` so that the tracked capacity matches the allocated page extent. The current
+implementation adds the PCD after aligning the initial estimate. For a non-page-multiple value, the allocator rounds
+up to whole pages, but the builder still limits writes to `mMmHobSize`.
+
+Validate the chosen value across supported configurations using the finalization log:
+
+```text
+MM Supervisor Hob list complete: ... bytes used of ..., ... spare
+```
+
+Retain headroom for future additions and recheck it when the driver set or initialization allocations change.
+The append helpers continue to enforce the capacity and fail initialization if it is exhausted.
+
+### Output-size reference
 
 For the current X64 layouts, define:
 
@@ -222,21 +264,13 @@ required = C
          + 8                                   # end marker
 ```
 
-The current reservation does not explicitly budget the module/DEPEX records, pass-down record, or growth from the early
-map to the final map. For example, 60 drivers with 32-byte DEPEX expressions require `60 * (72 + 80) = 9,120` bytes
-for their records alone. An 8 KiB reservation cannot hold those records, even before the other output is considered.
-This is an illustrative capacity case, not a fixed maximum supported driver count.
+This formula explains what consumes the reserved capacity; the builder does not perform a separate pass to compute
+it. For example, 60 drivers with 32-byte DEPEX expressions consume `60 * (72 + 80) = 9,120` bytes for their records
+alone. The platform reserve must accommodate the supported output, rather than an arbitrary number of drivers.
 
-The append helpers check available space, so this limitation causes an initialization failure rather than demonstrating
-a buffer overflow. Increasing the extra-page constant may accommodate a particular platform but does not establish a
-general bound.
-
-When changing the sizing strategy:
-
-- Budget known module, DEPEX, pass-down, and termination bytes explicitly using the same alignment as the writer.
-- Account for memory-map growth caused by the HOB allocation and later initialization work.
-- Preserve the published address. Resizing after entry installation requires updating every entry's HOB pointer.
-- Regenerate the allocation map if a reservation change alters MMRAM allocations.
+The allocation address remains stable after it is embedded in the entry stubs. The final MMRAM snapshot is generated
+after initialization allocations, including the HOB allocation itself, so a larger build-time reserve is reflected
+in that snapshot without introducing runtime resizing.
 
 `PrepareRuntimeMmramHob` also has a sizing-query mode: with `Cursor == 0`, it returns `EFI_BUFFER_TOO_SMALL` and puts
 the required size in `Remaining`. On a capacity error it likewise overwrites `Remaining` with the required size.
