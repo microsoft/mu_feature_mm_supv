@@ -245,7 +245,7 @@ That error result must not be treated as the normal builder's remaining-capacity
 ## Handoff, lifetime, and validation
 
 The [entry installer](../../../SeaPkg/Library/SmmCpuFeaturesLib/SmmStm.c) writes `mMmHobStart` into
-`FIXUP64_HOB_START` for the V5 entry format. The [X64 entry stub](../../../SeaPkg/MmiEntrySea/MmiEntrySea.nasmb) passes:
+`FIXUP64_HOB_START` for the V5 entry format. The [X64 entry stub](../../../SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.nasmb) passes:
 
 - `RCX`: CPU index.
 - `RDX`: HOB-list base.
