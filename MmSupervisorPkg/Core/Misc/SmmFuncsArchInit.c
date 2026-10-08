@@ -10,23 +10,17 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 #include <Library/BaseLib.h>
 #include <Library/DebugLib.h>
-#include <Library/PanicLib.h>
 
 #include "Mem/Mem.h"
 #include "Relocate/Relocate.h"
 
 EFI_PHYSICAL_ADDRESS  mGdtBuffer;
 UINTN                 mGdtBufferSize;
-UINTN                 mGdtStepSize;
 
 extern BOOLEAN  mCetSupported;
 
 //
-// CET shadow-stack patch addresses computed by InitShadowStack and consumed by
-// SmramSaveState.c.  Defined here (zero-initialized by the loader) so that both
-// the runtime supervisor (which writes them in InitShadowStack) and the init
-// driver (which never writes them but reads them via Init's SmramSaveState.c)
-// resolve a single storage location at link time.
+// Zero-initialized CET fixup storage consumed by the SMI-handler installation library.
 //
 UINT32  mCetPl0Ssp;
 UINT32  mCetInterruptSsp;
@@ -86,7 +80,6 @@ InitGdt (
   ASSERT (GdtTssTables != NULL);
   mGdtBuffer       = (UINTN)GdtTssTables;
   GdtTableStepSize = GdtTssTableSize;
-  mGdtStepSize     = GdtTssTableSize;
 
   for (Index = 0; Index < mNumberOfCpus; Index++) {
     CopyMem (GdtTssTables + GdtTableStepSize * Index, (VOID *)(UINTN)gcSmiGdtr.Base, gcSmiGdtr.Limit + 1 + TSS_SIZE);
@@ -117,21 +110,4 @@ InitGdt (
 
   *GdtStepSize = GdtTableStepSize;
   return GdtTssTables;
-}
-
-/**
-  Initialize the shadow stack related data structure.
-
-  @param CpuIndex     The index of CPU.
-  @param ShadowStack  The bottom of the shadow stack for this CPU.
-**/
-VOID
-InitShadowStack (
-  IN UINTN  CpuIndex,
-  IN VOID   *ShadowStack
-  )
-{
-  if ((PcdGet32 (PcdControlFlowEnforcementPropertyMask) != 0) && mCetSupported) {
-    PANIC ("Shadow Stack is not supported in SMM currently!!!\n");
-  }
 }
