@@ -163,6 +163,7 @@ CONST TXT_PROCESSOR_SMM_DESCRIPTOR  mPsdTemplate = {
 //
 // The IDTR gets its own page, shared by all CPUs, so it can be made read-only at ready-to-lock.
 //
+IA32_DESCRIPTOR  gStmSmiHandlerIdtr;
 IA32_DESCRIPTOR  *mGdtrPtr;
 
 //
@@ -503,15 +504,6 @@ SmmCpuFeaturesInstallSmiHandler (
   tSmiStack = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
   DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));  
 
-  SmiHandlerIdtrPtr = (IA32_DESCRIPTOR *)MmGetSmiHandlerIdtrAddress ();
-  if (SmiHandlerIdtrPtr->Base == 0) {
-    SmiHandlerIdtrPtr->Base  = IdtBase;
-    SmiHandlerIdtrPtr->Limit = (UINT16)(IdtSize - 1);
-  } else {
-    ASSERT (SmiHandlerIdtrPtr->Base == IdtBase);
-    ASSERT (SmiHandlerIdtrPtr->Limit == (UINT16)(IdtSize - 1));
-  }
-
   //
   // Set the value at the top of the CPU stack to the CPU Index
   //
@@ -538,6 +530,20 @@ SmmCpuFeaturesInstallSmiHandler (
   SmiEntryStructHdrAddr = (UINT32)(SmBase + SMM_HANDLER_OFFSET + mMmiEntrySize - sizeof (UINT32) - WholeStructSize);
   SmiEntryStructHdrPtr  = (PER_CORE_MMI_ENTRY_STRUCT_HDR *)(UINTN)(SmiEntryStructHdrAddr);
 
+  if (SmiEntryStructHdrPtr->HeaderVersion <= MMI_ENTRY_STRUCT_V4) {
+    SmiHandlerIdtrPtr = &gStmSmiHandlerIdtr;
+  } else {
+    SmiHandlerIdtrPtr = (IA32_DESCRIPTOR *)MmGetSmiHandlerIdtrAddress ();
+  }
+
+  if (SmiHandlerIdtrPtr->Base == 0) {
+    SmiHandlerIdtrPtr->Base  = IdtBase;
+    SmiHandlerIdtrPtr->Limit = (UINT16)(IdtSize - 1);
+  } else {
+    ASSERT (SmiHandlerIdtrPtr->Base == IdtBase);
+    ASSERT (SmiHandlerIdtrPtr->Limit == (UINT16)(IdtSize - 1));
+  }
+
   // Navigate to the fixup arrays
   Fixup32Ptr = (UINT32 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp32Offset);
   Fixup64Ptr = (UINT64 *)(UINTN)(SmiEntryStructHdrAddr + SmiEntryStructHdrPtr->FixUp64Offset);
@@ -553,7 +559,7 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup32Ptr[FIXUP32_MSR_SMM_BASE]               = SmBase;
 
 
-  Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)MmGetSmiHandlerIdtrAddress();
+  Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)SmiHandlerIdtrPtr;
   Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)MmGetSmiRendezvousAddress();
 
   if (SmiEntryStructHdrPtr->HeaderVersion > MMI_ENTRY_STRUCT_V4) {
