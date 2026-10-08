@@ -565,22 +565,22 @@ SmmCpuFeaturesInstallSmiHandler (
 
 
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)SmiHandlerIdtrPtr;
-  Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)MmGetSmiRendezvousAddress();
+  Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)MmGetSmiRendezvousAddress ();
 
   if (SmiEntryStructHdrPtr->HeaderVersion > MMI_ENTRY_STRUCT_V4) {
-    Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = 0;
-    Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = 0;
-    Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = 0;
-    Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = 0;
-    Fixup64Ptr[FIXUP64_HOB_START]        = (UINT64)(UINTN)mMmHobStart;
+    Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = 0;
+    Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]  = 0;
+    Fixup64Ptr[FIXUP64_XD_SUPPORTED]  = 0;
+    Fixup64Ptr[FIXUP64_CET_SUPPORTED] = 0;
+    Fixup64Ptr[FIXUP64_HOB_START]     = (UINT64)(UINTN)mMmHobStart;
 
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = FALSE;
     Fixup8Ptr[FIXUP8_gPatchXdSupported]  = TRUE;
   } else {
-    Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY]    = (UINT64)CpuSmmDebugEntry;
-    Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]     = (UINT64)CpuSmmDebugExit;
-    Fixup64Ptr[FIXUP64_XD_SUPPORTED]     = (UINT64)&mXdSupported;
-    Fixup64Ptr[FIXUP64_CET_SUPPORTED]    = (UINT64)&mCetSupported;
+    Fixup64Ptr[FIXUP64_SMM_DBG_ENTRY] = (UINT64)CpuSmmDebugEntry;
+    Fixup64Ptr[FIXUP64_SMM_DBG_EXIT]  = (UINT64)CpuSmmDebugExit;
+    Fixup64Ptr[FIXUP64_XD_SUPPORTED]  = (UINT64)&mXdSupported;
+    Fixup64Ptr[FIXUP64_CET_SUPPORTED] = (UINT64)&mCetSupported;
 
     Fixup8Ptr[FIXUP8_gPatchXdSupported]  = mXdSupported;
     Fixup8Ptr[FIXUP8_mPatchCetSupported] = mCetSupported;

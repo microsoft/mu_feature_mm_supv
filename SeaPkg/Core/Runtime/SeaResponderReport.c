@@ -653,7 +653,7 @@ SeaResponderReport (
 
     // Additionally, the IDT range should be inside the supervisor image.
     SupvIdtr = (IA32_DESCRIPTOR *)(Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR]);
-    Status = Range1InsideRange2 (SupvIdtr->Base, SupvIdtr->Limit + 1, MmSupervisorBase, MmSupervisorImageSize, &IsInside);
+    Status   = Range1InsideRange2 (SupvIdtr->Base, SupvIdtr->Limit + 1, MmSupervisorBase, MmSupervisorImageSize, &IsInside);
     if (EFI_ERROR (Status) || !IsInside) {
       DEBUG ((DEBUG_ERROR, "%a MM hander IDT 0x%p: 0x%x does not reside inside MM supervisor 0x%p - 0x%x!!!.\n", __func__, SupvIdtr->Base, SupvIdtr->Limit + 1, MmSupervisorBase, MmSupervisorImageSize));
       Status = EFI_SECURITY_VIOLATION;
