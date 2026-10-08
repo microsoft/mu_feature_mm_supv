@@ -38,9 +38,6 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Relocate/Relocate.h"
 #include "SupvInitHobs.h"
 
-// Estimated size for a new HOB, used to put in expanded MMRAM regions, new module allocation HOBs and depex.
-#define ESTIMATED_NEW_HOB_SIZE  EFI_PAGE_SIZE
-
 extern LIST_ENTRY           mDiscoveredList;
 extern EFI_MM_DRIVER_ENTRY  *mMmUserDriverEntry;
 

@@ -29,7 +29,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 
-UINT8  mSmmSaveStateRegisterLma;
+UINT8            mSmmSaveStateRegisterLma;
 IA32_DESCRIPTOR  *mSmiHandlerIdtrPtr = NULL;
 
 EFI_PHYSICAL_ADDRESS
@@ -45,6 +45,7 @@ MmGetSmiHandlerIdtrAddress (
       ASSERT (mSmiHandlerIdtrPtr != NULL);
       return 0;
     }
+
     ASSERT (mSmiHandlerIdtrPtr != NULL);
     ZeroMem (mSmiHandlerIdtrPtr, EFI_PAGE_SIZE);
   }
