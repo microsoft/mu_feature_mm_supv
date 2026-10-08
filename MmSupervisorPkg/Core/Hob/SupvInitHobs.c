@@ -417,7 +417,7 @@ PrepareRuntimeMmramHob (
         // swap the two entries
         // adjust the links
         RemoveEntryList (&CurrentEntry->Link);
-        InsertTailList (&NextEntry->Link, &CurrentEntry->Link);
+        InsertHeadList (&NextEntry->Link, &CurrentEntry->Link);
         Swapped = TRUE;
       } else {
         Link = Link->ForwardLink;

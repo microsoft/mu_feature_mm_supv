@@ -491,7 +491,7 @@ SmmCpuFeaturesInstallSmiHandler (
   UINT64                         *Fixup64Ptr;
   UINT8                          *Fixup8Ptr;
   UINT32                         tSmiStack;
-  IA32_DESCRIPTOR                *SmiHandlerIdtrPtr = NULL;  
+  IA32_DESCRIPTOR                *SmiHandlerIdtrPtr = NULL;
 
   CopyMem ((VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET), &mPsdTemplate, sizeof (mPsdTemplate));
   Psd             = (TXT_PROCESSOR_SMM_DESCRIPTOR *)(VOID *)((UINTN)SmBase + TXT_SMM_PSD_OFFSET);
@@ -502,7 +502,7 @@ SmmCpuFeaturesInstallSmiHandler (
   // Initialize values in template before copy
   //
   tSmiStack = (UINT32)((UINTN)SmiStack + StackSize - sizeof (UINTN));
-  DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));  
+  DEBUG ((DEBUG_ERROR, "[%a] - tSmiStack at 0x%x.\n", __func__, tSmiStack));
 
   //
   // Set the value at the top of the CPU stack to the CPU Index
@@ -534,6 +534,11 @@ SmmCpuFeaturesInstallSmiHandler (
     SmiHandlerIdtrPtr = &gStmSmiHandlerIdtr;
   } else {
     SmiHandlerIdtrPtr = (IA32_DESCRIPTOR *)MmGetSmiHandlerIdtrAddress ();
+  }
+
+  if (SmiHandlerIdtrPtr == NULL) {
+    PANIC ("SmiHandlerIdtrPtr is NULL, cannot proceed with SMI handler setup\n");
+    return;
   }
 
   if (SmiHandlerIdtrPtr->Base == 0) {

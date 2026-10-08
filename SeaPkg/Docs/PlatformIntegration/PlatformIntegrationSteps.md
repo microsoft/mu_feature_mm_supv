@@ -370,8 +370,11 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
 
   INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   INF MmSupervisorPkg/Core/MmSupervisorInit.inf
-  INF SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf
 
+  FILE FREEFORM = gMmiEntrySeaFileGuid {
+    SECTION RAW  = path/to/MmiEntrySeaV5.bin
+    SECTION UI   = "MmiEntrySeaV5"
+  }
   FILE FREEFORM = gMmSupervisorCoreGuid {
     SECTION PE32 = path/to/binary_mm_supervisor.efi
     SECTION UI   = "MmSupervisorCore"
