@@ -498,7 +498,11 @@ SupvInitHobsInit (
   // Size the region: the inbound HOB list, plus room for the MMRAM descriptors,
   // plus a page of slack to cover everything allocated while the list is being
   // built (page tables, module hobs, common buffers, ...).
-  //
+//
+// Size the region: the inbound HOB list, plus room for the MMRAM descriptors,
+// plus PcdMmSupervisorHobSlackSize of slack to cover everything allocated while
+// the list is being built (page tables, module hobs, common buffers, ...).
+//
   ZeroMem (Builder, sizeof (*Builder));
   Status = PrepareRuntimeMmramHob (Builder);
   if (Status != EFI_BUFFER_TOO_SMALL) {
