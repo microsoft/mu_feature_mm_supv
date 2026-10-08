@@ -72,7 +72,7 @@ Every record is padded to an 8-byte boundary. The region is page-aligned and all
 The resulting list has this shape:
 
 ```text
-Retained inbound HOBs, in their original order
+Retained inbound HOBs, without MMRAM hobs, in their original order
 Supervisor runtime module-allocation HOB
 User runtime module-allocation HOB
 For each discovered MM driver:
@@ -87,20 +87,27 @@ Unused allocation capacity, not additional HOBs
 `mMmHobSize` is the allocation capacity, not the populated list length. Finalization reports the used and spare sizes
 in the debug log; it does not shrink the allocation.
 
-### Retained inbound HOBs
+### Retained and replaced inbound HOBs
 
-The builder copies the incoming records except:
+The outgoing list is not a verbatim copy of the inbound list. The builder leaves the original list unchanged and
+copies its records into a new allocation, excluding:
 
 - GUID HOBs named `gEfiMmPeiMmramMemoryReserveGuid`.
 - GUID HOBs named `gEfiSmmSmramMemoryGuid`.
 - The original end-of-HOB-list marker.
 
-Both incoming MMRAM descriptor forms are removed because the runtime needs the post-initialization allocation map,
-not the IPL's earlier snapshot. The end marker is replaced after the new records have been appended.
+Both incoming MMRAM descriptor forms are omitted from the outgoing list. After initialization allocations are complete,
+`SupvInitHobsAddMmramDescriptors` replaces them with one newly generated `gEfiSmmSmramMemoryGuid` HOB containing the
+final descriptors. These are derived from `gMemoryMap` and the platform MMRAM boundaries in `mMmramRanges`, so the
+runtime receives the post-initialization allocation state rather than the IPL's earlier snapshot.
 
-Other records are copied byte-for-byte. This is not a deep copy of resources referenced by those records.
-The builder does not rebase embedded addresses, including addresses in a copied HOB handoff information table.
-Consumers must distinguish the copied metadata from the actual bounds and termination of the new list.
+The end-of-HOB-list marker is also newly generated, after all output records have been appended.
+
+Only the retained inbound records are copied byte-for-byte. For those records, the builder does not deep-copy
+referenced resources or rebase embedded addresses. In particular, if the inbound list contains a HOB handoff
+information table (PHIT), its memory-boundary and end-of-list fields are copied unchanged. That is separate from
+rebuilding the MMRAM descriptor HOB: regenerating the MMRAM map does not update the PHIT. Consumers must distinguish
+such retained metadata from the actual bounds and termination of the new list.
 
 ### Module-allocation records
 
