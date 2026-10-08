@@ -306,7 +306,6 @@ CetDone:
     wrmsr
 CetDone2:
 
-    ; TODO: Check if this is right...
     mov     rax, [FIXUP64_XD_SUPPORTED - _SmiEntryPoint + 0x8000 + rdi]     ;       lea     rax, [ASM_PFX(mXdSupported)]
     mov     al, [rax]
     cmp     al, 0
