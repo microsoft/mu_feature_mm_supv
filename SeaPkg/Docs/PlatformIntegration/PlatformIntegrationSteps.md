@@ -344,12 +344,12 @@ The changes below assume that the platform has already integrated the C based MM
   # MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
   # MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   # MmSupervisorPkg/Core/MmSupervisorCore.inf
+  # SeaPkg/MmiEntrySea/MmiEntrySea.inf
 
   # Add the following components
   MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
-  SeaPkg/MmiEntrySea/MmiEntrySea.inf
+  SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf
   MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
-  MmSupervisorPkg/Drivers/MmSupervisedCpu/MmSupervisedCpu.inf
 ```
 
 Note that if you have any reference to Standalone MM drivers in the form of binary releases (i.e. crypto), please switch
@@ -368,10 +368,11 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
   #
   # INF MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf
   # INF MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
-  # INF  MmSupervisorPkg/Core/MmSupervisorCore.inf
+  # INF MmSupervisorPkg/Core/MmSupervisorCore.inf
 
   INF MmSupervisorPkg/Drivers/MmPeiLaunchers/MmIplPei.inf
   INF MmSupervisorPkg/Core/Init/MmSupervisorInit.inf
+  INF SeaPkg/MmiEntrySea/MmiEntrySeaV5.inf
 
   FILE MM_CORE_STANDALONE = gMmSupervisorCoreGuid {
     SECTION PE32 = path/to/binary_mm_supervisor.efi
@@ -381,8 +382,4 @@ to "non-supervised" flavor, which will allow the entrypoint to transition normal
     SECTION PE32 = path/to/binary_mm_user.efi
     SECTION UI   = "MmUserCore"
   }
-
-  # Note that this already assumes the SMI entry point is populated using `gMmiEntrySeaFileGuid`
-
-  INF  MmSupervisorPkg/Drivers/MmSupervisedCpu/MmSupervisedCpu.inf
 ```
