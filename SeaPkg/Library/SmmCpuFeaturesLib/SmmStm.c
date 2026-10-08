@@ -563,7 +563,6 @@ SmmCpuFeaturesInstallSmiHandler (
   Fixup32Ptr[FIXUP32_STACK_OFFSET_CPL0]          = (UINT32)(UINTN)tSmiStack;
   Fixup32Ptr[FIXUP32_MSR_SMM_BASE]               = SmBase;
 
-
   Fixup64Ptr[FIXUP64_SMI_HANDLER_IDTR] = (UINT64)SmiHandlerIdtrPtr;
   Fixup64Ptr[FIXUP64_SMI_RDZ_ENTRY]    = (UINT64)MmGetSmiRendezvousAddress ();
 
