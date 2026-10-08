@@ -199,7 +199,7 @@ occupancy; it is not a complete privilege-ownership or page-permission policy.
 The initial reservation uses a platform-configurable fixed reserve:
 
 ```text
-slack_bytes = FixedPcdGet32(PcdMmSupervisorHobSlackSize)
+slack_bytes = EFI_PAGES_TO_SIZE (FixedPcdGet32(PcdMmSupervisorHobSlackPageCount))
 capacity = AlignUp(inbound_list_bytes + early_mmram_hob_bytes, 4096) + slack_bytes
 ```
 
@@ -215,18 +215,18 @@ The PCD is declared in [MmSupervisorPkg.dec](../../MmSupervisorPkg.dec) and cons
 
 | Property | Value |
 | --- | --- |
-| Name | `gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackSize` |
+| Name | `gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackPageCount` |
 | Access method | `FixedAtBuild` |
 | Datum type | `UINT32` |
-| Units | Bytes, not pages |
-| Default | `0x1000` bytes (4 KiB, one page) |
+| Units | Pages, not bytes |
+| Default | `1` page (4 KiB) |
 | Scope | Extra HOB-list capacity for `MmSupervisorInit`, not the total buffer size or the legacy C supervisor |
 
 For example, a platform DSC can reserve an additional 16 KiB:
 
 ```ini
 [PcdsFixedAtBuild]
-  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackSize|0x4000
+  gMmSupervisorPkgTokenSpaceGuid.PcdMmSupervisorHobSlackPageCount|4
 ```
 
 This example is not a recommended minimum for every platform. Choose sufficient headroom for the supported driver

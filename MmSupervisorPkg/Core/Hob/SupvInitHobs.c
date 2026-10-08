@@ -500,7 +500,7 @@ SupvInitHobsInit (
   // built (page tables, module hobs, common buffers, ...).
 //
 // Size the region: the inbound HOB list, plus room for the MMRAM descriptors,
-// plus PcdMmSupervisorHobSlackSize of slack to cover everything allocated while
+// plus PcdMmSupervisorHobSlackPageCount of slack to cover everything allocated while
 // the list is being built (page tables, module hobs, common buffers, ...).
 //
   ZeroMem (Builder, sizeof (*Builder));
@@ -513,7 +513,7 @@ SupvInitHobsInit (
 
   mMmHobSize  = GetHobListSize (gHobList) + (UINTN)Builder->Remaining;
   mMmHobSize  = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
-  mMmHobSize += FixedPcdGet32 (PcdMmSupervisorHobSlackSize);  // Add some extra pages of slack for allocations during HOB building
+  mMmHobSize += EFI_PAGES_TO_SIZE (FixedPcdGet32 (PcdMmSupervisorHobSlackPageCount));  // Add some extra pages of slack for allocations during HOB building
 
   Status = MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &RegionBase);
   if (EFI_ERROR (Status)) {
