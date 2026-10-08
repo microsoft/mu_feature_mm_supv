@@ -46,7 +46,6 @@ MmGetSmiHandlerIdtrAddress (
       return 0;
     }
 
-    ASSERT (mSmiHandlerIdtrPtr != NULL);
     ZeroMem (mSmiHandlerIdtrPtr, EFI_PAGE_SIZE);
   }
 
