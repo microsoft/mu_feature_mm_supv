@@ -28,3 +28,6 @@
 [LibraryClasses]
   DebugLib
   BaseMemoryLib
+
+[BuildOptions]
+  MSFT:*_*_*_CC_FLAGS = /GL-
