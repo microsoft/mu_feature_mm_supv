@@ -122,6 +122,13 @@ InitializeNormalVmcs (
   //
   // Guest field
   //
+  // Intel SDM Sept 2026: 34.15.4.1: If the "deactivate dual-monitor treatment" VM-entry control is 1, the executive-VMCS
+  //                                 pointer field must contain the VMXON pointer.
+  // Intel SDM Sept 2026: 34.15.4.7: If the executive-VMCS pointer field contains the VMXON pointer (the VM entry remains
+  //                                 in VMX root operation), the current-VMCS pointer is loaded from the VMCS-link pointer
+  //                                 field.
+  VmWrite64 (VMCS_64_GUEST_VMCS_LINK_PTR_INDEX, CallerVmcs);
+
   VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
 
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, 0x00000002);                   // VMCALL success
