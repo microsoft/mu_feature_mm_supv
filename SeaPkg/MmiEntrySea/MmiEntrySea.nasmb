@@ -287,7 +287,7 @@ CetDone:
 
     ; clear CR4.CET bit for disable CET
     mov     rax, cr4
-    btr     rax, CR4_CET
+    btr     rax, 23         ; clear CR4_CET
     mov     cr4, rax
 
     mov     ecx, MSR_IA32_INTERRUPT_SSP_TABLE_ADDR

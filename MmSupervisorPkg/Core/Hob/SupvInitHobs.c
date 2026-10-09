@@ -417,7 +417,7 @@ PrepareRuntimeMmramHob (
         // swap the two entries
         // adjust the links
         RemoveEntryList (&CurrentEntry->Link);
-        InsertTailList (&NextEntry->Link, &CurrentEntry->Link);
+        InsertHeadList (&NextEntry->Link, &CurrentEntry->Link);
         Swapped = TRUE;
       } else {
         Link = Link->ForwardLink;
@@ -499,6 +499,10 @@ SupvInitHobsInit (
   // plus a page of slack to cover everything allocated while the list is being
   // built (page tables, module hobs, common buffers, ...).
   //
+  // Size the region: the inbound HOB list, plus room for the MMRAM descriptors,
+  // plus PcdMmSupervisorHobSlackPageCount of slack to cover everything allocated while
+  // the list is being built (page tables, module hobs, common buffers, ...).
+  //
   ZeroMem (Builder, sizeof (*Builder));
   Status = PrepareRuntimeMmramHob (Builder);
   if (Status != EFI_BUFFER_TOO_SMALL) {
@@ -509,7 +513,7 @@ SupvInitHobsInit (
 
   mMmHobSize  = GetHobListSize (gHobList) + (UINTN)Builder->Remaining;
   mMmHobSize  = ALIGN_VALUE (mMmHobSize, EFI_PAGE_SIZE);
-  mMmHobSize += EFI_PAGE_SIZE;  // Add an extra page of slack for allocations during HOB building
+  mMmHobSize += EFI_PAGES_TO_SIZE (FixedPcdGet32 (PcdMmSupervisorHobSlackPageCount));  // Add some extra pages of slack for allocations during HOB building
 
   Status = MmAllocateSupervisorPages (AllocateAnyPages, EfiRuntimeServicesData, EFI_SIZE_TO_PAGES (mMmHobSize), &RegionBase);
   if (EFI_ERROR (Status)) {

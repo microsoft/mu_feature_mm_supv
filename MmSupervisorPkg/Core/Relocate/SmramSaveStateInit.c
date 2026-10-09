@@ -29,7 +29,28 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include "Services/MpService/MpService.h"
 #include "MmSupervisorCore.h"
 
-UINT8  mSmmSaveStateRegisterLma;
+UINT8            mSmmSaveStateRegisterLma;
+IA32_DESCRIPTOR  *mSmiHandlerIdtrPtr = NULL;
+
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiHandlerIdtrAddress (
+  VOID
+  )
+{
+  if (mSmiHandlerIdtrPtr == NULL) {
+    mSmiHandlerIdtrPtr = AllocatePages (1);
+    if (mSmiHandlerIdtrPtr == NULL) {
+      DEBUG ((DEBUG_ERROR, "[%a] - Failed to allocate MMI handler IDTR page.\n", __func__));
+      ASSERT (mSmiHandlerIdtrPtr != NULL);
+      return 0;
+    }
+
+    ZeroMem (mSmiHandlerIdtrPtr, EFI_PAGE_SIZE);
+  }
+
+  return (EFI_PHYSICAL_ADDRESS)mSmiHandlerIdtrPtr;
+}
 
 /**
   Get the size of the SMI Handler in bytes.
