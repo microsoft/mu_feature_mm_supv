@@ -24,20 +24,20 @@ _ModuleEntryPoint (
 
 /**
 
-  This function initialize VMCS for Normal Environment.
+  Initialize the relocated VMCS for return to VMX root after a VMCALL.
 
   NOTE: We should not trust VMCS setting by MLE,so we need reinit them to make
   sure the data is valid.
 
-  @param Index CPU index
-  @param Vmcs  VMCS pointer
+  @param Index       CPU index.
+  @param CallerVmcs  Physical address of the incoming, now-cleared VMCS.
 
 **/
+STATIC
 VOID
 InitializeNormalVmcs (
-  IN UINT32   Index,
-  IN UINT64   *Vmcs,
-  IN BOOLEAN  IncrementGuestRip
+  IN UINT32  Index,
+  IN UINT64  CallerVmcs
   )
 {
   // VM_EXIT_CONTROLS                             VmExitCtrls;
@@ -122,10 +122,7 @@ InitializeNormalVmcs (
   //
   // Guest field
   //
-  if (IncrementGuestRip) {
-    SAFE_DEBUG ((DEBUG_INFO, "[%a] - Incrementing Guest RIP.\n", __func__));
-    VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
-  }
+  VmWriteN (VMCS_N_GUEST_RIP_INDEX, VmReadN (VMCS_N_GUEST_RIP_INDEX) + VmRead32 (VMCS_32_RO_VMEXIT_INSTRUCTION_LENGTH_INDEX));
 
   VmWriteN (VMCS_N_GUEST_RFLAGS_INDEX, 0x00000002);                   // VMCALL success
   // VmWrite32 (VMCS_32_GUEST_INTERRUPTIBILITY_STATE_INDEX, GuestInterruptibilityState.Uint32);
@@ -133,4 +130,66 @@ InitializeNormalVmcs (
   // VmWrite64 (VMCS_64_GUEST_IA32_PERF_GLOBAL_CTRL_INDEX,  AsmReadMsr64(IA32_PERF_GLOBAL_CTRL_MSR_INDEX));
 
   return;
+}
+
+/**
+  Relocate the incoming VMCS into MSEG and prepare a VMCALL return.
+
+  @param Index  CPU index.
+**/
+VOID
+VmcsInit (
+  IN UINT32  Index
+  )
+{
+  UINT64      CurrentVmcs;
+  UINTN       VmcsBase;
+  UINT32      VmcsSize;
+  STM_HEADER  *StmHeader;
+  UINTN       Rflags;
+
+  StmHeader = mHostContextCommon.StmHeader;
+  VmcsBase  = (UINTN)StmHeader +
+              STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
+              StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
+              StmHeader->SwStmHdr.PerProcDynamicMemorySize * mHostContextCommon.CpuNum;
+  VmcsSize = GetVmcsSize ();
+
+  mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs = (UINT64)(VmcsBase + VmcsSize * (Index * 2));
+
+  SAFE_DEBUG ((EFI_D_INFO, "SmiVmcsPtr(%d) - %016lx\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs));
+  SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (before store): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+
+  AsmVmPtrStore (&CurrentVmcs);
+  SAFE_DEBUG ((EFI_D_INFO, "CurrentVmcs(%d) - %016lx\n", (UINTN)Index, CurrentVmcs));
+
+  Rflags = AsmVmClear (&CurrentVmcs);
+  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
+    SAFE_DEBUG ((DEBUG_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, CurrentVmcs, Rflags));
+    CpuDeadLoop ();
+  }
+
+  // Intel SDM Sept 2026: 27.11.1: neither VMCS may be active during the ordinary memory copy.
+  Rflags = AsmVmClear (&mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs);
+  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
+    SAFE_DEBUG ((DEBUG_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, Rflags));
+    CpuDeadLoop ();
+  }
+
+  CopyMem (
+    (VOID *)(UINTN)mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs,
+    (VOID *)(UINTN)CurrentVmcs,
+    (UINTN)VmcsSize
+    );
+
+  AsmWbinvd ();
+
+  Rflags = AsmVmPtrLoad (&mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs);
+  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
+    SAFE_DEBUG ((DEBUG_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, Rflags));
+    CpuDeadLoop ();
+  }
+
+  SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (after load): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
+  InitializeNormalVmcs (Index, CurrentVmcs);
 }
