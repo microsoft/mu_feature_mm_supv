@@ -1,0 +1,31 @@
+## @file
+# This module provide an SMM CIS compliant implementation of SMM entrypoint.
+#
+# Copyright (c) 2009 - 2022, Intel Corporation. All rights reserved.<BR>
+# Copyright (c) 2016 - 2018, ARM Limited. All rights reserved.<BR>
+# Copyright (c) 2020, AMD Incorporated. All rights reserved.<BR>
+# Copyright (C) Microsoft Corporation.
+#
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+##
+# release/202608
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | a50f983a3359b8545cc48f8a480f4650 | 2026-08-25T22-34-58 | 6c5ace9abbe6adc05c1a64faaae65d1d66751401
+# release/202511
+#Track : 00000002 | UefiCpuPkg/PiSmmCpuDxeSmm/PiSmmCpuDxeSmm.inf | b2b837cadad1c2282a7562585679f21b | 2026-03-09T22-12-25 | 5bf68b66296329fe0b8050dc217ef2a6af17476f
+
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = MmiEntrySeaV5
+  FILE_GUID                      = 82DFF9B5-CFAC-4AA9-844A-85D60ACDE8F6
+  MODULE_TYPE                    = USER_DEFINED
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = MmEntrySeaV5
+
+[Sources]
+  MmiEntrySeaV5.nasmb
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec

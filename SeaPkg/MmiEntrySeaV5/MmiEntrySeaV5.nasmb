@@ -1,0 +1,281 @@
+;------------------------------------------------------------------------------ ;
+; Copyright (c) 2016 - 2022, Intel Corporation. All rights reserved.<BR>
+; Copyright 2008 - 2020 ADVANCED MICRO DEVICES, INC.  All Rights Reserved.
+; Copyright (C) Microsoft Corporation.
+; SPDX-License-Identifier: BSD-2-Clause-Patent
+;
+; Module Name:
+;
+;   SmiEntry.nasm
+;
+; Abstract:
+;
+;   Code template of the SMI handler for a particular processor
+;
+;-------------------------------------------------------------------------------
+
+#include "Register/Intel/ArchitecturalMsr.h"
+#include "Register/Intel/StmApi.h"
+%include "StuffRsbNasm.inc"
+%include "Nasm.inc"
+
+;
+; Variables referenced by C code
+;
+
+%define MSR_EFER_XD   BIT11
+
+;
+; Constants relating to PROCESSOR_SMM_DESCRIPTOR
+;
+%define DSC_CS 0x14
+%define DSC_DS 0x16
+%define DSC_SS 0x18
+%define DSC_OTHERSEG 0x1a
+
+%define PROTECT_MODE_CS 0x8
+%define PROTECT_MODE_DS 0x20
+%define LONG_MODE_CS 0x38
+%define TSS_SEGMENT 0x70
+%define GDT_SIZE 0x80
+
+    DEFAULT REL
+    SECTION .text
+
+BITS 16
+_SmiEntryPoint:
+    mov     edi, [cs:FIXUP32_GDTR - _SmiEntryPoint + 0x8000]   ;EDI point to GDTR
+o32 lgdt    [ds:edi]
+    mov     bx, @ProtectedMode - _SmiEntryPoint + 0x8000
+    mov     ax, PROTECT_MODE_CS
+    mov     [cs:bx-0x2],ax
+    mov     edi, [cs:FIXUP32_MSR_SMM_BASE - _SmiEntryPoint + 0x8000]   ; SMM Base
+    lea     eax, [edi + (@ProtectedMode - _SmiEntryPoint) + 0x8000]
+    mov     [cs:bx-0x6],eax
+    mov     ebx, cr0
+    and     ebx, 0x9ffafff3
+    or      ebx, 0x23
+    mov     cr0, ebx
+_PmJumpPointFixup:
+    jmp     dword 0x0:0x0
+
+BITS 32
+@ProtectedMode:
+    mov     ax, PROTECT_MODE_DS
+o16 mov     ds, ax
+o16 mov     es, ax
+o16 mov     fs, ax
+o16 mov     gs, ax
+o16 mov     ss, ax
+    mov     esp, dword [FIXUP32_STACK_OFFSET_CPL0 - _SmiEntryPoint + 0x8000 + edi]
+    jmp     ProtFlatMode
+
+BITS 64
+ProtFlatMode:
+    mov     eax, [rdi + FIXUP32_CR3_OFFSET - _SmiEntryPoint + 0x8000]    ; source operand will be populated at loading time
+    mov     cr3, rax
+    mov     eax, 0x300E28                ; as cr4.PGE is not set here, refresh cr3
+                                         ; Set SMAP, SMEP, and UMIP.
+                                         ; Do not assume that IDT.limit is loaded with a zero value upon SMM entry.
+                                         ; Delay enabling Machine Check Exceptions in SMM until after the SMM IDT
+                                         ; has been reloaded.
+
+    mov     cl, [rdi + FIXUP8_m5LevelPagingNeeded - _SmiEntryPoint + 0x8000]      ; source operand will be patched
+    cmp     cl, 0
+    je      SkipEnable5LevelPaging
+    ;
+    ; Enable 5-Level Paging bit
+    ;
+    bts     eax, 12                     ; Set LA57 bit (bit #12)
+SkipEnable5LevelPaging:
+
+    mov     cr4, rax                    ; in PreModifyMtrrs() to flush TLB.
+; Load TSS
+    sub     esp, 8                      ; reserve room in stack
+    sgdt    [rsp]
+    mov     eax, [rsp + 2]              ; eax = GDT base
+    add     esp, 8
+    mov     dl, 0x89
+    mov     [rax + TSS_SEGMENT + 5], dl ; clear busy flag
+    mov     eax, TSS_SEGMENT
+    ltr     ax
+
+; If MSR_IA32_MISC_ENABLE is supported, clear XD Disable bit
+    mov     al, [FIXUP8_gPatchMsrIa32MiscEnableSupported - _SmiEntryPoint + 0x8000 + rdi]
+    cmp     al, 1
+    jz      MsrIa32MiscEnableSupported
+
+; MSR_IA32_MISC_ENABLE not supported
+    sub     esp, 4
+    xor     rdx, rdx
+    push    rdx                         ; don't try to restore the XD Disable bit just before RSM
+    jmp     EnableNxe
+
+;
+; Check XD disable bit
+;
+MsrIa32MiscEnableSupported:
+    mov     ecx, MSR_IA32_MISC_ENABLE
+    rdmsr
+    sub     esp, 4
+    push    rdx                        ; save MSR_IA32_MISC_ENABLE[63-32]
+    test    edx, BIT2                  ; MSR_IA32_MISC_ENABLE[34]
+    jz      EnableNxe
+    and     dx, 0xFFFB                 ; clear XD Disable bit if it is set
+    wrmsr
+EnableNxe:
+    mov     ecx, MSR_IA32_EFER
+    rdmsr
+    or      ax, MSR_EFER_XD            ; enable NXE
+    wrmsr
+
+; Switch into @StmLongMode
+    push    LONG_MODE_CS                ; push cs hardcore here
+    call    Base                       ; push return address for retf later
+Base:
+    add     dword [rsp], @StmLongMode - Base; offset for far retf, seg is the 1st arg
+
+    mov     ecx, MSR_IA32_EFER
+    rdmsr
+    or      ah, 1                      ; enable LME
+    wrmsr
+    mov     rbx, cr0
+    or      ebx, 0x80010023            ; enable paging + WP + NE + MP + PE
+    mov     cr0, rbx
+    retf
+@StmLongMode:                          ; long mode (64-bit code) starts here
+    mov     rax, [FIXUP64_SMI_HANDLER_IDTR - _SmiEntryPoint + 0x8000 + rdi]     ;  mov     rax, ASM_PFX(gSmiHandlerIdtr)
+    lidt    [rax]
+    lea     ebx, [rdi + TXT_SMM_PSD_OFFSET]
+    mov     ax, [rbx + DSC_DS]
+    mov     ds, eax
+    mov     ax, [rbx + DSC_OTHERSEG]
+    mov     es, eax
+    mov     fs, eax
+    mov     gs, eax
+    mov     ax, [rbx + DSC_SS]
+    mov     ss, eax
+
+    mov     rax, cr4                    ; enable MCE
+    bts     rax, 6
+    mov     cr4, rax
+
+    mov     rbx, [rsp + 0x8]             ; rbx <- CpuIndex
+
+    ;
+    ; Save FP registers
+    ;
+    sub     rsp, 0x200
+    fxsave64 [rsp]
+
+    add     rsp, -0x20
+
+    mov     rcx, rbx
+    mov     rdx, [FIXUP64_HOB_START - _SmiEntryPoint + 0x8000 + rdi]     ;   patched to mMmHobStart
+    mov     rax, [FIXUP64_SMI_RDZ_ENTRY - _SmiEntryPoint + 0x8000 + rdi]     ;   call    ASM_PFX(SmiRendezvous)
+    call    rax
+
+    add     rsp, 0x20
+
+    ;
+    ; Restore FP registers
+    ;
+    fxrstor64 [rsp]
+
+    add     rsp, 0x200
+
+    pop     rdx                       ; get saved MSR_IA32_MISC_ENABLE[63-32]
+    test    edx, BIT2
+    jz      .1
+    mov     ecx, MSR_IA32_MISC_ENABLE
+    rdmsr
+    or      dx, BIT2                  ; set XD Disable bit if it was set before entering into SMM
+    wrmsr
+
+.1:
+
+    StuffRsb64
+    rsm
+
+gcSmiHandlerSize    DW      $ - _SmiEntryPoint
+
+;
+; Retrieve the address and fill it into mov opcode.
+;
+; It is called in the driver entry point first.
+; It is used to fix up the real address in mov opcode.
+; Then, after the code logic is copied to the different location,
+; the code can also run.
+;
+;Below structure could be used during DRTM event, make sure it is aligned
+ALIGN   8
+PerCoreSmiEntryStruct:
+;--------------    Header version
+HeaderVersion         DD    5
+
+FixUpStructOffset     DB    FixUpOffset0Size - PerCoreSmiEntryStruct
+FixUpStructNum        DB    4
+
+FixUp64Offset         DB    FIXUP64_SMM_DBG_ENTRY - PerCoreSmiEntryStruct
+FixUp64Num            DB    7
+
+FixUp32Offset         DB    FIXUP32_mPatchCetPl0Ssp - PerCoreSmiEntryStruct
+FixUp32Num            DB    7
+
+FixUp8Offset          DB    FIXUP8_gPatchXdSupported - PerCoreSmiEntryStruct
+FixUp8Num             DB    8
+
+;--------------    SmiEntry binary version
+; Version = Major.Minor
+; Major: higher 8 bits of SmiEntryVersion; Minor: lower 8 bits of SmiEntryVersion;
+; For example, 0x010F will be split into 0x01 (Major version) and 0x0F (Minor version), the final version will be showed as 1.F (hex to upper char)
+SmiEntryVersion       DW    0x0200
+SplValue              DD    0
+Reserved              DD    0
+
+;--------------     #define MAXNUM_FIXUP_OFFSET 4
+;--------------     FIXUP_OFFSET FixupOffset[MAXNUM_FIXUP_OFFSET];---------
+FixUpOffset0Size      DW    6
+FixUpOffset0          DW    _PmJumpPointFixup + 2
+
+FixUpOffset1Size      DW    0
+FixUpOffset1          DW    0
+
+FixUpOffset2Size      DW    0
+FixUpOffset2          DW    0
+
+FixUpOffset3Size      DW    0
+FixUpOffset3          DW    0
+
+;--------------     #define MAXNUM_NUM_FIXUP64 7
+;--------------     UINT64   FixUp64 [MAXNUM_FIXUP_64]; ---------
+FIXUP64_SMM_DBG_ENTRY       DQ    0  ; FIXUP64_SMM_DBG_ENTRY point to CpuSmmDebugEntry
+FIXUP64_SMM_DBG_EXIT        DQ    0  ; FIXUP64_SMM_DBG_EXIT point to CpuSmmDebugExit
+FIXUP64_SMI_RDZ_ENTRY       DQ    0  ; FIXUP64_SMI_RDZ_ENTRY point to SmiRendezvous
+FIXUP64_XD_SUPPORTED        DQ    0  ; FIXUP64_XD_SUPPORTED point to mXdSupported
+FIXUP64_CET_SUPPORTED       DQ    0  ; FIXUP64_CET_SUPPORTED point to mCetSupported
+FIXUP64_SMI_HANDLER_IDTR    DQ    0  ; FIXUP64_SMI_HANDLER_IDTR SmiHandlerIdtr
+FIXUP64_HOB_START           DQ    0  ; FIXUP64_HOB_START HobStart
+
+;--------------     #define MAXNUM_NUM_FIXUP32 7
+;--------------     UINT32   FixUp32[MAXNUM_FIXUP_VARIABLE]; ---------
+FIXUP32_mPatchCetPl0Ssp             DD    0  ; FIXUP32_mPatchCetPl0Ssp
+FIXUP32_GDTR                        DD    0  ; FIXUP32_GDTR
+FIXUP32_CR3_OFFSET                  DD    0  ; FIXUP32_CR3_OFFSET
+FIXUP32_mPatchCetInterruptSsp       DD    0  ; FIXUP32_mPatchCetInterruptSsp
+FIXUP32_mPatchCetInterruptSspTable  DD    0  ; FIXUP32_mPatchCetInterruptSspTable
+FIXUP32_STACK_OFFSET_CPL0           DD    0  ; FIXUP32_STACK_OFFSET_CPL0
+FIXUP32_MSR_SMM_BASE                DD    0  ; FIXUP32_MSR_SMM_BASE
+
+;--------------     #define MAXNUM_NUM_FIXUP8 8
+;--------------     UINT32   FixUp8[MAXNUM_FIXUP_VARIABLE]; ---------
+FIXUP8_gPatchXdSupported                DB    0  ; FIXUP8_gPatchXdSupported
+FIXUP8_gPatchMsrIa32MiscEnableSupported DB    0  ; FIXUP8_gPatchMsrIa32MiscEnableSupported
+FIXUP8_m5LevelPagingNeeded              DB    0  ; FIXUP8_m5LevelPagingNeeded
+FIXUP8_mPatchCetSupported               DB    0  ; FIXUP8_mPatchCetSupported
+FixUp8_4                                DB    0  ; FIXUP8_OFFSET4_RSVD
+FixUp8_5                                DB    0  ; FIXUP8_OFFSET5_RSVD
+FixUp8_6                                DB    0  ; FIXUP8_OFFSET6_RSVD
+FixUp8_7                                DB    0  ; FIXUP8_OFFSET7_RSVD
+
+Size             DD    $ - PerCoreSmiEntryStruct
