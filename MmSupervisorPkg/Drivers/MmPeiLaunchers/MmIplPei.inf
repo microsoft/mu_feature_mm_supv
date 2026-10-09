@@ -72,7 +72,6 @@
   gEfiMmEndOfPeiProtocol                        ## PRODUCES
 
 [Guids]
-  # gLoadFixedAddressConfigurationTableGuid       ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
   gMmCoreMmProfileGuid                          ## SOMETIMES_CONSUMES
   gMmCommonRegionHobGuid                        ## PRODUCES
   gMmSupervisorDriverDispatchGuid               ## PRODUCES   ## Invoke driver dispatcher
@@ -81,9 +80,9 @@
   gEfiSmmSmramMemoryGuid                        ## CONSUMES
   gMmCommBufferHobGuid                          ## CONSUMES
   gMmSupervisorCoreGuid                         ## CONSUMES
+  gEventMmDispatchGuid                          ## CONSUMES
 
 [Pcd]
-  # gEfiMdeModulePkgTokenSpaceGuid.PcdLoadFixAddressSmmCodePageNumber     ## SOMETIMES_CONSUMES   ## MU_CHANGE: Feature unsupported
   gEfiMdeModulePkgTokenSpaceGuid.PcdLoadModuleAtFixAddressEnable        ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplSwitchToLongMode              ## CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdUse1GPageTable                      ## CONSUMES
