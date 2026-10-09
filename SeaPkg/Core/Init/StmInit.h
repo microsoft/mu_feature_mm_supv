@@ -68,16 +68,11 @@ Is1GPageSupport (
   );
 
 /**
+  Relocate the incoming VMCS into MSEG and prepare a VMCALL return.
 
-  This function initialize VMCS for Normal Environment.
-
-  @param Index CPU index
-  @param Vmcs  VMCS pointer
-
+  @param Index  CPU index.
 **/
 VOID
-InitializeNormalVmcs (
-  IN UINT32   Index,
-  IN UINT64   *Vmcs,
-  IN BOOLEAN  IncrementGuestRip
+VmcsInit (
+  IN UINT32  Index
   );
