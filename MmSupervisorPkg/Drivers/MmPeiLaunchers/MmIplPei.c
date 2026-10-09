@@ -163,9 +163,6 @@ EFI_MMRAM_DESCRIPTOR    *mCurrentMmramRange;
 EFI_PHYSICAL_ADDRESS    mMmramCacheBase;
 UINT64                  mMmramCacheSize;
 
-// MU_CHANGE: Loaded Fixed Address information is unsupported
-// EFI_LOAD_FIXED_ADDRESS_CONFIGURATION_TABLE    *mLMFAConfigurationTable = NULL;
-
 //
 // Table of PPI notification and GUIDed Event notifications that the SMM IPL requires
 //
@@ -330,6 +327,42 @@ SmmCommunicationCommunicate (
 }
 
 /**
+  Dispatch StandaloneMm drivers in MM.
+
+  StandaloneMm core will exit when MmEntryPoint was registered in CPU
+  StandaloneMm driver, and issue a software SMI by communicate mode to
+  dispatch other StandaloneMm drivers.
+
+  @retval  EFI_SUCCESS      Dispatch StandaloneMm drivers successfully.
+  @retval  Other            Dispatch StandaloneMm drivers failed.
+
+**/
+EFI_STATUS
+MmIplDispatchMmDrivers (
+  VOID
+  )
+{
+  EFI_STATUS                 Status;
+  UINTN                      Size;
+  EFI_MM_COMMUNICATE_HEADER  CommunicateHeader;
+
+  //
+  // Use Guid to initialize EFI_MM_COMMUNICATE_HEADER structure
+  //
+  CopyGuid (&CommunicateHeader.HeaderGuid, &gEventMmDispatchGuid);
+  CommunicateHeader.MessageLength = 1;
+  CommunicateHeader.Data[0]       = 0;
+
+  //
+  // Generate the Software SMI and return the result
+  //
+  Size   = sizeof (CommunicateHeader);
+  Status = SmmCommunicationCommunicateWorker (FALSE, &CommunicateHeader, &Size);
+
+  return Status;
+}
+
+/**
   This is the callback function on end of PEI.
 
   This callback is used for call MmEndOfPeiHandler in standalone MM core.
@@ -422,108 +455,14 @@ MmDriverDispatchNotify (
 
 // MU_CHANGE Ends: MM_SUPV
 
-// MU_CHANGE: Loaded Fixed Address information is unsupported
-// /**
-//   Get the fixed loading address from image header assigned by build tool. This function only be called
-//   when Loading module at Fixed address feature enabled.
-
-//   @param  ImageContext              Pointer to the image context structure that describes the PE/COFF
-//                                     image that needs to be examined by this function.
-//   @retval EFI_SUCCESS               An fixed loading address is assigned to this image by build tools .
-//   @retval EFI_NOT_FOUND             The image has no assigned fixed loading address.
-// **/
-// EFI_STATUS
-// GetPeCoffImageFixLoadingAssignedAddress(
-//   IN OUT PE_COFF_LOADER_IMAGE_CONTEXT  *ImageContext
-//   )
-// {
-//    UINTN                              SectionHeaderOffset;
-//    EFI_STATUS                         Status;
-//    EFI_IMAGE_SECTION_HEADER           SectionHeader;
-//    EFI_IMAGE_OPTIONAL_HEADER_UNION    *ImgHdr;
-//    EFI_PHYSICAL_ADDRESS               FixLoadingAddress;
-//    UINT16                             Index;
-//    UINTN                              Size;
-//    UINT16                             NumberOfSections;
-//    EFI_PHYSICAL_ADDRESS               MmramBase;
-//    UINT64                             MmCodeSize;
-//    UINT64                             ValueInSectionHeader;
-//    //
-//    // Build tool will calculate the smm code size and then patch the PcdLoadFixAddressSmmCodePageNumber
-//    //
-//    MmCodeSize = EFI_PAGES_TO_SIZE (PcdGet32(PcdLoadFixAddressSmmCodePageNumber));
-
-//    FixLoadingAddress = 0;
-//    Status = EFI_NOT_FOUND;
-//    MmramBase = mLMFAConfigurationTable->SmramBase;
-//    //
-//    // Get PeHeader pointer
-//    //
-//    ImgHdr = (EFI_IMAGE_OPTIONAL_HEADER_UNION *)((CHAR8* )ImageContext->Handle + ImageContext->PeCoffHeaderOffset);
-//    SectionHeaderOffset = ImageContext->PeCoffHeaderOffset +
-//                          sizeof (UINT32) +
-//                          sizeof (EFI_IMAGE_FILE_HEADER) +
-//                          ImgHdr->Pe32.FileHeader.SizeOfOptionalHeader;
-//    NumberOfSections = ImgHdr->Pe32.FileHeader.NumberOfSections;
-
-//    //
-//    // Get base address from the first section header that doesn't point to code section.
-//    //
-//    for (Index = 0; Index < NumberOfSections; Index++) {
-//      //
-//      // Read section header from file
-//      //
-//      Size = sizeof (EFI_IMAGE_SECTION_HEADER);
-//      Status = ImageContext->ImageRead (
-//                               ImageContext->Handle,
-//                               SectionHeaderOffset,
-//                               &Size,
-//                               &SectionHeader
-//                               );
-//      if (EFI_ERROR (Status)) {
-//        return Status;
-//      }
-
-//      Status = EFI_NOT_FOUND;
-
-//      if ((SectionHeader.Characteristics & EFI_IMAGE_SCN_CNT_CODE) == 0) {
-//        //
-//        // Build tool saves the offset to SMRAM base as image base in PointerToRelocations & PointerToLineNumbers fields in the
-//        // first section header that doesn't point to code section in image header. And there is an assumption that when the
-//        // feature is enabled, if a module is assigned a loading address by tools, PointerToRelocations & PointerToLineNumbers
-//        // fields should NOT be Zero, or else, these 2 fields should be set to Zero
-//        //
-//        ValueInSectionHeader = ReadUnaligned64((UINT64*)&SectionHeader.PointerToRelocations);
-//        if (ValueInSectionHeader != 0) {
-//          //
-//          // Found first section header that doesn't point to code section in which build tool saves the
-//          // offset to SMRAM base as image base in PointerToRelocations & PointerToLineNumbers fields
-//          //
-//          FixLoadingAddress = (EFI_PHYSICAL_ADDRESS)(MmramBase + (INT64)ValueInSectionHeader);
-
-//          if (MmramBase + MmCodeSize > FixLoadingAddress && MmramBase <=  FixLoadingAddress) {
-//            //
-//            // The assigned address is valid. Return the specified loading address
-//            //
-//            ImageContext->ImageAddress = FixLoadingAddress;
-//            Status = EFI_SUCCESS;
-//          }
-//        }
-//        break;
-//      }
-//      SectionHeaderOffset += sizeof (EFI_IMAGE_SECTION_HEADER);
-//    }
-//    DEBUG ((DEBUG_INFO|DEBUG_LOAD, "LOADING MODULE FIXED INFO: Loading module at fixed address %x, Status = %r \n", FixLoadingAddress, Status));
-//    return Status;
-// }
-
 // MU_CHANGE Starts: The MM core address found routine is updated with PEI services
 
 /**
   Searches MmCore in all published firmware Volumes and loads the first
   instance that contains MmCore.
 
-  @param[in]  Buffer    Placeholder for address of MM core located by this routine.
+  @param[out]  Buffer          Placeholder for address of MM core located by this routine.
+  @param[out]  MmCoreFileName  Placeholder for the GUID of the MM core file located by this routine.
 
   @retval EFI_SUCCESS   This function located MM core successfully.
   @retval Others        Errors returned by PeiServices routines.
@@ -531,13 +470,18 @@ MmDriverDispatchNotify (
 **/
 EFI_STATUS
 MmIplPeiFindMmCore (
-  OUT VOID  **Buffer
+  OUT VOID      **Buffer,
+  OUT EFI_GUID  *MmCoreFileName
   )
 {
   EFI_STATUS           Status;
   UINTN                Instance;
   EFI_PEI_FV_HANDLE    VolumeHandle;
   EFI_PEI_FILE_HANDLE  FileHandle;
+
+  if ((Buffer == NULL) || (MmCoreFileName == NULL)) {
+    return EFI_INVALID_PARAMETER;
+  }
 
   Instance = 0;
   while (TRUE) {
@@ -561,17 +505,20 @@ MmIplPeiFindMmCore (
     FileHandle = NULL;
     Status     = PeiServicesFfsFindNextFile (EFI_FV_FILETYPE_MM_CORE_STANDALONE, VolumeHandle, &FileHandle);
     if (!EFI_ERROR (Status)) {
-      //
-      // Find MmCore FileHandle in this volume, then we skip other firmware volume and
-      // return the FileHandle. Search Section now.
-      //
-      Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
-      if (EFI_ERROR (Status)) {
-        break;
-      }
+      if (FileHandle != NULL) {
+        CopyGuid (MmCoreFileName, &((EFI_FFS_FILE_HEADER *)FileHandle)->Name);
+        DEBUG ((DEBUG_INFO, "Mm core has file name as %g\n", MmCoreFileName));
+        //
+        // Find MmCore FileHandle in this volume, then we skip other firmware volume and
+        // return the FileHandle. Search Section now.
+        //
+        Status = PeiServicesFfsFindSectionData (EFI_SECTION_PE32, FileHandle, Buffer);
+        if (EFI_ERROR (Status)) {
+          break;
+        }
 
-      return EFI_SUCCESS;
-      break;
+        return EFI_SUCCESS;
+      }
     }
 
     //
@@ -721,6 +668,7 @@ MmIplAllocateMmramPage (
                                         currently executing image, the rang of SMRAM to
                                         hold SMM Core will be excluded.
   @param[in, out] MmramRangeSmmCore     Descriptor for the range of SMRAM to hold SMM Core.
+  @param[out] MmCoreImageGuid           GUID of the MM Core image found.
 
   @return  EFI_STATUS
 
@@ -728,7 +676,8 @@ MmIplAllocateMmramPage (
 EFI_STATUS
 ExecuteMmCoreFromMmram (
   IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRange,
-  IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRangeSmmCore
+  IN OUT EFI_MMRAM_DESCRIPTOR  *MmramRangeSmmCore,
+  OUT EFI_GUID                 *MmCoreFileName
   )
 {
   EFI_STATUS                            Status;
@@ -744,7 +693,7 @@ ExecuteMmCoreFromMmram (
   //
   SourceBuffer = NULL;
   // MU_CHANGE: The MM core address found routine is updated with PEI services
-  Status = MmIplPeiFindMmCore (&SourceBuffer);
+  Status = MmIplPeiFindMmCore (&SourceBuffer, MmCoreFileName);
   if (EFI_ERROR (Status)) {
     DEBUG ((DEBUG_ERROR, "%a Failed to find MM core file - %r...\n", __func__, Status));
     goto Exit;
@@ -818,7 +767,7 @@ ExecuteMmCoreFromMmram (
       EntryPoint = (STANDALONE_MM_FOUNDATION_ENTRY_POINT)(UINTN)ImageContext.EntryPoint;
 
       BuildModuleHob (
-        &gMmSupervisorCoreGuid,
+        MmCoreFileName,
         ImageContext.ImageAddress,
         (UINT64)EFI_PAGES_TO_SIZE (PageCount),
         (EFI_PHYSICAL_ADDRESS)(UINTN)ImageContext.EntryPoint
@@ -1105,20 +1054,16 @@ MmIplPeiEntry (
   IN CONST EFI_PEI_SERVICES     **PeiServices
   )
 {
-  EFI_STATUS  Status;
-  UINTN       Index;
-  UINT64      MaxSize;
-  UINTN       Size;
-  UINTN       MmramRangeCount;
-  // UINT64                          MmCodeSize;
-  // EFI_CPU_ARCH_PROTOCOL           *CpuArch;
-  // EFI_STATUS                      SetAttrStatus;
-  // EFI_MMRAM_DESCRIPTOR            *MmramRangeSmmDriver;
-  // EFI_GCD_MEMORY_SPACE_DESCRIPTOR MemDesc;
+  EFI_STATUS            Status;
+  UINTN                 Index;
+  UINT64                MaxSize;
+  UINTN                 Size;
+  UINTN                 MmramRangeCount;
   EFI_MMRAM_DESCRIPTOR  *MmramRanges;
   // MU_CHANGE: MM_SUPV: Test supervisor communication before publishing protocol
   MM_SUPERVISOR_VERSION_INFO_BUFFER  VersionInfo;
   MTRR_MEMORY_CACHE_TYPE             CacheAttribute;
+  EFI_GUID                           MmCoreFileNameGuid;
 
   Status = PeiServicesRegisterForShadow (FileHandle);
 
@@ -1255,7 +1200,8 @@ MmIplPeiEntry (
     //
     Status = ExecuteMmCoreFromMmram (
                mCurrentMmramRange,
-               &MmramRanges[MmramRangeCount - 1]
+               &MmramRanges[MmramRangeCount - 1],
+               &MmCoreFileNameGuid
                );
     if (EFI_ERROR (Status)) {
       //
@@ -1339,8 +1285,22 @@ MmIplPeiEntry (
   // Trigger to dispatch MM drivers from inside MM
   //
   if (!EFI_ERROR (Status)) {
-    Status = MmDriverDispatchNotify ();
-    DEBUG ((DEBUG_INFO, "MM driver dispatching returned - %r\n", Status));
+    if (CompareGuid (&gMmSupervisorCoreGuid, &MmCoreFileNameGuid)) {
+      // Legacy supervisor path.
+      Status = MmDriverDispatchNotify ();
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "Failed to communicate with MM supervisor core: %r\n", Status));
+        return Status;
+      }
+    } else {
+      // Rust supervisor path.
+      // TODO: Add capability query here.
+      Status = MmIplDispatchMmDrivers ();
+      if (EFI_ERROR (Status)) {
+        DEBUG ((DEBUG_ERROR, "Failed to communicate with MM user core: %r\n", Status));
+        return Status;
+      }
+    }
   }
 
   //
