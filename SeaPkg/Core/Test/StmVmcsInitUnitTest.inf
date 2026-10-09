@@ -1,0 +1,36 @@
+## @file
+# Host tests of the production STM VMCS return setup.
+#
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x00010006
+  BASE_NAME                      = StmVmcsInitUnitTest
+  FILE_GUID                      = F64007A3-7114-41B6-972C-784147C60352
+  MODULE_TYPE                    = HOST_APPLICATION
+  VERSION_STRING                 = 1.0
+
+[Sources]
+  ../Init/VmcsInit.c
+  ../Init/StmInit.h
+  ../Stm.h
+  StmVmcsInitUnitTest.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UefiCpuPkg/UefiCpuPkg.dec
+  MmSupervisorPkg/MmSupervisorPkg.dec
+  SeaPkg/SeaPkg.dec
+  UnitTestFrameworkPkg/UnitTestFrameworkPkg.dec
+
+[LibraryClasses]
+  BaseLib
+  UnitTestHostBaseLib
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  SynchronizationLib
+  UnitTestLib

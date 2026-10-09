@@ -52,6 +52,7 @@
 
     ## options defined ci/Plugin/HostUnitTestCompilerPlugin
     "HostUnitTestCompilerPlugin": {
+        "DscPath": "Tests/SeaPkgHostTest.dsc"
     },
 
     ## options defined ci/Plugin/GuidCheck
@@ -64,8 +65,8 @@
 
     ## options defined ci/Plugin/HostUnitTestDscCompleteCheck
     "HostUnitTestDscCompleteCheck": {
-        "IgnoreInf": [""],
-        "DscPath": ""
+        "IgnoreInf": [],
+        "DscPath": "Tests/SeaPkgHostTest.dsc"
     },
 
     ## options defined ci/Plugin/LibraryClassCheck
