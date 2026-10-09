@@ -152,6 +152,7 @@
   MmSupervisorPkg/Library/SecurePolicyLib/SecurePolicyLib.inf
 
   MmSupervisorPkg/Core/MmSupervisorCore.inf
+  MmSupervisorPkg/Core/MmSupervisorInit.inf
 
   MmSupervisorPkg/Drivers/MmSupervisorErrorReport/MmSupervisorErrorReport.inf
   MmSupervisorPkg/Drivers/MmSupervisorRing3Broker/MmSupervisorRing3Broker.inf

@@ -2151,3 +2151,12 @@ RegisterStartupProcedure (
 
   return EFI_SUCCESS;
 }
+
+EFI_PHYSICAL_ADDRESS
+EFIAPI
+MmGetSmiRendezvousAddress (
+  VOID
+  )
+{
+  return (EFI_PHYSICAL_ADDRESS)SmiRendezvous;
+}

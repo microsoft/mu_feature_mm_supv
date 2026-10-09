@@ -144,6 +144,20 @@ typedef struct {
   UINTN    FreePages;
 } PAGE_TABLE_POOL;
 
+#define MEMORY_MAP_SIGNATURE  SIGNATURE_32 ('m', 'm', 'a', 'p')
+
+typedef struct {
+  UINTN              Signature;
+  LIST_ENTRY         Link;
+  BOOLEAN            FromStack;
+  BOOLEAN            IsSupervisorPage;
+  EFI_MEMORY_TYPE    Type;
+  UINT64             Start;
+  UINT64             End;
+} MEMORY_MAP;
+
+extern LIST_ENTRY  gMemoryMap;
+
 //
 // Copy of the PcdPteMemoryEncryptionAddressOrMask
 //
