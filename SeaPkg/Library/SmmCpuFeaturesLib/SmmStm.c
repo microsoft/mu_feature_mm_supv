@@ -15,6 +15,7 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/MmServicesTableLib.h>
 #include <Library/TpmMeasurementLib.h>
+#include <Library/PanicLib.h>
 #include <Guid/MpInformation.h>
 #include <Protocol/MmEndOfDxe.h>
 #include <Register/Intel/Cpuid.h>

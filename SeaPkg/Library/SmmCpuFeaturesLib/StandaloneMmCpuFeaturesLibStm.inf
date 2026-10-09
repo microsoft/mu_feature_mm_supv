@@ -46,6 +46,7 @@
   MmServicesTableLib
   SmrrLib
   TpmMeasurementLib
+  PanicLib
 
 [Guids]
   gSmmBaseHobGuid                ## CONSUMES
