@@ -148,6 +148,18 @@ A general description of SEA and MM Supervisor code integration is depicted belo
 > Note: A list of the libraries and modules made available by this package is provided in the
   [Software Component Overview](SoftwareComponentOverview.md).
 
+### Toolchain Requirements
+
+The SEA build flow currently requires the MM Supervisor to be built with MSVC or CLANGPDB. Auxiliary-file generation
+requires the supervisor's matching PDB debug information, and the resulting auxiliary file is compiled into the SEA core.
+Consequently, GCC and CLANGDWARF supervisor builds are not supported by the end-to-end SEA flow, not just by the
+standalone auxiliary file generation tool.
+
+Optional linker map files supplement the PDB information; they do not replace it. This requirement also applies to the
+build that produces prebuilt SEA binaries for platform integration. See the
+[auxiliary file generation tool documentation](../../Tools/GenSeaArtifacts/gen_aux/readme.md#supported-toolchains)
+for details.
+
 ### Build Flow
 
 Building a platform that integrates the SEA core and and MM supervisor is a multi-stage process as the MmSupervisorCore

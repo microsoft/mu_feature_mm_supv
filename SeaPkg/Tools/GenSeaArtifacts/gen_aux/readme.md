@@ -24,7 +24,35 @@ state. Any rule specified in the configuration file will be 1. Reverted and 2. V
 ## Usability
 
 Check the tool's help information by using the command `cargo run -- -h` or if the tool is already compiled, `gen_aux -h`.
-It will provide you a list of options and a brief description of each option
+It will provide you a list of options and a brief description of each option.
+
+### Supported toolchains
+
+Auxiliary file generation requires PDB debug information, so supervisor binaries must be built with MSVC or CLANGPDB.
+GCC and CLANGDWARF are not currently supported. Linker map files are optional and can supplement the PDB information.
+
+### Linker maps
+
+Both `create-aux` and `create-config` accept an optional `--map <path>` argument alongside `--pdb`
+and `--efi`. Use a map from the same build as the image and PDB. The supported format is the MSVC-style
+map emitted by `/MAP`; the distinct `/lldmap` format is not supported.
+
+The map recovers symbols in writable sections that the PDB does not describe, including optimized,
+split statics. PDB symbols take precedence. Adjacent pieces are grouped into a recovered symbol, and
+rules can select a piece by its zero-based index:
+
+``` toml
+[[rule]]
+symbol = "log::LOGGER"
+field = "0"
+validation.type = "pointer"
+```
+
+Maps do not provide type information or exact sizes. Piece extents are inferred from neighboring
+addresses; the final piece of a split symbol uses the preceding piece's extent, capped at the next
+map symbol. Recovery also clips extents at PDB symbols and section boundaries. A trailing, non-split
+symbol without a successor is omitted because its extent cannot be inferred. Check recovered extents
+against the image when defining rules, particularly for unequal-sized pieces and alignment gaps.
 
 ## The Configuration File
 
@@ -159,6 +187,13 @@ validation.type = "guid"
 validation.guid = [0x0, 0x0, 0x0, [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]]
 ```
 
+### Automatic padding rules
+
+Automatic zero-content rules require zero bytes in the reference image. For gaps inside a typed
+object, the PDB layout must also establish that no member occupies the region. Inherited storage
+is not padding; layouts containing inheritance that the padding walker cannot resolve remain
+uncovered and require an explicit rule, such as a rule covering the whole containing object.
+
 ### config
 
 The below configuration options reside in a top level `[config]` section of the configuration file.
@@ -170,8 +205,15 @@ no_missing_rules = true
 
 #### no_missing_rules
 
-`no_missing_rules = true/false` config option tells the tool to stop processing if there is a symbol that does not
-currently have a rule created.
+`no_missing_rules = true` makes both `create-aux` and `test-aux` stop if any region remains uncovered
+after explicit rules and automatic padding rules have been applied. This includes unnamed, nonzero
+regions that cannot be validated as zero padding. The diagnostic includes addresses, sizes, and a
+preview of unnamed bytes from the reference image.
+
+With `no_missing_rules = false` (the default), both tools warn about uncovered regions and continue.
+Uncovered regions have no validation entries; passing the remaining tests does not demonstrate
+complete coverage. Supply a matching linker map and explicit rules for recovered symbols where
+debug information is missing.
 
 ## Adding a new rule
 

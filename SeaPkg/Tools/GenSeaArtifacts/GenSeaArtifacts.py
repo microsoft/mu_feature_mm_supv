@@ -263,6 +263,9 @@ class GenSeaArtifacts(IUefiHelperPlugin):
         os.environ['TEST_AUX_PECOFF_VALIDATION_LIB_DIR'] = str(pecoff_validation_lib_build_dir)
         os.environ['TEST_AUX_MM_SUPERVISOR_CORE_PDB_PATH'] = str(mm_supervisor_build_dir / f"{supervisor_name}.pdb")
         os.environ['TEST_AUX_MM_SUPERVISOR_CORE_EFI_PATH'] = str(mm_supervisor_build_dir / f"{supervisor_name}.efi")
+        # test-aux rebuilds the aux file, so it must see the same map create-aux was given.
+        map_path = mm_supervisor_build_dir / f"{supervisor_name}.map"
+        os.environ['TEST_AUX_MM_SUPERVISOR_CORE_MAP_PATH'] = str(map_path) if map_path.exists() else ""
         os.environ['RUSTC_BOOTSTRAP'] = str("1")
 
         args = 'build --release'
@@ -301,6 +304,8 @@ def generate_aux_file(aux_config_path: Path, mm_supervisor_build_dir: Path, scop
     args += " --bin create-aux --"
     args += f" --pdb {str(mm_supervisor_build_dir / f'{supervisor_name}.pdb')}"
     args += f" --efi {str(mm_supervisor_build_dir / f'{supervisor_name}.efi')}"
+    if os.path.exists(mm_supervisor_build_dir / f'{supervisor_name}.map'):
+        args += f" --map {str(mm_supervisor_build_dir / f'{supervisor_name}.map')}"
     args += f" --output {str(output_path)}"
     args += f" --config {str(aux_config_path)}"
     for scope in scopes: 
