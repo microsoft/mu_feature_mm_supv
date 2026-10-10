@@ -7,7 +7,7 @@ RUSTC_BOOTSTRAP = 1
 ARCH = "X64"
 
 CARGO_FEATURES_FLAG = {value = "--features ${FEATURES}", condition = {env_set = ["FEATURES"], env_true = ["FEATURES"]}}
-BUILD_FLAGS = "--profile ${RUSTC_PROFILE} -Zunstable-options --timings=html"
+BUILD_FLAGS = "--profile ${RUSTC_PROFILE} --timings"
 TEST_FLAGS = { value = "", condition = { env_not_set = ["TEST_FLAGS"] } }
 COV_FLAGS = { value = "--out html --out xml --exclude-files **/tests/*", condition = { env_not_set = ["COV_FLAGS"] } }
 
