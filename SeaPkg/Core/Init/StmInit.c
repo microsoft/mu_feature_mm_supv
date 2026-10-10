@@ -816,73 +816,6 @@ IsOverlap (
 }
 
 /**
-
-  This function initialize VMCS.
-
-  @param Index    CPU index
-
-**/
-VOID
-VmcsInit (
-  IN UINT32   Index,
-  IN BOOLEAN  IncrementGuestRip
-  )
-{
-  UINT64      CurrentVmcs;
-  UINTN       VmcsBase;
-  UINT32      VmcsSize;
-  STM_HEADER  *StmHeader;
-  UINTN       Rflags;
-
-  StmHeader = mHostContextCommon.StmHeader;
-  VmcsBase  = (UINTN)StmHeader +
-              STM_PAGES_TO_SIZE (STM_SIZE_TO_PAGES (StmHeader->SwStmHdr.StaticImageSize)) +
-              StmHeader->SwStmHdr.AdditionalDynamicMemorySize +
-              StmHeader->SwStmHdr.PerProcDynamicMemorySize * mHostContextCommon.CpuNum;
-  VmcsSize = GetVmcsSize ();
-
-  mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs = (UINT64)(VmcsBase + VmcsSize * (Index * 2));
-
-  SAFE_DEBUG ((EFI_D_INFO, "SmiVmcsPtr(%d) - %016lx\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs));
-  SAFE_DEBUG ((EFI_D_INFO, "Increment Guest RIP = %a.\n", IncrementGuestRip ? "True" : "False"));
-
-  SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (before store): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
-
-  AsmVmPtrStore (&CurrentVmcs);
-  SAFE_DEBUG ((EFI_D_INFO, "CurrentVmcs(%d) - %016lx\n", (UINTN)Index, CurrentVmcs));
-  // Todo: Need to set TsegBase and TsegLength somewhere?
-  // if (IsOverlap (CurrentVmcs, VmcsSize, mHostContextCommon.TsegBase, mHostContextCommon.TsegLength)) {
-  //   // Overlap TSEG
-  //   SAFE_DEBUG ((DEBUG_ERROR, "CurrentVmcs violation - %016lx\n", CurrentVmcs));
-  //   CpuDeadLoop ();
-  // }
-
-  Rflags = AsmVmClear (&CurrentVmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    SAFE_DEBUG ((DEBUG_ERROR, "ERROR: AsmVmClear(%d) - %016lx : %08x\n", (UINTN)Index, CurrentVmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  CopyMem (
-    (VOID *)(UINTN)mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs,
-    (VOID *)(UINTN)CurrentVmcs,
-    (UINTN)VmcsSize
-    );
-
-  AsmWbinvd ();
-
-  Rflags = AsmVmPtrLoad (&mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs);
-  if ((Rflags & (RFLAGS_CF | RFLAGS_ZF)) != 0) {
-    SAFE_DEBUG ((DEBUG_ERROR, "ERROR: AsmVmPtrLoad(%d) - %016lx : %08x\n", (UINTN)Index, mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, Rflags));
-    CpuDeadLoop ();
-  }
-
-  SAFE_DEBUG ((DEBUG_ERROR, "Guest-state VMCS_N_GUEST_RIP_INDEX (after load): %08x\n", (UINTN)VmReadN (VMCS_N_GUEST_RIP_INDEX)));
-
-  InitializeNormalVmcs (Index, &mGuestContextCommonNormal.GuestContextPerCpu[Index].Vmcs, IncrementGuestRip);
-}
-
-/**
   Function for caller to query the capabilities of SEA core.
 
   @param[in, out]  Register  The registers of the context of current VMCALL request.
@@ -1327,7 +1260,7 @@ SeaVmcallDispatcher (
   }
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
-  VmcsInit (CpuIndex, IsFirstEntryOnThisCore);
+  VmcsInit (CpuIndex);
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling VmcsInit()...\n", __func__, __LINE__));
 
   SAFE_DEBUG ((DEBUG_ERROR, "[%a][L%d] - Calling LaunchBack()...\n", __func__, __LINE__));

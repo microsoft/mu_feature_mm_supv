@@ -69,15 +69,20 @@ Is1GPageSupport (
 
 /**
 
-  This function initialize VMCS for Normal Environment.
-
-  @param Index CPU index
-  @param Vmcs  VMCS pointer
+  Return the page-aligned size of a VMCS region.
 
 **/
+UINT32
+GetVmcsSize (
+  VOID
+  );
+
+/**
+  Relocate the incoming VMCS into MSEG and prepare a VMCALL return.
+
+  @param Index  CPU index.
+**/
 VOID
-InitializeNormalVmcs (
-  IN UINT32   Index,
-  IN UINT64   *Vmcs,
-  IN BOOLEAN  IncrementGuestRip
+VmcsInit (
+  IN UINT32  Index
   );
