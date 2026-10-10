@@ -17,21 +17,6 @@
 #
 ##
 
-
-# release/202602 
-#Track : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | a8541506b5670776588ed1af71c8b62e | 2026-08-13T23-20-56 | 40007bbd214b8a783404d23edf4618dce2e4993c
-
-
-# release/202511 (Non Secure)
-#Track : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 7b021fae81ffd495a45b1e3b50d81c93 | 2026-03-23T18-59-43 | 18e13b478f0dc2279ad2956ff4c95c41e56c6efb
-# release/202511 (Secure)
-#Track : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 7b021fae81ffd495a45b1e3b50d81c93 | 2026-03-23T19-00-33 | 1617810253e428d5455fe5fdb304789416564fa3
-
-# release/202502 (Non Secure)
-#Track : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 14d63074792184beb6b5e68f5c69bf31 | 2026-03-23T19-19-38 | 40548b12d821a8bce209f8b5559c3b230b226d50
-# release/202502 (Secure)
-#Track : 00000002 | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf | 14d63074792184beb6b5e68f5c69bf31 | 2026-03-23T19-19-52 | 7d97213090cae9b9fa2d8d40e26eedf6949b9178
-
 [Defines]
   INF_VERSION                    = 0x00010005
   BASE_NAME                      = BaseIoLibIntrinsic
