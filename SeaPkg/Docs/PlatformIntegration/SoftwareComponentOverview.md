@@ -31,6 +31,7 @@ For more general background about the steps necessary to integrate the MM Superv
 | MM Component | Location |
 | --- | --- |
 | MmiEntrySea | SeaPkg/MmiEntrySea/MmiEntrySea.inf |
+| MmiEntrySeaV5 | SeaPkg/MmiEntrySeaV5/MmiEntrySeaV5.inf |
 
 ## SEA Core
 
