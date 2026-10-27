@@ -193,7 +193,6 @@ MmLoadImage (
   DriverEntry->ImageBuffer     = DstBuffer;
   DriverEntry->NumberOfPage    = PageCount;
 
-  // if (mEfiSystemTable != NULL) {
   // TODO: This is throw away memory but need to use until it is locked down...
   Status = MmAllocateSupervisorPool (
              EfiRuntimeServicesData,
@@ -233,8 +232,6 @@ MmLoadImage (
                                            EFI_NATIVE_INTERFACE,
                                            DriverEntry->LoadedImage
                                            );
-  // }
-
   //
   // After loading, (hopefully before executing) we apply necessary code/data pages to this image
   //
@@ -775,7 +772,10 @@ MmAddToDriverList (
   // NULL or FALSE.
   //
   DriverEntry = AllocateZeroPool (sizeof (EFI_MM_DRIVER_ENTRY));
-  ASSERT (DriverEntry != NULL);
+  if (DriverEntry == NULL) {
+    ASSERT (FALSE);
+    return EFI_OUT_OF_RESOURCES;
+  }
 
   DriverEntry->Signature = EFI_MM_DRIVER_ENTRY_SIGNATURE;
   CopyGuid (&DriverEntry->FileName, DriverName);
@@ -790,7 +790,11 @@ MmAddToDriverList (
   //
   if (Depex != NULL) {
     DriverEntry->Depex = AllocateCopyPool (DepexSize, Depex);
-    ASSERT (DriverEntry->Depex != NULL);
+    if (DriverEntry->Depex == NULL) {
+      ASSERT (FALSE);
+      FreePool (DriverEntry);
+      return EFI_OUT_OF_RESOURCES;
+    }
   }
 
   MmGetDepexSectionAndPreProccess (DriverEntry);

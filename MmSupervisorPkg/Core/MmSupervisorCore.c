@@ -929,6 +929,11 @@ DiscoverStandaloneMmDriversInFvHobs (
     return EFI_NOT_FOUND;
   }
 
+  if (StandaloneBfvAddress == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  *StandaloneBfvAddress = 0;
   do {
     Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, Hob.Raw);
     if (Hob.Raw != NULL) {
@@ -986,14 +991,30 @@ DiscoverStandaloneMmDriversInFvHobs (
           (UINTN)FwVolHeader
           ));
         Status = MmCoreFfsFindMmDriver (FwVolHeader);
-        ASSERT_EFI_ERROR (Status);
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "%a MmCoreFfsFindMmDriver failed - %r!\n", __func__, Status));
+          break;
+        }
+      } else if (Status == EFI_NOT_FOUND) {
+        // It is normal for an FV to not contain any Standalone MM drivers.
+        DEBUG ((
+          DEBUG_INFO,
+          "[%a]   No Standalone MM drivers found in FV at 0x%x.\n",
+          __func__,
+          (UINTN)FwVolHeader
+          ));
+        Status = EFI_SUCCESS;
       }
 
       Hob.Raw = GetNextHob (EFI_HOB_TYPE_FV, GET_NEXT_HOB (Hob));
     }
   } while (Hob.Raw != NULL);
 
-  return EFI_SUCCESS;
+  if (*StandaloneBfvAddress == 0) {
+    return EFI_NOT_FOUND;
+  }
+
+  return Status;
 }
 
 /**
