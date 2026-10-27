@@ -189,15 +189,15 @@ PrepareCommonBuffers (
     }
 
     if (!MmIsBufferOutsideMmValid (
-           mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
-           EFI_PAGES_TO_SIZE (mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].NumberOfPages)
+           CommRegionHob->MmCommonRegionAddr,
+           EFI_PAGES_TO_SIZE (CommRegionHob->MmCommonRegionPages)
            ))
     {
       DEBUG ((
         DEBUG_ERROR,
         "%a - Buffer (%p) invalid for type %x!!\n",
         __func__,
-        mMmSupervisorAccessBuffer[CommRegionHob->MmCommonRegionType].PhysicalStart,
+        CommRegionHob->MmCommonRegionAddr,
         CommRegionHob->MmCommonRegionType
         ));
       Status = EFI_BAD_BUFFER_SIZE;
