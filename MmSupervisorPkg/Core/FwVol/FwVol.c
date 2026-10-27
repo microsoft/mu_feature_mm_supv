@@ -112,6 +112,18 @@ Returns:
     }
   } while (!EFI_ERROR (Status));
 
+  // Anything other than EFI_NOT_FOUND indicates an error during FFS enumeration.
+  if (Status != EFI_NOT_FOUND) {
+    DEBUG ((DEBUG_ERROR, "%a FFS enumeration failed - %r\n", __func__, Status));
+    goto Done;
+  }
+
+  if (TotalSize == 0) {
+    DEBUG ((DEBUG_INFO, "No MM standalone drivers found in FV - 0x%x\n", FwVolHeader));
+    Status = EFI_SUCCESS;
+    goto Done;
+  }
+
   // If by the time we get here this FV is outside of MMRAM, copy it MMRAM
   // It will be marked as CPL3 RO XP before entering MMI
   Status = MmAllocatePages (
@@ -153,7 +165,11 @@ Returns:
 
       if (!EFI_ERROR (Status)) {
         // Set the FV header to be NULL here since the original header will not be available anyway.
-        MmAddToDriverList (NULL, Pe32Data, Pe32DataSize, Depex, DepexSize, &InnerFileHeader->Name);
+        Status = MmAddToDriverList (NULL, Pe32Data, Pe32DataSize, Depex, DepexSize, &InnerFileHeader->Name);
+        if (EFI_ERROR (Status)) {
+          DEBUG ((DEBUG_ERROR, "Adding to driver list failed - %r!\n", Status));
+          goto Done;
+        }
       }
     }
   } while (!EFI_ERROR (Status));
