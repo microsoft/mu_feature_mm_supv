@@ -7,7 +7,7 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::{fmt::Debug, io::Write};
 
-use scroll::{ctx::TryIntoCtx, Endian, Pwrite};
+use scroll::{Endian, Pwrite, ctx::TryIntoCtx};
 
 /// A struct representing the auxiliary file that is generated from the PDB
 #[derive(Debug, Default)]
@@ -229,8 +229,11 @@ impl ImageValidationEntryHeader {
 
 impl Debug for ImageValidationEntryHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ImageValidationEntryHeader {{ offset: 0x{:08X}, size: 0x{:08X}, validation_type: {:?}, offset_to_default: 0x{:08X} }}",
-            self.offset, self.size, self.validation_type, self.offset_to_default)
+        write!(
+            f,
+            "ImageValidationEntryHeader {{ offset: 0x{:08X}, size: 0x{:08X}, validation_type: {:?}, offset_to_default: 0x{:08X} }}",
+            self.offset, self.size, self.validation_type, self.offset_to_default
+        )
     }
 }
 

@@ -10,10 +10,10 @@
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 use std::{collections::HashMap, fmt::Formatter, fs::File, io::Cursor, ops::Range, path::PathBuf};
 
-use anyhow::{anyhow, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
 use pdb::{
-    AddressMap, DataSymbol, FallibleIterator, Item, ItemFinder, PrimitiveKind, Source, TypeData,
-    TypeIndex, TypeInformation, PDB,
+    AddressMap, DataSymbol, FallibleIterator, Item, ItemFinder, PDB, PrimitiveKind, Source,
+    TypeData, TypeIndex, TypeInformation,
 };
 
 use crate::{config, file, report};
@@ -655,17 +655,20 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
 
         if let Some(array) = &rule.array {
             if array.index.is_some() && array.sentinel {
-                return Err(
-                    anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array configuration `sentinel` and `index` cannot be combined.", symbol.name)
-                );
+                return Err(anyhow::anyhow!(
+                    "Invalid Rule Configuration: Symbol {}: Array configuration `sentinel` and `index` cannot be combined.",
+                    symbol.name
+                ));
             }
 
-            if let Some(index) = &array.index {
-                if index.end() >= &element_count {
-                    return Err(
-                        anyhow::anyhow!("Invalid Rule Configuration: Symbol {}: Array index {:#?} is out of bounds.", symbol.name, index)
-                    );
-                }
+            if let Some(index) = &array.index
+                && index.end() >= &element_count
+            {
+                return Err(anyhow::anyhow!(
+                    "Invalid Rule Configuration: Symbol {}: Array index {:#?} is out of bounds.",
+                    symbol.name(),
+                    index
+                ));
             }
         }
 
@@ -751,28 +754,25 @@ impl<'a, S: Source<'a> + 'a> PdbMetadata<'a, S> {
             while let Some(symbol) = symbols.next()? {
                 if let Some(symbol) =
                     Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
-                {
-                    if let Some(section) = self
+                    && let Some(section) = self
                         .sections
                         .iter_mut()
                         .find(|section| section.range.contains(&symbol.address))
-                    {
-                        section.symbols.push(symbol);
-                    }
+                {
+                    section.symbols.push(symbol);
                 }
             }
         }
 
         while let Some(symbol) = symbols.next()? {
+            // Ignored records must not terminate iteration over the global symbol stream.
             if let Some(symbol) = Symbol::from_pdb_symbol(symbol, &address_map, &type_information)?
-            {
-                if let Some(section) = self
+                && let Some(section) = self
                     .sections
                     .iter_mut()
                     .find(|section| section.range.contains(&symbol.address))
-                {
-                    section.symbols.push(symbol);
-                }
+            {
+                section.symbols.push(symbol);
             }
         }
 
@@ -1099,10 +1099,10 @@ impl Symbol {
         // and retry; config paths then only name the fields a reader would recognize. Rust
         // produces this shape constantly via `UnsafeCell`, `ManuallyDrop`, `MaybeUninit` and
         // newtypes. Explicit paths still work, because this runs only after an exact match fails.
-        if depth < MAX_WRAPPER_DEPTH {
-            if let Some(inner) = Self::transparent_wrapper_member(info, &members, parent_size) {
-                return Self::find_field_at(info, &inner, attribute, symbol, depth + 1);
-            }
+        if depth < MAX_WRAPPER_DEPTH
+            && let Some(inner) = Self::transparent_wrapper_member(info, &members, parent_size)
+        {
+            return Self::find_field_at(info, &inner, attribute, symbol, depth + 1);
         }
 
         Err(anyhow::anyhow!(
@@ -1342,7 +1342,7 @@ impl Symbol {
                 TypeData::Modifier(modifier) => index = modifier.underlying_type,
                 data => {
                     return Aggregate::new(&data)
-                        .is_some_and(|a| a.size == 0 && !a.forward_reference)
+                        .is_some_and(|a| a.size == 0 && !a.forward_reference);
                 }
             }
         }
@@ -1596,18 +1596,19 @@ mod test {
         assert!(efi.path().exists());
 
         // pdb path does not exist
-        assert!(PdbMetadata::<File>::new(
-            PathBuf::from("non_existent.pdb"),
-            PathBuf::from("non_existent.bin")
-        )
-        .is_err());
+        assert!(
+            PdbMetadata::<File>::new(
+                PathBuf::from("non_existent.pdb"),
+                PathBuf::from("non_existent.bin")
+            )
+            .is_err()
+        );
 
         // pdb path exists, but file does not
-        assert!(PdbMetadata::<File>::new(
-            pdb.path().to_path_buf(),
-            PathBuf::from("non_existent.bin")
-        )
-        .is_err());
+        assert!(
+            PdbMetadata::<File>::new(pdb.path().to_path_buf(), PathBuf::from("non_existent.bin"))
+                .is_err()
+        );
 
         // pdb path exists, but is not a pdb file
         assert!(
@@ -1672,9 +1673,11 @@ mod test {
             .expect("array element field should produce entries");
 
         assert_eq!(entries.len(), 2);
-        assert!(entries
-            .iter()
-            .all(|entry| entry.0.size == POINTER_LENGTH as u32));
+        assert!(
+            entries
+                .iter()
+                .all(|entry| entry.0.size == POINTER_LENGTH as u32)
+        );
         assert_eq!(
             metadata
                 .context_from_address(&entries[0].0.offset)
@@ -1853,9 +1856,11 @@ mod test {
             .build_key_symbol(&key)
             .expect_err("an invalid key field should fail");
 
-        assert!(error
-            .to_string()
-            .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]"));
+        assert!(
+            error
+                .to_string()
+                .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")
+        );
     }
 
     #[test]
@@ -1957,7 +1962,7 @@ mod test {
             4,
             0x3ffff,
         ];
-        for (word, value) in types.chunks_exact_mut(4).zip(header) {
+        for (word, value) in types.as_chunks_mut::<4>().0.iter_mut().zip(header) {
             word.copy_from_slice(&value.to_le_bytes());
         }
         assert!(types.len() <= PAGE_SIZE);
@@ -1970,7 +1975,7 @@ mod test {
             (PAGE_SIZE * 2, vec![3]),
             (PAGE_SIZE * 3, vec![3, 0, 0, types.len() as u32, 4]),
         ] {
-            for (word, value) in pdb[offset..].chunks_exact_mut(4).zip(words) {
+            for (word, value) in pdb[offset..].as_chunks_mut::<4>().0.iter_mut().zip(words) {
                 word.copy_from_slice(&value.to_le_bytes());
             }
         }
@@ -2059,10 +2064,12 @@ mod test {
                 .len(),
             1
         );
-        assert!(metadata
-            .build_field_padding_entries(&coverage)
-            .unwrap()
-            .is_empty());
+        assert!(
+            metadata
+                .build_field_padding_entries(&coverage)
+                .unwrap()
+                .is_empty()
+        );
         for (entry, content) in metadata.create_padding_entries(&coverage).unwrap() {
             assert!(entry.offset + entry.size <= address || entry.offset >= address + 4);
             aux.add_entry(entry, &content);
@@ -2619,9 +2626,10 @@ mod test {
         let type_info = &Types::new(&info).unwrap();
 
         let result = TypeInfo::from_type_data(type_info, data, index);
-        assert!(result.is_err_and(|err| err
-            .to_string()
-            .contains("Unhandled TypeData for C Code: OverloadedMethod")));
+        assert!(result.is_err_and(|err| {
+            err.to_string()
+                .contains("Unhandled TypeData for C Code: OverloadedMethod")
+        }));
     }
 
     #[test]
@@ -2707,9 +2715,10 @@ mod test {
             .unwrap();
 
         let result = Symbol::find_field(type_info, &type_index, field, symbol);
-        assert!(result.is_err_and(|err| err
-            .to_string()
-            .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")));
+        assert!(result.is_err_and(|err| {
+            err.to_string()
+                .contains("Field [NonExistentField] not found in symbol [mRootMmiEntry]")
+        }));
     }
 
     /// `gMmMps.HeapGuardPolicy` is a C union of a raw byte and a bitfield struct, both at offset
@@ -2784,9 +2793,10 @@ mod test {
             .unwrap();
 
         let result = Symbol::find_field(type_info, &type_index, field, symbol);
-        assert!(result.is_err_and(|err| err
-            .to_string()
-            .contains("Symbol [mMapDepth] is not a class or union. Cannot get fields.")));
+        assert!(result.is_err_and(|err| {
+            err.to_string()
+                .contains("Symbol [mMapDepth] is not a class or union. Cannot get fields.")
+        }));
     }
 
     /// The descent only fires for a record that is unambiguously a pass-through: one payload, at
@@ -2899,12 +2909,16 @@ mod test {
 
         // A map has no field names, so anything that is not an index has to be rejected rather
         // than silently resolving to the wrong bytes.
-        assert!(symbol
-            .piece("pointer")
-            .is_err_and(|e| e.to_string().contains("records no field names")));
-        assert!(symbol
-            .piece("2")
-            .is_err_and(|e| e.to_string().contains("does not exist")));
+        assert!(
+            symbol
+                .piece("pointer")
+                .is_err_and(|e| e.to_string().contains("records no field names"))
+        );
+        assert!(
+            symbol
+                .piece("2")
+                .is_err_and(|e| e.to_string().contains("does not exist"))
+        );
     }
 
     #[test]
@@ -2916,9 +2930,10 @@ mod test {
             pieces: Vec::new(),
         };
 
-        assert!(symbol.piece("0").is_err_and(|e| e
-            .to_string()
-            .contains("neither debug information nor linker map")));
+        assert!(symbol.piece("0").is_err_and(|e| {
+            e.to_string()
+                .contains("neither debug information nor linker map")
+        }));
     }
 
     #[test]

@@ -6,7 +6,7 @@
 //!
 //! SPDX-License-Identifier: BSD-2-Clause-Patent
 //!
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use pdb::Source;
 use serde::Serialize;
 
@@ -750,14 +750,18 @@ mod tests {
         assert_eq!(segments.segments.len(), 1);
 
         // Passing the wrong file type should fail
-        assert!(segments
-            .add_section_padding(include_bytes!("../resources/test/example.pdb"))
-            .is_err());
+        assert!(
+            segments
+                .add_section_padding(include_bytes!("../resources/test/example.pdb"))
+                .is_err()
+        );
 
         // Passing the correct file type should succeed
-        assert!(segments
-            .add_section_padding(include_bytes!("../resources/test/example.efi"))
-            .is_ok());
+        assert!(
+            segments
+                .add_section_padding(include_bytes!("../resources/test/example.efi"))
+                .is_ok()
+        );
 
         // (1) PE Header + .text Section
         // (2) .text Section Padding (COVERED)
@@ -794,9 +798,11 @@ mod tests {
             .unwrap_or_else(|_| panic!("Failed to insert segment"));
 
         // This should panic because the segment overlaps with the existing segment
-        assert!(segments
-            .insert(Segment::new(0x100, 0x300, true, "Test".to_string()))
-            .is_err());
+        assert!(
+            segments
+                .insert(Segment::new(0x100, 0x300, true, "Test".to_string()))
+                .is_err()
+        );
     }
 
     #[test]
