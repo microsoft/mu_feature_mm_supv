@@ -350,8 +350,11 @@ mod test {
             .find_map(|segment| {
                 pe.sections.iter().enumerate().find_map(|(index, section)| {
                     let start = segment.start().checked_sub(section.virtual_address)?;
-                    (start + 8 <= section.virtual_size)
-                        .then_some((index + 1, start, segment.start()))
+                    (start + 8 <= section.virtual_size).then_some((
+                        index + 1,
+                        start,
+                        segment.start(),
+                    ))
                 })
             })
             .expect("fixture should contain an unnamed writable gap");

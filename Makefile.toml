@@ -9,7 +9,6 @@ ARCH = "X64"
 CARGO_FEATURES_FLAG = {value = "--features ${FEATURES}", condition = {env_set = ["FEATURES"], env_true = ["FEATURES"]}}
 BUILD_FLAGS = "--profile ${RUSTC_PROFILE} --timings"
 TEST_FLAGS = { value = "", condition = { env_not_set = ["TEST_FLAGS"] } }
-COV_FLAGS = { value = "--out html --out xml --exclude-files **/tests/*", condition = { env_not_set = ["COV_FLAGS"] } }
 
 [env.development]
 RUSTC_PROFILE = "dev"
@@ -99,11 +98,25 @@ args = ["test", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "@@split(TEST_FLAGS, )"
 dependencies = ["individual-package-targets"]
 
 [tasks.coverage]
-description = "Build and run all tests and calculate coverage."
+description = "Build and run all tests and generate HTML coverage."
 clear = true
 command = "cargo"
-args = ["tarpaulin", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "@@split(COV_FLAGS, )", "--output-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target"]
+args = ["llvm-cov", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "--html", "--output-dir", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target/coverage"]
 dependencies = ["individual-package-targets"]
+
+[tasks.coverage-json]
+description = "Build and run all tests and generate JSON coverage."
+clear = true
+command = "cargo"
+args = ["llvm-cov", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "--json", "--output-path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target/coverage.json"]
+dependencies = ["individual-package-targets"]
+
+[tasks.coverage-ci]
+description = "Run tests and generate JSON and Cobertura coverage reports."
+clear = true
+command = "cargo"
+args = ["llvm-cov", "report", "@@split(INDIVIDUAL_PACKAGE_TARGETS, )", "--cobertura", "--output-path", "${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target/cobertura.xml"]
+dependencies = ["coverage-json"]
 
 [tasks.clippy]
 description = "Run cargo clippy."
