@@ -1406,24 +1406,26 @@ SetMemMapAttributes (
   MemoryMap = MemoryMapStart;
   for (Index = 0; Index < MemoryMapEntryCount; Index++) {
     DEBUG ((DEBUG_VERBOSE, "SetAttribute: Memory Entry - 0x%lx, 0x%x\n", MemoryMap->PhysicalStart, MemoryMap->NumberOfPages));
-    if (MemoryMap->Attribute & EFI_MEMORY_SP) {
-      SupervisorMarker = EFI_MEMORY_SP;
-    } else {
-      SupervisorMarker = 0;
-    }
+    SupervisorMarker = MemoryMap->Attribute & EFI_MEMORY_SP;
 
-    MemoryAttribute = MemoryMap->Attribute & (EFI_MEMORY_ACCESS_MASK | EFI_MEMORY_SP);
+    //
+    // The supervisor marker is not an access attribute, so default the access attributes
+    // by type whenever none are set, and add the marker back afterwards.
+    //
+    MemoryAttribute = MemoryMap->Attribute & EFI_MEMORY_ACCESS_MASK;
     if (MemoryAttribute == 0) {
       if (MemoryMap->Type == EfiRuntimeServicesCode) {
-        MemoryAttribute = EFI_MEMORY_RO | SupervisorMarker;
+        MemoryAttribute = EFI_MEMORY_RO;
       } else {
         ASSERT ((MemoryMap->Type == EfiRuntimeServicesData) || (MemoryMap->Type == EfiConventionalMemory));
         //
         // Set other type memory as NX.
         //
-        MemoryAttribute = EFI_MEMORY_XP | SupervisorMarker;
+        MemoryAttribute = EFI_MEMORY_XP;
       }
     }
+
+    MemoryAttribute |= SupervisorMarker;
 
     //
     // There may exist non-present range overlaps with the MemoryMap range.
