@@ -456,11 +456,19 @@ LoadStandaloneMmCoreImage (
   ZeroMem (ImageContext, sizeof (PE_COFF_LOADER_IMAGE_CONTEXT));
 
   Status = MmLoadImage (*DriverEntry, ImageContext);
+
+  // Free the Pe32Data now that this driver is loaded into memory, because supv will not use it.
+  MmFreePages ((EFI_PHYSICAL_ADDRESS)(UINTN)InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
+
   if (EFI_ERROR (Status)) {
     MmFreeSupervisorPool (*DriverEntry);
     *DriverEntry = NULL;
-    MmFreePages ((EFI_PHYSICAL_ADDRESS)(UINTN)InnerFvHeader, EFI_SIZE_TO_PAGES (TotalSize));
+    return Status;
   }
+
+  // Keep up with the data in the book-keeping
+  (*DriverEntry)->Pe32Data     = NULL;
+  (*DriverEntry)->Pe32DataSize = 0;
 
   return Status;
 }

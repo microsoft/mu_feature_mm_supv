@@ -758,6 +758,18 @@ RecycleFfsBuffer (
   );
 
 /**
+  Helper function to free the FFS driver cache list and all associated memory blocks.
+
+  @retval EFI_SUCCESS       All previously allocated buffer for ffs are freed properly.
+  @retval EFI_NOT_FOUND     The FFS driver cache list is empty.
+
+**/
+EFI_STATUS
+FreeFfsDriverCacheList (
+  VOID
+  );
+
+/**
   This function is the main entry point for an MM handler dispatch
   or communicate-based callback.
 
