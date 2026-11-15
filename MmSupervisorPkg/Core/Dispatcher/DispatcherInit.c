@@ -419,6 +419,16 @@ MmLoadButNotDispatch (
       DEBUG ((DEBUG_ERROR, "%a MmLoadImage failed for %g: %r\n", __func__, &DriverEntry->FileName, Status));
       PANIC ("Failed to load MM driver image");
     }
+
+    // Clear the Pe32Data and Pe32DataSize fields now that the image has been loaded into memory.
+    DriverEntry->Pe32Data     = NULL;
+    DriverEntry->Pe32DataSize = 0;
+  }
+
+  // Now that the drivers have been loaded into memory, we can drop the ffs list we had before.
+  Status = FreeFfsDriverCacheList ();
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "%a FreeFfsDriverCacheList failed: %r\n", __func__, Status));
   }
 
   return EFI_SUCCESS;

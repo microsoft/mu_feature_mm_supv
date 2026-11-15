@@ -291,3 +291,43 @@ RecycleFfsBuffer (
 Exit:
   return Status;
 }
+
+/**
+  Helper function to free the FFS driver cache list and all associated memory blocks.
+
+  @retval EFI_SUCCESS       All previously allocated buffer for ffs are freed properly.
+  @retval Error             Some issue occurred during garbage collection.
+
+**/
+EFI_STATUS
+FreeFfsDriverCacheList (
+  VOID
+  )
+{
+  EFI_STATUS             Status;
+  LIST_ENTRY             *Link;
+  FFS_DRIVER_CACHE_LIST  *CurrentCacheNode;
+
+  if (IsListEmpty (&mFfsDriverCacheList)) {
+    Status = EFI_NOT_FOUND;
+    goto Exit;
+  }
+
+  Link = mFfsDriverCacheList.ForwardLink;
+  while (Link != &mFfsDriverCacheList) {
+    CurrentCacheNode = CR (Link, FFS_DRIVER_CACHE_LIST, Link, FFS_DRIVER_CACHE_SIGNATURE);
+    if ((CurrentCacheNode->DriverCacheDesc.PhysicalStart != 0) &&
+        (CurrentCacheNode->DriverCacheDesc.NumberOfPages != 0))
+    {
+      MmFreePages (CurrentCacheNode->DriverCacheDesc.PhysicalStart, CurrentCacheNode->DriverCacheDesc.NumberOfPages);
+    }
+
+    Link = RemoveEntryList (Link);
+    MmFreeSupervisorPool (CurrentCacheNode);
+  }
+
+  Status = EFI_SUCCESS;
+
+Exit:
+  return Status;
+}
