@@ -133,12 +133,13 @@ EnforceMemoryMapAttribute (
   MemoryMapEntry = MemoryMap;
   MemoryMapEnd   = (EFI_MEMORY_DESCRIPTOR *)((UINT8 *)MemoryMap + MemoryMapSize);
   while ((UINTN)MemoryMapEntry < (UINTN)MemoryMapEnd) {
-    if (MemoryMapEntry->Attribute != 0) {
+    // So that we can keep the EFI_MEMORY_SP from Attribute.
+    if ((MemoryMapEntry->Attribute & EFI_MEMORY_ACCESS_MASK) != 0) {
       // It is PE image, the attribute is already set.
     } else {
       switch (MemoryMapEntry->Type) {
         case EfiRuntimeServicesCode:
-          MemoryMapEntry->Attribute = EFI_MEMORY_RO;
+          MemoryMapEntry->Attribute |= EFI_MEMORY_RO;
           break;
         case EfiRuntimeServicesData:
         default:
