@@ -112,7 +112,7 @@ TssSeg:
             DW      0                   ; BaseLow
             DB      0                   ; BaseMid
             DB      0x89
-            DB      0x80                ; LimitHigh
+            DB      0x0                 ; LimitHigh
             DB      0                   ; BaseHigh
             DD      0                   ; BaseUpper
             DD      0                   ; Reserved
@@ -136,7 +136,7 @@ TssDescriptor:
             DD      0                   ; Reserved
             DD      0                   ; Reserved
             DW      0                   ; Reserved
-            DW      0                   ; I/O Map Base Address
+            DW      TSS_DESC_SIZE       ; I/O Map Base Address
 TSS_DESC_SIZE equ $ -   TssDescriptor
 
 ;
