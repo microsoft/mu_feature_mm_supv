@@ -28,6 +28,17 @@ Instructions that manipulate interrupt flags and could affect system interrupt h
 - hlt         # halt – stops CPU until next external interrupt
 ```
 
+### Port I/O
+
+Direct port I/O instructions, whose availability depends on CPL, IOPL, and
+the I/O-permission bitmap:
+
+```text
+- in, out                  # scalar port input/output
+- ins, insb, insw, insd     # string port input
+- outs, outsb, outsw, outsd # string port output
+```
+
 ### Memory Management
 
 Instructions that control memory segmentation and paging structures:

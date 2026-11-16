@@ -1,6 +1,6 @@
 
 ##
-#  Post-build plugin to scan MM Standalone modules for use of protected 
+#  Post-build plugin to scan MM Standalone modules for use of protected
 #  instructions
 #
 #
@@ -12,21 +12,28 @@ import logging
 import re
 from io import StringIO
 from pathlib import Path
-from typing import Any, List, Set
+from typing import Any
 
-from edk2toolext.environment.plugintypes.uefi_build_plugin import (
-    IUefiBuildPlugin
-)
+from edk2toolext.environment import shell_environment
+from edk2toolext.environment.plugintypes.uefi_build_plugin import IUefiBuildPlugin
 from edk2toollib.uefi.edk2.parsers.buildreport_parser import BuildReport
 from edk2toollib.utility_functions import RunCmd
 from edk2toollib.windows.locate_tools import GetVsWherePath
-from edk2toolext.environment import shell_environment
 
-
-privileged_instructions: List[str] = [
+privileged_instructions: list[str] = [
     "cli",        # clear interrupt flag – disables maskable interrupts
     "sti",        # set interrupt flag – enables maskable interrupts
     "hlt",        # halt – stops CPU until next external interrupt
+    "in",         # read from an I/O port into the accumulator
+    "out",        # write the accumulator to an I/O port
+    "ins",        # read from an I/O port into memory
+    "insb",       # read a byte from an I/O port into memory
+    "insw",       # read a word from an I/O port into memory
+    "insd",       # read a doubleword from an I/O port into memory
+    "outs",       # write from memory to an I/O port
+    "outsb",      # write a byte from memory to an I/O port
+    "outsw",      # write a word from memory to an I/O port
+    "outsd",      # write a doubleword from memory to an I/O port
     "lgdt",       # load global descriptor table – sets up memory segmentation
     "sgdt",       # store global descriptor table – reads current GDT
                   # (privileged in 64-bit mode)
@@ -99,7 +106,7 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         # yes, this really is only handing x86/x64 because that is all mm
         # supv supports.
         self.ToolChain = env.get("TOOL_CHAIN_TAG", "")
-        if self.ToolChain == "VS2022":
+        if self.ToolChain.contains("VS"):
             self.disassemble_executable = self.find_dumpbin()
             self.disassemble_options = "/DISASM "
             # Match function labels that appear on their own line ending
@@ -179,7 +186,6 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
             {}
         )
         self.report.BasicParse()
-        return
 
     def find_standalonemm_modules(self, thebuilder: Any) -> None:
         """Find all MM Standalone modules in the build report.
@@ -194,7 +200,6 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         for module in self.report.Modules.values():
             if module.FvName and module.Type == "MM_STANDALONE":
                 self.module_list.append(module.Name)
-        return
 
     def find_dumpbin(self) -> str:
         """Find the path to the dumpbin.exe tool.
@@ -208,7 +213,7 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
         """
         vs_where_path = GetVsWherePath()
         if vs_where_path is None:
-            raise EnvironmentError("Unable to locate the VsWhere Executable.")
+            raise OSError("Unable to locate the VsWhere Executable.")
 
         cmd = (
             "-latest -products * -requires "
@@ -251,7 +256,7 @@ class MmSupervisorPostBuildScan(IUefiBuildPlugin):
             return ""
         return result_io.getvalue()
 
-    def find_protected_instructions(self, diss: str) -> Set[str]:
+    def find_protected_instructions(self, diss: str) -> set[str]:
         """Find protected instructions in disassembly output.
 
         Args:
