@@ -44,7 +44,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #define SEA_SPEC_VERSION_MAJOR  1
 #define SEA_SPEC_VERSION_MINOR  0
 
-#define SEA_MSEG_ATTRIBUTE  (EFI_MEMORY_SP | EFI_MEMORY_RO)
+#define SEA_MSEG_ATTRIBUTE  (EFI_MEMORY_RP)
 
 #pragma pack(push,1)
 
