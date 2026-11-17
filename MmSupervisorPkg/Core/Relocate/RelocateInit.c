@@ -62,6 +62,8 @@ UINT32  mSmmCr3;
 
 BOOLEAN  mSmmRebootOnException = TRUE;
 
+STATIC_ASSERT (FixedPcdGetBool (PcdCpuSmmStackGuard), "PcdCpuSmmStackGuard must be enabled for MM Supervisor Initializer");
+
 /**
   Initialize IDT to setup exception handlers for SMM.
 
