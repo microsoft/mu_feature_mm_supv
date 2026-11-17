@@ -130,7 +130,8 @@ impl SeaManifestV1 {
         let (major, minor, patch, pre_release) = Self::parse_semantic_version(&sea_version)?;
 
         if pre_release {
-            security_version = 0;
+            println!("Pre-release version detected: {}", sea_version);
+            println!("Please roll the version to a stable release before production.");
         }
 
         let algorithm_count = algorithms.len() as u8;
