@@ -48,6 +48,8 @@ GLOBAL_REMOVE_IF_UNREFERENCED CONST UINTN  mLevelShift[GUARDED_HEAP_MAP_TABLE_DE
 GLOBAL_REMOVE_IF_UNREFERENCED CONST UINTN  mLevelMask[GUARDED_HEAP_MAP_TABLE_DEPTH]
   = GUARDED_HEAP_MAP_TABLE_DEPTH_MASKS;
 
+extern UINTN  mInternalCr3;
+
 //
 // SMM memory attribute protocol
 //
@@ -534,7 +536,7 @@ SetGuardPage (
 
   // MU_CHANGE: MM_SUPV: Do not touch real page table before getting into MM.
   //                     As page guard bit is already cached by SetGuardedMemoryBits function, no need to do anything here.
-  if (!mCoreInitializationComplete) {
+  if (!mCoreInitializationComplete && (mInternalCr3 == 0)) {
     // Do nothing for heapguard if the paging is not valid, since this will be applied before dispatching handlers
     return;
   }
@@ -568,7 +570,7 @@ UnsetGuardPage (
 
   // MU_CHANGE: MM_SUPV: Do not touch real page table before getting into MM.
   //                     As page guard bit is already cached by ClearGuardedMemoryBits function, no need to do anything here.
-  if (!mCoreInitializationComplete) {
+  if (!mCoreInitializationComplete && (mInternalCr3 == 0)) {
     // Do nothing for heapguard if the paging is not valid, since this will be applied before dispatching handlers
     return;
   }
@@ -873,7 +875,7 @@ AdjustMemoryF (
   //
   // In case the memory to free is marked as read-only (e.g. EfiRuntimeServicesCode).
   //
-  if (mCoreInitializationComplete) {
+  if (mCoreInitializationComplete || (mInternalCr3 != 0)) {
     Attributes = 0;
     Status     = SmmGetMemoryAttributes (
                    Start,

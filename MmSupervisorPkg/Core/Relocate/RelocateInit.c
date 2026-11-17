@@ -205,12 +205,15 @@ LockMmCoreBeforeExit (
   //
   SetMemMapAttributes ();
 
-  if (IsRestrictedMemoryAccess ()) {
-    //
-    // Set page table itself to be read-only
-    //
-    SetPageTableAttributes ();
-  }
+  //
+  // Enable guard pages
+  //
+  MmEntryPointMemoryManagementHook ();
+
+  //
+  // Set page table itself to be read-only
+  //
+  SetPageTableAttributes ();
 
   PERF_START (NULL, "SmmCompleteReadyToLock", NULL, 0);
   SmmCpuFeaturesCompleteSmmReadyToLock ();
