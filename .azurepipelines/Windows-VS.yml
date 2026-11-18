@@ -13,7 +13,10 @@
 
 variables:
 - group: architectures-x86-64
-- group: tool-chain-windows-visual-studio-latest
+- name: tool_chain_tag
+  value: VS2026
+- name: vm_image
+  value: windows-latest
 - group: coverage
 
 extends:
