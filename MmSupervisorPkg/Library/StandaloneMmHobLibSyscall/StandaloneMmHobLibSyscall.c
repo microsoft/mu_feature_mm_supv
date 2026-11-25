@@ -506,23 +506,23 @@ BuildResourceDescriptorWithOwnerHob (
   This function builds a HOB that describes a chunk of system memory.
   If there is no additional space for HOB creation, then ASSERT().
 
-  @param  ResourceType          The type of resource described by this HOB.
-  @param  ResourceAttribute     The resource attributes of the memory described by this HOB.
-  @param  PhysicalStart         The 64 bit physical address of memory described by this HOB.
-  @param  NumberOfBytes         The length of the memory described by this HOB in bytes.
-  @param  EfiMemoryAttributes   The memory attribute for the memory described by this HOB.
-  @param  OwnerGUID             GUID for the owner of this resource.
+  @param  ResourceType               The type of resource described by this HOB.
+  @param  ResourceCapabilities       The resource capabilities of the memory described by this HOB.
+  @param  PhysicalStart              The 64 bit physical address of memory described by this HOB.
+  @param  ResourceLength             The length of the memory described by this HOB in bytes.
+  @param  ResourceMemoryAttributes   The memory attribute for the memory described by this HOB.
+  @param  OwnerGuid                  GUID for the owner of this resource.
 
 **/
 VOID
 EFIAPI
-BuildResourceDescriptorV2 (
+BuildResourceDescriptor2Hob (
   IN EFI_RESOURCE_TYPE            ResourceType,
-  IN EFI_RESOURCE_ATTRIBUTE_TYPE  ResourceAttribute,
+  IN EFI_RESOURCE_ATTRIBUTE_TYPE  ResourceCapabilities,
   IN EFI_PHYSICAL_ADDRESS         PhysicalStart,
-  IN UINT64                       NumberOfBytes,
-  IN UINT64                       EfiMemoryAttributes,
-  IN EFI_GUID                     *OwnerGUID OPTIONAL
+  IN UINT64                       ResourceLength,
+  IN UINT64                       ResourceMemoryAttributes,
+  IN EFI_GUID                     *OwnerGuid OPTIONAL
   )
 {
   ASSERT (FALSE);

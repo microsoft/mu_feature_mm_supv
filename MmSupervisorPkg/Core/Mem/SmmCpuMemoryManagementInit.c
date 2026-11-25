@@ -1607,7 +1607,7 @@ CompareAddressPoint (
 **/
 BOOLEAN
 SkipResourceDescriptor (
-  EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDesc
+  EFI_HOB_RESOURCE_DESCRIPTOR2  *ResourceDesc
   )
 {
   if ((ResourceDesc == NULL) ||
@@ -1683,11 +1683,11 @@ CoalesceHobMemory (
   OUT UINTN                 *Count
   )
 {
-  EFI_HOB_RESOURCE_DESCRIPTOR  *ResourceDescriptor;
-  EFI_PEI_HOB_POINTERS         Hob;
-  UINTN                        Index;
-  UINTN                        MmIndex;
-  MEMORY_ADDRESS_POINT         *TempBuffer;
+  EFI_HOB_RESOURCE_DESCRIPTOR2  *ResourceDescriptor;
+  EFI_PEI_HOB_POINTERS          Hob;
+  UINTN                         Index;
+  UINTN                         MmIndex;
+  MEMORY_ADDRESS_POINT          *TempBuffer;
 
   if ((Count == NULL) || (MemAddrBuffer == NULL)) {
     return EFI_INVALID_PARAMETER;
@@ -1698,10 +1698,8 @@ CoalesceHobMemory (
   ResourceDescriptor = NULL;
 
   while (!END_OF_HOB_LIST (Hob)) {
-    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
-      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
-    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
-      ResourceDescriptor = Hob.ResourceDescriptor;
+    if (IS_RESOURCE_DESCRIPTOR_HOB (Hob)) {
+      ResourceDescriptor = Hob.ResourceDescriptor2;
     }
 
     if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
@@ -1717,14 +1715,12 @@ CoalesceHobMemory (
     return EFI_OUT_OF_RESOURCES;
   }
 
-  // This is dumb, let me know if you have better ways...
+  // Walk the HOB list again to populate the exactly sized endpoint buffer.
   Index   = 0;
   Hob.Raw = GetHobList ();
   while (!END_OF_HOB_LIST (Hob)) {
-    if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2) {
-      ResourceDescriptor = &Hob.ResourceDescriptorV2->V1;
-    } else if (Hob.Header->HobType == EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) {
-      ResourceDescriptor = Hob.ResourceDescriptor;
+    if (IS_RESOURCE_DESCRIPTOR_HOB (Hob)) {
+      ResourceDescriptor = Hob.ResourceDescriptor2;
     }
 
     if ((ResourceDescriptor != NULL) && !SkipResourceDescriptor (ResourceDescriptor)) {
